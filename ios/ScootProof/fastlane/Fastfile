@@ -38,9 +38,16 @@ platform :ios do
       profile_name: ENV["sigh_com.tuningscanner_appstore_profile-name"]
     )
 
+    # Must be higher than previously approved ASC version (1.0.3)
+    increment_version_number(
+      version_number: "1.1.0",
+      xcodeproj: "ScootProof.xcodeproj"
+    )
+
     build_number = latest_testflight_build_number(
       api_key: api_key,
       app_identifier: "com.tuningscanner",
+      version: "1.1.0",
       initial_build_number: 0
     ) + 1
 

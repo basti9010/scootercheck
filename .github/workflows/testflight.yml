@@ -47,11 +47,22 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Prefer newest installed Xcode (avoid 16.0 vs newer simulator runtime mismatch)
-          CANDIDATE=$(ls -d /Applications/Xcode_16*.app /Applications/Xcode.app 2>/dev/null | sort -V | tail -1)
+          # App Store Connect requires iOS 26 SDK (Xcode 26+). Prefer newest 26.x.
+          CANDIDATE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$CANDIDATE" ]; then
+            CANDIDATE=$(ls -d /Applications/Xcode_*.app /Applications/Xcode.app 2>/dev/null | sort -V | tail -1)
+          fi
           echo "Using $CANDIDATE"
           sudo xcode-select -s "$CANDIDATE/Contents/Developer"
           xcodebuild -version
+          SDK=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iOS SDK: $SDK"
+          MAJOR="${SDK%%.*}"
+          if [ "$MAJOR" -lt 26 ]; then
+            echo "::error::Need iOS 26 SDK or later for App Store upload (got $SDK)"
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
           xcodebuild -showsdks | head -40
           xcrun simctl list runtimes || true
 
