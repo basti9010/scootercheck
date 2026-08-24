@@ -14,21 +14,6 @@ platform :ios do
       in_house: false
     )
 
-    # Create Developer Portal App ID + App Store Connect app if missing
-    begin
-      produce(
-        api_key: api_key,
-        app_identifier: "com.scootproof.zt3check",
-        app_name: "ScooterCheck",
-        language: "German",
-        sku: "scootercheck",
-        team_id: ENV.fetch("APPLE_TEAM_ID"),
-        skip_itc: false
-      )
-    rescue => e
-      UI.important("produce: #{e.message} (continuing if app already exists)")
-    end
-
     revoke_orphan_distribution_certs!(ids: ["5SVF2MGK7Z", "A6Y3NTX39P"])
 
     git_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
@@ -37,7 +22,7 @@ platform :ios do
     match(
       type: "appstore",
       api_key: api_key,
-      app_identifier: ["com.scootproof.zt3check"],
+      app_identifier: ["com.tuningscanner"],
       team_id: ENV.fetch("APPLE_TEAM_ID"),
       git_url: "https://github.com/basti9010/scootercheck-certs",
       git_basic_authorization: git_auth,
@@ -48,14 +33,14 @@ platform :ios do
       use_automatic_signing: false,
       path: "ScootProof.xcodeproj",
       team_id: ENV.fetch("APPLE_TEAM_ID"),
-      bundle_identifier: "com.scootproof.zt3check",
+      bundle_identifier: "com.tuningscanner",
       code_sign_identity: "iPhone Distribution",
-      profile_name: ENV["sigh_com.scootproof.zt3check_appstore_profile-name"]
+      profile_name: ENV["sigh_com.tuningscanner_appstore_profile-name"]
     )
 
     build_number = latest_testflight_build_number(
       api_key: api_key,
-      app_identifier: "com.scootproof.zt3check",
+      app_identifier: "com.tuningscanner",
       initial_build_number: 0
     ) + 1
 
@@ -75,7 +60,7 @@ platform :ios do
       export_options: {
         signingStyle: "manual",
         provisioningProfiles: {
-          "com.scootproof.zt3check" => ENV["sigh_com.scootproof.zt3check_appstore_profile-name"]
+          "com.tuningscanner" => ENV["sigh_com.tuningscanner_appstore_profile-name"]
         }
       }
     )
