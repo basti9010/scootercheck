@@ -14,12 +14,18 @@ platform :ios do
       in_house: false
     )
 
-    # Zertifikat + App Store Profile aus dem Developer-Portal
-    # (API Key: Admin oder App Manager)
+    # setup_ci creates fastlane_tmp_keychain — cert must use it, not login.keychain
+    keychain_name = ENV["MATCH_KEYCHAIN_NAME"] || "fastlane_tmp_keychain"
+    keychain_password = ENV["MATCH_KEYCHAIN_PASSWORD"] || ""
+    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+
     cert(
       api_key: api_key,
-      team_id: ENV.fetch("APPLE_TEAM_ID")
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      keychain_path: keychain_path,
+      keychain_password: keychain_password
     )
+
     sigh(
       api_key: api_key,
       app_identifier: "com.scootproof.zt3check",
