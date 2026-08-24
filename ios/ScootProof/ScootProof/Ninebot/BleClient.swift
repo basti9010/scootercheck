@@ -139,8 +139,9 @@ final class BleClient: NSObject, ObservableObject {
         devices.removeAll()
         phase = .scanning
         statusMessage = "Suche Ninebot-Geräte…"
+        // Ninebot wirbt die Service-UUID oft nicht an — daher Scan ohne Filter, dann Name-Filter.
         central.scanForPeripherals(
-            withServices: [NbUUID.service],
+            withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
     }
@@ -350,8 +351,17 @@ final class BleClient: NSObject, ObservableObject {
                 evidence.append(spec.key.data(using: .utf8) ?? Data())
                 evidence.append(parsed.data)
 
+                let decoded = DiagnosticMap.decode(spec: spec, data: parsed.data)
                 DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
-                _ = DiagnosticMap.decode(spec: spec, data: parsed.data)
+                reading.rawRegisters.append(
+                    RawRegister(
+                        address: String(format: "%02X", spec.board.rawValue),
+                        index: Int(spec.register),
+                        name: spec.id,
+                        valueHex: parsed.data.map { String(format: "%02x", $0) }.joined(),
+                        valueDecoded: decoded
+                    )
+                )
             } catch {
                 continue
             }

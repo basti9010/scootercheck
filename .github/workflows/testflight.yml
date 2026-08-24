@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - master
+      - cursor/testflight-ci-133a
       - cursor/dual-tuning-detection-133a
     paths:
       - "ios/ScootProof/**"

@@ -57,7 +57,7 @@ enum IntegrityAnalyzer {
 
     static func fillDemo(_ kind: DemoKind, profile: ScooterProfile = .zt3ProD) -> IntegrityReading {
         var reading = IntegrityReading()
-        let stockSN = profile == .zt3ProD ? "N4GSD2412XXXXXX" : "N4GSE2412XXXXXX"
+        let stockSN = profile == .zt3ProD ? "N2DTFACTORY001" : "N2ETFACTORY001"
 
         switch kind {
         case .stock:
@@ -576,7 +576,7 @@ enum IntegrityAnalyzer {
         [
             MeasuredFact(
                 id: "protocol.gen",
-                group: .protocol,
+                group: .proto,
                 title: "Protokoll-Generation",
                 auslesewert: Format.num.format(reading.protocolGen),
                 sollwert: "1",
@@ -587,7 +587,7 @@ enum IntegrityAnalyzer {
             ),
             MeasuredFact(
                 id: "protocol.registers",
-                group: .protocol,
+                group: .proto,
                 title: "Rohregister-Anzahl",
                 auslesewert: "\(reading.rawRegisters.count)",
                 sollwert: "0 (Standardauslese)",

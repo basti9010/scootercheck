@@ -143,23 +143,23 @@ enum DiagnosticMap {
 
         case "dis_limit", "mcu_max", "mcu_safe", "mcu_gear":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.kmh.format(RegisterScale.kmhWhole(raw))
+            return Format.kmh.format(Optional(RegisterScale.kmhWhole(raw)))
 
         case "dis_rated", "dis_trip_max", "dis_trip_avg", "dis_speed":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.kmh.format(RegisterScale.kmh(raw))
+            return Format.kmh.format(Optional(RegisterScale.kmh(raw)))
 
         case "dis_range":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.km.format(RegisterScale.rangeKm(raw))
+            return Format.km.format(Optional(RegisterScale.rangeKm(raw)))
 
         case "dis_odo":
             guard let raw = Nb.u32(data) else { return nil }
-            return Format.km.format(RegisterScale.km(raw))
+            return Format.km.format(Optional(RegisterScale.km(raw)))
 
         case "dis_trip_km":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.km.format(RegisterScale.tripKm(raw))
+            return Format.km.format(Optional(RegisterScale.tripKm(raw)))
 
         case "dis_trip_time":
             guard let raw = Nb.u16(data) else { return nil }

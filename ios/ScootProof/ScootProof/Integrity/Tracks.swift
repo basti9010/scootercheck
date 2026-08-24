@@ -42,8 +42,8 @@ enum TrackClassifier {
 
     // MARK: Serial Helpers
 
-    static let usSerialPrefixes = ["N4GSU", "N4USA", "US", "NA"]
-    static let euSerialPrefixes = ["N4GSD", "N4GSE", "N4GSC", "EU", "DE"]
+    static let usSerialPrefixes = ["N2U", "N2GT", "N2UT", "US"]
+    static let euSerialPrefixes = ["N2DT", "N2ET", "N2D", "N2E", "DE", "EU"]
 
     static func serialRegion(for serial: String?) -> SerialRegion {
         guard let serial = serial?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),

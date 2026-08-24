@@ -49,9 +49,9 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     var stockSerialHints: [String] {
         switch self {
         case .zt3ProD:
-            return ["N4GSD", "N4GSE", "N4GSC", "DE", "EU"]
+            return ["N2DT", "N2D"]
         case .zt3ProE:
-            return ["N4GSE", "N4GSC", "EU", "FR", "IT", "ES"]
+            return ["N2ET", "N2E"]
         }
     }
 
@@ -424,7 +424,7 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case temperature = "Temperatur"
     case error = "Fehler / Alarm"
     case flags = "Sicherheitsflags"
-    case protocol = "Protokoll"
+    case proto = "Protokoll"
     case integrity = "Integrität"
     case physical = "Physische Merkmale"
     case boards = "Steuergeräte"

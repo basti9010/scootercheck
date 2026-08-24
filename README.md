@@ -1,32 +1,24 @@
-# ScooterCheck — CI-Paket (TestFlight)
+# ScooterCheck
 
-Dieses Verzeichnis enthält die **TestFlight-Pipeline** für ScooterCheck.
-In der aktuellen Cursor-Session war das App-Repo nicht ausgecheckt.
+Native **iOS**-App (SwiftUI + Core Bluetooth) zur **nur lesenden** Diagnose von Ninebot ZT3 Pro (D/E).
 
-## Inhalt
+1. Scooter suchen → verbinden  
+2. Manipulation prüfen  
+3. Bericht speichern (PDF + JSON)
 
-| Pfad | Zweck |
-|------|--------|
-| `.github/workflows/testflight.yml` | GitHub Actions: macOS-Build → TestFlight |
-| `ios/ScootProof/fastlane/` | Fastlane `beta` Lane |
-| `ios/ScootProof/Gemfile` | Fastlane-Abhängigkeiten |
-| `codemagic.yaml` | Alternative ohne GitHub Actions |
-| `docs/TESTFLIGHT.md` | Secrets und Setup |
+Keine Limit-Änderungen, kein Firmware-Flash, keine Unlock-Kombos.
 
-## In dein ScooterCheck-Repo übernehmen
+## Bundle
 
-Auf dem Mac oder in einer Agent-Session **mit Repo-Zugriff**:
+- Bundle-ID: `com.scootproof.zt3check`
+- Display-Name: ScooterCheck
+- Xcode: `ios/ScootProof/ScootProof.xcodeproj`
 
-```bash
-# Beispiel: Dateien in den bestehenden Clone kopieren
-cp -R .github ios docs/TESTFLIGHT.md codemagic.yaml .gitignore /pfad/zu/scootercheck/
-cd /pfad/zu/scootercheck
-git checkout -b cursor/testflight-ci-133a
-git add .github ios/ScootProof/fastlane ios/ScootProof/Gemfile codemagic.yaml docs/TESTFLIGHT.md .gitignore
-git commit -m "Add TestFlight CI via Fastlane and GitHub Actions"
-git push -u origin cursor/testflight-ci-133a
-```
+## TestFlight ohne Mac
 
-Danach GitHub Secrets setzen (siehe `docs/TESTFLIGHT.md`) und Workflow starten.
+Siehe `docs/TESTFLIGHT.md`. Kurz:
 
-Bundle-ID: `com.scootproof.zt3check` · Scheme: `ScootProof`
+1. GitHub Secrets setzen (`APPLE_TEAM_ID`, API-Key-Felder)
+2. **Actions → TestFlight → Run workflow**
+
+Oder Push auf `main` unter `ios/ScootProof/**`.
