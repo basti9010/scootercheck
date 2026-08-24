@@ -14,24 +14,20 @@ platform :ios do
       in_house: false
     )
 
-    # setup_ci creates fastlane_tmp_keychain — cert must use it, not login.keychain
-    keychain_name = ENV["MATCH_KEYCHAIN_NAME"] || "fastlane_tmp_keychain"
-    keychain_password = ENV["MATCH_KEYCHAIN_PASSWORD"] || ""
-    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+    # Private keys from earlier CI cert() runs were lost on ephemeral runners.
+    revoke_orphan_distribution_certs!(ids: ["5SVF2MGK7Z", "A6Y3NTX39P"])
 
-    cert(
-      api_key: api_key,
-      team_id: ENV.fetch("APPLE_TEAM_ID"),
-      keychain_path: keychain_path,
-      keychain_password: keychain_password
-    )
+    git_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+    git_auth ||= Base64.strict_encode64("basti9010:#{ENV.fetch('MATCH_GITHUB_TOKEN')}")
 
-    sigh(
+    match(
+      type: "appstore",
       api_key: api_key,
-      app_identifier: "com.scootproof.zt3check",
+      app_identifier: ["com.scootproof.zt3check"],
       team_id: ENV.fetch("APPLE_TEAM_ID"),
-      force: true,
-      filename: "ScooterCheck_AppStore.mobileprovision"
+      git_url: "https://github.com/basti9010/scootercheck-certs",
+      git_basic_authorization: git_auth,
+      readonly: false
     )
 
     update_code_signing_settings(
@@ -40,7 +36,7 @@ platform :ios do
       team_id: ENV.fetch("APPLE_TEAM_ID"),
       bundle_identifier: "com.scootproof.zt3check",
       code_sign_identity: "iPhone Distribution",
-      profile_name: lane_context[SharedValues::SIGH_NAME]
+      profile_name: ENV["sigh_com.scootproof.zt3check_appstore_profile-name"]
     )
 
     build_number = latest_testflight_build_number(
@@ -65,7 +61,7 @@ platform :ios do
       export_options: {
         signingStyle: "manual",
         provisioningProfiles: {
-          "com.scootproof.zt3check" => lane_context[SharedValues::SIGH_NAME]
+          "com.scootproof.zt3check" => ENV["sigh_com.scootproof.zt3check_appstore_profile-name"]
         }
       }
     )
@@ -76,4 +72,31 @@ platform :ios do
       changelog: ENV["TESTFLIGHT_CHANGELOG"] || "ScooterCheck Diagnose-Build"
     )
   end
+end
+
+def revoke_orphan_distribution_certs!(ids:)
+  require "spaceship"
+
+  key_content = ENV.fetch("APP_STORE_CONNECT_API_KEY_P8")
+  key_content = Base64.decode64(key_content) if ENV["APP_STORE_CONNECT_API_KEY_IS_BASE64"] == "true"
+
+  token = Spaceship::ConnectAPI::Token.create(
+    key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+    issuer_id: ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+    key: key_content
+  )
+  Spaceship::ConnectAPI.token = token
+
+  Spaceship::ConnectAPI::Certificate.all.each do |cert|
+    next unless ids.include?(cert.id)
+    UI.important("Revoking orphan certificate #{cert.id} (#{cert.certificate_type})…")
+    begin
+      cert.delete!
+      UI.success("Revoked #{cert.id}")
+    rescue => e
+      UI.important("Revoke #{cert.id} failed: #{e.message}")
+    end
+  end
+rescue => e
+  UI.important("Orphan cert cleanup skipped: #{e.message}")
 end

@@ -61,3 +61,11 @@ Die Lane holt Zertifikat und App-Store-Profil über die API (`get_certificates` 
 ## Was diese Cloud-Umgebung nicht kann
 
 Der Cursor-Agent läuft unter Linux ohne Apple-Zugang. Er kann die Pipeline **anlegen**, aber den Build nicht selbst ausführen. Der erste Upload passiert, sobald die Secrets gesetzt sind und der Workflow einmal gelaufen ist.
+
+## Signing (match)
+
+CI uses Fastlane Match with private repo `basti9010/scootercheck-certs`.
+Secrets: `MATCH_PASSWORD`, `MATCH_GIT_BASIC_AUTHORIZATION`, `MATCH_GITHUB_TOKEN`.
+
+Orphan Distribution certificates from failed CI runs are revoked automatically
+(IDs hardcoded in the Fastfile) so a fresh cert can be created and stored in match.
