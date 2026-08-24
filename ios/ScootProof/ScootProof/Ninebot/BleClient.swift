@@ -182,7 +182,7 @@ final class BleClient: NSObject, ObservableObject {
                 do {
                     try await runHandshake(gen: gen)
                     protocolGen = gen
-                    reading.protocolGen = gen
+                    reading.protocolGen = gen == .gen2 ? 2 : 3
                     break
                 } catch {
                     if gen == .gen2 {
@@ -314,7 +314,7 @@ final class BleClient: NSObject, ObservableObject {
         phase = .dumping
         statusMessage = "Lese Register…"
         reading = IntegrityReading()
-        reading.protocolGen = protocolGen
+        reading.protocolGen = protocolGen == .gen2 ? 2 : 3
 
         var evidence = Data()
         var liveBoards = Set<String>()

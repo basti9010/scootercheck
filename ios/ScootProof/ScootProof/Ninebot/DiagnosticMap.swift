@@ -1,5 +1,56 @@
 import Foundation
 
+// MARK: - Register value scaling (used by decode)
+
+enum RegisterScale {
+    /// 0.1 km/h units → km/h
+    static func kmh(_ raw: UInt16) -> Double {
+        Double(raw) / 10.0
+    }
+
+    /// Whole km/h (speed limit register).
+    static func kmhWhole(_ raw: UInt16) -> Double {
+        Double(raw)
+    }
+
+    /// Millimetre odometer → km.
+    static func km(_ millimetres: UInt32) -> Double {
+        Double(millimetres) / 1000.0
+    }
+
+    /// 10 m trip units → km.
+    static func tripKm(_ raw: UInt16) -> Double {
+        Double(raw) / 100.0
+    }
+
+    /// 0.1 km remaining range → km.
+    static func rangeKm(_ raw: UInt16) -> Double {
+        Double(raw) / 10.0
+    }
+
+    /// Seconds → minutes.
+    static func minutesFromSeconds(_ raw: UInt16) -> Double {
+        Double(raw) / 60.0
+    }
+
+    /// 0.01 V → volts.
+    static func volts(_ raw: UInt16) -> Double {
+        Double(raw) / 100.0
+    }
+
+    /// 0.1 °C → celsius.
+    static func celsius(_ raw: Int16) -> Double {
+        Double(raw) / 10.0
+    }
+
+    static func firmware(_ raw: UInt16) -> String {
+        let major = (raw >> 8) & 0xFF
+        let minor = (raw >> 4) & 0xF
+        let patch = raw & 0xF
+        return "\(major).\(minor).\(patch)"
+    }
+}
+
 // MARK: - Diagnostic register map
 
 enum DiagnosticMap {
@@ -23,8 +74,6 @@ enum DiagnosticMap {
             "\(board.rawValue)-\(String(format: "%02X", register))"
         }
     }
-
-    // MARK: - All diagnostic reads
 
     static let fields: [Spec] = identityFields + limitFields + historyFields + firmwareFields + batteryFields + statusFields
 
@@ -89,54 +138,48 @@ enum DiagnosticMap {
         guard !data.isEmpty else { return nil }
 
         switch spec.id {
-        case "dis_sn":
-            return Nb.asciiString(data)
-        case "ble_sn", "vcu_sn", "mcu_sn", "bms_sn":
+        case "dis_sn", "ble_sn", "vcu_sn", "mcu_sn", "bms_sn":
             return Nb.asciiString(data)
 
-        case "dis_limit":
+        case "dis_limit", "mcu_max", "mcu_safe", "mcu_gear":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.0f", Format.kmhWhole(raw))
+            return Format.kmh.format(RegisterScale.kmhWhole(raw))
 
         case "dis_rated", "dis_trip_max", "dis_trip_avg", "dis_speed":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.1f", Format.kmh(raw))
-
-        case "mcu_max", "mcu_safe", "mcu_gear":
-            guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.0f", Format.kmhWhole(raw))
+            return Format.kmh.format(RegisterScale.kmh(raw))
 
         case "dis_range":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.1f", Format.rangeKm(raw))
+            return Format.km.format(RegisterScale.rangeKm(raw))
 
         case "dis_odo":
             guard let raw = Nb.u32(data) else { return nil }
-            return String(format: "%.3f", Format.km(raw))
+            return Format.km.format(RegisterScale.km(raw))
 
         case "dis_trip_km":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.2f", Format.tripKm(raw))
+            return Format.km.format(RegisterScale.tripKm(raw))
 
         case "dis_trip_time":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.1f", Format.minutesFromSeconds(raw))
+            return Format.minutes.format(Int(RegisterScale.minutesFromSeconds(raw).rounded()))
 
         case "dis_fw", "dis_mcu_fw", "dis_ecu_fw", "ble_fw", "mcu_fw", "bms_fw", "vcu_fw":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.firmware(raw)
+            return RegisterScale.firmware(raw)
 
         case "dis_battery", "bms_soc":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.0f%%", Double(raw))
+            return Format.num.format(Int(raw)) + " %"
 
         case "bms_voltage":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "%.2f V", Format.volts(raw))
+            return String(format: "%.2f V", RegisterScale.volts(raw))
 
         case "bms_cycles", "bms_remain", "bms_design":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(raw)
+            return Format.num.format(Int(raw))
 
         case "dis_power":
             guard let raw = Nb.i16(data) else { return nil }
@@ -144,11 +187,11 @@ enum DiagnosticMap {
 
         case "dis_error", "dis_alarm":
             guard let raw = Nb.u16(data) else { return nil }
-            return String(format: "0x%04X", raw)
+            return Format.code.format("0x\(String(format: "%04X", raw))")
 
         case "mcu_motor_temp", "mcu_ctrl_temp":
             guard let raw = Nb.i16(data) else { return nil }
-            return String(format: "%.1f °C", Format.celsius(raw))
+            return String(format: "%.1f °C", RegisterScale.celsius(raw))
 
         default:
             return Nb.hex(data)
@@ -158,125 +201,135 @@ enum DiagnosticMap {
     // MARK: - Apply into IntegrityReading
 
     static func apply(spec: Spec, data: Data, into reading: inout IntegrityReading) {
-        reading.rawRegisters[spec.key] = Nb.hex(data)
+        let decoded = decode(spec: spec, data: data)
+        let raw = RawRegister(
+            address: spec.key,
+            index: Int(spec.register),
+            name: spec.id,
+            valueHex: Nb.hex(data),
+            valueDecoded: decoded
+        )
+        reading.rawRegisters.append(raw)
 
         switch spec.id {
         case "dis_sn":
-            reading.serialNumber = Nb.asciiString(data)
+            reading.serialDisplay = Nb.asciiString(data)
         case "ble_sn":
-            reading.bleSerialNumber = Nb.asciiString(data)
+            reading.serialBle = Nb.asciiString(data)
         case "vcu_sn":
-            reading.vcuSerialNumber = Nb.asciiString(data)
+            reading.serialVcu = Nb.asciiString(data)
         case "mcu_sn":
-            reading.mcuSerialNumber = Nb.asciiString(data)
+            reading.serialMcu = Nb.asciiString(data)
         case "bms_sn":
-            reading.bmsSerialNumber = Nb.asciiString(data)
+            reading.serialBms = Nb.asciiString(data)
 
         case "dis_limit":
             if let raw = Nb.u16(data) {
-                let kmh = Format.kmhWhole(raw)
+                let kmh = RegisterScale.kmhWhole(raw)
                 reading.speedLimitKmh = kmh
-                reading.peakLimitSeenKmh = max(reading.peakLimitSeenKmh ?? 0, kmh)
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
             }
 
         case "dis_rated":
-            if let raw = Nb.u16(data) { reading.ratedMaxKmh = Format.kmh(raw) }
+            if let raw = Nb.u16(data) { reading.speedRatedKmh = RegisterScale.kmh(raw) }
 
         case "dis_trip_max":
-            if let raw = Nb.u16(data) { reading.tripMaxKmh = Format.kmh(raw) }
+            if let raw = Nb.u16(data) {
+                let kmh = RegisterScale.kmh(raw)
+                reading.speedMaxKmh = kmh
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+            }
 
         case "dis_trip_avg":
-            if let raw = Nb.u16(data) { reading.tripAvgKmh = Format.kmh(raw) }
+            if let raw = Nb.u16(data) { _ = RegisterScale.kmh(raw) }
 
         case "dis_speed":
-            if let raw = Nb.u16(data) { reading.currentSpeedKmh = Format.kmh(raw) }
+            if let raw = Nb.u16(data) { reading.speedCurrentKmh = RegisterScale.kmh(raw) }
 
         case "dis_range":
-            if let raw = Nb.u16(data) { reading.remainingKm = Format.rangeKm(raw) }
+            if let raw = Nb.u16(data) { reading.remainKm = RegisterScale.rangeKm(raw) }
 
         case "dis_odo":
-            if let raw = Nb.u32(data) { reading.odoKm = Format.km(raw) }
+            if let raw = Nb.u32(data) { reading.odometerKm = RegisterScale.km(raw) }
 
         case "dis_trip_km":
-            if let raw = Nb.u16(data) { reading.tripKm = Format.tripKm(raw) }
+            if let raw = Nb.u16(data) { reading.tripKm = RegisterScale.tripKm(raw) }
 
         case "dis_trip_time":
-            if let raw = Nb.u16(data) { reading.tripTimeMin = Format.minutesFromSeconds(raw) }
+            if let raw = Nb.u16(data) {
+                reading.rideTimeMinutes = Int(RegisterScale.minutesFromSeconds(raw).rounded())
+            }
 
         case "mcu_max":
             if let raw = Nb.u16(data) {
-                let kmh = Format.kmhWhole(raw)
-                reading.mcuMaxKmh = kmh
-                reading.peakLimitSeenKmh = max(reading.peakLimitSeenKmh ?? 0, kmh)
+                let kmh = RegisterScale.kmhWhole(raw)
+                reading.gearMax = Int(kmh)
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
             }
 
         case "mcu_safe":
             if let raw = Nb.u16(data) {
-                let kmh = Format.kmhWhole(raw)
-                reading.speedSafeLock = kmh
-                reading.peakLimitSeenKmh = max(reading.peakLimitSeenKmh ?? 0, kmh)
+                let kmh = RegisterScale.kmhWhole(raw)
+                reading.safeLockActive = kmh > 0
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
             }
 
         case "mcu_gear":
             if let raw = Nb.u16(data) {
-                let kmh = Format.kmhWhole(raw)
-                reading.gearTopKmh = kmh
-                reading.peakLimitSeenKmh = max(reading.peakLimitSeenKmh ?? 0, kmh)
+                let kmh = RegisterScale.kmhWhole(raw)
+                reading.gearMax = Int(kmh)
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
             }
 
         case "dis_fw":
-            if let raw = Nb.u16(data) { reading.dashboardFw = Format.firmware(raw) }
+            if let raw = Nb.u16(data) { reading.fwEsc = RegisterScale.firmware(raw) }
 
-        case "dis_mcu_fw":
-            if let raw = Nb.u16(data) { reading.mcuFwDirect = Format.firmware(raw) }
+        case "dis_mcu_fw", "mcu_fw":
+            if let raw = Nb.u16(data) { reading.fwMcu = RegisterScale.firmware(raw) }
 
         case "dis_ecu_fw":
-            if let raw = Nb.u16(data) { reading.ecuFw = Format.firmware(raw) }
+            if let raw = Nb.u16(data) { reading.fwEsc = RegisterScale.firmware(raw) }
 
         case "ble_fw":
-            if let raw = Nb.u16(data) { reading.bleFw = Format.firmware(raw) }
-
-        case "mcu_fw":
-            if let raw = Nb.u16(data) { reading.mcuFwDirect = Format.firmware(raw) }
+            if let raw = Nb.u16(data) { reading.fwBle = RegisterScale.firmware(raw) }
 
         case "bms_fw":
-            if let raw = Nb.u16(data) { reading.bmsFw = Format.firmware(raw) }
+            if let raw = Nb.u16(data) { reading.fwBms = RegisterScale.firmware(raw) }
 
         case "vcu_fw":
-            if let raw = Nb.u16(data) { reading.vcuFw = Format.firmware(raw) }
+            if let raw = Nb.u16(data) { reading.fwVcu = RegisterScale.firmware(raw) }
 
         case "dis_error":
-            reading.errorCode = Nb.u16(data)
+            if let raw = Nb.u16(data) {
+                reading.errorCode = String(format: "0x%04X", raw)
+                reading.errorActive = raw != 0
+            }
 
         case "dis_alarm":
-            reading.alarmCode = Nb.u16(data)
+            if let raw = Nb.u16(data) {
+                reading.alarmCode = String(format: "0x%04X", raw)
+            }
 
         case "dis_battery":
-            if let raw = Nb.u16(data) { reading.batteryPercent = Double(raw) }
+            if let raw = Nb.u16(data) { reading.batteryPercent = Int(raw) }
 
         case "bms_voltage":
-            if let raw = Nb.u16(data) { reading.batteryVoltageV = Format.volts(raw) }
+            if let raw = Nb.u16(data) { reading.batteryVoltage = RegisterScale.volts(raw) }
 
         case "bms_cycles":
-            reading.batteryCycles = Nb.u16(data)
+            if let raw = Nb.u16(data) { reading.chargeCycles = Int(raw) }
 
         case "bms_soc":
-            if let raw = Nb.u16(data) { reading.batteryPercent = reading.batteryPercent ?? Double(raw) }
-
-        case "bms_remain":
-            reading.batteryRemainMah = Nb.u16(data)
-
-        case "bms_design":
-            reading.batteryDesignMah = Nb.u16(data)
+            if let raw = Nb.u16(data) { reading.batteryPercent = reading.batteryPercent ?? Int(raw) }
 
         case "dis_power":
-            if let raw = Nb.i16(data) { reading.batteryCurrentA = Double(raw) / 100.0 }
+            if let raw = Nb.i16(data) { reading.batteryCurrent = Double(raw) / 100.0 }
 
         case "mcu_motor_temp":
-            if let raw = Nb.i16(data) { reading.motorTempC = Format.celsius(raw) }
+            if let raw = Nb.i16(data) { reading.motorTempC = RegisterScale.celsius(raw) }
 
         case "mcu_ctrl_temp":
-            if let raw = Nb.i16(data) { reading.controllerTempC = Format.celsius(raw) }
+            if let raw = Nb.i16(data) { reading.mcuTempC = RegisterScale.celsius(raw) }
 
         default:
             break
