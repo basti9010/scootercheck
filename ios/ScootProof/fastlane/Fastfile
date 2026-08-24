@@ -14,7 +14,21 @@ platform :ios do
       in_house: false
     )
 
-    # Private keys from earlier CI cert() runs were lost on ephemeral runners.
+    # Create Developer Portal App ID + App Store Connect app if missing
+    begin
+      produce(
+        api_key: api_key,
+        app_identifier: "com.scootproof.zt3check",
+        app_name: "ScooterCheck",
+        language: "German",
+        sku: "scootercheck",
+        team_id: ENV.fetch("APPLE_TEAM_ID"),
+        skip_itc: false
+      )
+    rescue => e
+      UI.important("produce: #{e.message} (continuing if app already exists)")
+    end
+
     revoke_orphan_distribution_certs!(ids: ["5SVF2MGK7Z", "A6Y3NTX39P"])
 
     git_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
