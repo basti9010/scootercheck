@@ -1,0 +1,40 @@
+# Alternative zu GitHub Actions: Codemagic (codemagic.io)
+# Repo verbinden → Secrets setzen → Workflow „testflight“ starten.
+# Braucht ebenfalls keinen lokalen Mac.
+
+workflows:
+  testflight:
+    name: ScooterCheck TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: ScooterCheck
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.scootproof.zt3check
+      vars:
+        XCODE_WORKSPACE: ""
+        XCODE_PROJECT: ios/ScootProof/ScootProof.xcodeproj
+        XCODE_SCHEME: ScootProof
+        BUNDLE_ID: com.scootproof.zt3check
+      xcode: 16.2
+    scripts:
+      - name: Set build number
+        script: |
+          cd ios/ScootProof
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" || echo 0)
+          agvtool new-version -all $((LATEST + 1))
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups: []

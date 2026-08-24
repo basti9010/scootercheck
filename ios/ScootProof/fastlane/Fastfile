@@ -1,0 +1,73 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Archive ScooterCheck and upload to TestFlight"
+  lane :beta do
+    setup_ci if ENV["CI"]
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id: ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY_P8"),
+      is_key_content_base64: ENV["APP_STORE_CONNECT_API_KEY_IS_BASE64"] == "true",
+      duration: 1200,
+      in_house: false
+    )
+
+    # Zertifikat + App Store Profile aus dem Developer-Portal
+    # (API Key: Admin oder App Manager)
+    cert(
+      api_key: api_key,
+      team_id: ENV.fetch("APPLE_TEAM_ID")
+    )
+    sigh(
+      api_key: api_key,
+      app_identifier: "com.scootproof.zt3check",
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      force: true,
+      filename: "ScooterCheck_AppStore.mobileprovision"
+    )
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "ScootProof.xcodeproj",
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      bundle_identifier: "com.scootproof.zt3check",
+      code_sign_identity: "iPhone Distribution",
+      profile_name: lane_context[SharedValues::SIGH_NAME]
+    )
+
+    build_number = latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: "com.scootproof.zt3check",
+      initial_build_number: 0
+    ) + 1
+
+    increment_build_number(
+      build_number: build_number,
+      xcodeproj: "ScootProof.xcodeproj"
+    )
+
+    build_app(
+      project: "ScootProof.xcodeproj",
+      scheme: "ScootProof",
+      configuration: "Release",
+      export_method: "app-store",
+      clean: true,
+      output_directory: "./build",
+      output_name: "ScooterCheck.ipa",
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.scootproof.zt3check" => lane_context[SharedValues::SIGH_NAME]
+        }
+      }
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      changelog: ENV["TESTFLIGHT_CHANGELOG"] || "ScooterCheck Diagnose-Build"
+    )
+  end
+end

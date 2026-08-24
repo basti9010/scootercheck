@@ -1,0 +1,11 @@
+# Bundle-ID der ScooterCheck-App (bisher TuningScanner / ScootProof)
+app_identifier("com.scootproof.zt3check")
+
+# Team-ID aus developer.apple.com → Membership (10 Zeichen)
+# CI setzt APPLE_TEAM_ID; lokal ggf. hier eintragen.
+team_id(ENV["APPLE_TEAM_ID"])
+
+# App Store Connect API Key (CI) — kein Apple-ID-Passwort nötig
+for_platform :ios do
+  # leer: Auth läuft über API Key in der Fastfile
+end

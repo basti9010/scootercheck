@@ -1,0 +1,15 @@
+# Fastlane / Xcode build leftovers
+ios/ScootProof/build/
+ios/ScootProof/vendor/
+ios/ScootProof/.bundle/
+ios/ScootProof/fastlane/report.xml
+ios/ScootProof/fastlane/Preview.html
+ios/ScootProof/fastlane/screenshots/**/*.png
+ios/ScootProof/fastlane/test_output/
+ios/ScootProof/*.ipa
+ios/ScootProof/*.dSYM.zip
+ios/ScootProof/*.mobileprovision
+*.cer
+*.p12
+*.p8
+AuthKey_*.p8

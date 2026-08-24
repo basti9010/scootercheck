@@ -1,0 +1,72 @@
+name: TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      changelog:
+        description: "TestFlight-Changelog"
+        required: false
+        default: "ScooterCheck Diagnose-Build"
+  push:
+    branches:
+      - main
+      - master
+      - cursor/dual-tuning-detection-133a
+    paths:
+      - "ios/ScootProof/**"
+      - ".github/workflows/testflight.yml"
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  beta:
+    name: Build & upload TestFlight
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ios/ScootProof
+
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      # Inhalt der .p8-Datei (kompletter PEM-Text) ODER Base64 davon
+      APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      APP_STORE_CONNECT_API_KEY_IS_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_IS_BASE64 }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      TESTFLIGHT_CHANGELOG: ${{ github.event.inputs.changelog || 'ScooterCheck Diagnose-Build' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Show Xcode
+        run: xcodebuild -version && xcodebuild -list -project ScootProof.xcodeproj
+
+      - name: Ruby + Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: ios/ScootProof
+
+      - name: Install gems
+        run: bundle install --jobs 4
+
+      - name: Fastlane beta
+        run: bundle exec fastlane beta
+
+      - name: Upload IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScooterCheck-ipa
+          path: ios/ScootProof/build/*.ipa
+          if-no-files-found: ignore
+          retention-days: 14
