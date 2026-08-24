@@ -16,35 +16,37 @@ enum Nb {
         case bms = 0x22
     }
 
-    enum Register: UInt8 {
-        case serialNumber = 0x10
-        case error = 0x01
-        case alarm = 0x02
-        case disVersion = 0x1A
-        case tripMaxSpeed = 0x24
-        case averageSpeed = 0x27
-        case mcuVersion = 0x28
-        case gearTopSpeed = 0x31
-        case ratedSpeed = 0x48
-        case ecuVersion = 0x4C
-        case mcuMaxSpeed = 0x09
-        case speedSafeLock = 0x53
-        case speedLimit = 0x93
-        case bleVersion = 0x68
-        case odometer = 0xB7
-        case tripDistance = 0xB9
-        case batteryPercent = 0xB5
-        case currentSpeed = 0x26
-        case remainingRange = 0x25
-        case tripTime = 0xBA
-        case power = 0xBD
-        case bmsVoltage = 0x1A
-        case cycleCount = 0x1B
-        case bmsSoc = 0x32
-        case remainCapacity = 0x26
-        case designCapacity = 0x27
-        case motorTemp = 0x35
-        case controllerTemp = 0x36
+    /// Register addresses are board-scoped; the same byte may mean different
+    /// fields on DIS vs BMS, so these are constants rather than a raw UInt8 enum.
+    enum Register {
+        static let serialNumber: UInt8 = 0x10
+        static let error: UInt8 = 0x01
+        static let alarm: UInt8 = 0x02
+        static let disVersion: UInt8 = 0x1A
+        static let tripMaxSpeed: UInt8 = 0x24
+        static let averageSpeed: UInt8 = 0x27
+        static let mcuVersion: UInt8 = 0x28
+        static let gearTopSpeed: UInt8 = 0x31
+        static let ratedSpeed: UInt8 = 0x48
+        static let ecuVersion: UInt8 = 0x4C
+        static let mcuMaxSpeed: UInt8 = 0x09
+        static let speedSafeLock: UInt8 = 0x53
+        static let speedLimit: UInt8 = 0x93
+        static let bleVersion: UInt8 = 0x68
+        static let odometer: UInt8 = 0xB7
+        static let tripDistance: UInt8 = 0xB9
+        static let batteryPercent: UInt8 = 0xB5
+        static let currentSpeed: UInt8 = 0x26
+        static let remainingRange: UInt8 = 0x25
+        static let tripTime: UInt8 = 0xBA
+        static let power: UInt8 = 0xBD
+        static let bmsVoltage: UInt8 = 0x1A
+        static let cycleCount: UInt8 = 0x1B
+        static let bmsSoc: UInt8 = 0x32
+        static let remainCapacity: UInt8 = 0x26
+        static let designCapacity: UInt8 = 0x27
+        static let motorTemp: UInt8 = 0x35
+        static let controllerTemp: UInt8 = 0x36
     }
 
     enum Cmd: UInt8 {
@@ -98,15 +100,6 @@ enum Nb {
 
     static func auth(serialNumber: Data, gen: ProtocolGen = .gen2) -> Data {
         frame(target: .ble, cmd: .auth, index: 0x00, data: serialNumber.prefix(14), gen: gen)
-    }
-
-    static func read(
-        board: Board,
-        register: Register,
-        length: Int,
-        gen: ProtocolGen = .gen2
-    ) -> Data {
-        frame(target: board, cmd: .read, index: register.rawValue, data: Data([UInt8(length)]), gen: gen)
     }
 
     static func read(

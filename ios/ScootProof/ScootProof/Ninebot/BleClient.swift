@@ -322,7 +322,7 @@ final class BleClient: NSObject, ObservableObject {
 
         // Probe boards
         for board in Nb.Board.allCases {
-            let probe = Nb.read(board: board, register: .error, length: 2, gen: protocolGen)
+            let probe = Nb.read(board: board, register: Nb.Register.error, length: 2, gen: protocolGen)
             do {
                 let resp = try await sendReceive(plain: probe, crypto: crypto, timeout: 2)
                 if let parsed = Nb.parse(resp), parsed.cmd == Nb.Cmd.readResp.rawValue {
@@ -471,7 +471,7 @@ final class BleClient: NSObject, ObservableObject {
         connectContinuation = nil
     }
 
-    private static func isNinebotDevice(name: String?) -> Bool {
+    nonisolated private static func isNinebotDevice(name: String?) -> Bool {
         guard let name, !name.isEmpty else { return false }
         let upper = name.uppercased()
         if upper.contains("NINEBOT") || upper.contains("SEGWAY") || upper.contains("ZT3") {

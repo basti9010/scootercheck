@@ -80,56 +80,56 @@ enum DiagnosticMap {
     // MARK: - Display (DIS 0x01)
 
     private static let identityFields: [Spec] = [
-        Spec(id: "dis_sn", board: .dis, register: Nb.Register.serialNumber.rawValue, readLen: 14, category: .identity),
-        Spec(id: "ble_sn", board: .ble, register: Nb.Register.serialNumber.rawValue, readLen: 14, category: .identity),
-        Spec(id: "vcu_sn", board: .vcu, register: Nb.Register.serialNumber.rawValue, readLen: 14, category: .identity),
-        Spec(id: "mcu_sn", board: .mcu, register: Nb.Register.serialNumber.rawValue, readLen: 14, category: .identity),
-        Spec(id: "bms_sn", board: .bms, register: Nb.Register.serialNumber.rawValue, readLen: 14, category: .identity),
+        Spec(id: "dis_sn", board: .dis, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
+        Spec(id: "ble_sn", board: .ble, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
+        Spec(id: "vcu_sn", board: .vcu, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
+        Spec(id: "mcu_sn", board: .mcu, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
+        Spec(id: "bms_sn", board: .bms, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
     ]
 
     private static let limitFields: [Spec] = [
-        Spec(id: "dis_limit", board: .dis, register: Nb.Register.speedLimit.rawValue, readLen: 2, category: .limit),
-        Spec(id: "dis_rated", board: .dis, register: Nb.Register.ratedSpeed.rawValue, readLen: 2, category: .limit),
-        Spec(id: "mcu_max", board: .mcu, register: Nb.Register.mcuMaxSpeed.rawValue, readLen: 2, category: .limit),
-        Spec(id: "mcu_safe", board: .mcu, register: Nb.Register.speedSafeLock.rawValue, readLen: 2, category: .limit),
-        Spec(id: "mcu_gear", board: .mcu, register: Nb.Register.gearTopSpeed.rawValue, readLen: 2, category: .limit),
+        Spec(id: "dis_limit", board: .dis, register: Nb.Register.speedLimit, readLen: 2, category: .limit),
+        Spec(id: "dis_rated", board: .dis, register: Nb.Register.ratedSpeed, readLen: 2, category: .limit),
+        Spec(id: "mcu_max", board: .mcu, register: Nb.Register.mcuMaxSpeed, readLen: 2, category: .limit),
+        Spec(id: "mcu_safe", board: .mcu, register: Nb.Register.speedSafeLock, readLen: 2, category: .limit),
+        Spec(id: "mcu_gear", board: .mcu, register: Nb.Register.gearTopSpeed, readLen: 2, category: .limit),
     ]
 
     private static let historyFields: [Spec] = [
-        Spec(id: "dis_trip_max", board: .dis, register: Nb.Register.tripMaxSpeed.rawValue, readLen: 2, category: .history),
-        Spec(id: "dis_trip_avg", board: .dis, register: Nb.Register.averageSpeed.rawValue, readLen: 2, category: .history),
-        Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed.rawValue, readLen: 2, category: .history),
-        Spec(id: "dis_range", board: .dis, register: Nb.Register.remainingRange.rawValue, readLen: 2, category: .history),
-        Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer.rawValue, readLen: 4, category: .history),
-        Spec(id: "dis_trip_km", board: .dis, register: Nb.Register.tripDistance.rawValue, readLen: 2, category: .history),
-        Spec(id: "dis_trip_time", board: .dis, register: Nb.Register.tripTime.rawValue, readLen: 2, category: .history),
+        Spec(id: "dis_trip_max", board: .dis, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
+        Spec(id: "dis_trip_avg", board: .dis, register: Nb.Register.averageSpeed, readLen: 2, category: .history),
+        Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
+        Spec(id: "dis_range", board: .dis, register: Nb.Register.remainingRange, readLen: 2, category: .history),
+        Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer, readLen: 4, category: .history),
+        Spec(id: "dis_trip_km", board: .dis, register: Nb.Register.tripDistance, readLen: 2, category: .history),
+        Spec(id: "dis_trip_time", board: .dis, register: Nb.Register.tripTime, readLen: 2, category: .history),
     ]
 
     private static let firmwareFields: [Spec] = [
-        Spec(id: "dis_fw", board: .dis, register: Nb.Register.disVersion.rawValue, readLen: 2, category: .firmware),
-        Spec(id: "dis_mcu_fw", board: .dis, register: Nb.Register.mcuVersion.rawValue, readLen: 2, category: .firmware),
-        Spec(id: "dis_ecu_fw", board: .dis, register: Nb.Register.ecuVersion.rawValue, readLen: 2, category: .firmware),
-        Spec(id: "ble_fw", board: .ble, register: Nb.Register.bleVersion.rawValue, readLen: 2, category: .firmware),
-        Spec(id: "mcu_fw", board: .mcu, register: Nb.Register.disVersion.rawValue, readLen: 2, category: .firmware),
-        Spec(id: "bms_fw", board: .bms, register: Nb.Register.disVersion.rawValue, readLen: 2, category: .firmware),
-        Spec(id: "vcu_fw", board: .vcu, register: Nb.Register.disVersion.rawValue, readLen: 2, category: .firmware),
+        Spec(id: "dis_fw", board: .dis, register: Nb.Register.disVersion, readLen: 2, category: .firmware),
+        Spec(id: "dis_mcu_fw", board: .dis, register: Nb.Register.mcuVersion, readLen: 2, category: .firmware),
+        Spec(id: "dis_ecu_fw", board: .dis, register: Nb.Register.ecuVersion, readLen: 2, category: .firmware),
+        Spec(id: "ble_fw", board: .ble, register: Nb.Register.bleVersion, readLen: 2, category: .firmware),
+        Spec(id: "mcu_fw", board: .mcu, register: Nb.Register.disVersion, readLen: 2, category: .firmware),
+        Spec(id: "bms_fw", board: .bms, register: Nb.Register.disVersion, readLen: 2, category: .firmware),
+        Spec(id: "vcu_fw", board: .vcu, register: Nb.Register.disVersion, readLen: 2, category: .firmware),
     ]
 
     private static let batteryFields: [Spec] = [
-        Spec(id: "dis_battery", board: .dis, register: Nb.Register.batteryPercent.rawValue, readLen: 2, category: .battery),
-        Spec(id: "bms_voltage", board: .bms, register: Nb.Register.bmsVoltage.rawValue, readLen: 2, category: .battery),
-        Spec(id: "bms_cycles", board: .bms, register: Nb.Register.cycleCount.rawValue, readLen: 2, category: .battery),
-        Spec(id: "bms_soc", board: .bms, register: Nb.Register.bmsSoc.rawValue, readLen: 2, category: .battery),
-        Spec(id: "bms_remain", board: .bms, register: Nb.Register.remainCapacity.rawValue, readLen: 2, category: .battery),
-        Spec(id: "bms_design", board: .bms, register: Nb.Register.designCapacity.rawValue, readLen: 2, category: .battery),
-        Spec(id: "dis_power", board: .dis, register: Nb.Register.power.rawValue, readLen: 2, category: .battery),
+        Spec(id: "dis_battery", board: .dis, register: Nb.Register.batteryPercent, readLen: 2, category: .battery),
+        Spec(id: "bms_voltage", board: .bms, register: Nb.Register.bmsVoltage, readLen: 2, category: .battery),
+        Spec(id: "bms_cycles", board: .bms, register: Nb.Register.cycleCount, readLen: 2, category: .battery),
+        Spec(id: "bms_soc", board: .bms, register: Nb.Register.bmsSoc, readLen: 2, category: .battery),
+        Spec(id: "bms_remain", board: .bms, register: Nb.Register.remainCapacity, readLen: 2, category: .battery),
+        Spec(id: "bms_design", board: .bms, register: Nb.Register.designCapacity, readLen: 2, category: .battery),
+        Spec(id: "dis_power", board: .dis, register: Nb.Register.power, readLen: 2, category: .battery),
     ]
 
     private static let statusFields: [Spec] = [
-        Spec(id: "dis_error", board: .dis, register: Nb.Register.error.rawValue, readLen: 2, category: .status),
-        Spec(id: "dis_alarm", board: .dis, register: Nb.Register.alarm.rawValue, readLen: 2, category: .status),
-        Spec(id: "mcu_motor_temp", board: .mcu, register: Nb.Register.motorTemp.rawValue, readLen: 2, category: .status),
-        Spec(id: "mcu_ctrl_temp", board: .mcu, register: Nb.Register.controllerTemp.rawValue, readLen: 2, category: .status),
+        Spec(id: "dis_error", board: .dis, register: Nb.Register.error, readLen: 2, category: .status),
+        Spec(id: "dis_alarm", board: .dis, register: Nb.Register.alarm, readLen: 2, category: .status),
+        Spec(id: "mcu_motor_temp", board: .mcu, register: Nb.Register.motorTemp, readLen: 2, category: .status),
+        Spec(id: "mcu_ctrl_temp", board: .mcu, register: Nb.Register.controllerTemp, readLen: 2, category: .status),
     ]
 
     // MARK: - Decode
