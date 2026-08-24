@@ -47,10 +47,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          for p in /Applications/Xcode_16*.app/Contents/Developer /Applications/Xcode.app/Contents/Developer; do
-            if [ -d "$p" ]; then sudo xcode-select -s "$p"; break; fi
-          done
+          # Prefer newest installed Xcode (avoid 16.0 vs newer simulator runtime mismatch)
+          CANDIDATE=$(ls -d /Applications/Xcode_16*.app /Applications/Xcode.app 2>/dev/null | sort -V | tail -1)
+          echo "Using $CANDIDATE"
+          sudo xcode-select -s "$CANDIDATE/Contents/Developer"
           xcodebuild -version
+          xcodebuild -showsdks | head -40
+          xcrun simctl list runtimes || true
 
       - name: Ruby + Bundler
         uses: ruby/setup-ruby@v1

@@ -55,6 +55,8 @@ platform :ios do
       configuration: "Release",
       export_method: "app-store",
       clean: true,
+      destination: "generic/platform=iOS",
+      skip_package_dependencies_resolution: false,
       output_directory: "./build",
       output_name: "ScooterCheck.ipa",
       export_options: {
@@ -62,7 +64,8 @@ platform :ios do
         provisioningProfiles: {
           "com.tuningscanner" => ENV["sigh_com.tuningscanner_appstore_profile-name"]
         }
-      }
+      },
+      xcargs: "SUPPORTED_PLATFORMS=iphoneos SUPPORTS_MACCATALYST=NO"
     )
 
     upload_to_testflight(

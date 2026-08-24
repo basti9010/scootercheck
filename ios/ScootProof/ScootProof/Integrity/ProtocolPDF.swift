@@ -11,7 +11,7 @@ enum ProtocolJSON {
             app: ProtocolPayload.AppInfo(
                 name: "ScooterCheck",
                 version: ProtocolPDF.appVersion,
-                bundleId: Bundle.main.bundleIdentifier ?? "com.scootproof.zt3check"
+                bundleId: Bundle.main.bundleIdentifier ?? "com.tuningscanner"
             ),
             protocolNumber: session.protocolNumber,
             createdAt: ISO8601DateFormatter().string(from: session.createdAt),
