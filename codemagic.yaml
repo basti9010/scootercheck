@@ -12,12 +12,12 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.tuningscanner
+        bundle_identifier: com.scootercheck.app
       vars:
         XCODE_WORKSPACE: ""
         XCODE_PROJECT: ios/ScootProof/ScootProof.xcodeproj
         XCODE_SCHEME: ScootProof
-        BUNDLE_ID: com.tuningscanner
+        BUNDLE_ID: com.scootercheck.app
       xcode: 16.2
     scripts:
       - name: Set build number
