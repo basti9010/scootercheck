@@ -125,20 +125,38 @@ def ensure_scootercheck_app!(api_key:)
   app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
   if app.nil?
     UI.important("Creating App Store Connect app #{APP_NAME} (#{BUNDLE_ID})…")
-    Spaceship::ConnectAPI::App.create(
-      name: APP_NAME,
-      primary_locale: "de-DE",
-      version_string: MARKETING_VERSION,
-      sku: APP_SKU,
-      bundle_id: BUNDLE_ID,
-      platforms: ["IOS"]
-    )
-    UI.success("Created App Store Connect app #{APP_NAME}")
+    begin
+      Spaceship::ConnectAPI::App.create(
+        name: APP_NAME,
+        primary_locale: "de-DE",
+        version_string: MARKETING_VERSION,
+        sku: APP_SKU,
+        bundle_id: BUNDLE_ID,
+        platforms: ["IOS"]
+      )
+      UI.success("Created App Store Connect app #{APP_NAME}")
+    rescue => create_error
+      UI.user_error!(<<~MSG)
+        Bundle-ID #{BUNDLE_ID} existiert, aber die App Store Connect App fehlt.
+        Der API-Key darf Apps nicht anlegen (nur lesen/updaten).
+
+        Bitte einmalig manuell anlegen:
+        1. https://appstoreconnect.apple.com → Meine Apps → (+) Neue App
+        2. Plattformen: iOS
+        3. Name: ScooterCheck
+        4. Sprache: Deutsch (oder primäre Sprache wählen)
+        5. Bundle-ID: #{BUNDLE_ID}  ← bereits angelegt, in der Liste wählen
+        6. SKU: #{APP_SKU}
+        7. Speichern, danach TestFlight-Workflow erneut starten
+
+        API-Detail: #{create_error.message}
+      MSG
+    end
   else
     UI.success("App Store Connect app already exists: #{app.name} (#{BUNDLE_ID})")
   end
 rescue => e
-  UI.user_error!("Could not ensure ScooterCheck app/Bundle ID: #{e.message}")
+  UI.user_error!("Could not ensure ScooterCheck Bundle ID: #{e.message}")
 end
 
 def revoke_orphan_distribution_certs!(ids:)
