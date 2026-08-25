@@ -71,7 +71,7 @@ struct ContentView: View {
 
     private var isBusyPhase: Bool {
         switch ble.phase {
-        case .connecting, .handshake, .waitingButton, .dumping: return true
+        case .connecting, .detecting, .handshake, .waitingButton, .dumping: return true
         default: return false
         }
     }
@@ -141,6 +141,11 @@ struct ContentView: View {
             Text(ble.statusMessage)
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
+            if ble.detectedStack != .unknown {
+                Text("Stack: \(ble.detectedStack.label)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
@@ -150,6 +155,7 @@ struct ContentView: View {
         switch ble.phase {
         case .waitingButton: return "Power-Knopf drücken"
         case .dumping: return "Diagnosefelder lesen"
+        case .detecting: return "Protokoll erkennen"
         case .handshake: return "Authentifizieren"
         default: return "Verbinden"
         }
@@ -226,6 +232,13 @@ struct ContentView: View {
                         Text(report.trackMatch.trackId.label)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Theme.accent)
+                    }
+                    if let stackRaw = report.reading.bleStack,
+                       let stack = BleStack(rawValue: stackRaw),
+                       stack != .unknown {
+                        Text("BLE: \(stack.label)")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.muted)
                     }
                     Text(report.verdict.laymanText)
                         .font(.footnote)
@@ -354,7 +367,7 @@ struct ContentView: View {
         result = nil
         defer { busy = false }
         do {
-            try await ble.connect(to: device, preferXiaomi: !profile.usesNinebotEnc2)
+            try await ble.connect(to: device)
             await ble.handshakeAndDump(profile: profile)
             if ble.phase == .done {
                 finalizeAnalysis()
@@ -387,8 +400,11 @@ struct ContentView: View {
                             }
                         }
                     }
+                    Text("BLE-Stack wird automatisch erkannt (Ninebot Enc2 / Xiaomi 55 AA). Profil steuert nur die Soll-Werte und die Versuch-Reihenfolge.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     if !profile.usesNinebotEnc2 {
-                        Text("Xiaomi: Klartext-Protokoll (55 AA) über Nordic UART. Neuere Modelle mit 55 AB sind ggf. nicht auslesbar.")
+                        Text("Xiaomi-Hinweis: Neuere Modelle mit 55 AB sind ggf. nicht auslesbar.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

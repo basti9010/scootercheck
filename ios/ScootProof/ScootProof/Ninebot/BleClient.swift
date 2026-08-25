@@ -10,9 +10,37 @@ private enum NbUUID {
     static let notify = CBUUID(string: "6E400004-0000-0000-006E-696E65626F74")
 }
 
-private enum BleTransport: String {
+/// Erkanntes BLE-Diagnose-Protokoll (Stack) am Scooter.
+enum BleStack: String, Codable, CaseIterable, Sendable {
+    case unknown
     case ninebotEnc2
     case xiaomiPlain
+    case xiaomiEncrypted
+
+    var label: String {
+        switch self {
+        case .unknown: return "Unbekannt"
+        case .ninebotEnc2: return "Ninebot Enc2"
+        case .xiaomiPlain: return "Xiaomi Klartext (55 AA)"
+        case .xiaomiEncrypted: return "Xiaomi verschlüsselt (55 AB)"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .unknown: return "—"
+        case .ninebotEnc2: return "Enc2"
+        case .xiaomiPlain: return "Xiaomi AA"
+        case .xiaomiEncrypted: return "Xiaomi AB"
+        }
+    }
+
+    var isReadable: Bool {
+        switch self {
+        case .ninebotEnc2, .xiaomiPlain: return true
+        case .unknown, .xiaomiEncrypted: return false
+        }
+    }
 }
 
 // MARK: - Frame assembler
@@ -116,6 +144,7 @@ final class BleClient: NSObject, ObservableObject {
         case idle
         case scanning
         case connecting
+        case detecting
         case handshake
         case waitingButton
         case dumping
@@ -128,11 +157,20 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var devices: [ScannedDevice] = []
     @Published private(set) var reading = IntegrityReading()
     @Published private(set) var lastError: String?
+    @Published private(set) var detectedStack: BleStack = .unknown
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
     private var writeChar: CBCharacteristic?
     private var notifyChar: CBCharacteristic?
+
+    private var ninebotWrite: CBCharacteristic?
+    private var ninebotNotify: CBCharacteristic?
+    private var xiaomiWrite: CBCharacteristic?
+    private var xiaomiNotify: CBCharacteristic?
+    private var pendingCharDiscoveries = 0
+    private var hasNinebotPipe: Bool { ninebotWrite != nil && ninebotNotify != nil }
+    private var hasXiaomiPipe: Bool { xiaomiWrite != nil && xiaomiNotify != nil }
 
     private var crypto: NbCrypto?
     private var protocolGen: ProtocolGen = .gen3
@@ -140,8 +178,7 @@ final class BleClient: NSObject, ObservableObject {
     private var serialNumber = Data()
     private var sessionPassword = Data()
     private var btName = ""
-    private var transport: BleTransport = .ninebotEnc2
-    private var preferXiaomi = false
+    private var activeStack: BleStack = .unknown
 
     private let assembler = FrameAssembler()
     private let xiaomiAssembler = XiaomiFrameAssembler()
@@ -181,17 +218,25 @@ final class BleClient: NSObject, ObservableObject {
         }
     }
 
-    func connect(to device: ScannedDevice, preferXiaomi: Bool = false) async throws {
+    func connect(to device: ScannedDevice) async throws {
         stopScan()
         phase = .connecting
         statusMessage = "Verbinde mit \(device.name)…"
+        lastError = nil
+        detectedStack = .unknown
+        activeStack = .unknown
         peripheral = device.peripheral
         btName = device.name
-        self.preferXiaomi = preferXiaomi
-        transport = preferXiaomi ? .xiaomiPlain : .ninebotEnc2
         peripheral?.delegate = self
         assembler.reset()
         xiaomiAssembler.reset()
+        ninebotWrite = nil
+        ninebotNotify = nil
+        xiaomiWrite = nil
+        xiaomiNotify = nil
+        writeChar = nil
+        notifyChar = nil
+        pendingCharDiscoveries = 0
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             connectContinuation = continuation
@@ -199,44 +244,181 @@ final class BleClient: NSObject, ObservableObject {
         }
     }
 
+    /// Erkennt den BLE-Stack automatisch und startet die passende Read-only-Auslese.
+    /// `profile` steuert nur die Reihenfolge der Versuche (Hint), nicht das Ergebnis.
     func handshakeAndDump(profile: ScooterProfile) async {
         guard peripheral != nil else {
             fail("Kein Gerät verbunden")
             return
         }
 
-        if !profile.usesNinebotEnc2 || transport == .xiaomiPlain {
-            await dumpXiaomi()
+        phase = .detecting
+        statusMessage = "Erkenne BLE-Protokoll…"
+        detectedStack = .unknown
+
+        let order = detectionOrder(profileHint: profile, name: btName)
+        var sawEncryptedXiaomi = false
+        var lastFailure: String?
+
+        for candidate in order {
+            switch candidate {
+            case .xiaomiPlain:
+                guard hasXiaomiPipe else { continue }
+                phase = .detecting
+                statusMessage = "Prüfe Xiaomi-Protokoll (55 AA)…"
+                activate(.xiaomiPlain)
+                xiaomiAssembler.reset()
+                if await probeXiaomiPlain() {
+                    detectedStack = .xiaomiPlain
+                    statusMessage = "Stack: \(BleStack.xiaomiPlain.label)"
+                    await dumpXiaomi()
+                    return
+                }
+                if xiaomiAssembler.sawEncryptedHint {
+                    sawEncryptedXiaomi = true
+                    detectedStack = .xiaomiEncrypted
+                }
+
+            case .ninebotEnc2:
+                guard hasNinebotPipe else { continue }
+                phase = .detecting
+                statusMessage = "Prüfe Ninebot Enc2…"
+                activate(.ninebotEnc2)
+                assembler.reset()
+                do {
+                    try await runNinebotHandshakeAndDump()
+                    return
+                } catch {
+                    lastFailure = error.localizedDescription
+                    crypto = nil
+                    continue
+                }
+
+            case .xiaomiEncrypted, .unknown:
+                continue
+            }
+        }
+
+        if sawEncryptedXiaomi {
+            fail("Stack erkannt: \(BleStack.xiaomiEncrypted.label) — Klartext-Auslese nicht möglich")
             return
         }
 
-        phase = .handshake
-        statusMessage = "Handshake…"
-
-        do {
-            for gen in [ProtocolGen.gen3, ProtocolGen.gen2] {
-                do {
-                    try await runHandshake(gen: gen)
-                    protocolGen = gen
-                    reading.protocolGen = gen == .gen2 ? 2 : 3
-                    break
-                } catch {
-                    if gen == .gen2 {
-                        throw error
-                    }
-                    statusMessage = "Gen3 fehlgeschlagen, versuche Gen2…"
-                }
-            }
-
-            await dump()
-        } catch {
-            fail(error.localizedDescription)
-        }
+        let pipes: [String] = [
+            hasNinebotPipe ? "Ninebot-UART" : nil,
+            hasXiaomiPipe ? "Xiaomi-NUS" : nil
+        ].compactMap { $0 }
+        let pipeInfo = pipes.isEmpty ? "kein UART-Service" : pipes.joined(separator: " + ")
+        fail(
+            "Kein unterstütztes Protokoll erkannt (\(pipeInfo))"
+                + (lastFailure.map { " — \($0)" } ?? "")
+        )
     }
 
     /// Backwards-compatible entry for Ninebot Enc2 callers.
     func handshakeAndDump() async {
         await handshakeAndDump(profile: .zt3ProD)
+    }
+
+    // MARK: - Stack detection helpers
+
+    private func detectionOrder(profileHint: ScooterProfile, name: String) -> [BleStack] {
+        let nameSuggestsXiaomi = Self.nameSuggestsXiaomi(name)
+        let preferXiaomi = !profileHint.usesNinebotEnc2 || nameSuggestsXiaomi
+
+        var order: [BleStack] = []
+        if preferXiaomi {
+            if hasXiaomiPipe { order.append(.xiaomiPlain) }
+            if hasNinebotPipe { order.append(.ninebotEnc2) }
+        } else {
+            if hasNinebotPipe { order.append(.ninebotEnc2) }
+            if hasXiaomiPipe { order.append(.xiaomiPlain) }
+        }
+        // Falls Hint und verfügbare Pipes nicht zusammenpassen: alles Verfügbare versuchen.
+        if order.isEmpty {
+            if hasNinebotPipe { order.append(.ninebotEnc2) }
+            if hasXiaomiPipe { order.append(.xiaomiPlain) }
+        }
+        return order
+    }
+
+    private func activate(_ stack: BleStack) {
+        activeStack = stack
+        switch stack {
+        case .xiaomiPlain, .xiaomiEncrypted:
+            writeChar = xiaomiWrite
+            notifyChar = xiaomiNotify
+        case .ninebotEnc2:
+            writeChar = ninebotWrite
+            notifyChar = ninebotNotify
+        case .unknown:
+            writeChar = nil
+            notifyChar = nil
+        }
+    }
+
+    private func probeXiaomiPlain() async -> Bool {
+        let probe = Xiaomi.read(board: .esc, register: Xiaomi.Register.error, length: 2)
+        do {
+            let resp = try await sendReceiveXiaomi(probe, timeout: 2.5)
+            if let parsed = Xiaomi.parse(resp), parsed.cmd == Xiaomi.Cmd.readResp.rawValue {
+                return true
+            }
+        } catch {
+            // Timeout / no frame — may still have seen 55 AB in assembler
+        }
+        // Zweiter Versuch über BLE-Board
+        let probeBle = Xiaomi.read(board: .ble, register: Xiaomi.Register.serialNumber, length: 14)
+        do {
+            let resp = try await sendReceiveXiaomi(probeBle, timeout: 2)
+            if let parsed = Xiaomi.parse(resp), parsed.cmd == Xiaomi.Cmd.readResp.rawValue {
+                return true
+            }
+        } catch {
+            return false
+        }
+        return false
+    }
+
+    private func runNinebotHandshakeAndDump() async throws {
+        phase = .handshake
+        statusMessage = "Ninebot Enc2: Handshake…"
+
+        var succeeded = false
+        var lastError: Error?
+        for gen in [ProtocolGen.gen3, ProtocolGen.gen2] {
+            do {
+                try await runHandshake(gen: gen)
+                protocolGen = gen
+                detectedStack = .ninebotEnc2
+                activeStack = .ninebotEnc2
+                succeeded = true
+                break
+            } catch {
+                lastError = error
+                crypto = nil
+                if gen == .gen2 { break }
+                statusMessage = "Gen3 fehlgeschlagen, versuche Gen2…"
+                phase = .handshake
+            }
+        }
+
+        guard succeeded else {
+            throw lastError ?? BleError.handshakeFailed("Enc2 nicht erkannt")
+        }
+
+        await dump()
+        if phase == .failed {
+            throw BleError.handshakeFailed(statusMessage)
+        }
+    }
+
+    nonisolated private static func nameSuggestsXiaomi(_ name: String) -> Bool {
+        let upper = name.uppercased()
+        let tokens = ["XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER", "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2"]
+        if tokens.contains(where: { upper.contains($0) }) { return true }
+        if upper.hasPrefix("MI") && !upper.contains("NINEBOT") { return true }
+        return false
     }
 
     func disconnect() {
@@ -356,6 +538,8 @@ final class BleClient: NSObject, ObservableObject {
         statusMessage = "Lese Register…"
         reading = IntegrityReading()
         reading.protocolGen = protocolGen == .gen2 ? 2 : 3
+        reading.bleStack = BleStack.ninebotEnc2.rawValue
+        detectedStack = .ninebotEnc2
 
         var evidence = Data()
         var liveBoards = Set<String>()
@@ -412,16 +596,17 @@ final class BleClient: NSObject, ObservableObject {
 
         reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
         phase = .done
-        statusMessage = "Diagnose abgeschlossen"
+        statusMessage = "Diagnose abgeschlossen (\(BleStack.ninebotEnc2.shortLabel))"
     }
-
-    // MARK: - Xiaomi plaintext dump (read-only)
 
     private func dumpXiaomi() async {
         phase = .dumping
         statusMessage = "Xiaomi-Protokoll: lese Register…"
         reading = IntegrityReading()
         reading.protocolGen = 0 // plaintext Xiaomi (kein Enc2)
+        reading.bleStack = BleStack.xiaomiPlain.rawValue
+        detectedStack = .xiaomiPlain
+        activate(.xiaomiPlain)
 
         var evidence = Data()
         var liveBoards = Set<String>()
@@ -474,7 +659,7 @@ final class BleClient: NSObject, ObservableObject {
 
         reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
         phase = .done
-        statusMessage = "Xiaomi-Diagnose abgeschlossen"
+        statusMessage = "Xiaomi-Diagnose abgeschlossen (\(BleStack.xiaomiPlain.shortLabel))"
     }
 
     // MARK: - Transport
@@ -585,9 +770,14 @@ final class BleClient: NSObject, ObservableObject {
         peripheral = nil
         writeChar = nil
         notifyChar = nil
+        ninebotWrite = nil
+        ninebotNotify = nil
+        xiaomiWrite = nil
+        xiaomiNotify = nil
+        pendingCharDiscoveries = 0
         crypto = nil
-        transport = .ninebotEnc2
-        preferXiaomi = false
+        activeStack = .unknown
+        detectedStack = .unknown
         assembler.reset()
         xiaomiAssembler.reset()
         pendingContinuation = nil
@@ -646,7 +836,7 @@ extension BleClient: CBCentralManagerDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         Task { @MainActor in
-            // Beide Stacks anbieten; Auswahl folgt Profil / gefundener Service.
+            statusMessage = "Suche Diagnose-Services…"
             peripheral.discoverServices([NbUUID.service, XiaomiUUID.service])
         }
     }
@@ -685,26 +875,21 @@ extension BleClient: CBPeripheralDelegate {
             let ninebot = services.first(where: { $0.uuid == NbUUID.service })
             let xiaomi = services.first(where: { $0.uuid == XiaomiUUID.service })
 
-            let chosen: CBService?
-            if preferXiaomi {
-                chosen = xiaomi ?? ninebot
-                transport = xiaomi != nil ? .xiaomiPlain : .ninebotEnc2
-            } else {
-                chosen = ninebot ?? xiaomi
-                transport = ninebot != nil ? .ninebotEnc2 : .xiaomiPlain
-            }
-
-            guard let service = chosen else {
+            guard ninebot != nil || xiaomi != nil else {
                 connectContinuation?.resume(throwing: BleError.notConnected)
                 connectContinuation = nil
                 fail("Weder Ninebot- noch Xiaomi-UART-Service gefunden")
                 return
             }
 
-            if transport == .xiaomiPlain {
-                peripheral.discoverCharacteristics([XiaomiUUID.write, XiaomiUUID.notify], for: service)
-            } else {
-                peripheral.discoverCharacteristics([NbUUID.write, NbUUID.notify], for: service)
+            pendingCharDiscoveries = 0
+            if let ninebot {
+                pendingCharDiscoveries += 1
+                peripheral.discoverCharacteristics([NbUUID.write, NbUUID.notify], for: ninebot)
+            }
+            if let xiaomi {
+                pendingCharDiscoveries += 1
+                peripheral.discoverCharacteristics([XiaomiUUID.write, XiaomiUUID.notify], for: xiaomi)
             }
         }
     }
@@ -718,23 +903,39 @@ extension BleClient: CBPeripheralDelegate {
                 return
             }
 
-            let writeID = transport == .xiaomiPlain ? XiaomiUUID.write : NbUUID.write
-            let notifyID = transport == .xiaomiPlain ? XiaomiUUID.notify : NbUUID.notify
-
-            for char in service.characteristics ?? [] {
-                if char.uuid == writeID { writeChar = char }
-                if char.uuid == notifyID { notifyChar = char }
+            if service.uuid == NbUUID.service {
+                for char in service.characteristics ?? [] {
+                    if char.uuid == NbUUID.write { ninebotWrite = char }
+                    if char.uuid == NbUUID.notify { ninebotNotify = char }
+                }
+                if let ninebotNotify {
+                    peripheral.setNotifyValue(true, for: ninebotNotify)
+                }
+            } else if service.uuid == XiaomiUUID.service {
+                for char in service.characteristics ?? [] {
+                    if char.uuid == XiaomiUUID.write { xiaomiWrite = char }
+                    if char.uuid == XiaomiUUID.notify { xiaomiNotify = char }
+                }
+                if let xiaomiNotify {
+                    peripheral.setNotifyValue(true, for: xiaomiNotify)
+                }
             }
 
-            guard let notifyChar else {
+            pendingCharDiscoveries = max(0, pendingCharDiscoveries - 1)
+            guard pendingCharDiscoveries == 0 else { return }
+
+            guard hasNinebotPipe || hasXiaomiPipe else {
                 connectContinuation?.resume(throwing: BleError.notConnected)
                 connectContinuation = nil
-                fail("Notify-Characteristic nicht gefunden")
+                fail("UART-Characteristics unvollständig")
                 return
             }
 
-            peripheral.setNotifyValue(true, for: notifyChar)
-            statusMessage = transport == .xiaomiPlain ? "Verbunden (Xiaomi)" : "Verbunden"
+            // Noch keinen Stack aktivieren — das macht die Erkennung.
+            var parts: [String] = []
+            if hasNinebotPipe { parts.append("Ninebot") }
+            if hasXiaomiPipe { parts.append("Xiaomi-NUS") }
+            statusMessage = "Verbunden (\(parts.joined(separator: " + ")))"
             connectContinuation?.resume()
             connectContinuation = nil
         }
@@ -743,15 +944,16 @@ extension BleClient: CBPeripheralDelegate {
     nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
         Task { @MainActor in
-            if transport == .xiaomiPlain {
-                guard characteristic.uuid == XiaomiUUID.notify else { return }
+            if characteristic.uuid == XiaomiUUID.notify {
                 let frames = xiaomiAssembler.append(data)
+                // Nur zustellen, wenn Xiaomi-Stack aktiv (oder während Xiaomi-Probe).
+                guard activeStack == .xiaomiPlain || activeStack == .xiaomiEncrypted else { return }
                 for frame in frames {
                     deliverFrame(frame)
                 }
-            } else {
-                guard characteristic.uuid == NbUUID.notify else { return }
+            } else if characteristic.uuid == NbUUID.notify {
                 let frames = assembler.append(data)
+                guard activeStack == .ninebotEnc2 else { return }
                 for frame in frames {
                     deliverFrame(frame)
                 }

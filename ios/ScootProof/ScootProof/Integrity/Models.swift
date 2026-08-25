@@ -372,6 +372,8 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var gearMode: Int?
     var gearMax: Int?
     var protocolGen: Int?
+    /// Erkanntes BLE-Protokoll: `ninebotEnc2` | `xiaomiPlain` | `xiaomiEncrypted`
+    var bleStack: String?
     var evidenceSha256: String?
     var rawRegisters: [RawRegister]
     var liveBoards: [String]
@@ -419,6 +421,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         gearMode: Int? = nil,
         gearMax: Int? = nil,
         protocolGen: Int? = nil,
+        bleStack: String? = nil,
         evidenceSha256: String? = nil,
         rawRegisters: [RawRegister] = [],
         liveBoards: [String] = []
@@ -465,6 +468,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.gearMode = gearMode
         self.gearMax = gearMax
         self.protocolGen = protocolGen
+        self.bleStack = bleStack
         self.evidenceSha256 = evidenceSha256
         self.rawRegisters = rawRegisters
         self.liveBoards = liveBoards
