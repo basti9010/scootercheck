@@ -148,27 +148,42 @@ struct ContentView: View {
             HStack {
                 Text("Geräte").font(.headline).foregroundStyle(.white)
                 Spacer()
-                Text(ble.phase == .scanning ? "sucht" : "in der Nähe")
+                Text(ble.phase == .scanning ? "sucht · Signal live" : "in der Nähe")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.muted)
             }
+            if ble.devices.count > 1 {
+                Text("Bei mehreren Scootern: Gerät wegschieben — das richtige Signal wird schwächer oder verschwindet.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+            }
             VStack(spacing: 0) {
-                ForEach(ble.devices) { item in
-                    if item.id != ble.devices.first?.id {
+                ForEach(Array(ble.devices.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
                         Divider().overlay(Theme.line)
                     }
                     Button {
                         Task { await connectAndCheck(item) }
                     } label: {
                         HStack(spacing: 14) {
-                            Image(systemName: "antenna.radiowaves.left.and.right")
-                                .foregroundStyle(Theme.accent)
+                            SignalStrengthView(rssi: item.rssi)
                                 .frame(width: 28)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.name)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                Text("Signal \(item.rssi) dBm")
+                                HStack(spacing: 8) {
+                                    Text(item.name)
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                    if index == 0, ble.devices.count > 1 {
+                                        Text("nächstes")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(Theme.ink)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Theme.accent)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                                Text("\(item.signalLabel) · \(item.rssi) dBm")
                                     .font(.caption)
                                     .foregroundStyle(Theme.muted)
                             }
@@ -320,6 +335,9 @@ struct ContentView: View {
     }
 
     private func connectAndCheck(_ device: ScannedDevice) async {
+        if let suggested = ScooterProfile.suggested(fromBluetoothName: device.name) {
+            profile = suggested
+        }
         busy = true
         result = nil
         defer { busy = false }
@@ -420,6 +438,30 @@ struct Wordmark: View {
         .font(size.weight(.bold))
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+    }
+}
+
+struct SignalStrengthView: View {
+    let rssi: Int
+
+    private var bars: Int {
+        switch rssi {
+        case -50...0: return 4
+        case -65 ..< -50: return 3
+        case -80 ..< -65: return 2
+        default: return 1
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            ForEach(1...4, id: \.self) { level in
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .fill(level <= bars ? Theme.accent : Color.white.opacity(0.15))
+                    .frame(width: 4, height: CGFloat(6 + level * 3))
+            }
+        }
+        .accessibilityLabel("Signalstärke \(bars) von 4")
     }
 }
 

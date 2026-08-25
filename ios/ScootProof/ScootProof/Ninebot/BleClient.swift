@@ -80,7 +80,26 @@ struct ScannedDevice: Identifiable, Equatable {
     let peripheral: CBPeripheral
 
     static func == (lhs: ScannedDevice, rhs: ScannedDevice) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.rssi == rhs.rssi && lhs.name == rhs.name
+    }
+
+    /// 0…4 Balken für die UI
+    var signalBars: Int {
+        switch rssi {
+        case -50...0: return 4
+        case -65 ..< -50: return 3
+        case -80 ..< -65: return 2
+        default: return 1
+        }
+    }
+
+    var signalLabel: String {
+        switch signalBars {
+        case 4: return "Sehr nah"
+        case 3: return "Nah"
+        case 2: return "Mittel"
+        default: return "Weit"
+        }
     }
 }
 
@@ -138,11 +157,11 @@ final class BleClient: NSObject, ObservableObject {
         }
         devices.removeAll()
         phase = .scanning
-        statusMessage = "Suche Ninebot-Geräte…"
-        // Ninebot wirbt die Service-UUID oft nicht an — daher Scan ohne Filter, dann Name-Filter.
+        statusMessage = "Suche Scooter in der Nähe…"
+        // AllowDuplicates: RSSI live aktualisieren, um bei mehreren Geräten das nähere zu erkennen.
         central.scanForPeripherals(
             withServices: nil,
-            options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
     }
 
@@ -511,9 +530,13 @@ extension BleClient: CBCentralManagerDelegate {
 
         Task { @MainActor in
             let device = ScannedDevice(id: peripheral.identifier, name: name, rssi: RSSI.intValue, peripheral: peripheral)
-            if !devices.contains(where: { $0.id == device.id }) {
+            if let index = devices.firstIndex(where: { $0.id == device.id }) {
+                devices[index] = device
+            } else {
                 devices.append(device)
             }
+            // Stärkstes Signal zuerst — hilft bei mehreren Scootern in Reichweite.
+            devices.sort { $0.rssi > $1.rssi }
         }
     }
 
