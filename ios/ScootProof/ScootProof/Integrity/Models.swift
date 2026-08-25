@@ -111,7 +111,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         }
     }
 
-    /// BLE-Auslese nutzt derzeit Ninebot Enc2; Xiaomi ggf. nur eingeschränkt.
+    /// Ninebot Enc2 vs. Xiaomi Klartext (55 AA). Xiaomi 3/4 ggf. verschlüsselt (55 AB) — dann eingeschränkt.
     var usesNinebotEnc2: Bool {
         switch family {
         case .zt3Pro, .maxG30, .ninebotF, .ninebotD: return true

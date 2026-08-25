@@ -1,0 +1,158 @@
+import Foundation
+
+/// Offline persistence for check sessions and their PDF/JSON packs.
+@MainActor
+final class ProtocolHistoryStore: ObservableObject {
+    static let shared = ProtocolHistoryStore()
+
+    struct Entry: Identifiable, Codable, Hashable, Sendable {
+        let id: UUID
+        var protocolNumber: String
+        var createdAt: Date
+        var profile: ScooterProfile
+        var verdict: VerdictLevel?
+        var score: Int?
+        var serialDisplay: String?
+        var trackId: String?
+    }
+
+    @Published private(set) var entries: [Entry] = []
+
+    private let fileManager = FileManager.default
+    private let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.outputFormatting = [.prettyPrinted, .sortedKeys]
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+    private let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
+
+    private var rootURL: URL {
+        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        return appSupport.appendingPathComponent("ScooterCheck/History", isDirectory: true)
+    }
+
+    private var indexURL: URL {
+        rootURL.appendingPathComponent("index.json")
+    }
+
+    private init() {
+        try? fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        reload()
+    }
+
+    func reload() {
+        guard let data = try? Data(contentsOf: indexURL),
+              let decoded = try? decoder.decode([Entry].self, from: data) else {
+            entries = []
+            return
+        }
+        entries = decoded.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Saves session + regenerates durable PDF/JSON pack. Returns pack URLs.
+    @discardableResult
+    func save(_ session: CheckSession) throws -> ProtocolPack.PackURLs {
+        guard let result = session.result else {
+            throw HistoryError.missingResult
+        }
+
+        let dir = packDirectory(for: session.protocolNumber)
+        try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        let sessionURL = dir.appendingPathComponent("session.json")
+        try encoder.encode(session).write(to: sessionURL, options: .atomic)
+
+        let pack = try ProtocolPack.makePack(session: session, result: result, directory: dir)
+
+        var next = entries.filter { $0.id != session.id }
+        next.insert(
+            Entry(
+                id: session.id,
+                protocolNumber: session.protocolNumber,
+                createdAt: session.createdAt,
+                profile: session.profile,
+                verdict: result.verdict,
+                score: result.score,
+                serialDisplay: result.reading.serialDisplay ?? session.reading.serialDisplay,
+                trackId: result.trackMatch.trackId.rawValue
+            ),
+            at: 0
+        )
+        // Keep a reasonable offline history size.
+        if next.count > 100 {
+            let removed = next.suffix(from: 100)
+            next = Array(next.prefix(100))
+            for old in removed {
+                try? fileManager.removeItem(at: packDirectory(for: old.protocolNumber))
+            }
+        }
+        entries = next
+        try encoder.encode(entries).write(to: indexURL, options: .atomic)
+        return pack
+    }
+
+    func loadSession(id: UUID) -> CheckSession? {
+        guard let entry = entries.first(where: { $0.id == id }) else { return nil }
+        let url = packDirectory(for: entry.protocolNumber).appendingPathComponent("session.json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? decoder.decode(CheckSession.self, from: data)
+    }
+
+    func packURLs(for entry: Entry) -> ProtocolPack.PackURLs? {
+        let dir = packDirectory(for: entry.protocolNumber)
+        let base = ProtocolPack.fileBaseName(protocolNumber: entry.protocolNumber)
+        let sharePdf = dir.appendingPathComponent("\(base)_Bericht.pdf")
+        let shareJson = dir.appendingPathComponent("\(base)_Daten.json")
+        let pdf = fileManager.fileExists(atPath: sharePdf.path)
+            ? sharePdf
+            : dir.appendingPathComponent("\(entry.protocolNumber).pdf")
+        let json = fileManager.fileExists(atPath: shareJson.path)
+            ? shareJson
+            : dir.appendingPathComponent("\(entry.protocolNumber).json")
+        guard fileManager.fileExists(atPath: pdf.path),
+              fileManager.fileExists(atPath: json.path) else {
+            return nil
+        }
+        return ProtocolPack.PackURLs(pdfURL: pdf, jsonURL: json, directoryURL: dir)
+    }
+
+    /// Ensures pack files exist (regenerates from session if needed).
+    func ensurePack(for entry: Entry) throws -> ProtocolPack.PackURLs {
+        if let existing = packURLs(for: entry) { return existing }
+        guard let session = loadSession(id: entry.id), let result = session.result else {
+            throw HistoryError.missingResult
+        }
+        return try ProtocolPack.makePack(
+            session: session,
+            result: result,
+            directory: packDirectory(for: entry.protocolNumber)
+        )
+    }
+
+    func delete(id: UUID) {
+        guard let entry = entries.first(where: { $0.id == id }) else { return }
+        try? fileManager.removeItem(at: packDirectory(for: entry.protocolNumber))
+        entries.removeAll { $0.id == id }
+        try? encoder.encode(entries).write(to: indexURL, options: .atomic)
+    }
+
+    private func packDirectory(for protocolNumber: String) -> URL {
+        rootURL.appendingPathComponent(protocolNumber, isDirectory: true)
+    }
+
+    enum HistoryError: LocalizedError {
+        case missingResult
+
+        var errorDescription: String? {
+            switch self {
+            case .missingResult: return "Protokoll ohne Analyse-Ergebnis"
+            }
+        }
+    }
+}

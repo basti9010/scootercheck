@@ -10,6 +10,11 @@ private enum NbUUID {
     static let notify = CBUUID(string: "6E400004-0000-0000-006E-696E65626F74")
 }
 
+private enum BleTransport: String {
+    case ninebotEnc2
+    case xiaomiPlain
+}
+
 // MARK: - Frame assembler
 
 final class FrameAssembler {
@@ -135,8 +140,11 @@ final class BleClient: NSObject, ObservableObject {
     private var serialNumber = Data()
     private var sessionPassword = Data()
     private var btName = ""
+    private var transport: BleTransport = .ninebotEnc2
+    private var preferXiaomi = false
 
     private let assembler = FrameAssembler()
+    private let xiaomiAssembler = XiaomiFrameAssembler()
     private var pendingContinuation: CheckedContinuation<Data, Error>?
     private var connectContinuation: CheckedContinuation<Void, Error>?
 
@@ -173,14 +181,17 @@ final class BleClient: NSObject, ObservableObject {
         }
     }
 
-    func connect(to device: ScannedDevice) async throws {
+    func connect(to device: ScannedDevice, preferXiaomi: Bool = false) async throws {
         stopScan()
         phase = .connecting
         statusMessage = "Verbinde mit \(device.name)…"
         peripheral = device.peripheral
         btName = device.name
+        self.preferXiaomi = preferXiaomi
+        transport = preferXiaomi ? .xiaomiPlain : .ninebotEnc2
         peripheral?.delegate = self
         assembler.reset()
+        xiaomiAssembler.reset()
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             connectContinuation = continuation
@@ -188,9 +199,14 @@ final class BleClient: NSObject, ObservableObject {
         }
     }
 
-    func handshakeAndDump() async {
+    func handshakeAndDump(profile: ScooterProfile) async {
         guard peripheral != nil else {
             fail("Kein Gerät verbunden")
+            return
+        }
+
+        if !profile.usesNinebotEnc2 || transport == .xiaomiPlain {
+            await dumpXiaomi()
             return
         }
 
@@ -216,6 +232,11 @@ final class BleClient: NSObject, ObservableObject {
         } catch {
             fail(error.localizedDescription)
         }
+    }
+
+    /// Backwards-compatible entry for Ninebot Enc2 callers.
+    func handshakeAndDump() async {
+        await handshakeAndDump(profile: .zt3ProD)
     }
 
     func disconnect() {
@@ -394,12 +415,92 @@ final class BleClient: NSObject, ObservableObject {
         statusMessage = "Diagnose abgeschlossen"
     }
 
+    // MARK: - Xiaomi plaintext dump (read-only)
+
+    private func dumpXiaomi() async {
+        phase = .dumping
+        statusMessage = "Xiaomi-Protokoll: lese Register…"
+        reading = IntegrityReading()
+        reading.protocolGen = 0 // plaintext Xiaomi (kein Enc2)
+
+        var evidence = Data()
+        var liveBoards = Set<String>()
+        var gotAny = false
+
+        for board in Xiaomi.Board.allCases {
+            let probe = Xiaomi.read(board: board, register: Xiaomi.Register.error, length: 2)
+            do {
+                let resp = try await sendReceiveXiaomi(probe, timeout: 2)
+                if let parsed = Xiaomi.parse(resp), parsed.cmd == Xiaomi.Cmd.readResp.rawValue {
+                    liveBoards.insert(Xiaomi.boardLabel(board))
+                    gotAny = true
+                }
+            } catch {
+                continue
+            }
+        }
+        reading.liveBoards = liveBoards.sorted()
+
+        let total = XiaomiDiagnosticMap.fields.count
+        for (index, spec) in XiaomiDiagnosticMap.fields.enumerated() {
+            statusMessage = "Xiaomi: \(spec.id) (\(index + 1)/\(total))…"
+            let request = Xiaomi.read(board: spec.board, register: spec.register, length: spec.readLen)
+            do {
+                let resp = try await sendReceiveXiaomi(request, timeout: 3)
+                guard let parsed = Xiaomi.parse(resp),
+                      parsed.cmd == Xiaomi.Cmd.readResp.rawValue,
+                      parsed.index == spec.register else {
+                    continue
+                }
+                gotAny = true
+                evidence.append(spec.key.data(using: .utf8) ?? Data())
+                evidence.append(parsed.data)
+                XiaomiDiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+            } catch {
+                continue
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        if xiaomiAssembler.sawEncryptedHint && !gotAny {
+            fail("Gerät nutzt verschlüsseltes Xiaomi-Protokoll (55 AB) — nur Klartext-Auslese unterstützt")
+            return
+        }
+
+        if !gotAny {
+            fail("Keine Xiaomi-Registerantwort — ggf. anderes BLE-Protokoll oder Scooter aus")
+            return
+        }
+
+        reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
+        phase = .done
+        statusMessage = "Xiaomi-Diagnose abgeschlossen"
+    }
+
     // MARK: - Transport
 
     private func sendReceive(plain: Data, crypto: NbCrypto, timeout: TimeInterval) async throws -> Data {
         let encrypted = try crypto.encrypt(plain)
         try await write(encrypted)
         return try await receiveEncrypted(crypto: crypto, timeout: timeout)
+    }
+
+    private func sendReceiveXiaomi(_ frame: Data, timeout: TimeInterval) async throws -> Data {
+        try await write(frame)
+        return try await receiveRaw(timeout: timeout)
+    }
+
+    private func receiveRaw(timeout: TimeInterval) async throws -> Data {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+            pendingContinuation = continuation
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                if let pending = self.pendingContinuation {
+                    self.pendingContinuation = nil
+                    pending.resume(throwing: BleError.timeout)
+                }
+            }
+        }
     }
 
     private func write(_ data: Data) async throws {
@@ -485,7 +586,10 @@ final class BleClient: NSObject, ObservableObject {
         writeChar = nil
         notifyChar = nil
         crypto = nil
+        transport = .ninebotEnc2
+        preferXiaomi = false
         assembler.reset()
+        xiaomiAssembler.reset()
         pendingContinuation = nil
         connectContinuation = nil
     }
@@ -542,7 +646,8 @@ extension BleClient: CBCentralManagerDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         Task { @MainActor in
-            peripheral.discoverServices([NbUUID.service])
+            // Beide Stacks anbieten; Auswahl folgt Profil / gefundener Service.
+            peripheral.discoverServices([NbUUID.service, XiaomiUUID.service])
         }
     }
 
@@ -575,13 +680,32 @@ extension BleClient: CBPeripheralDelegate {
                 fail(error.localizedDescription)
                 return
             }
-            guard let service = peripheral.services?.first(where: { $0.uuid == NbUUID.service }) else {
+
+            let services = peripheral.services ?? []
+            let ninebot = services.first(where: { $0.uuid == NbUUID.service })
+            let xiaomi = services.first(where: { $0.uuid == XiaomiUUID.service })
+
+            let chosen: CBService?
+            if preferXiaomi {
+                chosen = xiaomi ?? ninebot
+                transport = xiaomi != nil ? .xiaomiPlain : .ninebotEnc2
+            } else {
+                chosen = ninebot ?? xiaomi
+                transport = ninebot != nil ? .ninebotEnc2 : .xiaomiPlain
+            }
+
+            guard let service = chosen else {
                 connectContinuation?.resume(throwing: BleError.notConnected)
                 connectContinuation = nil
-                fail("Ninebot-Service nicht gefunden")
+                fail("Weder Ninebot- noch Xiaomi-UART-Service gefunden")
                 return
             }
-            peripheral.discoverCharacteristics([NbUUID.write, NbUUID.notify], for: service)
+
+            if transport == .xiaomiPlain {
+                peripheral.discoverCharacteristics([XiaomiUUID.write, XiaomiUUID.notify], for: service)
+            } else {
+                peripheral.discoverCharacteristics([NbUUID.write, NbUUID.notify], for: service)
+            }
         }
     }
 
@@ -594,9 +718,12 @@ extension BleClient: CBPeripheralDelegate {
                 return
             }
 
+            let writeID = transport == .xiaomiPlain ? XiaomiUUID.write : NbUUID.write
+            let notifyID = transport == .xiaomiPlain ? XiaomiUUID.notify : NbUUID.notify
+
             for char in service.characteristics ?? [] {
-                if char.uuid == NbUUID.write { writeChar = char }
-                if char.uuid == NbUUID.notify { notifyChar = char }
+                if char.uuid == writeID { writeChar = char }
+                if char.uuid == notifyID { notifyChar = char }
             }
 
             guard let notifyChar else {
@@ -607,18 +734,27 @@ extension BleClient: CBPeripheralDelegate {
             }
 
             peripheral.setNotifyValue(true, for: notifyChar)
-            statusMessage = "Verbunden"
+            statusMessage = transport == .xiaomiPlain ? "Verbunden (Xiaomi)" : "Verbunden"
             connectContinuation?.resume()
             connectContinuation = nil
         }
     }
 
     nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        guard characteristic.uuid == NbUUID.notify, let data = characteristic.value else { return }
+        guard let data = characteristic.value else { return }
         Task { @MainActor in
-            let frames = assembler.append(data)
-            for frame in frames {
-                deliverFrame(frame)
+            if transport == .xiaomiPlain {
+                guard characteristic.uuid == XiaomiUUID.notify else { return }
+                let frames = xiaomiAssembler.append(data)
+                for frame in frames {
+                    deliverFrame(frame)
+                }
+            } else {
+                guard characteristic.uuid == NbUUID.notify else { return }
+                let frames = assembler.append(data)
+                for frame in frames {
+                    deliverFrame(frame)
+                }
             }
         }
     }

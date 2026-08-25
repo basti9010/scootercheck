@@ -2,11 +2,15 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var ble = BleClient()
+    @ObservedObject private var history = ProtocolHistoryStore.shared
     @State private var profile: ScooterProfile = .zt3ProD
     @State private var result: IntegrityResult?
     @State private var session: CheckSession?
     @State private var showMenu = false
     @State private var showShare = false
+    @State private var showHistory = false
+    @State private var historySharePack: ProtocolPack.PackURLs?
+    @State private var showHistoryShare = false
     @State private var busy = false
     @State private var pulse = false
 
@@ -47,10 +51,18 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .sheet(isPresented: $showMenu) { menuSheet }
+            .sheet(isPresented: $showHistory) { historySheet }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
                 isPresented: $showShare
+            )
+            .sharePackURLs(
+                $historySharePack,
+                subject: historySharePack.map {
+                    "ScooterCheck Protokoll \($0.pdfURL.deletingPathExtension().lastPathComponent)"
+                } ?? "ScooterCheck Protokoll",
+                isPresented: $showHistoryShare
             )
         }
         .preferredColorScheme(.dark)
@@ -342,8 +354,8 @@ struct ContentView: View {
         result = nil
         defer { busy = false }
         do {
-            try await ble.connect(to: device)
-            await ble.handshakeAndDump()
+            try await ble.connect(to: device, preferXiaomi: !profile.usesNinebotEnc2)
+            await ble.handshakeAndDump(profile: profile)
             if ble.phase == .done {
                 finalizeAnalysis()
             }
@@ -359,7 +371,9 @@ struct ContentView: View {
         }
         let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
         result = analyzed
-        session = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
+        let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
+        session = newSession
+        try? history.save(newSession)
     }
 
     private var menuSheet: some View {
@@ -374,9 +388,22 @@ struct ContentView: View {
                         }
                     }
                     if !profile.usesNinebotEnc2 {
-                        Text("Hinweis: Xiaomi-Auslese kann eingeschränkt sein — Protokoll weicht von Ninebot Enc2 ab.")
+                        Text("Xiaomi: Klartext-Protokoll (55 AA) über Nordic UART. Neuere Modelle mit 55 AB sind ggf. nicht auslesbar.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+                }
+                Section("Protokollverlauf") {
+                    Button {
+                        showMenu = false
+                        showHistory = true
+                    } label: {
+                        HStack {
+                            Text("Offline-Verlauf")
+                            Spacer()
+                            Text("\(history.entries.count)")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Section("Beispiele") {
@@ -385,12 +412,14 @@ struct ContentView: View {
                             let reading = IntegrityAnalyzer.fillDemo(kind, profile: profile)
                             let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
                             result = analyzed
-                            session = CheckSession(
+                            let newSession = CheckSession(
                                 id: analyzed.sessionId,
                                 profile: profile,
                                 reading: reading,
                                 result: analyzed
                             )
+                            session = newSession
+                            try? history.save(newSession)
                             showMenu = false
                         }
                     }
@@ -412,6 +441,106 @@ struct ContentView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var historySheet: some View {
+        NavigationStack {
+            Group {
+                if history.entries.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tray")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("Keine Protokolle")
+                            .font(.headline)
+                        Text("Abgeschlossene Prüfungen werden offline auf diesem Gerät gespeichert.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(history.entries) { entry in
+                            historyRow(entry)
+                        }
+                        .onDelete { indexSet in
+                            for index in indexSet {
+                                history.delete(id: history.entries[index].id)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Protokollverlauf")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Fertig") { showHistory = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    @ViewBuilder
+    private func historyRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(entry.protocolNumber)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if let verdict = entry.verdict {
+                    Text(verdict.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.verdict(verdict))
+                }
+            }
+            Text(entry.profile.label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let serial = entry.serialDisplay, !serial.isEmpty {
+                Text(serial)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+
+            HStack(spacing: 12) {
+                Button("Öffnen") {
+                    openHistoryEntry(entry)
+                }
+                .buttonStyle(.bordered)
+
+                Button("AirDrop") {
+                    shareHistoryEntry(entry)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+            }
+            .padding(.top, 2)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func openHistoryEntry(_ entry: ProtocolHistoryStore.Entry) {
+        guard let stored = history.loadSession(id: entry.id),
+              let storedResult = stored.result else { return }
+        profile = stored.profile
+        session = stored
+        result = storedResult
+        showHistory = false
+    }
+
+    private func shareHistoryEntry(_ entry: ProtocolHistoryStore.Entry) {
+        do {
+            historySharePack = try history.ensurePack(for: entry)
+            showHistoryShare = true
+        } catch {
+            // ignore — pack missing
+        }
     }
 
     private func demoTitle(_ kind: IntegrityAnalyzer.DemoKind) -> String {

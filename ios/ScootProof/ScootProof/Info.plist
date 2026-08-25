@@ -26,9 +26,9 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ScooterCheck verbindet sich per Bluetooth mit dem Ninebot ZT3 Pro, um Diagnosedaten nur zu lesen.</string>
+	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>ScooterCheck verbindet sich per Bluetooth mit dem Ninebot ZT3 Pro, um Diagnosedaten nur zu lesen.</string>
+	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

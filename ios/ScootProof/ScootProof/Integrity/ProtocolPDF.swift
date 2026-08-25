@@ -71,6 +71,12 @@ enum ProtocolPack {
         let directoryURL: URL
     }
 
+    /// AirDrop-freundliche Dateinamen: `ScooterCheck_<Protokoll>_Bericht.pdf/.json`
+    static func fileBaseName(protocolNumber: String) -> String {
+        let safe = protocolNumber.replacingOccurrences(of: "/", with: "-")
+        return "ScooterCheck_\(safe)"
+    }
+
     static func makePack(
         session: CheckSession,
         result: IntegrityResult,
@@ -80,16 +86,22 @@ enum ProtocolPack {
             .appendingPathComponent("ScooterCheck-\(session.protocolNumber)", isDirectory: true)
         try FileManager.default.createDirectory(at: baseDir, withIntermediateDirectories: true)
 
+        let base = fileBaseName(protocolNumber: session.protocolNumber)
+        // Canonical names used by history store + legacy short names for compatibility.
         let pdfURL = baseDir.appendingPathComponent("\(session.protocolNumber).pdf")
         let jsonURL = baseDir.appendingPathComponent("\(session.protocolNumber).json")
+        let sharePdfURL = baseDir.appendingPathComponent("\(base)_Bericht.pdf")
+        let shareJsonURL = baseDir.appendingPathComponent("\(base)_Daten.json")
 
         let pdfData = try ProtocolPDF.render(session: session, result: result)
         try pdfData.write(to: pdfURL, options: .atomic)
+        try pdfData.write(to: sharePdfURL, options: .atomic)
 
         let jsonData = try ProtocolJSON.makeJSON(session: session, result: result)
         try jsonData.write(to: jsonURL, options: .atomic)
+        try jsonData.write(to: shareJsonURL, options: .atomic)
 
-        return PackURLs(pdfURL: pdfURL, jsonURL: jsonURL, directoryURL: baseDir)
+        return PackURLs(pdfURL: sharePdfURL, jsonURL: shareJsonURL, directoryURL: baseDir)
     }
 }
 
@@ -548,15 +560,74 @@ private extension UIFont {
 
 struct ActivityShare: UIViewControllerRepresentable {
     let items: [Any]
-    var excludedActivityTypes: [UIActivity.ActivityType]? = nil
+    var subject: String?
+    var excludedActivityTypes: [UIActivity.ActivityType]? = [
+        .assignToContact,
+        .addToReadingList,
+        .postToFacebook,
+        .postToTwitter,
+        .postToWeibo,
+        .postToVimeo,
+        .postToFlickr,
+        .postToTencentWeibo
+    ]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
         let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
         controller.excludedActivityTypes = excludedActivityTypes
+        if let subject {
+            controller.setValue(subject, forKey: "subject")
+        }
         return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+/// Named file wrapper so AirDrop / Files show clear ScooterCheck titles.
+final class NamedShareFile: NSObject, UIActivityItemSource {
+    let url: URL
+    let title: String
+    let utType: String
+
+    init(url: URL, title: String, utType: String) {
+        self.url = url
+        self.title = title
+        self.utType = utType
+    }
+
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        url
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        itemForActivityType activityType: UIActivity.ActivityType?
+    ) -> Any? {
+        url
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        subjectForActivityType activityType: UIActivity.ActivityType?
+    ) -> String {
+        title
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        dataTypeIdentifierForActivityType activityType: UIActivity.ActivityType?
+    ) -> String {
+        utType
+    }
+
+    func activityViewController(
+        _ activityViewController: UIActivityViewController,
+        thumbnailImageForActivityType activityType: UIActivity.ActivityType?,
+        suggestedSize size: CGSize
+    ) -> UIImage? {
+        nil
+    }
 }
 
 // MARK: - SwiftUI Convenience
@@ -564,6 +635,10 @@ struct ActivityShare: UIViewControllerRepresentable {
 extension View {
     func shareIntegrityPack(session: CheckSession, result: IntegrityResult, isPresented: Binding<Bool>) -> some View {
         modifier(IntegrityPackShareModifier(session: session, result: result, isPresented: isPresented))
+    }
+
+    func sharePackURLs(_ packURLs: Binding<ProtocolPack.PackURLs?>, subject: String, isPresented: Binding<Bool>) -> some View {
+        modifier(PackURLsShareModifier(packURLs: packURLs, subject: subject, isPresented: isPresented))
     }
 }
 
@@ -576,14 +651,17 @@ private struct IntegrityPackShareModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: $isPresented, onDismiss: { packURLs = nil }) {
+            .sheet(isPresented: $isPresented, onDismiss: { packURLs = nil; errorMessage = nil }) {
                 if let packURLs {
-                    ActivityShare(items: [packURLs.pdfURL, packURLs.jsonURL, packURLs.directoryURL])
+                    ActivityShare(
+                        items: shareItems(from: packURLs, protocolNumber: session.protocolNumber),
+                        subject: "ScooterCheck Protokoll \(session.protocolNumber)"
+                    )
                 } else if let errorMessage {
                     Text(errorMessage)
                         .padding()
                 } else {
-                    ProgressView("Protokoll wird erstellt…")
+                    ProgressView("Protokoll für AirDrop wird erstellt…")
                         .task { await preparePack() }
                 }
             }
@@ -591,9 +669,53 @@ private struct IntegrityPackShareModifier: ViewModifier {
 
     private func preparePack() async {
         do {
-            packURLs = try ProtocolPack.makePack(session: session, result: result)
+            // Dauerhaft im Offline-Verlauf ablegen, dann PDF+JSON teilen.
+            var durable = session
+            if durable.result == nil {
+                durable.result = result
+            }
+            packURLs = try ProtocolHistoryStore.shared.save(durable)
         } catch {
-            errorMessage = error.localizedDescription
+            do {
+                packURLs = try ProtocolPack.makePack(session: session, result: result)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
+}
+
+private struct PackURLsShareModifier: ViewModifier {
+    @Binding var packURLs: ProtocolPack.PackURLs?
+    let subject: String
+    @Binding var isPresented: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $isPresented) {
+                if let packURLs {
+                    ActivityShare(
+                        items: shareItems(from: packURLs, protocolNumber: subject),
+                        subject: subject
+                    )
+                } else {
+                    ProgressView()
+                }
+            }
+    }
+}
+
+private func shareItems(from pack: ProtocolPack.PackURLs, protocolNumber: String) -> [Any] {
+    [
+        NamedShareFile(
+            url: pack.pdfURL,
+            title: "ScooterCheck \(protocolNumber) Bericht.pdf",
+            utType: "com.adobe.pdf"
+        ),
+        NamedShareFile(
+            url: pack.jsonURL,
+            title: "ScooterCheck \(protocolNumber) Daten.json",
+            utType: "public.json"
+        )
+    ]
 }
