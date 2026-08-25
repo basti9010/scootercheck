@@ -22,6 +22,9 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Standard AES/SHA via iOS crypto for BLE transport + hashing; no proprietary crypto. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>ScooterCheck verbindet sich per Bluetooth mit dem Ninebot ZT3 Pro, um Diagnosedaten nur zu lesen.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
