@@ -42,8 +42,8 @@
 		B1000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000000000000000000000D /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
 		B1000000000000000000000F /* ProtocolHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryStore.swift; sourceTree = "<group>"; };
-		B10000000000000000000010 /* XiaomiProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol.swift; sourceTree = "<group>"; };
-		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticMap.swift; sourceTree = "<group>"; };
+		B10000000000000000000010 /* XiaomiProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiProtocol.swift; sourceTree = "<group>"; };
+		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiDiagnosticMap.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
