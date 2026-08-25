@@ -1,7 +1,12 @@
 default_platform(:ios)
 
+BUNDLE_ID = "com.scootercheck.app"
+APP_NAME = "ScooterCheck"
+APP_SKU = "scootercheck-ios"
+MARKETING_VERSION = "1.0.0"
+
 platform :ios do
-  desc "Archive ScooterCheck and upload to TestFlight"
+  desc "Archive ScooterCheck and upload to TestFlight (own App Store Connect app)"
   lane :beta do
     setup_ci if ENV["CI"]
 
@@ -15,6 +20,7 @@ platform :ios do
     )
 
     revoke_orphan_distribution_certs!(ids: ["5SVF2MGK7Z", "A6Y3NTX39P"])
+    ensure_scootercheck_app!(api_key: api_key)
 
     git_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
     git_auth ||= Base64.strict_encode64("basti9010:#{ENV.fetch('MATCH_GITHUB_TOKEN')}")
@@ -22,7 +28,7 @@ platform :ios do
     match(
       type: "appstore",
       api_key: api_key,
-      app_identifier: ["com.tuningscanner"],
+      app_identifier: [BUNDLE_ID],
       team_id: ENV.fetch("APPLE_TEAM_ID"),
       git_url: "https://github.com/basti9010/scootercheck-certs",
       git_basic_authorization: git_auth,
@@ -33,21 +39,20 @@ platform :ios do
       use_automatic_signing: false,
       path: "ScootProof.xcodeproj",
       team_id: ENV.fetch("APPLE_TEAM_ID"),
-      bundle_identifier: "com.tuningscanner",
+      bundle_identifier: BUNDLE_ID,
       code_sign_identity: "iPhone Distribution",
-      profile_name: ENV["sigh_com.tuningscanner_appstore_profile-name"]
+      profile_name: ENV["sigh_com.scootercheck.app_appstore_profile-name"]
     )
 
-    # Must be higher than previously approved ASC version (1.0.3)
     increment_version_number(
-      version_number: "1.1.0",
+      version_number: MARKETING_VERSION,
       xcodeproj: "ScootProof.xcodeproj"
     )
 
     build_number = latest_testflight_build_number(
       api_key: api_key,
-      app_identifier: "com.tuningscanner",
-      version: "1.1.0",
+      app_identifier: BUNDLE_ID,
+      version: MARKETING_VERSION,
       initial_build_number: 0
     ) + 1
 
@@ -69,7 +74,7 @@ platform :ios do
       export_options: {
         signingStyle: "manual",
         provisioningProfiles: {
-          "com.tuningscanner" => ENV["sigh_com.tuningscanner_appstore_profile-name"]
+          BUNDLE_ID => ENV["sigh_com.scootercheck.app_appstore_profile-name"]
         }
       },
       xcargs: "SUPPORTED_PLATFORMS=iphoneos SUPPORTS_MACCATALYST=NO"
@@ -77,13 +82,14 @@ platform :ios do
 
     upload_to_testflight(
       api_key: api_key,
+      app_identifier: BUNDLE_ID,
       skip_waiting_for_build_processing: true,
       changelog: ENV["TESTFLIGHT_CHANGELOG"] || "ScooterCheck Diagnose-Build"
     )
   end
 end
 
-def revoke_orphan_distribution_certs!(ids:)
+def connect_token!
   require "spaceship"
 
   key_content = ENV.fetch("APP_STORE_CONNECT_API_KEY_P8")
@@ -95,6 +101,48 @@ def revoke_orphan_distribution_certs!(ids:)
     key: key_content
   )
   Spaceship::ConnectAPI.token = token
+  token
+end
+
+# Create Developer Portal Bundle ID + App Store Connect app so ScooterCheck
+# is independent from TuningScanner (com.tuningscanner).
+def ensure_scootercheck_app!(api_key:)
+  connect_token!
+
+  bundle = Spaceship::ConnectAPI::BundleId.all.find { |b| b.identifier == BUNDLE_ID }
+  if bundle.nil?
+    UI.important("Creating Bundle ID #{BUNDLE_ID}…")
+    bundle = Spaceship::ConnectAPI::BundleId.create(
+      name: "ScooterCheck",
+      identifier: BUNDLE_ID,
+      platform: "IOS"
+    )
+    UI.success("Created Bundle ID #{bundle.identifier}")
+  else
+    UI.success("Bundle ID already exists: #{bundle.identifier}")
+  end
+
+  app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+  if app.nil?
+    UI.important("Creating App Store Connect app #{APP_NAME} (#{BUNDLE_ID})…")
+    Spaceship::ConnectAPI::App.create(
+      name: APP_NAME,
+      primary_locale: "de-DE",
+      version_string: MARKETING_VERSION,
+      sku: APP_SKU,
+      bundle_id: BUNDLE_ID,
+      platforms: ["IOS"]
+    )
+    UI.success("Created App Store Connect app #{APP_NAME}")
+  else
+    UI.success("App Store Connect app already exists: #{app.name} (#{BUNDLE_ID})")
+  end
+rescue => e
+  UI.user_error!("Could not ensure ScooterCheck app/Bundle ID: #{e.message}")
+end
+
+def revoke_orphan_distribution_certs!(ids:)
+  connect_token!
 
   Spaceship::ConnectAPI::Certificate.all.each do |cert|
     next unless ids.include?(cert.id)

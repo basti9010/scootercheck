@@ -10,7 +10,7 @@ Keine Limit-Änderungen, kein Firmware-Flash, keine Unlock-Kombos.
 
 ## Bundle
 
-- Bundle-ID: `com.tuningscanner`
+- Bundle-ID: `com.scootercheck.app` (eigenständig, nicht TuningScanner)
 - Display-Name: ScooterCheck
 - Xcode: `ios/ScootProof/ScootProof.xcodeproj`
 

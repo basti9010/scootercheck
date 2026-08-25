@@ -1,5 +1,5 @@
-# Bundle-ID der ScooterCheck-App (bisher TuningScanner / ScootProof)
-app_identifier("com.tuningscanner")
+# Eigene Bundle-ID — getrennt von TuningScanner (com.tuningscanner)
+app_identifier("com.scootercheck.app")
 
 # Team-ID aus developer.apple.com → Membership (10 Zeichen)
 # CI setzt APPLE_TEAM_ID; lokal ggf. hier eintragen.
