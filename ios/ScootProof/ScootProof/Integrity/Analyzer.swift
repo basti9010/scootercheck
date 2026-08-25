@@ -57,7 +57,7 @@ enum IntegrityAnalyzer {
 
     static func fillDemo(_ kind: DemoKind, profile: ScooterProfile = .zt3ProD) -> IntegrityReading {
         var reading = IntegrityReading()
-        let stockSN = profile == .zt3ProD ? "N2DTFACTORY001" : "N2ETFACTORY001"
+        let stockSN = (profile.stockSerialHints.first ?? "SN") + "FACTORY001"
 
         switch kind {
         case .stock:

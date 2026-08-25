@@ -2,74 +2,166 @@ import Foundation
 
 // MARK: - Scooter Profile
 
+/// Marktvariante: DE/L1e-B 20 km/h vs. EU 25 km/h.
+enum ScooterMarket: String, Codable, Sendable {
+    case de20
+    case eu25
+
+    var ratedMaxKmh: Double { self == .de20 ? 20 : 25 }
+    var tuningSuspectKmh: Double { self == .de20 ? 22 : 27 }
+    var tuningClearKmh: Double { self == .de20 ? 25 : 32 }
+}
+
+enum ScooterFamily: String, CaseIterable, Codable, Sendable {
+    case zt3Pro
+    case maxG30
+    case ninebotF
+    case ninebotD
+    case xiaomiClassic
+    case xiaomiRecent
+
+    var title: String {
+        switch self {
+        case .zt3Pro: return "Ninebot ZT3 Pro"
+        case .maxG30: return "Ninebot Max G30"
+        case .ninebotF: return "Ninebot F-Serie"
+        case .ninebotD: return "Ninebot D-Serie"
+        case .xiaomiClassic: return "Xiaomi M365 / Pro 2"
+        case .xiaomiRecent: return "Xiaomi Scooter 3 / 4"
+        }
+    }
+}
+
 enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     case zt3ProD
     case zt3ProE
+    case maxG30D
+    case maxG30E
+    case ninebotFD
+    case ninebotFE
+    case ninebotDD
+    case ninebotDE
+    case xiaomiClassicD
+    case xiaomiClassicE
+    case xiaomiRecentD
+    case xiaomiRecentE
 
     var id: String { rawValue }
 
-    var label: String {
+    var family: ScooterFamily {
         switch self {
-        case .zt3ProD: return "Ninebot ZT3 Pro D (20 km/h)"
-        case .zt3ProE: return "Ninebot ZT3 Pro E (25 km/h)"
+        case .zt3ProD, .zt3ProE: return .zt3Pro
+        case .maxG30D, .maxG30E: return .maxG30
+        case .ninebotFD, .ninebotFE: return .ninebotF
+        case .ninebotDD, .ninebotDE: return .ninebotD
+        case .xiaomiClassicD, .xiaomiClassicE: return .xiaomiClassic
+        case .xiaomiRecentD, .xiaomiRecentE: return .xiaomiRecent
         }
+    }
+
+    var market: ScooterMarket {
+        switch self {
+        case .zt3ProD, .maxG30D, .ninebotFD, .ninebotDD, .xiaomiClassicD, .xiaomiRecentD:
+            return .de20
+        case .zt3ProE, .maxG30E, .ninebotFE, .ninebotDE, .xiaomiClassicE, .xiaomiRecentE:
+            return .eu25
+        }
+    }
+
+    var label: String {
+        "\(family.title) (\(Int(ratedMaxKmh)) km/h)"
     }
 
     var shortLabel: String {
         switch self {
         case .zt3ProD: return "ZT3 Pro D"
         case .zt3ProE: return "ZT3 Pro E"
+        case .maxG30D: return "Max G30D"
+        case .maxG30E: return "Max G30E"
+        case .ninebotFD: return "F-Serie D"
+        case .ninebotFE: return "F-Serie E"
+        case .ninebotDD: return "D-Serie D"
+        case .ninebotDE: return "D-Serie E"
+        case .xiaomiClassicD: return "Xiaomi Classic D"
+        case .xiaomiClassicE: return "Xiaomi Classic E"
+        case .xiaomiRecentD: return "Xiaomi 3/4 D"
+        case .xiaomiRecentE: return "Xiaomi 3/4 E"
         }
     }
 
-    var ratedMaxKmh: Double {
-        switch self {
-        case .zt3ProD: return 20
-        case .zt3ProE: return 25
-        }
-    }
+    var ratedMaxKmh: Double { market.ratedMaxKmh }
+    var tuningSuspectKmh: Double { market.tuningSuspectKmh }
+    var tuningClearKmh: Double { market.tuningClearKmh }
 
-    /// Ab dieser Höchstgeschwindigkeit (Auslesewert) ist eine Abweichung verdächtig.
-    var tuningSuspectKmh: Double {
-        switch self {
-        case .zt3ProD: return 22
-        case .zt3ProE: return 27
-        }
-    }
-
-    /// Ab dieser Höchstgeschwindigkeit (Auslesewert) gilt eine erhebliche Abweichung als wahrscheinlich.
-    var tuningClearKmh: Double {
-        switch self {
-        case .zt3ProD: return 25
-        case .zt3ProE: return 32
-        }
-    }
-
-    /// Typische Seriennummer-Präfixe / Regionen für werkseitige Zuordnung.
+    /// Typische Seriennummer-Präfixe für werkseitige Zuordnung.
     var stockSerialHints: [String] {
         switch self {
-        case .zt3ProD:
-            return ["N2DT", "N2D"]
-        case .zt3ProE:
-            return ["N2ET", "N2E"]
+        case .zt3ProD: return ["N2DT", "N2D"]
+        case .zt3ProE: return ["N2ET", "N2E"]
+        case .maxG30D: return ["N4GSD", "N4GS", "N4G"]
+        case .maxG30E: return ["N4GSE", "N4GS", "N4G"]
+        case .ninebotFD: return ["N2FS", "N2F", "F2"]
+        case .ninebotFE: return ["N2FS", "N2F", "F2"]
+        case .ninebotDD: return ["N2DS", "N2D8", "D18", "D28", "D38"]
+        case .ninebotDE: return ["N2DS", "N2D8", "D18", "D28", "D38"]
+        case .xiaomiClassicD, .xiaomiClassicE:
+            return ["16159", "25708", "M365", "PRO2", "1S"]
+        case .xiaomiRecentD, .xiaomiRecentE:
+            return ["MI3", "MI4", "XIAOMI"]
+        }
+    }
+
+    /// BLE-Auslese nutzt derzeit Ninebot Enc2; Xiaomi ggf. nur eingeschränkt.
+    var usesNinebotEnc2: Bool {
+        switch family {
+        case .zt3Pro, .maxG30, .ninebotF, .ninebotD: return true
+        case .xiaomiClassic, .xiaomiRecent: return false
         }
     }
 
     var legalText: String {
-        switch self {
-        case .zt3ProD:
-            return """
-            Typgenehmigung und Betriebserlaubnis für den deutschen Markt (Klasse L1e-B, \
-            bauartbedingte Höchstgeschwindigkeit 20 km/h). Abweichungen von werkseitigen \
-            Parametern können die Betriebserlaubnis und Versicherungsschutz beeinträchtigen.
-            """
-        case .zt3ProE:
-            return """
-            EU-Typgenehmigung mit bauartbedingter Höchstgeschwindigkeit 25 km/h. \
-            Nicht zulässige Änderungen an Firmware oder Steuerparametern können den \
-            Betrieb im öffentlichen Straßenverkehr unzulässig machen.
-            """
+        let speedNote = market == .de20
+            ? "bauartbedingte Höchstgeschwindigkeit 20 km/h (DE / L1e-B)"
+            : "bauartbedingte Höchstgeschwindigkeit 25 km/h (EU)"
+        return """
+        Soll-Profil für \(family.title) mit \(speedNote). \
+        Abweichungen von werkseitigen Parametern können Betriebserlaubnis und \
+        Versicherungsschutz beeinträchtigen. Die App liest nur Diagnosedaten und \
+        verändert keine Fahrzeugparameter.
+        """
+    }
+
+    static func profiles(in family: ScooterFamily) -> [ScooterProfile] {
+        allCases.filter { $0.family == family }
+    }
+
+    /// Grobe Zuordnung aus Bluetooth-Namen / SN-Präfix (nur Vorschlag).
+    static func suggested(fromBluetoothName name: String?, serial: String? = nil) -> ScooterProfile? {
+        let hay = [name, serial]
+            .compactMap { $0?.uppercased() }
+            .joined(separator: " ")
+        guard !hay.isEmpty else { return nil }
+
+        if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET") {
+            return hay.contains("N2E") || hay.contains("25") ? .zt3ProE : .zt3ProD
         }
+        if hay.contains("MAX") || hay.contains("G30") || hay.contains("N4GS") {
+            return hay.contains("G30E") || hay.contains("N4GSE") ? .maxG30E : .maxG30D
+        }
+        if hay.contains("F2") || hay.range(of: #"\bF[234]0\b"#, options: .regularExpression) != nil {
+            return hay.contains("F25") || hay.contains("25") ? .ninebotFE : .ninebotFD
+        }
+        if hay.contains("D18") || hay.contains("D28") || hay.contains("D38") || hay.contains("D-SERIES") {
+            return .ninebotDD
+        }
+        if hay.contains("PRO 2") || hay.contains("PRO2") || hay.contains("M365")
+            || hay.contains("1S") || hay.contains("ESSENTIAL") {
+            return .xiaomiClassicD
+        }
+        if hay.contains("SCOOTER 3") || hay.contains("SCOOTER 4") || hay.contains("MI3") || hay.contains("MI4") {
+            return .xiaomiRecentD
+        }
+        return nil
     }
 }
 

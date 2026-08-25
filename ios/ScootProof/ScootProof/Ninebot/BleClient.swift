@@ -474,12 +474,16 @@ final class BleClient: NSObject, ObservableObject {
     nonisolated private static func isNinebotDevice(name: String?) -> Bool {
         guard let name, !name.isEmpty else { return false }
         let upper = name.uppercased()
-        if upper.contains("NINEBOT") || upper.contains("SEGWAY") || upper.contains("ZT3") {
-            return true
-        }
-        if upper.hasPrefix("N2") {
-            return true
-        }
+        let tokens = [
+            "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX",
+            "XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER",
+            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2"
+        ]
+        if tokens.contains(where: { upper.contains($0) }) { return true }
+        if upper.hasPrefix("N2") || upper.hasPrefix("N4") || upper.hasPrefix("MI") { return true }
+        // F-/D-Serie Kurzformen in BT-Namen
+        if upper.range(of: #"\bF[234]?0?\b"#, options: .regularExpression) != nil { return true }
+        if upper.range(of: #"\bD(18|28|38)\b"#, options: .regularExpression) != nil { return true }
         return false
     }
 }

@@ -348,12 +348,18 @@ struct ContentView: View {
         NavigationStack {
             List {
                 Section("Soll-Profil") {
-                    Picker("Modell", selection: $profile) {
-                        ForEach(ScooterProfile.allCases) { p in
-                            Text(p.shortLabel).tag(p)
+                    ForEach(ScooterFamily.allCases, id: \.self) { family in
+                        Picker(family.title, selection: $profile) {
+                            ForEach(ScooterProfile.profiles(in: family)) { p in
+                                Text(p.shortLabel).tag(p)
+                            }
                         }
                     }
-                    .pickerStyle(.inline)
+                    if !profile.usesNinebotEnc2 {
+                        Text("Hinweis: Xiaomi-Auslese kann eingeschränkt sein — Protokoll weicht von Ninebot Enc2 ab.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Section("Beispiele") {
                     ForEach(IntegrityAnalyzer.DemoKind.allCases, id: \.rawValue) { kind in

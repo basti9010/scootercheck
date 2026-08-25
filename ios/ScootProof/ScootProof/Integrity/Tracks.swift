@@ -42,8 +42,11 @@ enum TrackClassifier {
 
     // MARK: Serial Helpers
 
-    static let usSerialPrefixes = ["N2U", "N2GT", "N2UT", "US"]
-    static let euSerialPrefixes = ["N2DT", "N2ET", "N2D", "N2E", "DE", "EU"]
+    static let usSerialPrefixes = ["N2U", "N2GT", "N2UT", "US", "N4GSU"]
+    static let euSerialPrefixes = [
+        "N2DT", "N2ET", "N2D", "N2E", "N2FS", "N2F", "N2DS",
+        "N4GSD", "N4GSE", "N4GS", "DE", "EU"
+    ]
 
     static func serialRegion(for serial: String?) -> SerialRegion {
         guard let serial = serial?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
@@ -228,7 +231,7 @@ enum TrackClassifier {
             description: "US-Seriennummernpräfix bei EU-Typ"
         ) { reading, profile in
             let region = serialRegion(for: reading.serialDisplay ?? reading.serialMcu)
-            return region == .us && profile != .zt3ProE
+            return region == .us && profile.market == .de20
         },
 
         // --- SHU Dump ---
