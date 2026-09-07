@@ -13,7 +13,8 @@ enum IntegrityAnalyzer {
         sessionId: UUID = UUID(),
         priorUnlock: PriorUnlockEvidence? = nil,
         priorReading: IntegrityReading? = nil,
-        priorProtocolNumber: String? = nil
+        priorProtocolNumber: String? = nil,
+        powerCycle: PowerCycleReport? = nil
     ) -> IntegrityResult {
         var reading = reading
         normalizeSpeedUnlockFlag(&reading)
@@ -24,7 +25,8 @@ enum IntegrityAnalyzer {
             profile: profile,
             priorUnlock: priorUnlock,
             priorReading: priorReading,
-            priorProtocolNumber: priorProtocolNumber
+            priorProtocolNumber: priorProtocolNumber,
+            powerCycle: powerCycle
         )
 
         var facts: [MeasuredFact] = []
@@ -44,17 +46,12 @@ enum IntegrityAnalyzer {
         facts += buildBoardFacts(reading: reading)
         facts += buildHistoryFacts(reading: reading)
         facts += buildPhysicalFacts(reading: reading)
+        // Nur Engine-Ausgabe — keine Neubewertung in Analyzer/UI.
         facts += EvidenceEngine.buildFacts(evidence)
-
-        // Rohdatenbezug für Kernfakten nachziehen (Region / Speed).
         facts = enrichFactsWithRawCitations(facts, reading: reading, profile: profile)
 
         var findings = buildFindings(facts: facts, trackMatch: trackMatch)
         findings += evidenceFindings(evidence)
-
-        // Score = Verdichtung; Urteil = regelbasiert aus der Engine (nicht aus Score).
-        let score = evidence.integrityScore
-        let verdict = evidence.verdict
 
         return IntegrityResult(
             sessionId: sessionId,
@@ -63,8 +60,8 @@ enum IntegrityAnalyzer {
             facts: facts,
             findings: findings,
             trackMatch: trackMatch,
-            score: score,
-            verdict: verdict,
+            score: evidence.score,
+            verdict: evidence.verdict,
             evidence: evidence
         )
     }
@@ -1058,42 +1055,42 @@ enum IntegrityAnalyzer {
         return findings
     }
 
-    // MARK: - EvidenceEngine findings
+    // MARK: - EvidenceEngine findings (Anzeige der Engine-Ausgabe)
 
-    private static func evidenceFindings(_ evidence: EvidenceEngineResult) -> [Finding] {
+    private static func evidenceFindings(_ evidence: EvidenceAssessment) -> [Finding] {
         var findings: [Finding] = []
         findings.append(Finding(
             id: "finding.evidence.verdict",
             severity: evidence.verdict == .stock ? .regelkonform
                 : (evidence.verdict == .auffaellig ? .abweichend : .erheblichAbweichend),
             title: "Kurzurteil: \(evidence.verdict.label)",
-            detail: evidence.shortVerdictText,
+            detail: "Katalog v\(evidence.catalogVersion). \(evidence.shortVerdictText)",
             relatedFactIds: ["evidence.summary"]
         ))
-        for marker in evidence.justifyingMarkers.prefix(8) {
+        for line in evidence.decisiveEvidence.prefix(6) {
             findings.append(Finding(
-                id: "finding.evidence.marker.\(marker.markerId)",
-                severity: marker.evidenceClass == .starkerHinweis ? .erheblichAbweichend : .abweichend,
-                title: marker.title,
-                detail: marker.chainCitation,
-                relatedFactIds: ["evidence.\(marker.markerId)"]
-            ))
-        }
-        for corr in evidence.correlations.prefix(3) {
-            findings.append(Finding(
-                id: "finding.evidence.corr.\(findings.count)",
-                severity: corr.contains("starker") ? .erheblichAbweichend : .abweichend,
-                title: "Marker-Korrelation",
-                detail: corr,
+                id: "finding.evidence.decisive.\(findings.count)",
+                severity: .abweichend,
+                title: "Entscheidende Evidenz",
+                detail: line,
                 relatedFactIds: ["evidence.summary"]
             ))
         }
-        for note in evidence.neutralizationNotes.prefix(3) {
+        for r in evidence.justifyingMarkers.prefix(6) {
             findings.append(Finding(
-                id: "finding.evidence.neutral.\(findings.count)",
+                id: "finding.evidence.marker.\(r.fact.markerID)",
+                severity: r.classification == .starkerHinweis ? .erheblichAbweichend : .abweichend,
+                title: r.fact.title,
+                detail: r.chainCitation,
+                relatedFactIds: ["evidence.\(r.fact.markerID)"]
+            ))
+        }
+        for n in evidence.results.flatMap(\.neutralizations).prefix(4) {
+            findings.append(Finding(
+                id: "finding.evidence.neutral.\(n.ruleId)",
                 severity: .regelkonform,
-                title: "Neutralisierung",
-                detail: note,
+                title: "Neutralisierung \(n.ruleId)",
+                detail: "\(n.classBefore.label) → \(n.classAfter.label): \(n.reason)",
                 relatedFactIds: ["evidence.summary"]
             ))
         }

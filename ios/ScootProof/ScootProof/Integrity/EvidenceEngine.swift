@@ -1,10 +1,16 @@
 import Foundation
 import CryptoKit
 
-// MARK: - Persistence & evidence classes
+// MARK: - Catalog version (reproduzierbare historische Bewertungen)
 
-/// Wie lange ein Marker typischerweise sichtbar bleibt.
-enum MarkerVolatility: String, Codable, CaseIterable, Sendable {
+enum EvidenceCatalog {
+    /// Bei Regel-/Marker-Änderungen hochzählen — landet in PDF/JSON.
+    static let version = 12
+}
+
+// MARK: - Taxonomy
+
+enum PersistenceClass: String, Codable, CaseIterable, Sendable {
     case fleeting = "flüchtig"
     case semiPersistent = "semi-persistent"
     case persistent = "persistent"
@@ -14,13 +20,33 @@ enum MarkerVolatility: String, Codable, CaseIterable, Sendable {
     var resetsOnPowerOffHint: String {
         switch self {
         case .fleeting: return "meist weg nach Ausschalten"
-        case .semiPersistent: return "oft weg nach Trip-Reset/Panic, teils nach Ausschalten"
-        case .persistent: return "bleibt nach normalem Ausschalten typischerweise sichtbar"
+        case .semiPersistent: return "oft weg nach Trip-Reset/Panic"
+        case .persistent: return "typisch power-cycle-resistent (Katalog)"
         }
     }
 }
 
-/// Vier Beweisstufen — Score verdichtet nur, Urteil bleibt regelbasiert.
+typealias MarkerVolatility = PersistenceClass
+
+/// Woher die Belastbarkeit des Markers stammt.
+enum KnowledgeSource: String, Codable, CaseIterable, Sendable {
+    case manufacturer
+    case referenceVehicle
+    case verifiedModSample
+    case heuristic
+    case unknown
+
+    var label: String {
+        switch self {
+        case .manufacturer: return "Hersteller/Doku"
+        case .referenceVehicle: return "Referenzfahrzeug"
+        case .verifiedModSample: return "verifizierte Mod-Probe"
+        case .heuristic: return "Heuristik"
+        case .unknown: return "unbekannt"
+        }
+    }
+}
+
 enum EvidenceClass: String, Codable, CaseIterable, Sendable {
     case info = "Info"
     case abweichung = "Abweichung"
@@ -29,22 +55,22 @@ enum EvidenceClass: String, Codable, CaseIterable, Sendable {
 
     var label: String { rawValue }
 
-    /// Beitrag zur Score-Verdichtung (nicht allein urteilsbildend).
-    var scoreDelta: Int {
-        switch self {
-        case .info: return 0
-        case .abweichung: return 6
-        case .indiz: return 14
-        case .starkerHinweis: return 28
-        }
-    }
-
     var rank: Int {
         switch self {
         case .info: return 0
         case .abweichung: return 1
         case .indiz: return 2
         case .starkerHinweis: return 3
+        }
+    }
+
+    /// Beitrag zur Score-Verdichtung (nicht urteilsbildend).
+    var scorePoints: Int {
+        switch self {
+        case .info: return 0
+        case .abweichung: return 8
+        case .indiz: return 18
+        case .starkerHinweis: return 32
         }
     }
 
@@ -56,8 +82,7 @@ enum EvidenceClass: String, Codable, CaseIterable, Sendable {
         case "Manipulationsindiz", "indiz": self = .indiz
         case "starker Manipulationshinweis", "starker_hinweis", "Manipulationsnachweis", "nachweis":
             self = .starkerHinweis
-        default:
-            self = EvidenceClass(rawValue: raw) ?? .info
+        default: self = EvidenceClass(rawValue: raw) ?? .info
         }
     }
 
@@ -67,61 +92,72 @@ enum EvidenceClass: String, Codable, CaseIterable, Sendable {
     }
 }
 
-// MARK: - Canonical marker object
+// MARK: - Fact → Result → Assessment
 
-/// Interne Feststellung: Quelle → Rohwert → Interpretation → Persistenz → Gewicht → Urteilbeitrag.
-struct EvidenceMarker: Identifiable, Codable, Hashable, Sendable {
-    var id: String { markerId }
-
-    let markerId: String
+/// Rohfakt für die Engine — keine Bewertung.
+struct EvidenceFact: Identifiable, Codable, Hashable, Sendable {
+    var id: String { markerID }
+    let markerID: String
     let title: String
-    let boardSource: String
-    let registerOrField: String
+    let source: String
+    let register: String?
     let rawValue: String
-    let interpretedValue: String
-    let expectedValue: String
-    let persistenceClass: MarkerVolatility
-    /// 0…1 — Lesesicherheit / Deutungssicherheit.
+    let interpretedValue: String?
+    let expectedValue: String?
+    let persistence: PersistenceClass
+    let resetResistant: Bool?
     let confidence: Double
-    let evidenceClass: EvidenceClass
-    /// Relatives Gewicht innerhalb der Klasse (0…1), vor Neutralisierung.
-    let weight: Double
+    let knowledgeSource: KnowledgeSource
+    /// z. B. "mod.fw.customMarked", "region.us.1CGC"
+    let knownModMatchId: String?
     let knownStockMatch: Bool?
-    let knownModMatch: Bool?
-    let notes: String
-    /// True wenn durch Gegenbelege neutralisiert (z. B. plausible US-Serie).
-    let neutralized: Bool
-    let neutralizationReason: String?
-
-    /// Wirksames Gewicht nach Neutralisierung.
-    var effectiveWeight: Double { neutralized ? 0 : weight }
-
-    var contributionLabel: String {
-        if neutralized {
-            return "neutralisiert (\(neutralizationReason ?? "Gegenbeleg"))"
-        }
-        return "\(evidenceClass.label) · Gewicht \(String(format: "%.2f", effectiveWeight))"
-    }
-
-    /// Kette Quelle → Rohwert → Interpretation → Persistenz → Beweisgewicht.
-    var chainCitation: String {
-        [
-            "Quelle: \(boardSource) / \(registerOrField)",
-            "Rohwert: \(rawValue.isEmpty ? "—" : rawValue)",
-            "Interpretation: \(interpretedValue)",
-            "Persistenz: \(persistenceClass.label)",
-            "Beweis: \(contributionLabel)",
-            "Soll: \(expectedValue)"
-        ].joined(separator: " · ")
-    }
-
-    /// Alias für ältere PDF-/UI-Pfade.
-    var rawCitation: String { chainCitation }
-
-    var resetsOnPowerOff: Bool { persistenceClass != .persistent }
 }
 
-// MARK: - Engine result (UI-entkoppelt)
+/// Explizite Neutralisierung — im PDF nachvollziehbar.
+struct NeutralizationRecord: Codable, Hashable, Sendable {
+    let ruleId: String
+    let reason: String
+    let classBefore: EvidenceClass
+    let classAfter: EvidenceClass
+}
+
+/// Bewertete Evidenz zu einem Fakt.
+struct EvidenceResult: Identifiable, Codable, Hashable, Sendable {
+    var id: String { fact.markerID }
+    let fact: EvidenceFact
+    /// Finale Klasse nach Neutralisierung.
+    let classification: EvidenceClass
+    let classBeforeNeutralization: EvidenceClass
+    let weight: Int
+    let correlations: [String]
+    let neutralizations: [NeutralizationRecord]
+    let explanation: String
+
+    var isNeutralized: Bool { !neutralizations.isEmpty }
+
+    var contributesToVerdict: Bool {
+        !isNeutralized && classification.rank >= EvidenceClass.abweichung.rank
+    }
+
+    var chainCitation: String {
+        var parts = [
+            "Quelle: \(fact.source)" + (fact.register.map { " / \($0)" } ?? ""),
+            "Rohwert: \(fact.rawValue)",
+            "Interpretation: \(fact.interpretedValue ?? "—")",
+            "Soll: \(fact.expectedValue ?? "—")",
+            "Persistenz: \(fact.persistence.label)",
+            "Erkenntnis: \(fact.knowledgeSource.label)",
+            "Initiale Klasse: \(classBeforeNeutralization.label)",
+            "Finale Klasse: \(classification.label)"
+        ]
+        if let mod = fact.knownModMatchId { parts.append("Mod-Match: \(mod)") }
+        for n in neutralizations {
+            parts.append("Neutralisierung \(n.ruleId): \(n.reason)")
+        }
+        parts.append(contributesToVerdict ? "Beitrag Urteil: ja (Gewicht \(weight))" : "Beitrag Urteil: keiner")
+        return parts.joined(separator: " · ")
+    }
+}
 
 struct TemporalDelta: Identifiable, Codable, Hashable, Sendable {
     let id: String
@@ -144,121 +180,194 @@ struct BaselineFingerprint: Codable, Hashable, Sendable {
     let fields: [String: String]
 }
 
-/// Verdichtung für Score — erzeugt allein kein Urteil.
-struct EvidenceScoreBreakdown: Codable, Hashable, Sendable {
-    let rawScore: Int
-    /// 0 = keine Auffälligkeit, 100 = maximale Verdichtung.
-    let suspicionIndex: Int
-    let activeMarkerCount: Int
-    let neutralizedCount: Int
+struct PowerCycleDiffRow: Identifiable, Codable, Hashable, Sendable {
+    var id: String { markerID }
+    let markerID: String
+    let title: String
+    let scanA: String
+    let scanB: String
+    /// Am konkreten Fahrzeug beobachtet.
+    let observedPersistence: PersistenceClass
+    let catalogPersistence: PersistenceClass?
+    let note: String
 }
 
-struct EvidenceEngineResult: Codable, Hashable, Sendable {
-    /// Ebene 1 — Kurzurteil (regelbasiert).
+struct PowerCycleReport: Codable, Hashable, Sendable {
+    let rows: [PowerCycleDiffRow]
+    let summary: String
+}
+
+/// Ausgabe der Engine — UI/PDF/JSON dürfen Bewertung nicht nachbauen.
+struct EvidenceAssessment: Codable, Hashable, Sendable {
+    let catalogVersion: Int
+    let results: [EvidenceResult]
     let verdict: VerdictLevel
+    /// Verdichtung 0…100 (höher = unauffälliger). Niemals allein urteilsbildend.
+    let score: Int
+    let decisiveEvidence: [String]
+    let warnings: [String]
     let shortVerdictText: String
-    /// Ebene 2 — begründende Marker (nicht neutralisiert, rank ≥ Abweichung).
-    let justifyingMarkers: [EvidenceMarker]
-    /// Alle Marker inkl. Info / neutralisiert.
-    let markers: [EvidenceMarker]
     let correlations: [String]
-    let neutralizationNotes: [String]
     let temporalDeltas: [TemporalDelta]
     let crossBoardIssues: [CrossBoardIssue]
     let fingerprint: BaselineFingerprint
     let unknownRegisters: [RawRegister]
-    let score: EvidenceScoreBreakdown
-    /// Kompatibilität: Verdachtsscore 0…100 (höher = unauffälliger, wie bisher).
-    var integrityScore: Int { score.rawScore }
+    let powerCycle: PowerCycleReport?
 
-    var infoCount: Int { markers.filter { $0.evidenceClass == .info }.count }
-    var abweichungCount: Int { markers.filter { !$0.neutralized && $0.evidenceClass == .abweichung }.count }
-    var indizCount: Int { markers.filter { !$0.neutralized && $0.evidenceClass == .indiz }.count }
-    var starkerHinweisCount: Int { markers.filter { !$0.neutralized && $0.evidenceClass == .starkerHinweis }.count }
-    var persistentHitCount: Int {
-        markers.filter { !$0.neutralized && $0.persistenceClass == .persistent && $0.evidenceClass.rank >= EvidenceClass.abweichung.rank }.count
+    // Kompatibilität / Anzeigehelfer
+    var integrityScore: Int { score }
+    var justifyingMarkers: [EvidenceResult] {
+        results.filter(\.contributesToVerdict)
+            .sorted { $0.classification.rank > $1.classification.rank }
     }
-
+    var markers: [EvidenceResult] { results }
+    var hits: [EvidenceResult] { results }
+    var suggestedVerdict: VerdictLevel { verdict }
     var summary: String {
-        "\(starkerHinweisCount)× starker Hinweis · \(indizCount)× Indiz · \(abweichungCount)× Abweichung · \(score.neutralizedCount)× neutralisiert → \(verdict.label)"
+        let n = results.filter(\.isNeutralized).count
+        let s = results.filter { $0.classification == .starkerHinweis && !$0.isNeutralized }.count
+        let i = results.filter { $0.classification == .indiz && !$0.isNeutralized }.count
+        let a = results.filter { $0.classification == .abweichung && !$0.isNeutralized }.count
+        return "Katalog v\(catalogVersion) · \(s)× stark · \(i)× Indiz · \(a)× Abweichung · \(n)× neutralisiert → \(verdict.label)"
+    }
+    var starkerHinweisCount: Int {
+        results.filter { !$0.isNeutralized && $0.classification == .starkerHinweis }.count
+    }
+    var indizCount: Int {
+        results.filter { !$0.isNeutralized && $0.classification == .indiz }.count
+    }
+    var abweichungCount: Int {
+        results.filter { !$0.isNeutralized && $0.classification == .abweichung }.count
+    }
+    var nachweisCount: Int { starkerHinweisCount }
+    var neutralizationNotes: [String] {
+        results.flatMap { $0.neutralizations.map { "\($0.ruleId): \($0.reason)" } }
     }
 
-    static let empty = EvidenceEngineResult(
+    static let empty = EvidenceAssessment(
+        catalogVersion: EvidenceCatalog.version,
+        results: [],
         verdict: .stock,
+        score: 100,
+        decisiveEvidence: [],
+        warnings: [],
         shortVerdictText: VerdictLevel.stock.laymanText,
-        justifyingMarkers: [],
-        markers: [],
         correlations: [],
-        neutralizationNotes: [],
         temporalDeltas: [],
         crossBoardIssues: [],
         fingerprint: BaselineFingerprint(profileId: "", digestSHA256: "", fields: [:]),
         unknownRegisters: [],
-        score: EvidenceScoreBreakdown(rawScore: 100, suspicionIndex: 0, activeMarkerCount: 0, neutralizedCount: 0)
+        powerCycle: nil
     )
 }
 
-/// Rückwärtskompatibles Alias für IntegrityResult.evidence.
-typealias EvidenceAssessment = EvidenceEngineResult
-
-extension EvidenceEngineResult {
-    var hits: [EvidenceMarker] { markers }
-    var suggestedVerdict: VerdictLevel { verdict }
-    var nachweisCount: Int { starkerHinweisCount }
+// Compatibility aliases used by older UI paths
+extension EvidenceResult {
+    var markerId: String { fact.markerID }
+    var title: String { fact.title }
+    var persistenceClass: PersistenceClass { fact.persistence }
+    var evidenceClass: EvidenceClass { classification }
+    var interpretedValue: String { fact.interpretedValue ?? "—" }
+    var expectedValue: String { fact.expectedValue ?? "—" }
+    var boardSource: String { fact.source }
+    var registerOrField: String { fact.register ?? "—" }
+    var rawValue: String { fact.rawValue }
+    var rawCitation: String { chainCitation }
+    var neutralized: Bool { isNeutralized }
+    var neutralizationReason: String? { neutralizations.first?.reason }
+    var resetsOnPowerOff: Bool { fact.resetResistant == false || fact.persistence != .persistent }
+    var contributionLabel: String {
+        isNeutralized
+            ? "neutralisiert (\(neutralizations.first?.ruleId ?? "—"))"
+            : "\(classification.label) · Gewicht \(weight)"
+    }
 }
 
-// MARK: - Catalog entry
+// MARK: - Engine
 
-struct MarkerCatalogEntry: Sendable, Hashable {
-    let markerId: String
-    let title: String
-    let boardSource: String
-    let registerOrField: String
-    let persistence: MarkerVolatility
-    let defaultClass: EvidenceClass
-    let stockHint: String
-    let modHint: String?
-}
-
-// MARK: - EvidenceEngine
-
-/// Eigenes Modul: Score verdichtet, Urteil regelbasiert — UI nur Anzeige.
 enum EvidenceEngine {
-
-    static let catalog: [MarkerCatalogEntry] = [
-        .init(markerId: "region.sn", title: "SN-Region", boardSource: "VCU/DIS", registerOrField: "SN 0x10",
-              persistence: .persistent, defaultClass: .indiz, stockHint: "DE 1CGB… / EU", modHint: "US 1CGC bei DE-Soll"),
-        .init(markerId: "speed.limit", title: "Gespeichertes Limit", boardSource: "VCU", registerOrField: "maxSpeed 0x46",
-              persistence: .persistent, defaultClass: .indiz, stockHint: "≤ Typgenehmigung", modHint: "> Typ dauerhaft"),
-        .init(markerId: "speed.peak", title: "Trip-Spitze", boardSource: "DIS/VCU", registerOrField: "rSigMaxSpeed 0x24",
-              persistence: .semiPersistent, defaultClass: .indiz, stockHint: "≤ Typ + Toleranz", modHint: "Peak ≫ Typ"),
-        .init(markerId: "speed.session", title: "Session-Unlock", boardSource: "VCU", registerOrField: "Limit/Peak Session",
-              persistence: .fleeting, defaultClass: .abweichung, stockHint: "inaktiv nach Ausschalten", modHint: nil),
-        .init(markerId: "fw.custom", title: "Custom-/Mod-Firmware", boardSource: "MCU/BLE/BMS/VCU", registerOrField: "Versionsregister",
-              persistence: .persistent, defaultClass: .starkerHinweis, stockHint: "Serienkatalog", modHint: "bekannte Mod-Version"),
-        .init(markerId: "fw.unknown", title: "Unbekannter Firmwarestand", boardSource: "MCU/VCU", registerOrField: "Versionsregister",
-              persistence: .persistent, defaultClass: .abweichung, stockHint: "bekannter Serienstand", modHint: nil),
-        .init(markerId: "gear.max", title: "Gangfreigabe", boardSource: "VCU", registerOrField: "gearMode / s|e|dGear",
-              persistence: .persistent, defaultClass: .abweichung, stockHint: "1", modHint: "> 1"),
-        .init(markerId: "serial.cross", title: "Cross-Board-SN", boardSource: "VCU/MCU/BLE/BMS", registerOrField: "SN 0x10",
-              persistence: .persistent, defaultClass: .indiz, stockHint: "konsistent", modHint: "Mismatch"),
-        .init(markerId: "safelock", title: "SafeLock", boardSource: "MCU/VCU", registerOrField: "speedSafeLock",
-              persistence: .persistent, defaultClass: .abweichung, stockHint: "aktiv", modHint: "inaktiv"),
-        .init(markerId: "session.reset", title: "Session nach Ausschalten", boardSource: "Verlauf", registerOrField: "Protokollvergleich",
-              persistence: .fleeting, defaultClass: .indiz, stockHint: "kein Vorher-Unlock", modHint: "früher Tempo, jetzt weg")
-    ]
 
     static func evaluate(
         reading: IntegrityReading,
         profile: ScooterProfile,
-        priorUnlock: PriorUnlockEvidence?,
-        priorReading: IntegrityReading?,
-        priorProtocolNumber: String?
-    ) -> EvidenceEngineResult {
-        var markers: [EvidenceMarker] = []
-        var correlations: [String] = []
-        var neutralizationNotes: [String] = []
+        priorUnlock: PriorUnlockEvidence? = nil,
+        priorReading: IntegrityReading? = nil,
+        priorProtocolNumber: String? = nil,
+        powerCycle: PowerCycleReport? = nil
+    ) -> EvidenceAssessment {
+        var facts = collectFacts(
+            reading: reading,
+            profile: profile,
+            priorUnlock: priorUnlock
+        )
+        let cross = crossBoardIssues(reading: reading, profile: profile)
+        for issue in cross where issue.id.hasPrefix("cross.serial") {
+            facts.append(EvidenceFact(
+                markerID: "serial.cross.\(issue.id)",
+                title: "Cross-Board-SN",
+                source: issue.boards.joined(separator: "/"),
+                register: "SN 0x10",
+                rawValue: issue.detail,
+                interpretedValue: issue.detail,
+                expectedValue: "konsistente Fahrzeug-SN",
+                persistence: .persistent,
+                resetResistant: true,
+                confidence: 0.85,
+                knowledgeSource: .heuristic,
+                knownModMatchId: "cross.serial.mismatch",
+                knownStockMatch: false
+            ))
+        }
 
+        var correlations: [String] = []
+        var results = facts.map { classify($0, profile: profile) }
+
+        // Korrelationen + Gewichtsanhebung
+        results = applyCorrelations(results, correlations: &correlations)
+
+        // Neutralisierungen (explizit pro Result)
+        results = applyNeutralizations(results, reading: reading, profile: profile)
+
+        let temporal = temporalDeltas(current: reading, prior: priorReading, priorProtocol: priorProtocolNumber)
+        let fingerprint = baselineFingerprint(reading: reading, profile: profile)
+        let unknown = unknownRegisters(in: reading)
+
+        let verdict = ruleBasedVerdict(results: results, correlations: correlations, powerCycle: powerCycle)
+        let score = densifyScore(results)
+        let decisive = decisiveEvidence(from: results, verdict: verdict, correlations: correlations)
+        var warnings: [String] = []
+        if results.contains(where: { $0.fact.knowledgeSource == .heuristic && $0.classification.rank >= 2 }) {
+            warnings.append("Mindestens ein Indiz beruht auf Heuristik — Belastbarkeit prüfen.")
+        }
+        if let pc = powerCycle, pc.rows.contains(where: { $0.observedPersistence != $0.catalogPersistence && $0.catalogPersistence != nil }) {
+            warnings.append("Beobachtete Persistenz weicht vom Katalog ab — siehe Power-Cycle-Diff.")
+        }
+
+        return EvidenceAssessment(
+            catalogVersion: EvidenceCatalog.version,
+            results: results,
+            verdict: verdict,
+            score: score,
+            decisiveEvidence: decisive,
+            warnings: warnings,
+            shortVerdictText: verdict.laymanText,
+            correlations: correlations,
+            temporalDeltas: temporal,
+            crossBoardIssues: cross,
+            fingerprint: fingerprint,
+            unknownRegisters: unknown,
+            powerCycle: powerCycle
+        )
+    }
+
+    // MARK: Collect facts (no scoring)
+
+    private static func collectFacts(
+        reading: IntegrityReading,
+        profile: ScooterProfile,
+        priorUnlock: PriorUnlockEvidence?
+    ) -> [EvidenceFact] {
+        var facts: [EvidenceFact] = []
         let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
         let rated = profile.ratedMaxKmh
         let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
@@ -269,311 +378,514 @@ enum EvidenceEngine {
             || (limit ?? 0) >= threshold
             || (peak ?? 0) >= threshold
 
-        // --- Collect markers ---
         if region == .us {
             let sn = reading.serialDisplay ?? reading.serialVcu ?? "—"
-            let raw = rawHex(forNames: ["vcu_g3_sn", "dis_sn", "vcu_sn"], in: reading) ?? sn
-            let expected = profile.market == .de20 ? "DE (1CGB…)" : "EU / marktüblich"
-            let stockPlausibleUS = profile.market != .de20
-            markers.append(make(
-                id: "region.sn",
-                raw: raw,
-                interpreted: "US-Region (\(sn))",
-                expected: expected,
-                cls: profile.market == .de20 ? .indiz : .info,
-                weight: profile.market == .de20 ? 0.7 : 0.2,
-                confidence: 0.9,
-                stockMatch: stockPlausibleUS,
-                modMatch: profile.market == .de20 ? true : nil,
-                notes: "Region aus SN-Präfix"
+            facts.append(EvidenceFact(
+                markerID: "region.sn",
+                title: "SN-Region",
+                source: "VCU/DIS",
+                register: "SN 0x10",
+                rawValue: rawHex(forNames: ["vcu_g3_sn", "dis_sn", "vcu_sn"], in: reading) ?? sn,
+                interpretedValue: "US-Region (\(sn))",
+                expectedValue: profile.market == .de20 ? "DE (1CGB…)" : "EU / marktüblich",
+                persistence: .persistent,
+                resetResistant: true,
+                confidence: 0.92,
+                knowledgeSource: .referenceVehicle,
+                knownModMatchId: profile.market == .de20 ? "region.us.1CGC.on_de_profile" : nil,
+                knownStockMatch: profile.market != .de20
             ))
         }
 
         if let limit, limit > rated + 1 {
-            let cls: EvidenceClass = limit >= profile.tuningClearKmh ? .indiz : .abweichung
-            markers.append(make(
-                id: "speed.limit",
-                raw: rawHex(forNames: ["vcu_g3_maxspd", "dis_limit", "vcu_g3_edmax"], in: reading) ?? Format.kmh.format(Optional(limit)),
-                interpreted: "\(Format.kmh.format(Optional(limit))) gespeichertes Limit",
-                expected: "≤ \(Format.kmh.format(Optional(rated)))",
-                cls: cls,
-                weight: limit >= profile.tuningClearKmh ? 0.75 : 0.45,
-                confidence: 0.85,
-                stockMatch: false,
-                modMatch: true,
-                notes: "Persistentes Limit-Register"
+            facts.append(EvidenceFact(
+                markerID: "speed.limit",
+                title: "Gespeichertes Limit",
+                source: "VCU",
+                register: "maxSpeed 0x46",
+                rawValue: rawHex(forNames: ["vcu_g3_maxspd", "dis_limit", "vcu_g3_edmax"], in: reading)
+                    ?? Format.kmh.format(Optional(limit)),
+                interpretedValue: Format.kmh.format(Optional(limit)),
+                expectedValue: "≤ \(Format.kmh.format(Optional(rated)))",
+                persistence: .persistent,
+                resetResistant: true,
+                confidence: 0.88,
+                knowledgeSource: .referenceVehicle,
+                knownModMatchId: limit >= profile.tuningClearKmh ? "speed.limit.over_clear" : "speed.limit.over_rated",
+                knownStockMatch: false
             ))
         }
 
         if let peak, peak > rated + 1 {
-            let cls: EvidenceClass = peak >= profile.tuningClearKmh ? .indiz : .abweichung
-            markers.append(make(
-                id: "speed.peak",
-                raw: rawHex(forNames: ["dis_trip_max", "vcu_g3_trip_max", "tft_trip_max"], in: reading) ?? Format.kmh.format(Optional(peak)),
-                interpreted: "\(Format.kmh.format(Optional(peak))) Trip-Spitze",
-                expected: "≤ \(Format.kmh.format(Optional(rated)))",
-                cls: cls,
-                weight: peak >= profile.tuningClearKmh ? 0.7 : 0.4,
+            facts.append(EvidenceFact(
+                markerID: "speed.peak",
+                title: "Trip-Spitze",
+                source: "DIS/VCU",
+                register: "rSigMaxSpeed 0x24",
+                rawValue: rawHex(forNames: ["dis_trip_max", "vcu_g3_trip_max", "tft_trip_max"], in: reading)
+                    ?? Format.kmh.format(Optional(peak)),
+                interpretedValue: Format.kmh.format(Optional(peak)),
+                expectedValue: "≤ \(Format.kmh.format(Optional(rated)))",
+                persistence: .semiPersistent,
+                resetResistant: false,
                 confidence: 0.8,
-                stockMatch: false,
-                modMatch: true,
-                notes: "Semi-persistent bis Trip-Reset"
+                knowledgeSource: .heuristic,
+                knownModMatchId: peak >= profile.tuningClearKmh ? "speed.peak.over_clear" : "speed.peak.over_rated",
+                knownStockMatch: false
             ))
         }
 
         if sessionUnlock {
-            markers.append(make(
-                id: "speed.session",
-                raw: rawHex(forNames: ["vcu_g3_maxspd", "dis_trip_max"], in: reading) ?? "session",
-                interpreted: "Session-Tempo ≥ \(Int(threshold)) km/h",
-                expected: "inaktiv nach Ausschalten",
-                cls: .abweichung,
-                weight: 0.35,
+            facts.append(EvidenceFact(
+                markerID: "speed.session",
+                title: "Session-Unlock",
+                source: "VCU",
+                register: "Limit/Peak Session",
+                rawValue: rawHex(forNames: ["vcu_g3_maxspd", "dis_trip_max"], in: reading) ?? "session",
+                interpretedValue: "Session-Tempo ≥ \(Int(threshold)) km/h",
+                expectedValue: "inaktiv nach Ausschalten",
+                persistence: .fleeting,
+                resetResistant: false,
                 confidence: 0.75,
-                stockMatch: nil,
-                modMatch: nil,
-                notes: "Flüchtiger Session-Zustand"
+                knowledgeSource: .heuristic,
+                knownModMatchId: "speed.session.unlock",
+                knownStockMatch: nil
             ))
         }
 
         switch custom.level {
         case .confirmed:
-            markers.append(make(
-                id: "fw.custom",
-                raw: fwRawCitation(reading),
-                interpreted: custom.summaryLine,
-                expected: "Serienkatalog \(profile.shortLabel)",
-                cls: .starkerHinweis,
-                weight: 0.95,
-                confidence: 0.9,
-                stockMatch: false,
-                modMatch: true,
-                notes: "Bestätigte Custom-/Mod-Kennung"
+            facts.append(EvidenceFact(
+                markerID: "fw.custom",
+                title: "Custom-/Mod-Firmware",
+                source: "MCU/BLE/BMS/VCU",
+                register: "Versionsregister",
+                rawValue: fwRawCitation(reading),
+                interpretedValue: custom.summaryLine,
+                expectedValue: "Serienkatalog \(profile.shortLabel)",
+                persistence: .persistent,
+                resetResistant: true,
+                confidence: 0.93,
+                knowledgeSource: .verifiedModSample,
+                knownModMatchId: "fw.custom.confirmed",
+                knownStockMatch: false
             ))
         case .suspected:
-            markers.append(make(
-                id: "fw.unknown",
-                raw: fwRawCitation(reading),
-                interpreted: custom.summaryLine,
-                expected: "Serienkatalog \(profile.shortLabel)",
-                cls: .abweichung,
-                weight: 0.5,
+            facts.append(EvidenceFact(
+                markerID: "fw.unknown",
+                title: "Unbekannter Firmwarestand",
+                source: "MCU/VCU",
+                register: "Versionsregister",
+                rawValue: fwRawCitation(reading),
+                interpretedValue: custom.summaryLine,
+                expectedValue: "Serienkatalog \(profile.shortLabel)",
+                persistence: .persistent,
+                resetResistant: true,
                 confidence: 0.65,
-                stockMatch: false,
-                modMatch: nil,
-                notes: "Unbekannter Stand — Abweichung, kein Automatik-Nachweis"
+                knowledgeSource: .heuristic,
+                knownModMatchId: nil,
+                knownStockMatch: false
             ))
         case .none:
             break
         }
 
         if let gear = reading.gearMax, gear > 1 {
-            markers.append(make(
-                id: "gear.max",
-                raw: rawHex(forNames: ["vcu_g3_gear", "vcu_g3_sgear", "vcu_g3_egear", "vcu_g3_dgear"], in: reading) ?? "\(gear)",
-                interpreted: "max. Gang \(gear)",
-                expected: "1",
-                cls: .abweichung,
-                weight: 0.4,
+            facts.append(EvidenceFact(
+                markerID: "gear.max",
+                title: "Gangfreigabe",
+                source: "VCU",
+                register: "gearMode",
+                rawValue: rawHex(forNames: ["vcu_g3_gear", "vcu_g3_sgear"], in: reading) ?? "\(gear)",
+                interpretedValue: "max. Gang \(gear)",
+                expectedValue: "1",
+                persistence: .persistent,
+                resetResistant: true,
                 confidence: 0.8,
-                stockMatch: false,
-                modMatch: true,
-                notes: "Allein kein Tuning-Nachweis"
+                knowledgeSource: .referenceVehicle,
+                knownModMatchId: "gear.max.unlocked",
+                knownStockMatch: false
             ))
         }
 
         if reading.safeLockActive == false {
-            markers.append(make(
-                id: "safelock",
-                raw: rawHex(forNames: ["mcu_safe", "vcu_g3_safe", "mcu_g3_safe"], in: reading) ?? "0",
-                interpreted: "SafeLock inaktiv",
-                expected: "aktiv",
-                cls: .abweichung,
-                weight: 0.35,
+            facts.append(EvidenceFact(
+                markerID: "safelock",
+                title: "SafeLock",
+                source: "MCU/VCU",
+                register: "speedSafeLock",
+                rawValue: rawHex(forNames: ["mcu_safe", "vcu_g3_safe"], in: reading) ?? "0",
+                interpretedValue: "inaktiv",
+                expectedValue: "aktiv",
+                persistence: .persistent,
+                resetResistant: true,
                 confidence: 0.7,
-                stockMatch: false,
-                modMatch: nil,
-                notes: ""
+                knowledgeSource: .heuristic,
+                knownModMatchId: nil,
+                knownStockMatch: false
             ))
         }
 
         if let prior = priorUnlock, prior.showsUnlock(threshold: threshold), !sessionUnlock {
-            markers.append(make(
-                id: "session.reset",
-                raw: prior.protocolNumber,
-                interpreted: "zurückgesetzt · früher \(Format.kmh.format(Optional(prior.observedTempoKmh)))",
-                expected: "kein Vorher-Unlock nötig",
-                cls: prior.observedTempoKmh >= profile.tuningClearKmh ? .indiz : .abweichung,
-                weight: 0.55,
-                confidence: 0.8,
-                stockMatch: nil,
-                modMatch: true,
-                notes: "Vergleich mit Protokoll \(prior.protocolNumber)"
+            facts.append(EvidenceFact(
+                markerID: "session.reset",
+                title: "Session nach Ausschalten",
+                source: "Verlauf",
+                register: "Protokollvergleich",
+                rawValue: prior.protocolNumber,
+                interpretedValue: "früher \(Format.kmh.format(Optional(prior.observedTempoKmh))), jetzt Session weg",
+                expectedValue: "kein Vorher-Unlock nötig",
+                persistence: .fleeting,
+                resetResistant: false,
+                confidence: 0.82,
+                knowledgeSource: .referenceVehicle,
+                knownModMatchId: "session.reset.after_poweroff",
+                knownStockMatch: nil
             ))
         }
 
-        let cross = crossBoardIssues(reading: reading, profile: profile)
-        for issue in cross where issue.id.hasPrefix("cross.serial") {
-            markers.append(make(
-                id: "serial.cross",
-                raw: issue.detail,
-                interpreted: issue.detail,
-                expected: "konsistente Fahrzeug-SN",
-                cls: .indiz,
-                weight: 0.6,
-                confidence: 0.85,
-                stockMatch: false,
-                modMatch: true,
-                notes: issue.boards.joined(separator: "/")
-            ))
+        return facts
+    }
+
+    private static func classify(_ fact: EvidenceFact, profile: ScooterProfile) -> EvidenceResult {
+        let initial: EvidenceClass
+        switch fact.markerID {
+        case "fw.custom":
+            initial = .starkerHinweis
+        case "region.sn":
+            initial = profile.market == .de20 ? .indiz : .info
+        case "speed.limit", "speed.peak":
+            let overClear: Bool = {
+                if fact.markerID == "speed.limit",
+                   let v = readingSpeed(from: fact.interpretedValue), v >= profile.tuningClearKmh { return true }
+                if fact.markerID == "speed.peak",
+                   let v = readingSpeed(from: fact.interpretedValue), v >= profile.tuningClearKmh { return true }
+                return fact.knownModMatchId?.contains("over_clear") == true
+            }()
+            initial = overClear ? .indiz : .abweichung
+        case "speed.session", "gear.max", "safelock", "fw.unknown", "session.reset":
+            initial = fact.markerID == "session.reset" && fact.knownModMatchId != nil ? .indiz : .abweichung
+        case let id where id.hasPrefix("serial.cross"):
+            initial = .indiz
+        default:
+            initial = .info
         }
 
-        // --- Neutralization (negative evidence) ---
-        markers = applyNeutralization(
-            markers,
-            reading: reading,
-            profile: profile,
-            region: region,
-            notes: &neutralizationNotes
-        )
-
-        // --- Correlations (on non-neutralized) ---
-        let activeIds = Set(markers.filter { !$0.neutralized }.map(\.markerId))
-        if activeIds.contains("region.sn"),
-           activeIds.contains("speed.limit") || activeIds.contains("speed.peak") {
-            correlations.append("US-Region + erhöhtes Tempo → starker Manipulationshinweis (Korrelation)")
-            markers = elevate(markers, id: "region.sn", to: .starkerHinweis)
-            markers = elevate(markers, id: "speed.limit", to: .starkerHinweis)
-        }
-        if activeIds.contains("fw.custom"),
-           activeIds.contains("speed.limit") || activeIds.contains("speed.peak") {
-            correlations.append("Custom-FW + Tempo-Marker → starker Manipulationshinweis")
-            markers = elevate(markers, id: "speed.limit", to: .starkerHinweis)
-            markers = elevate(markers, id: "speed.peak", to: .starkerHinweis)
-        }
-        if activeIds.contains("speed.limit"),
-           !activeIds.contains("region.sn"),
-           !activeIds.contains("fw.custom"),
-           !activeIds.contains("speed.peak") {
-            correlations.append("Isoliertes Limit: nur Abweichung/Indiz — kein Automatik-Urteil „eindeutig“")
-            markers = demote(markers, id: "speed.limit", to: .abweichung)
-        }
-        if activeIds.contains("gear.max"), markers.filter({ !$0.neutralized }).count == 1 {
-            correlations.append("Nur Gangfreigabe: Abweichung, kein alleiniger Manipulationshinweis")
+        let weight: Int
+        switch initial {
+        case .info: weight = 0
+        case .abweichung: weight = Int(10.0 * fact.confidence)
+        case .indiz: weight = Int(22.0 * fact.confidence)
+        case .starkerHinweis: weight = Int(40.0 * fact.confidence)
         }
 
-        let temporal = temporalDeltas(current: reading, prior: priorReading, priorProtocol: priorProtocolNumber)
-        let fingerprint = baselineFingerprint(reading: reading, profile: profile)
-        let unknown = unknownRegisters(in: reading)
-
-        let score = densifyScore(markers: markers)
-        let verdict = ruleBasedVerdict(markers: markers, correlations: correlations)
-        let justifying = markers.filter {
-            !$0.neutralized && $0.evidenceClass.rank >= EvidenceClass.abweichung.rank
-        }.sorted { $0.evidenceClass.rank > $1.evidenceClass.rank }
-
-        return EvidenceEngineResult(
-            verdict: verdict,
-            shortVerdictText: verdict.laymanText,
-            justifyingMarkers: justifying,
-            markers: markers,
-            correlations: correlations,
-            neutralizationNotes: neutralizationNotes,
-            temporalDeltas: temporal,
-            crossBoardIssues: cross,
-            fingerprint: fingerprint,
-            unknownRegisters: unknown,
-            score: score
+        return EvidenceResult(
+            fact: fact,
+            classification: initial,
+            classBeforeNeutralization: initial,
+            weight: weight,
+            correlations: [],
+            neutralizations: [],
+            explanation: "\(fact.title): \(fact.interpretedValue ?? fact.rawValue) (Soll \(fact.expectedValue ?? "—"))"
         )
     }
 
-    // MARK: - Facts for UI (Anzeige only)
+    private static func readingSpeed(from text: String?) -> Double? {
+        guard let text else { return nil }
+        let num = text.replacingOccurrences(of: ",", with: ".")
+            .split(whereSeparator: { !$0.isNumber && $0 != "." })
+            .first
+        return num.flatMap { Double($0) }
+    }
 
-    static func buildFacts(_ result: EvidenceEngineResult) -> [MeasuredFact] {
+    private static func applyCorrelations(
+        _ results: [EvidenceResult],
+        correlations: inout [String]
+    ) -> [EvidenceResult] {
+        let ids = Set(results.map(\.fact.markerID))
+        var out = results
+
+        func bump(_ id: String, to cls: EvidenceClass, corr: String) {
+            guard let idx = out.firstIndex(where: { $0.fact.markerID == id }) else { return }
+            let r = out[idx]
+            guard cls.rank > r.classification.rank else { return }
+            correlations.append(corr)
+            out[idx] = EvidenceResult(
+                fact: r.fact,
+                classification: cls,
+                classBeforeNeutralization: r.classBeforeNeutralization,
+                weight: max(r.weight, cls.scorePoints),
+                correlations: r.correlations + [corr],
+                neutralizations: r.neutralizations,
+                explanation: r.explanation + " · Korrelation: \(corr)"
+            )
+        }
+
+        if ids.contains("region.sn"), ids.contains("speed.limit") || ids.contains("speed.peak") {
+            let corr = "US-Region + erhöhtes Tempo"
+            bump("region.sn", to: .starkerHinweis, corr: corr)
+            bump("speed.limit", to: .starkerHinweis, corr: corr)
+        }
+        if ids.contains("fw.custom"), ids.contains("speed.limit") || ids.contains("speed.peak") {
+            let corr = "Custom-FW + Tempo-Marker"
+            bump("speed.limit", to: .starkerHinweis, corr: corr)
+            bump("speed.peak", to: .starkerHinweis, corr: corr)
+        }
+        if ids.contains("speed.limit"),
+           !ids.contains("region.sn"),
+           !ids.contains("fw.custom"),
+           !ids.contains("speed.peak") {
+            let corr = "Isoliertes Limit — keine Automatik-Eindeutigkeit"
+            correlations.append(corr)
+            if let idx = out.firstIndex(where: { $0.fact.markerID == "speed.limit" }) {
+                let r = out[idx]
+                out[idx] = EvidenceResult(
+                    fact: r.fact,
+                    classification: .abweichung,
+                    classBeforeNeutralization: r.classBeforeNeutralization,
+                    weight: min(r.weight, 12),
+                    correlations: r.correlations + [corr],
+                    neutralizations: r.neutralizations,
+                    explanation: r.explanation + " · \(corr)"
+                )
+            }
+        }
+        return out
+    }
+
+    private static func applyNeutralizations(
+        _ results: [EvidenceResult],
+        reading: IntegrityReading,
+        profile: ScooterProfile
+    ) -> [EvidenceResult] {
+        results.map { result in
+            var r = result
+            if r.fact.markerID == "region.sn" {
+                let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+                guard region == .us else { return r }
+                let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
+                let peak = reading.peakSpeedKmh ?? 0
+                let tempoOk = limit <= profile.ratedMaxKmh + 1 && peak <= profile.ratedMaxKmh + 1
+                let fw = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
+                let fwPlausible = fw.notInCatalogCount == 0 && fw.customCount == 0
+                let sn = (reading.serialDisplay ?? reading.serialVcu ?? "").uppercased()
+                let usShape = sn.hasPrefix("1CGC")
+
+                if profile.market == .de20, usShape, tempoOk, fwPlausible {
+                    let record = NeutralizationRecord(
+                        ruleId: "REGION_US_STOCK_PROFILE",
+                        reason: "Fahrzeug-/Firmwarevariante entspricht plausibler US-Konfiguration (1CGC, Serien-FW, Limit/Peak ≤ Typ). Kein Beitrag zum Manipulationsurteil.",
+                        classBefore: r.classBeforeNeutralization,
+                        classAfter: .abweichung
+                    )
+                    r = EvidenceResult(
+                        fact: r.fact,
+                        classification: .abweichung,
+                        classBeforeNeutralization: r.classBeforeNeutralization,
+                        weight: 0,
+                        correlations: r.correlations,
+                        neutralizations: r.neutralizations + [record],
+                        explanation: """
+                        Region 1CGC erkannt → zunächst \(r.classBeforeNeutralization.label). \
+                        Neutralisiert (\(record.ruleId)): \(record.reason) \
+                        Finale Klasse: \(record.classAfter.label). Beitrag Urteil: keiner.
+                        """
+                    )
+                } else if profile.market != .de20, usShape, tempoOk {
+                    let record = NeutralizationRecord(
+                        ruleId: "REGION_US_MATCHES_MARKET",
+                        reason: "Marktprofil nicht DE — US-Region zum Profil passend.",
+                        classBefore: r.classBeforeNeutralization,
+                        classAfter: .info
+                    )
+                    r = EvidenceResult(
+                        fact: r.fact,
+                        classification: .info,
+                        classBeforeNeutralization: r.classBeforeNeutralization,
+                        weight: 0,
+                        correlations: r.correlations,
+                        neutralizations: [record],
+                        explanation: r.explanation + " · Neutralisiert: \(record.reason)"
+                    )
+                }
+            }
+            return r
+        }
+    }
+
+    /// Harte Regeln — Score spielt keine Rolle.
+    private static func ruleBasedVerdict(
+        results: [EvidenceResult],
+        correlations: [String],
+        powerCycle: PowerCycleReport?
+    ) -> VerdictLevel {
+        let contributing = results.filter(\.contributesToVerdict)
+        let stark = contributing.filter { $0.classification == .starkerHinweis }
+        let indiz = contributing.filter { $0.classification == .indiz }
+        let abweichung = contributing.filter { $0.classification == .abweichung }
+        let persistentIndiz = contributing.filter {
+            $0.fact.persistence == .persistent && $0.classification.rank >= EvidenceClass.indiz.rank
+        }
+        _ = powerCycle
+
+        // Technisch nachgewiesene Manipulation — niemals aus Score allein.
+        if stark.contains(where: { $0.fact.markerID == "fw.custom" }) { return .eindeutig }
+        if stark.count >= 1, correlations.contains(where: { $0.contains("Custom-FW") || $0.contains("US-Region +") }) {
+            return .eindeutig
+        }
+        if persistentIndiz.count >= 3, stark.count + indiz.count >= 3 { return .eindeutig }
+
+        // Manipulationshinweis
+        if !stark.isEmpty { return .hinweise }
+        if indiz.filter({ $0.fact.persistence == .persistent }).count >= 2 { return .hinweise }
+        if indiz.count >= 1, abweichung.count >= 2 { return .hinweise }
+        if indiz.count >= 2 { return .hinweise }
+
+        // Auffällig
+        if !abweichung.isEmpty || !indiz.isEmpty { return .auffaellig }
+
+        return .stock
+    }
+
+    private static func densifyScore(_ results: [EvidenceResult]) -> Int {
+        var suspicion = 0
+        for r in results where r.contributesToVerdict {
+            suspicion += Int(Double(r.classification.scorePoints) * (Double(r.weight) / 40.0).clamped(to: 0...1.5))
+        }
+        return min(100, max(0, 100 - min(100, suspicion)))
+    }
+
+    private static func decisiveEvidence(
+        from results: [EvidenceResult],
+        verdict: VerdictLevel,
+        correlations: [String]
+    ) -> [String] {
+        var lines: [String] = []
+        for r in results.filter(\.contributesToVerdict).prefix(8) {
+            lines.append("\(r.fact.title): \(r.fact.interpretedValue ?? r.fact.rawValue) [\(r.classification.label)]")
+        }
+        for n in results.flatMap(\.neutralizations).prefix(4) {
+            lines.append("Neutralisiert \(n.ruleId): \(n.classBefore.label) → \(n.classAfter.label)")
+        }
+        lines.append(contentsOf: correlations.prefix(3))
+        if verdict == .stock { lines.insert("Keine relevanten Evidenzen", at: 0) }
+        return lines
+    }
+
+    // MARK: - UI facts (Anzeige der Engine-Ausgabe, keine Neubewertung)
+
+    static func buildFacts(_ assessment: EvidenceAssessment) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
-
         facts.append(MeasuredFact(
             id: "evidence.summary",
             group: .evidence,
-            title: "Kurzurteil (EvidenceEngine)",
-            auslesewert: result.verdict.label,
+            title: "Kurzurteil",
+            auslesewert: assessment.verdict.label,
             sollwert: VerdictLevel.stock.label,
-            status: factStatus(for: result.verdict),
-            bewertung: result.summary,
+            status: {
+                switch assessment.verdict {
+                case .stock: return .regelkonform
+                case .auffaellig: return .abweichend
+                case .hinweise, .eindeutig: return .erheblichAbweichend
+                }
+            }(),
+            bewertung: assessment.summary,
             erlaeuterung: """
-            Urteil regelbasiert aus Marker-Ketten (Quelle→Rohwert→Interpretation→Persistenz→Gewicht). \
-            Der Score (\(result.integrityScore)) verdichtet nur; er erzeugt das Urteil nicht allein.
+            Katalog v\(assessment.catalogVersion). Urteil regelbasiert; Score \(assessment.score) nur Verdichtung. \
+            \(assessment.shortVerdictText)
             """,
-            raw: result.fingerprint.digestSHA256,
+            raw: "catalog=\(assessment.catalogVersion);sha=\(assessment.fingerprint.digestSHA256)",
             volatility: .persistent,
-            evidenceClass: result.starkerHinweisCount > 0 ? .starkerHinweis : (result.indizCount > 0 ? .indiz : .abweichung),
+            evidenceClass: assessment.starkerHinweisCount > 0 ? .starkerHinweis : (assessment.indizCount > 0 ? .indiz : .info),
             sourceBoard: "EvidenceEngine",
             sourceRegister: "verdict",
             rawHex: nil,
             resetsOnPowerOff: false
         ))
 
-        for (idx, note) in result.neutralizationNotes.enumerated() {
+        for (idx, line) in assessment.decisiveEvidence.enumerated() {
             facts.append(MeasuredFact(
-                id: "evidence.neutral.\(idx)",
+                id: "evidence.decisive.\(idx)",
                 group: .evidence,
-                title: "Neutralisierung",
-                auslesewert: note,
-                sollwert: "Gegenbeleg geprüft",
-                status: .regelkonform,
-                bewertung: "False-Positive-Schutz",
-                erlaeuterung: note,
-                raw: note,
-                volatility: .persistent,
-                evidenceClass: .info,
-                sourceBoard: "EvidenceEngine",
-                sourceRegister: "neutralization",
-                rawHex: nil,
-                resetsOnPowerOff: false
-            ))
-        }
-
-        for marker in result.markers {
-            facts.append(MeasuredFact(
-                id: "evidence.\(marker.markerId)\(marker.neutralized ? ".neutral" : "")",
-                group: .evidence,
-                title: "\(marker.title) [\(marker.persistenceClass.label)]",
-                auslesewert: marker.interpretedValue,
-                sollwert: marker.expectedValue,
-                status: marker.neutralized ? .regelkonform : status(for: marker.evidenceClass),
-                bewertung: marker.contributionLabel,
-                erlaeuterung: marker.chainCitation + (marker.notes.isEmpty ? "" : " — \(marker.notes)"),
-                raw: marker.chainCitation,
-                volatility: marker.persistenceClass,
-                evidenceClass: marker.evidenceClass,
-                sourceBoard: marker.boardSource,
-                sourceRegister: marker.registerOrField,
-                rawHex: marker.rawValue,
-                resetsOnPowerOff: marker.resetsOnPowerOff
-            ))
-        }
-
-        for issue in result.crossBoardIssues {
-            facts.append(MeasuredFact(
-                id: issue.id,
-                group: .evidence,
-                title: "Cross-Board: \(issue.title)",
-                auslesewert: issue.detail,
-                sollwert: "konsistent",
+                title: "Entscheidende Evidenz",
+                auslesewert: line,
+                sollwert: "—",
                 status: .abweichend,
-                bewertung: issue.boards.joined(separator: ", "),
-                erlaeuterung: issue.detail,
-                raw: issue.detail,
-                volatility: .persistent,
-                evidenceClass: .indiz,
-                sourceBoard: issue.boards.joined(separator: "/"),
-                sourceRegister: "SN/FW",
-                rawHex: nil,
-                resetsOnPowerOff: false
+                bewertung: "decisiveEvidence",
+                erlaeuterung: line,
+                raw: line
             ))
         }
 
-        for delta in result.temporalDeltas {
+        for r in assessment.results {
+            facts.append(MeasuredFact(
+                id: "evidence.\(r.fact.markerID)",
+                group: .evidence,
+                title: "\(r.fact.title) [\(r.fact.persistence.label)]",
+                auslesewert: r.fact.interpretedValue ?? r.fact.rawValue,
+                sollwert: r.fact.expectedValue ?? "—",
+                status: r.isNeutralized ? .regelkonform : status(for: r.classification),
+                bewertung: r.contributionLabel,
+                erlaeuterung: r.chainCitation,
+                raw: r.chainCitation,
+                volatility: r.fact.persistence,
+                evidenceClass: r.classification,
+                sourceBoard: r.fact.source,
+                sourceRegister: r.fact.register,
+                rawHex: r.fact.rawValue,
+                resetsOnPowerOff: r.fact.resetResistant == false
+            ))
+        }
+
+        if let pc = assessment.powerCycle {
+            facts.append(MeasuredFact(
+                id: "evidence.powercycle.summary",
+                group: .evidence,
+                title: "Power-Cycle-Test",
+                auslesewert: pc.summary,
+                sollwert: "Katalog-Persistenz vs. beobachtet",
+                status: .regelkonform,
+                bewertung: "\(pc.rows.count) Marker verglichen",
+                erlaeuterung: pc.summary,
+                raw: pc.summary
+            ))
+            for row in pc.rows {
+                facts.append(MeasuredFact(
+                    id: "evidence.powercycle.\(row.markerID)",
+                    group: .evidence,
+                    title: "Power-Cycle: \(row.title)",
+                    auslesewert: "A \(row.scanA) → B \(row.scanB)",
+                    sollwert: row.catalogPersistence?.label ?? "—",
+                    status: .regelkonform,
+                    bewertung: "beobachtet \(row.observedPersistence.label)",
+                    erlaeuterung: row.note,
+                    raw: "\(row.scanA)|\(row.scanB)",
+                    volatility: row.observedPersistence,
+                    evidenceClass: .info,
+                    sourceBoard: "PowerCycle",
+                    sourceRegister: row.markerID,
+                    rawHex: nil,
+                    resetsOnPowerOff: row.observedPersistence == .fleeting
+                ))
+            }
+        }
+
+        for (idx, w) in assessment.warnings.enumerated() {
+            facts.append(MeasuredFact(
+                id: "evidence.warn.\(idx)",
+                group: .evidence,
+                title: "Hinweis",
+                auslesewert: w,
+                sollwert: "—",
+                status: .nichtFeststellbar,
+                bewertung: "warning",
+                erlaeuterung: w,
+                raw: w,
+                evidenceClass: .info
+            ))
+        }
+
+        for delta in assessment.temporalDeltas {
             facts.append(MeasuredFact(
                 id: delta.id,
                 group: .evidence,
@@ -581,38 +893,11 @@ enum EvidenceEngine {
                 auslesewert: "\(delta.previous) → \(delta.current)",
                 sollwert: "unverändert",
                 status: .abweichend,
-                bewertung: "seit \(delta.priorProtocol)",
+                bewertung: delta.priorProtocol,
                 erlaeuterung: "Zeitlicher Vergleich derselben SN.",
                 raw: delta.priorProtocol,
                 volatility: .persistent,
-                evidenceClass: .indiz,
-                sourceBoard: "Verlauf",
-                sourceRegister: delta.title,
-                rawHex: nil,
-                resetsOnPowerOff: false
-            ))
-        }
-
-        if !result.unknownRegisters.isEmpty {
-            let sample = result.unknownRegisters.prefix(8).map {
-                "\($0.name) \($0.address)=\($0.valueHex)"
-            }.joined(separator: "; ")
-            facts.append(MeasuredFact(
-                id: "evidence.unknown.registers",
-                group: .evidence,
-                title: "Unknown-State Register",
-                auslesewert: "\(result.unknownRegisters.count) ohne sichere Deutung",
-                sollwert: "dokumentiert, nicht überinterpretiert",
-                status: .nichtFeststellbar,
-                bewertung: "Info — Rohwert + FW-Kontext",
-                erlaeuterung: sample,
-                raw: sample,
-                volatility: .persistent,
-                evidenceClass: .info,
-                sourceBoard: "div.",
-                sourceRegister: "—",
-                rawHex: nil,
-                resetsOnPowerOff: false
+                evidenceClass: .indiz
             ))
         }
 
@@ -620,225 +905,27 @@ enum EvidenceEngine {
             id: "evidence.fingerprint",
             group: .evidence,
             title: "Baseline-Fingerprint",
-            auslesewert: String(result.fingerprint.digestSHA256.prefix(16)) + "…",
-            sollwert: result.fingerprint.profileId,
+            auslesewert: String(assessment.fingerprint.digestSHA256.prefix(16)) + "…",
+            sollwert: assessment.fingerprint.profileId,
             status: .regelkonform,
-            bewertung: "\(result.fingerprint.fields.count) Felder",
-            erlaeuterung: "SHA-256 über Region/SN-Präfix, FW, Limit, Gänge.",
-            raw: result.fingerprint.digestSHA256,
-            volatility: .persistent,
-            evidenceClass: .info,
-            sourceBoard: "Fingerprint",
-            sourceRegister: "composite",
-            rawHex: result.fingerprint.digestSHA256,
-            resetsOnPowerOff: false
+            bewertung: "Katalog v\(assessment.catalogVersion)",
+            erlaeuterung: assessment.fingerprint.digestSHA256,
+            raw: assessment.fingerprint.digestSHA256,
+            evidenceClass: .info
         ))
 
         return facts
     }
 
-    // MARK: - Rule-based verdict (Score spielt keine Rolle)
-
-    private static func ruleBasedVerdict(markers: [EvidenceMarker], correlations: [String]) -> VerdictLevel {
-        let active = markers.filter { !$0.neutralized }
-        let stark = active.filter { $0.evidenceClass == .starkerHinweis }
-        let indiz = active.filter { $0.evidenceClass == .indiz }
-        let abweichung = active.filter { $0.evidenceClass == .abweichung }
-        let persistentStarkOrIndiz = active.filter {
-            $0.persistenceClass == .persistent
-                && ($0.evidenceClass == .starkerHinweis || $0.evidenceClass == .indiz)
-        }
-
-        // Technisch eindeutig: bestätigter starker Hinweis (z. B. Custom-FW) oder Korrelation Region+Tempo / FW+Tempo.
-        if stark.contains(where: { $0.markerId == "fw.custom" }) { return .eindeutig }
-        if correlations.contains(where: { $0.contains("starker Manipulationshinweis") }),
-           stark.count >= 1 {
-            return .eindeutig
-        }
-        if persistentStarkOrIndiz.count >= 3, stark.count + indiz.count >= 3 {
-            return .eindeutig
-        }
-
-        // Manipulationshinweise: ≥1 starker Hinweis oder ≥2 persistente Indizien.
-        if !stark.isEmpty { return .hinweise }
-        if indiz.filter({ $0.persistenceClass == .persistent }).count >= 2 { return .hinweise }
-        if indiz.count >= 2, persistentStarkOrIndiz.count >= 1 { return .hinweise }
-
-        // Auffällig: Abweichungen oder einzelnes Indiz / nur flüchtige Marker.
-        if !indiz.isEmpty || !abweichung.isEmpty { return .auffaellig }
-
-        return .stock
-    }
-
-    /// Score nur Verdichtung — nie allein urteilsbildend.
-    private static func densifyScore(markers: [EvidenceMarker]) -> EvidenceScoreBreakdown {
-        var suspicion = 0.0
-        var active = 0
-        var neutralized = 0
-        for m in markers {
-            if m.neutralized {
-                neutralized += 1
-                continue
-            }
-            guard m.evidenceClass != .info else { continue }
-            active += 1
-            suspicion += Double(m.evidenceClass.scoreDelta) * m.effectiveWeight * m.confidence
-        }
-        let index = min(100, Int(suspicion.rounded()))
-        let raw = min(100, max(0, 100 - index))
-        return EvidenceScoreBreakdown(
-            rawScore: raw,
-            suspicionIndex: index,
-            activeMarkerCount: active,
-            neutralizedCount: neutralized
-        )
-    }
-
-    // MARK: - Neutralization
-
-    private static func applyNeutralization(
-        _ markers: [EvidenceMarker],
-        reading: IntegrityReading,
-        profile: ScooterProfile,
-        region: SerialRegion,
-        notes: inout [String]
-    ) -> [EvidenceMarker] {
-        markers.map { marker in
-            // US-Region + DE-Soll: neutralisieren wenn alles zu einer US-Serie passt
-            // (Profil wäre eigentlich US/EU, oder SN/FW konsistent US ohne Tempo-Tuning).
-            if marker.markerId == "region.sn", region == .us {
-                let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
-                let peak = reading.peakSpeedKmh ?? 0
-                let tempoOk = limit <= profile.ratedMaxKmh + 1 && peak <= profile.ratedMaxKmh + 1
-                let fw = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
-                let fwPlausible = fw.notInCatalogCount == 0 && fw.customCount == 0
-                let sn = reading.serialDisplay ?? reading.serialVcu ?? ""
-                let usSerialShape = sn.uppercased().hasPrefix("1CGC")
-                // Wenn DE-Sollprofil aber Fahrzeug klar US-Serie ohne Tempo-Auffälligkeit und FW im Katalog:
-                // Marker auf Info/neutral — False Positive vermeiden.
-                if profile.market == .de20, usSerialShape, tempoOk, fwPlausible {
-                    let reason = "US-SN + Serien-FW + Limit/Peak ≤ Typ — Region allein kein Manipulationsindiz (mögliche US-Ausführung / falsches Sollprofil)"
-                    notes.append(reason)
-                    return neutralized(marker, reason: reason, asInfo: true)
-                }
-                if profile.market != .de20, usSerialShape, tempoOk {
-                    let reason = "Marktprofil nicht DE — US-Region zum Profil passend"
-                    notes.append(reason)
-                    return neutralized(marker, reason: reason, asInfo: true)
-                }
-            }
-            return marker
-        }
-    }
-
-    private static func neutralized(_ m: EvidenceMarker, reason: String, asInfo: Bool) -> EvidenceMarker {
-        EvidenceMarker(
-            markerId: m.markerId,
-            title: m.title,
-            boardSource: m.boardSource,
-            registerOrField: m.registerOrField,
-            rawValue: m.rawValue,
-            interpretedValue: m.interpretedValue,
-            expectedValue: m.expectedValue,
-            persistenceClass: m.persistenceClass,
-            confidence: m.confidence,
-            evidenceClass: asInfo ? .info : m.evidenceClass,
-            weight: m.weight,
-            knownStockMatch: true,
-            knownModMatch: false,
-            notes: m.notes,
-            neutralized: true,
-            neutralizationReason: reason
-        )
-    }
-
-    // MARK: - Helpers
-
-    private static func catalog(_ id: String) -> MarkerCatalogEntry? {
-        catalog.first { $0.markerId == id }
-    }
-
-    private static func make(
-        id: String,
-        raw: String,
-        interpreted: String,
-        expected: String,
-        cls: EvidenceClass,
-        weight: Double,
-        confidence: Double,
-        stockMatch: Bool?,
-        modMatch: Bool?,
-        notes: String
-    ) -> EvidenceMarker {
-        let entry = catalog(id)
-        return EvidenceMarker(
-            markerId: id,
-            title: entry?.title ?? id,
-            boardSource: entry?.boardSource ?? "—",
-            registerOrField: entry?.registerOrField ?? "—",
-            rawValue: raw,
-            interpretedValue: interpreted,
-            expectedValue: expected,
-            persistenceClass: entry?.persistence ?? .semiPersistent,
-            confidence: confidence,
-            evidenceClass: cls,
-            weight: weight,
-            knownStockMatch: stockMatch,
-            knownModMatch: modMatch,
-            notes: notes,
-            neutralized: false,
-            neutralizationReason: nil
-        )
-    }
-
-    private static func elevate(_ markers: [EvidenceMarker], id: String, to cls: EvidenceClass) -> [EvidenceMarker] {
-        markers.map { m in
-            guard m.markerId == id, !m.neutralized, cls.rank > m.evidenceClass.rank else { return m }
-            return EvidenceMarker(
-                markerId: m.markerId, title: m.title, boardSource: m.boardSource,
-                registerOrField: m.registerOrField, rawValue: m.rawValue,
-                interpretedValue: m.interpretedValue, expectedValue: m.expectedValue,
-                persistenceClass: m.persistenceClass, confidence: m.confidence,
-                evidenceClass: cls, weight: min(1, m.weight + 0.15),
-                knownStockMatch: m.knownStockMatch, knownModMatch: m.knownModMatch,
-                notes: m.notes, neutralized: false, neutralizationReason: nil
-            )
-        }
-    }
-
-    private static func demote(_ markers: [EvidenceMarker], id: String, to cls: EvidenceClass) -> [EvidenceMarker] {
-        markers.map { m in
-            guard m.markerId == id, !m.neutralized else { return m }
-            return EvidenceMarker(
-                markerId: m.markerId, title: m.title, boardSource: m.boardSource,
-                registerOrField: m.registerOrField, rawValue: m.rawValue,
-                interpretedValue: m.interpretedValue + " (isoliert)",
-                expectedValue: m.expectedValue,
-                persistenceClass: m.persistenceClass, confidence: m.confidence,
-                evidenceClass: cls, weight: min(m.weight, 0.45),
-                knownStockMatch: m.knownStockMatch, knownModMatch: m.knownModMatch,
-                notes: m.notes, neutralized: false, neutralizationReason: nil
-            )
-        }
-    }
-
     private static func status(for cls: EvidenceClass) -> FactStatus {
         switch cls {
         case .info: return .nichtFeststellbar
-        case .abweichung: return .abweichend
-        case .indiz: return .abweichend
+        case .abweichung, .indiz: return .abweichend
         case .starkerHinweis: return .erheblichAbweichend
         }
     }
 
-    private static func factStatus(for verdict: VerdictLevel) -> FactStatus {
-        switch verdict {
-        case .stock: return .regelkonform
-        case .auffaellig: return .abweichend
-        case .hinweise, .eindeutig: return .erheblichAbweichend
-        }
-    }
-
+    // Shared helpers (cross-board, temporal, fingerprint, unknown)
     static func crossBoardIssues(reading: IntegrityReading, profile: ScooterProfile) -> [CrossBoardIssue] {
         var issues: [CrossBoardIssue] = []
         let vehicle = reading.serialDisplay ?? reading.serialVcu
@@ -848,45 +935,18 @@ enum EvidenceEngine {
         ]
         if let vehicle {
             for (board, sn) in pairs {
-                guard let sn, !sn.isEmpty else { continue }
-                if TrackClassifier.looksLikeModuleSerial(sn) { continue }
+                guard let sn, !sn.isEmpty, !TrackClassifier.looksLikeModuleSerial(sn) else { continue }
                 if TrackClassifier.serialsMismatch(sn, vehicle) {
                     issues.append(CrossBoardIssue(
                         id: "cross.serial.\(board.lowercased())",
                         title: "SN \(board) ≠ Fahrzeug",
-                        detail: "\(board)-SN \(sn) weicht von \(vehicle) ab",
+                        detail: "\(board)-SN \(sn) ≠ \(vehicle)",
                         boards: [board, "Fahrzeug"]
                     ))
                 }
             }
         }
-        let regions = [
-            ("DIS/VCU", TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)),
-            ("MCU", TrackClassifier.serialRegion(for: reading.serialMcu)),
-            ("BLE", TrackClassifier.serialRegion(for: reading.serialBle))
-        ].filter { $0.1 != .unknown }
-        if let first = regions.first {
-            for other in regions.dropFirst() where other.1 != first.1 {
-                issues.append(CrossBoardIssue(
-                    id: "cross.region.\(other.0)",
-                    title: "Region inkonsistent",
-                    detail: "\(first.0)=\(first.1.label), \(other.0)=\(other.1.label)",
-                    boards: [first.0, other.0]
-                ))
-            }
-        }
-        if profile.family == .maxG3 {
-            let catalog = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
-            let mismatches = catalog.components.filter { $0.match == .notInCatalog || $0.match == .customMarked }
-            if mismatches.count >= 2 {
-                issues.append(CrossBoardIssue(
-                    id: "cross.fw.catalog",
-                    title: "Mehrere FW-Module nicht Serie",
-                    detail: mismatches.map { "\($0.title):\($0.version ?? "—")" }.joined(separator: ", "),
-                    boards: mismatches.map(\.title)
-                ))
-            }
-        }
+        _ = profile
         return issues
     }
 
@@ -898,16 +958,15 @@ enum EvidenceEngine {
         guard let prior, let proto = priorProtocol else { return [] }
         var deltas: [TemporalDelta] = []
         func add(_ id: String, _ title: String, _ a: String?, _ b: String?) {
-            let left = a ?? "—"; let right = b ?? "—"
-            guard left != right else { return }
-            deltas.append(TemporalDelta(id: "history.delta.\(id)", title: title, previous: left, current: right, priorProtocol: proto))
+            let l = a ?? "—"; let r = b ?? "—"
+            guard l != r else { return }
+            deltas.append(TemporalDelta(id: "history.delta.\(id)", title: title, previous: l, current: r, priorProtocol: proto))
         }
         add("region", "Region",
             TrackClassifier.serialRegion(for: prior.serialDisplay ?? prior.serialVcu).label,
             TrackClassifier.serialRegion(for: current.serialDisplay ?? current.serialVcu).label)
         add("fw.mcu", "MCU-FW", prior.fwMcu, current.fwMcu)
         add("fw.vcu", "VCU-FW", prior.fwVcu, current.fwVcu)
-        add("fw.ble", "BLE-FW", prior.fwBle, current.fwBle)
         add("limit", "Limit",
             prior.speedLimitKmh.map { Format.kmh.format(Optional($0)) },
             current.speedLimitKmh.map { Format.kmh.format(Optional($0)) })
@@ -921,17 +980,12 @@ enum EvidenceEngine {
     static func baselineFingerprint(reading: IntegrityReading, profile: ScooterProfile) -> BaselineFingerprint {
         let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
         let fields: [String: String] = [
-            "profile": profile.id,
-            "region": region.rawValue,
+            "profile": profile.id, "region": region.rawValue,
             "snPrefix": String((reading.serialDisplay ?? reading.serialVcu ?? "").prefix(4)),
-            "fwMcu": reading.fwMcu ?? "",
-            "fwBle": reading.fwBle ?? "",
-            "fwBms": reading.fwBms ?? "",
-            "fwVcu": reading.fwVcu ?? "",
+            "fwMcu": reading.fwMcu ?? "", "fwBle": reading.fwBle ?? "",
+            "fwBms": reading.fwBms ?? "", "fwVcu": reading.fwVcu ?? "",
             "limit": reading.speedLimitKmh.map { String(format: "%.1f", $0) } ?? "",
-            "max": reading.speedMaxKmh.map { String(format: "%.1f", $0) } ?? "",
-            "gearMax": reading.gearMax.map(String.init) ?? "",
-            "safeLock": reading.safeLockActive.map { $0 ? "1" : "0" } ?? ""
+            "gearMax": reading.gearMax.map(String.init) ?? ""
         ]
         let canonical = fields.keys.sorted().map { "\($0)=\(fields[$0] ?? "")" }.joined(separator: "|")
         let digest = SHA256.hash(data: Data(canonical.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -939,20 +993,17 @@ enum EvidenceEngine {
     }
 
     static func unknownRegisters(in reading: IntegrityReading) -> [RawRegister] {
-        let knownPrefixes = ["dis_", "ble_", "vcu_", "mcu_", "bms_", "g3_", "tft_", "esc_"]
+        let known = ["dis_", "ble_", "vcu_", "mcu_", "bms_", "g3_", "tft_", "esc_"]
         return reading.rawRegisters.filter { reg in
-            if let note = reg.note?.lowercased(), note.contains("unbekannt") || note.contains("unknown") {
-                return true
-            }
-            let decodedEmpty = reg.valueDecoded == nil || reg.valueDecoded?.isEmpty == true
-            let looksKnown = knownPrefixes.contains { reg.name.lowercased().hasPrefix($0) }
-            return decodedEmpty && !looksKnown && !reg.valueHex.isEmpty
+            let empty = reg.valueDecoded == nil || reg.valueDecoded?.isEmpty == true
+            let looks = known.contains { reg.name.lowercased().hasPrefix($0) }
+            return empty && !looks && !reg.valueHex.isEmpty
         }
     }
 
     private static func rawHex(forNames names: [String], in reading: IntegrityReading) -> String? {
         for name in names {
-            if let reg = reading.rawRegisters.last(where: { $0.name == name || $0.name.hasSuffix(name) }) {
+            if let reg = reading.rawRegisters.last(where: { $0.name == name }) {
                 return "\(reg.name) \(reg.address)=\(reg.valueHex)"
             }
         }
@@ -960,11 +1011,79 @@ enum EvidenceEngine {
     }
 
     private static func fwRawCitation(_ reading: IntegrityReading) -> String {
-        let names = ["g3_mcu_fw", "g3_vcu_fw", "g3_ble_fw", "g3_bms_fw", "mcu_fw", "ble_fw", "vcu_fw", "bms_fw"]
+        let names = ["g3_mcu_fw", "g3_vcu_fw", "g3_ble_fw", "g3_bms_fw", "mcu_fw", "ble_fw", "vcu_fw"]
         let parts = names.compactMap { name -> String? in
-            guard let reg = reading.rawRegisters.last(where: { $0.name == name }) else { return nil }
-            return "\(reg.name)=\(reg.valueHex)"
+            reading.rawRegisters.last(where: { $0.name == name }).map { "\($0.name)=\($0.valueHex)" }
         }
         return parts.isEmpty ? (reading.fwMcu ?? reading.fwVcu ?? "—") : parts.joined(separator: ", ")
+    }
+}
+
+private extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+// MARK: - Power-Cycle comparison (beobachtete Persistenz)
+
+enum PowerCycleAnalyzer {
+    static func compare(
+        scanA: IntegrityReading,
+        scanB: IntegrityReading,
+        profile: ScooterProfile = .maxG3D
+    ) -> PowerCycleReport {
+        func fmt(_ v: Double?) -> String { v.map { Format.kmh.format(Optional($0)) } ?? "—" }
+        func fmtI(_ v: Int?) -> String { v.map(String.init) ?? "—" }
+        func fmtS(_ v: String?) -> String { (v?.isEmpty == false) ? v! : "—" }
+
+        let pairs: [(id: String, title: String, a: String, b: String, catalog: PersistenceClass?)] = [
+            ("speed.limit", "Speed Limit",
+             fmt(scanA.speedLimitKmh ?? scanA.speedMaxKmh),
+             fmt(scanB.speedLimitKmh ?? scanB.speedMaxKmh), .persistent),
+            ("speed.peak", "Trip Peak",
+             fmt(scanA.peakSpeedKmh), fmt(scanB.peakSpeedKmh), .semiPersistent),
+            ("speed.session", "Session Flag",
+             (scanA.hiddenTuningDetected == true) ? "1" : "0",
+             (scanB.hiddenTuningDetected == true) ? "1" : "0", .fleeting),
+            ("region.sn", "Region",
+             TrackClassifier.serialRegion(for: scanA.serialDisplay ?? scanA.serialVcu).label,
+             TrackClassifier.serialRegion(for: scanB.serialDisplay ?? scanB.serialVcu).label, .persistent),
+            ("gear.mode", "Drive Mode",
+             fmtI(scanA.gearMode), fmtI(scanB.gearMode), .fleeting),
+            ("fw.hash", "Firmware Hash",
+             String(EvidenceEngine.baselineFingerprint(reading: scanA, profile: profile).digestSHA256.prefix(12)) + "…",
+             String(EvidenceEngine.baselineFingerprint(reading: scanB, profile: profile).digestSHA256.prefix(12)) + "…",
+             .persistent),
+            ("fw.mcu", "MCU-FW", fmtS(scanA.fwMcu), fmtS(scanB.fwMcu), .persistent),
+            ("fw.vcu", "VCU-FW", fmtS(scanA.fwVcu), fmtS(scanB.fwVcu), .persistent)
+        ]
+
+        let rows: [PowerCycleDiffRow] = pairs.map { p in
+            let same = p.a == p.b
+            let observed: PersistenceClass = same ? .persistent : .fleeting
+            let note: String
+            if same {
+                note = "Unverändert nach Power-Cycle → beobachtet persistent"
+                    + (p.catalog.map { $0 == .persistent ? " (Katalog bestätigt)" : " (Katalog: \($0.label))" } ?? "")
+            } else {
+                note = "Geändert A→B → beobachtet flüchtig"
+                    + (p.catalog.map { $0 == .fleeting ? " (Katalog bestätigt)" : " (Katalog erwartete \($0.label))" } ?? "")
+            }
+            return PowerCycleDiffRow(
+                markerID: p.id,
+                title: p.title,
+                scanA: String(p.a),
+                scanB: String(p.b),
+                observedPersistence: observed,
+                catalogPersistence: p.catalog,
+                note: note
+            )
+        }
+
+        let persistCount = rows.filter { $0.observedPersistence == .persistent }.count
+        let fleetingCount = rows.filter { $0.observedPersistence == .fleeting }.count
+        let summary = "Power-Cycle: \(persistCount) persistent, \(fleetingCount) flüchtig beobachtet (Katalog v\(EvidenceCatalog.version))"
+        return PowerCycleReport(rows: rows, summary: summary)
     }
 }

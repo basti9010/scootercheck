@@ -13,6 +13,17 @@ struct ContentView: View {
     @State private var historySharePack: ProtocolPack.PackURLs?
     @State private var showHistoryShare = false
     @State private var busy = false
+    @State private var powerCyclePhase: PowerCyclePhase = .idle
+    @State private var powerCycleScanA: IntegrityReading? = nil
+    @State private var powerCycleDevice: ScannedDevice? = nil
+
+    @State private var powerCycleHint: String? = nil
+
+    private enum PowerCyclePhase: Equatable {
+        case idle
+        case awaitReboot
+        case scanningB
+    }
     @State private var pulse = false
 
     var body: some View {
@@ -233,11 +244,14 @@ struct ContentView: View {
                             .font(.caption.weight(.medium))
                             .foregroundStyle(Theme.muted)
                     }
+                    Text("Katalog v\(report.evidence.catalogVersion)")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
                     Text(report.verdict.laymanText)
                         .font(.footnote)
                         .foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    if report.evidence.starkerHinweisCount + report.evidence.indizCount + report.evidence.abweichungCount > 0 {
+                    if !report.evidence.summary.isEmpty {
                         Text(report.evidence.summary)
                             .font(.caption.weight(.medium))
                             .foregroundStyle(Theme.accent)
@@ -255,10 +269,20 @@ struct ContentView: View {
                 }
             }
 
+            if powerCyclePhase == .awaitReboot {
+                powerCycleBanner
+            }
+            if let hint = powerCycleHint {
+                Text(hint)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.warn)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Text("Ausgelesene Werte")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("Auslesewert, Sollwert, Bewertung und Erläuterung.")
+            Text("Bewertung ausschließlich durch EvidenceEngine (Katalog v\(report.evidence.catalogVersion)).")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
 
@@ -311,9 +335,38 @@ struct ContentView: View {
             .disabled(!primaryEnabled)
 
             if result != nil {
+                if powerCyclePhase == .idle {
+                    Button("Power-Cycle-Test") {
+                        startPowerCycleTest()
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.accent)
+                } else if powerCyclePhase == .awaitReboot {
+                    Button("Scooter ist wieder an — Scan B") {
+                        Task { await continuePowerCycleScanB() }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .disabled(busy)
+
+                    Button("Power-Cycle abbrechen") {
+                        powerCyclePhase = .idle
+                        powerCycleScanA = nil
+                        powerCycleDevice = nil
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+                }
+
                 Button("Erneut prüfen") {
                     result = nil
                     session = nil
+                    powerCyclePhase = .idle
+                    powerCycleScanA = nil
                     ble.startScan()
                 }
                 .font(.subheadline.weight(.medium))
@@ -379,10 +432,84 @@ struct ContentView: View {
             try await ble.connect(to: device)
             await ble.handshakeAndDump(profile: profile)
             if ble.phase == .done {
+                powerCycleDevice = device
                 finalizeAnalysis()
             }
         } catch {
             // lastError already set by BleClient
+        }
+    }
+
+    private var powerCycleBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Power-Cycle-Test").font(.subheadline.weight(.semibold))
+            Text("Scan A ist gespeichert. Scooter regulär ausschalten, wieder einschalten, dann „Scan B“. Kein Unlock — nur Persistenzvergleich.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(.white)
+        .scootCard()
+    }
+
+    private func startPowerCycleTest() {
+        guard let report = result else { return }
+        powerCycleScanA = report.reading
+        powerCyclePhase = .awaitReboot
+        // Gerät für Reconnect merken (falls noch in Scan-Liste / last connect).
+        if let last = ble.visibleDevices.first {
+            powerCycleDevice = last
+        }
+        ble.disconnect()
+        ble.startScan()
+    }
+
+    private func continuePowerCycleScanB() async {
+        guard let scanA = powerCycleScanA else { return }
+        busy = true
+        powerCyclePhase = .scanningB
+        defer { busy = false }
+        do {
+            let device: ScannedDevice
+            if let chosen = powerCycleDevice ?? ble.visibleDevices.first {
+                device = chosen
+            } else {
+                powerCycleHint = "Kein Scooter für Scan B gefunden — näher heran und erneut versuchen."
+                powerCyclePhase = .awaitReboot
+                return
+            }
+            powerCycleHint = nil
+            try await ble.connect(to: device)
+            await ble.handshakeAndDump(profile: profile)
+            guard ble.phase == .done else {
+                powerCyclePhase = .awaitReboot
+                return
+            }
+            var readingB = ble.reading
+            if readingB.serialExpected == nil {
+                readingB.serialExpected = readingB.serialDisplay ?? scanA.serialDisplay
+            }
+            let pc = PowerCycleAnalyzer.compare(scanA: scanA, scanB: readingB, profile: profile)
+            let serial = readingB.serialDisplay ?? readingB.serialVcu ?? scanA.serialDisplay
+            let snapshot = history.priorSnapshot(forSerial: serial)
+            let priorUnlock = history.priorUnlockEvidence(forSerial: serial)
+            let analyzed = IntegrityAnalyzer.analyze(
+                reading: readingB,
+                profile: profile,
+                priorUnlock: priorUnlock,
+                priorReading: snapshot?.reading,
+                priorProtocolNumber: snapshot?.protocolNumber,
+                powerCycle: pc
+            )
+            result = analyzed
+            let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
+            session = newSession
+            try? history.save(newSession)
+            powerCyclePhase = .idle
+            powerCycleScanA = nil
+            powerCycleDevice = nil
+        } catch {
+            powerCyclePhase = .awaitReboot
         }
     }
 
