@@ -1071,7 +1071,7 @@ enum IntegrityAnalyzer {
             findings.append(Finding(
                 id: "finding.evidence.decisive.\(findings.count)",
                 severity: .abweichend,
-                title: "Entscheidende Evidenz",
+                title: "Wesentliche Feststellung",
                 detail: line,
                 relatedFactIds: ["evidence.summary"]
             ))

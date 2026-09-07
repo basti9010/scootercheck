@@ -319,7 +319,7 @@ enum ProtocolPDF {
         var cursor = ensureSpace(context: context, y: y, needed: 90)
         cursor = drawHeading("III. Vermutete Art der Veränderung", at: cursor)
         cursor = drawText(
-            "Heuristische technische Zuordnung — kein alleiniger Nachweis des verwendeten Werkzeugs.",
+            "Heuristische technische Zuordnung — zeigt nicht, mit welchem Werkzeug eine Veränderung vorgenommen wurde.",
             at: cursor,
             font: bodyFont(size: 8),
             color: Theme.UI.muted
