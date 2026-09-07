@@ -49,12 +49,16 @@ final class NbCrypto {
     private var auth = Data(repeating: 0, count: 16)
     private var counter: Int = 0
     private let ecbInput: Data
+    /// Gen2/SHU: fehlendes key2 → fw_data (nicht Nullen). Gen3: Nullen.
+    private let defaultKey2IsFwData: Bool
 
     init(gen: ProtocolGen = .gen2) {
         if gen == .gen2 {
             ecbInput = Data(NbCryptoConstants.fwData)
+            defaultKey2IsFwData = true
         } else {
             ecbInput = Data(repeating: 0, count: 16)
+            defaultKey2IsFwData = false
         }
     }
 
@@ -227,9 +231,17 @@ final class NbCrypto {
         if k1.count < 16 { k1.append(Data(repeating: 0, count: 16 - k1.count)) }
         k1 = k1.prefix(16)
 
-        var k2 = key2 ?? Data(repeating: 0, count: 16)
-        if k2.count < 16 { k2.append(Data(repeating: 0, count: 16 - k2.count)) }
-        k2 = k2.prefix(16)
+        // SHU / NinebotCrypto / Max-G3-Flasher: bei null-key2 Gen2 → fw_data, nicht Nullen.
+        let k2: Data
+        if let key2 {
+            var padded = key2
+            if padded.count < 16 { padded.append(Data(repeating: 0, count: 16 - padded.count)) }
+            k2 = padded.prefix(16)
+        } else if defaultKey2IsFwData {
+            k2 = Data(NbCryptoConstants.fwData)
+        } else {
+            k2 = Data(repeating: 0, count: 16)
+        }
 
         let combined = k1 + k2
         let hash = sha1(combined)

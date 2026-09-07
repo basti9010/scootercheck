@@ -349,7 +349,50 @@ final class BleClient: NSObject, ObservableObject {
         detectedStack = .unknown
         dumpProfileHint = profile
 
-        let order = detectionOrder(profileHint: profile, name: cryptoName.isEmpty ? btName : cryptoName)
+        let name = cryptoName.isEmpty ? btName : cryptoName
+        let isMaxG3 = profile.family == .maxG3 || name.uppercased().hasPrefix("1C")
+
+        // Max G3 (SHU/Flasher): nur Enc2 über Nordic-UART — kein Xiaomi-Klartext-Probe
+        // (55 AA auf dem gleichen UART kann die Verbindung killen).
+        if isMaxG3 {
+            let pipes: [(String, Bool)] = [
+                hasXiaomiPipe ? ("Nordic-UART/Enc2", true) : nil,
+                hasNinebotPipe ? ("Ninebot-UART", false) : nil
+            ].compactMap { $0 }
+
+            guard !pipes.isEmpty else {
+                fail("Kein UART-Service für Max G3 — Scooter neu starten und erneut scannen.")
+                return
+            }
+
+            var lastFailure: String?
+            for (label, useNordic) in pipes {
+                guard peripheral != nil else {
+                    fail("Scooter hat die Verbindung getrennt. Erneut verbinden.")
+                    return
+                }
+                phase = .detecting
+                statusMessage = "Max G3: Enc2 über \(label)…"
+                activateEnc2(useNordicUART: useNordic)
+                assembler.reset()
+                do {
+                    try await runNinebotHandshakeAndDump(preferGen2: true)
+                    return
+                } catch {
+                    lastFailure = "\(label): \(error.localizedDescription)"
+                    crypto = nil
+                    continue
+                }
+            }
+            fail(
+                "Max G3 Enc2 fehlgeschlagen"
+                    + (lastFailure.map { " — \($0)" } ?? "")
+                    + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
+            )
+            return
+        }
+
+        let order = detectionOrder(profileHint: profile, name: name)
         var sawEncryptedXiaomi = false
         var lastFailure: String?
 
@@ -373,19 +416,22 @@ final class BleClient: NSObject, ObservableObject {
                 }
 
             case .ninebotEnc2:
-                // 1) Ninebot-Custom-UART, 2) Enc2 über Nordic UART (Kompatibilität)
                 let pipes: [(String, Bool)] = [
                     hasNinebotPipe ? ("Ninebot-UART", false) : nil,
                     hasXiaomiPipe ? ("Nordic-UART/Enc2", true) : nil
                 ].compactMap { $0 }
 
                 for (label, useNordic) in pipes {
+                    guard peripheral != nil else {
+                        fail("Scooter hat die Verbindung getrennt. Erneut verbinden.")
+                        return
+                    }
                     phase = .detecting
                     statusMessage = "Prüfe Ninebot Enc2 (\(label))…"
                     activateEnc2(useNordicUART: useNordic)
                     assembler.reset()
                     do {
-                        try await runNinebotHandshakeAndDump()
+                        try await runNinebotHandshakeAndDump(preferGen2: false)
                         return
                     } catch {
                         lastFailure = "\(label): \(error.localizedDescription)"
@@ -496,13 +542,18 @@ final class BleClient: NSObject, ObservableObject {
         return false
     }
 
-    private func runNinebotHandshakeAndDump() async throws {
+    private func runNinebotHandshakeAndDump(preferGen2: Bool = false) async throws {
         phase = .handshake
         statusMessage = "Ninebot Enc2: Handshake…"
 
         var succeeded = false
         var lastError: Error?
-        for gen in [ProtocolGen.gen3, ProtocolGen.gen2] {
+        // Max G3 / SHU: Gen2 (fw_data-Key) zuerst — Gen3-Nullkey scheitert und kann disconnecten.
+        let gens: [ProtocolGen] = preferGen2 ? [.gen2, .gen3] : [.gen3, .gen2]
+        for gen in gens {
+            guard peripheral != nil else {
+                throw BleError.notConnected
+            }
             do {
                 try await runHandshake(gen: gen)
                 protocolGen = gen
@@ -513,8 +564,8 @@ final class BleClient: NSObject, ObservableObject {
             } catch {
                 lastError = error
                 crypto = nil
-                if gen == .gen2 { break }
-                statusMessage = "Gen3 fehlgeschlagen, versuche Gen2…"
+                if gen == gens.last { break }
+                statusMessage = "\(gen.rawValue) fehlgeschlagen, versuche Alternative…"
                 phase = .handshake
             }
         }
@@ -552,20 +603,22 @@ final class BleClient: NSObject, ObservableObject {
         crypto = NbCrypto(gen: gen)
         guard let crypto else { throw BleError.encryptionFailed }
 
-        // Phase 1: PRE_COMM — key2 immer null/zeros; fw_data wirkt nur als Gen2-ECB-Input.
+        // Phase 1: PRE_COMM — Gen2: key2/ECB = fw_data (SHU/NinebotCrypto); Gen3: Nullen.
         let nameKey = Data((cryptoName.isEmpty ? btName : cryptoName).utf8)
         let prePlain = Nb.preComm(gen: gen)
 
         var preResp: Data?
         var lastPreError: Error?
-        // Docs: bis ~10 Retries á ~2s — schnelle Antworten sonst Race/Timeout.
-        for attempt in 1...8 {
+        // Weniger Spam: falsche Schlüssel/Pipes disconnecten sonst den Scooter.
+        let preAttempts = preferGen2StyleRetries(for: gen)
+        for attempt in 1...preAttempts {
+            guard peripheral != nil else { throw BleError.notConnected }
             crypto.resetSN()
             crypto.setKey(nameKey, nil)
             assembler.reset()
-            statusMessage = "Enc2 PRE_COMM (\(gen.rawValue), Versuch \(attempt)/8)…"
+            statusMessage = "Enc2 PRE_COMM (\(gen.rawValue), Versuch \(attempt)/\(preAttempts))…"
             do {
-                let resp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 2.5)
+                let resp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 2.0)
                 if resp == prePlain {
                     throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
                 }
@@ -573,7 +626,8 @@ final class BleClient: NSObject, ObservableObject {
                 break
             } catch {
                 lastPreError = error
-                try? await Task.sleep(nanoseconds: 200_000_000)
+                if case BleError.notConnected = error { throw error }
+                try? await Task.sleep(nanoseconds: 250_000_000)
             }
         }
 
@@ -607,7 +661,7 @@ final class BleClient: NSObject, ObservableObject {
             password = generatePassword(auth: authParam)
 
             let setPlain = Nb.setPwd(password!, gen: gen)
-            let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 10)
+            let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 8)
             guard let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue else {
                 throw BleError.handshakeFailed("Ungültige SET_PWD-Antwort")
             }
@@ -615,7 +669,12 @@ final class BleClient: NSObject, ObservableObject {
             if setParsed.index == 0 {
                 phase = .waitingButton
                 statusMessage = "Bitte Power-Taste am Scooter drücken…"
-                let retryResp = try await waitForButtonPress(crypto: crypto, gen: gen, timeout: 60)
+                let retryResp = try await waitForButtonPress(
+                    crypto: crypto,
+                    gen: gen,
+                    password: password!,
+                    timeout: 60
+                )
                 guard let retryParsed = Nb.parse(retryResp),
                       retryParsed.cmd == Nb.Cmd.setPwd.rawValue,
                       retryParsed.index == 1 else {
@@ -632,9 +691,24 @@ final class BleClient: NSObject, ObservableObject {
         // Phase 3: AUTH
         crypto.setKey(sessionPassword, authParam)
         let authPlain = Nb.auth(serialNumber: serialNumber, gen: gen)
-        let authResp = try await sendReceive(plain: authPlain, crypto: crypto, timeout: 5)
+        // SHU/Flasher: AUTH mehrfach senden bis OK
+        var authParsed: Nb.ParsedFrame?
+        for attempt in 1...6 {
+            guard peripheral != nil else { throw BleError.notConnected }
+            statusMessage = "Enc2 AUTH (Versuch \(attempt)/6)…"
+            do {
+                let authResp = try await sendReceive(plain: authPlain, crypto: crypto, timeout: 4)
+                if let parsed = Nb.parse(authResp), parsed.cmd == Nb.Cmd.auth.rawValue {
+                    authParsed = parsed
+                    break
+                }
+            } catch {
+                if case BleError.notConnected = error { throw error }
+                try? await Task.sleep(nanoseconds: 400_000_000)
+            }
+        }
 
-        guard let authParsed = Nb.parse(authResp), authParsed.cmd == Nb.Cmd.auth.rawValue else {
+        guard let authParsed else {
             throw BleError.handshakeFailed("Ungültige AUTH-Antwort")
         }
 
@@ -646,24 +720,41 @@ final class BleClient: NSObject, ObservableObject {
         statusMessage = "Authentifiziert (\(gen.rawValue))"
     }
 
-    private func waitForButtonPress(crypto: NbCrypto, gen: ProtocolGen, timeout: TimeInterval) async throws -> Data {
-        _ = gen
+    private func preferGen2StyleRetries(for gen: ProtocolGen) -> Int {
+        // Max G3 / Gen2: schnell und wenig Retries; Gen3-Probe nicht 8× spammen.
+        gen == .gen2 ? 5 : 3
+    }
+
+    private func waitForButtonPress(
+        crypto: NbCrypto,
+        gen: ProtocolGen,
+        password: Data,
+        timeout: TimeInterval
+    ) async throws -> Data {
         let deadline = Date().addingTimeInterval(timeout)
+        var lastSend = Date.distantPast
+        let setPlain = Nb.setPwd(password, gen: gen)
+
         while Date() < deadline {
-            do {
-                let frame = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
-                    pendingContinuation = continuation
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        if let pending = self.pendingContinuation {
-                            self.pendingContinuation = nil
-                            pending.resume(throwing: BleError.timeout)
-                        }
+            guard peripheral != nil else { throw BleError.notConnected }
+
+            // Wie SHU/Flasher: SET_PWD alle ~0,5 s erneut, bis Power-Taste OK liefert.
+            if Date().timeIntervalSince(lastSend) >= 0.5 {
+                lastSend = Date()
+                statusMessage = "Bitte Power-Taste am Scooter drücken…"
+                do {
+                    let resp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 0.9)
+                    if let parsed = Nb.parse(resp),
+                       parsed.cmd == Nb.Cmd.setPwd.rawValue,
+                       parsed.index == 1 {
+                        return resp
                     }
+                } catch {
+                    if case BleError.notConnected = error { throw error }
+                    // Timeout = Taste noch nicht gedrückt — weiter pollen.
                 }
-                return try crypto.decrypt(frame)
-            } catch {
-                continue
+            } else {
+                try? await Task.sleep(nanoseconds: 50_000_000)
             }
         }
         throw BleError.handshakeFailed("Timeout beim Warten auf Power-Taste")
@@ -1068,9 +1159,25 @@ extension BleClient: CBCentralManagerDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         Task { @MainActor in
+            // Pending Continuations fortsetzen — sonst hängt der Handshake ewig.
+            if let pending = pendingContinuation {
+                pendingContinuation = nil
+                pending.resume(throwing: BleError.notConnected)
+            }
+            if let connect = connectContinuation {
+                connectContinuation = nil
+                connect.resume(throwing: BleError.notConnected)
+            }
+            finishNotifyReady()
+
+            let wasActive = phase != .idle && phase != .done && phase != .failed
             resetSession()
-            if let error {
-                fail(error.localizedDescription)
+            if wasActive {
+                fail(
+                    "Scooter hat die Verbindung getrennt"
+                        + (error.map { " (\($0.localizedDescription))" } ?? "")
+                        + ". Scooter an lassen, nah dran bleiben und erneut verbinden."
+                )
             }
         }
     }
