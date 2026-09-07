@@ -634,13 +634,21 @@ struct ScooterDeviceCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(thumbName)
-                .resizable()
-                .scaledToFit()
+            HStack(spacing: 12) {
+            Group {
+                if device.looksLikeScooter || device.modelLabel != nil {
+                    Image(thumbName)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.title2)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
                 .frame(width: 64, height: 52)
                 .padding(6)
-                .background(Color.white.opacity(0.94))
+                .background(Color.white.opacity(device.looksLikeScooter || device.modelLabel != nil ? 0.94 : 0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
