@@ -94,12 +94,6 @@ struct ContentView: View {
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
-            Text("Scooter erscheinen oft nicht unter iPhone-Einstellungen → Bluetooth. Tippe „Scooter suchen“ — ScooterCheck listet BLE-Geräte wie SHU.")
-                .font(.footnote)
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 300)
-                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 36)
@@ -126,19 +120,10 @@ struct ContentView: View {
             Text(connectTitle)
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.white)
-            Text("Scooter eingeschaltet lassen. Bei Aufforderung einmal den Power-Knopf drücken.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.center)
             if ble.phase == .waitingButton {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "power").font(.title3)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Power-Knopf drücken").font(.subheadline.weight(.semibold))
-                        Text("Einmal am Scooter. Die App wartet auf die Freigabe.")
-                            .font(.footnote)
-                            .foregroundStyle(.black.opacity(0.7))
-                    }
+                    Text("Power-Knopf drücken").font(.subheadline.weight(.semibold))
                     Spacer(minLength: 0)
                 }
                 .foregroundStyle(.black)
@@ -186,20 +171,10 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
 
-            if ble.showOnlyLikelyScooters {
-                Text("Filter: nur klare Scooter-Namen/IDs (Ninebot, 1C…, Segway, Xiaomi) oder UART-Service. Nuki/TV/Displays erscheinen unter „Alle BLE“.")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
-            } else if listed.count > 1 {
-                Text("Alle BLE-Geräte in Reichweite. Scooter-Verdacht ist markiert. Bei Unsicherheit: Gerät wegschieben — Signal wird schwächer.")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
-            }
-
             if listed.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(ble.showOnlyLikelyScooters
-                         ? "Kein vermuteter Scooter in der gefilterten Liste (\(ble.devices.count) BLE-Geräte gesamt)."
+                         ? "Kein Scooter gefunden."
                          : "Keine Geräte.")
                         .font(.subheadline)
                         .foregroundStyle(.white)
@@ -417,14 +392,6 @@ struct ContentView: View {
                                 Text(p.shortLabel).tag(p)
                             }
                         }
-                    }
-                    Text("BLE-Stack wird automatisch erkannt (Ninebot Enc2 / Xiaomi 55 AA). Profil steuert nur die Soll-Werte und die Versuch-Reihenfolge.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    if !profile.usesNinebotEnc2 {
-                        Text("Xiaomi-Hinweis: Neuere Modelle mit 55 AB sind ggf. nicht auslesbar.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                     }
                 }
                 Section("Protokollverlauf") {
