@@ -287,7 +287,7 @@ enum TrackClassifier {
         ) { reading, _ in
             reading.rawRegisters.count >= 40
                 && (hasHiddenTuningRegister(reading) || mcuSerialMismatch(reading: reading)
-                    || (reading.speedLimitKmh ?? 0) >= 25)
+                    || (reading.speedLimitKmh ?? 0) >= SoftUnlockSettings.thresholdKmhSnapshot())
         },
         TrackPattern(
             id: "shu_dump.live.boards",
@@ -306,7 +306,7 @@ enum TrackClassifier {
             // Hash allein ist kein Tuning — nur leichte Stütze wenn andere Marker da sind.
             guard let hash = reading.evidenceSha256, hash.count == 64 else { return false }
             return hasHiddenTuningRegister(reading)
-                || (reading.speedLimitKmh ?? reading.speedRatedKmh ?? 0) >= 25
+                || (reading.speedLimitKmh ?? reading.speedRatedKmh ?? 0) >= SoftUnlockSettings.thresholdKmhSnapshot()
         },
         TrackPattern(
             id: "shu_dump.protocol.gen",
