@@ -221,6 +221,9 @@ final class BleClient: NSObject, ObservableObject {
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var notifyReadyFallback: CheckedContinuation<Void, Never>?
     private var pendingNotifyEnables = 0
+    /// Monoton steigend — verhindert, dass abgelaufene Timeout-Tasks den nächsten Request killen.
+    private var bleRequestSerial: UInt64 = 0
+    private var activeBleRequestSerial: UInt64 = 0
     /// Frames, die ankommen während kein sendReceive wartet (z. B. Power-Taste).
     private var incomingEncryptedFrames: [Data] = []
 
@@ -310,15 +313,20 @@ final class BleClient: NSObject, ObservableObject {
         let notifies = [ninebotNotify, xiaomiNotify].compactMap { $0 }
         guard !notifies.isEmpty else { return }
 
-        for char in notifies {
-            peripheral.setNotifyValue(false, for: char)
+        // Kein Disable/Enable-Tanz wenn Notify schon aktiv — das frisst Pairing-Frames.
+        let needEnable = notifies.filter { !$0.isNotifying }
+        if needEnable.isEmpty {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            assembler.reset()
+            xiaomiAssembler.reset()
+            incomingEncryptedFrames.removeAll(keepingCapacity: false)
+            return
         }
-        try? await Task.sleep(nanoseconds: 300_000_000)
 
-        pendingNotifyEnables = notifies.count
+        pendingNotifyEnables = needEnable.count
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             self.notifyReadyFallback = continuation
-            for char in notifies {
+            for char in needEnable {
                 peripheral.setNotifyValue(true, for: char)
             }
             Task { @MainActor in
@@ -330,7 +338,12 @@ final class BleClient: NSObject, ObservableObject {
         try? await Task.sleep(nanoseconds: 150_000_000)
         assembler.reset()
         xiaomiAssembler.reset()
-        pendingContinuation = nil
+        if let pending = pendingContinuation {
+            pendingContinuation = nil
+            activeBleRequestSerial = 0
+            pending.resume(throwing: BleError.timeout)
+        }
+        incomingEncryptedFrames.removeAll(keepingCapacity: false)
     }
 
     private func finishNotifyReady() {
@@ -668,10 +681,21 @@ final class BleClient: NSObject, ObservableObject {
                 crypto.resetSN()
                 crypto.setKey(nameKey, nil)
                 assembler.reset()
+                // Verspätete Antwort vom vorherigen Versuch?
+                if let early = takeQueuedPlain(crypto: crypto, expectedCmd: Nb.Cmd.preComm.rawValue) {
+                    preResp = early
+                    usedTarget = target
+                    break targetLoop
+                }
                 statusMessage = "Enc2 PRE_COMM (\(gen.rawValue), Board 0x\(String(format: "%02X", target.rawValue)), \(attempt)/\(preAttempts))…"
                 let prePlain = Nb.preComm(target: target, gen: gen)
                 do {
-                    let resp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 2.0)
+                    let resp = try await sendReceive(
+                        plain: prePlain,
+                        crypto: crypto,
+                        timeout: nonSNPairing ? 3.0 : 2.0,
+                        expectedCmd: Nb.Cmd.preComm.rawValue
+                    )
                     if resp == prePlain {
                         throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
                     }
@@ -681,7 +705,7 @@ final class BleClient: NSObject, ObservableObject {
                 } catch {
                     lastPreError = error
                     if case BleError.notConnected = error { throw error }
-                    try? await Task.sleep(nanoseconds: 200_000_000)
+                    try? await Task.sleep(nanoseconds: 250_000_000)
                 }
             }
         }
@@ -719,6 +743,13 @@ final class BleClient: NSObject, ObservableObject {
         // Phase 2: SET_PWD (if needed)
         var password = loadPassword()
 
+        // Lokales Passwort, Scooter ohne Bond (index==0) → AUTH scheitert und trennt oft.
+        if password != nil && !hasStoredPwd {
+            clearPassword()
+            password = nil
+            statusMessage = "Kein Scooter-Bond — neues Pairing (Power-Taste)…"
+        }
+
         if password == nil && hasStoredPwd {
             statusMessage = "Neues Pairing — gleich Power-Taste am Scooter drücken"
         }
@@ -742,7 +773,12 @@ final class BleClient: NSObject, ObservableObject {
             if !nonSNPairing {
                 let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
                 do {
-                    let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 3)
+                    let setResp = try await sendReceive(
+                        plain: setPlain,
+                        crypto: crypto,
+                        timeout: 3,
+                        expectedCmd: Nb.Cmd.setPwd.rawValue
+                    )
                     if let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue {
                         if setParsed.index == 1 {
                             setAccepted = true
@@ -760,7 +796,8 @@ final class BleClient: NSObject, ObservableObject {
                     crypto: crypto,
                     gen: gen,
                     password: password!,
-                    timeout: 60
+                    timeout: 60,
+                    preferPairingBoardOnly: nonSNPairing
                 )
                 guard let retryParsed = Nb.parse(retryResp),
                       retryParsed.cmd == Nb.Cmd.setPwd.rawValue,
@@ -773,11 +810,12 @@ final class BleClient: NSObject, ObservableObject {
         sessionPassword = password!
         savePassword(sessionPassword)
 
-        // Phase 3: AUTH
+        // Phase 3: AUTH — SET_PWD-Reste aus der Queue entfernen, sonst landet ACK im AUTH-Waiter.
         crypto.setKey(sessionPassword, authParam)
         if nonSNPairing {
             crypto.resetSN()
         }
+        flushQueuedCommands(crypto: crypto, cmds: [Nb.Cmd.setPwd.rawValue])
         let authPlain = Nb.auth(serialNumber: serialNumber, target: pairingBoard, gen: gen)
         var authParsed: Nb.ParsedFrame?
         for attempt in 1...6 {
@@ -786,8 +824,14 @@ final class BleClient: NSObject, ObservableObject {
             if nonSNPairing {
                 crypto.resetSN()
             }
+            flushQueuedCommands(crypto: crypto, cmds: [Nb.Cmd.setPwd.rawValue])
             do {
-                let authResp = try await sendReceive(plain: authPlain, crypto: crypto, timeout: 4)
+                let authResp = try await sendReceive(
+                    plain: authPlain,
+                    crypto: crypto,
+                    timeout: 4,
+                    expectedCmd: Nb.Cmd.auth.rawValue
+                )
                 if let parsed = Nb.parse(authResp), parsed.cmd == Nb.Cmd.auth.rawValue {
                     authParsed = parsed
                     break
@@ -825,13 +869,19 @@ final class BleClient: NSObject, ObservableObject {
         crypto: NbCrypto,
         gen: ProtocolGen,
         password: Data,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        preferPairingBoardOnly: Bool = false
     ) async throws -> Data {
         let deadline = Date().addingTimeInterval(timeout)
         var lastSend = Date.distantPast
-        // SET_PWD an Pairing-Board und Legacy — Scooter antwortet oft nur auf eines.
-        let targets: [Nb.Board] = [pairingBoard, .ble, .bleLegacy]
+        // Max G3: nur Pairing-Board — weniger TX-Flood / Disconnects.
+        // Sonst Pairing + Legacy rotieren.
+        let targets: [Nb.Board] = preferPairingBoardOnly
+            ? [pairingBoard]
+            : Array(Set([pairingBoard, .ble, .bleLegacy]))
         var targetIndex = 0
+        var sendInterval: TimeInterval = preferPairingBoardOnly ? 0.9 : 0.45
+        var sendCount = 0
 
         statusMessage = "Bitte jetzt die Power-Taste am Scooter drücken…"
         // Queue nicht leeren: ACK kann schon zwischen erstem SET_PWD und hier angekommen sein.
@@ -844,9 +894,12 @@ final class BleClient: NSObject, ObservableObject {
                 return accepted
             }
 
-            // Alle ~0,45 s SET_PWD feuern (ohne Request/Response-Fenster zu blockieren).
-            if Date().timeIntervalSince(lastSend) >= 0.45 {
+            if Date().timeIntervalSince(lastSend) >= sendInterval {
                 lastSend = Date()
+                sendCount += 1
+                if preferPairingBoardOnly, sendCount == 4 {
+                    sendInterval = 1.2
+                }
                 let target = targets[targetIndex % targets.count]
                 targetIndex += 1
                 statusMessage = "Power-Taste drücken… (Board 0x\(String(format: "%02X", target.rawValue)))"
@@ -861,25 +914,80 @@ final class BleClient: NSObject, ObservableObject {
             }
 
             // Notify-Zeitfenster: Frames landen in der Queue via deliverFrame.
-            try? await Task.sleep(nanoseconds: 120_000_000)
+            try? await Task.sleep(nanoseconds: 150_000_000)
         }
         throw BleError.handshakeFailed("Timeout beim Warten auf Power-Taste — Taste länger halten oder Scooter neu starten")
     }
 
     private func drainSetPwdAccepted(crypto: NbCrypto) throws -> Data? {
-        var remaining: [Data] = []
-        defer { incomingEncryptedFrames = remaining }
-        while !incomingEncryptedFrames.isEmpty {
-            let frame = incomingEncryptedFrames.removeFirst()
-            if let plain = try? crypto.decrypt(frame),
+        // Snapshot — kein defer-Overwrite, sonst gehen ACKs verloren, die währenddessen ankommen.
+        let snapshot = incomingEncryptedFrames
+        guard !snapshot.isEmpty else { return nil }
+
+        var kept: [Data] = []
+        var accepted: Data?
+        for frame in snapshot {
+            if accepted == nil,
+               let plain = try? crypto.decrypt(frame),
                let parsed = Nb.parse(plain),
                parsed.cmd == Nb.Cmd.setPwd.rawValue,
                parsed.index == 1 {
-                return plain
+                accepted = plain
+                continue
             }
-            // Andere Frames verwerfen (Index 0 / Noise), damit die Queue nicht volläuft.
+            // Index-0 / Noise verwerfen; unbekannte Frames behalten wir nicht (Queue-Schutz).
+            if let plain = try? crypto.decrypt(frame),
+               let parsed = Nb.parse(plain),
+               parsed.cmd == Nb.Cmd.setPwd.rawValue {
+                continue
+            }
+            kept.append(frame)
         }
-        return nil
+
+        // Frames, die nach dem Snapshot ankamen, anhängen.
+        let arrivedDuringDrain = incomingEncryptedFrames.suffix(
+            max(0, incomingEncryptedFrames.count - snapshot.count)
+        )
+        incomingEncryptedFrames = kept + Array(arrivedDuringDrain)
+        return accepted
+    }
+
+    /// Entfernt Queue-Frames bestimmter CMDs (z. B. SET_PWD vor AUTH).
+    private func flushQueuedCommands(crypto: NbCrypto, cmds: Set<UInt8>) {
+        let snapshot = incomingEncryptedFrames
+        guard !snapshot.isEmpty else { return }
+        var kept: [Data] = []
+        for frame in snapshot {
+            if let plain = try? crypto.decrypt(frame),
+               let parsed = Nb.parse(plain),
+               cmds.contains(parsed.cmd) {
+                continue
+            }
+            kept.append(frame)
+        }
+        let arrived = incomingEncryptedFrames.suffix(max(0, incomingEncryptedFrames.count - snapshot.count))
+        incomingEncryptedFrames = kept + Array(arrived)
+    }
+
+    /// Nimmt ein passendes Klartext-Frame aus der RX-Queue (Non-SN-sicher).
+    private func takeQueuedPlain(crypto: NbCrypto, expectedCmd: UInt8) -> Data? {
+        let snapshot = incomingEncryptedFrames
+        guard !snapshot.isEmpty else { return nil }
+        var kept: [Data] = []
+        var hit: Data?
+        for frame in snapshot {
+            if hit == nil,
+               let plain = try? crypto.decrypt(frame),
+               let parsed = Nb.parse(plain),
+               parsed.cmd == expectedCmd {
+                hit = plain
+                continue
+            }
+            kept.append(frame)
+        }
+        let arrived = incomingEncryptedFrames.suffix(max(0, incomingEncryptedFrames.count - snapshot.count))
+        incomingEncryptedFrames = kept + Array(arrived)
+        return hit
     }
 
     // MARK: - Diagnostic dump
@@ -1033,11 +1141,27 @@ final class BleClient: NSObject, ObservableObject {
 
     // MARK: - Transport
 
-    private func sendReceive(plain: Data, crypto: NbCrypto, timeout: TimeInterval) async throws -> Data {
+    private func sendReceive(
+        plain: Data,
+        crypto: NbCrypto,
+        timeout: TimeInterval,
+        expectedCmd: UInt8? = nil
+    ) async throws -> Data {
+        if let expectedCmd, let queued = takeQueuedPlain(crypto: crypto, expectedCmd: expectedCmd) {
+            return queued
+        }
         let encrypted = try crypto.encrypt(plain)
         // Continuation VOR dem Write setzen — sonst gehen schnelle Antworten verloren.
         let encryptedResp = try await requestResponse(encrypted, timeout: timeout)
-        return try crypto.decrypt(encryptedResp)
+        let decrypted = try crypto.decrypt(encryptedResp)
+        if let expectedCmd,
+           let parsed = Nb.parse(decrypted),
+           parsed.cmd != expectedCmd {
+            // Falsches CMD (z. B. SET_PWD während AUTH) → Queue, Caller retry't.
+            incomingEncryptedFrames.insert(encryptedResp, at: 0)
+            throw BleError.timeout
+        }
+        return decrypted
     }
 
     private func sendReceiveXiaomi(_ frame: Data, timeout: TimeInterval) async throws -> Data {
@@ -1045,23 +1169,30 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     private func requestResponse(_ data: Data, timeout: TimeInterval) async throws -> Data {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+        bleRequestSerial += 1
+        let requestID = bleRequestSerial
+        activeBleRequestSerial = requestID
+
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
             pendingContinuation = continuation
             Task { @MainActor in
                 do {
                     try await self.write(data)
                 } catch {
-                    if let pending = self.pendingContinuation {
-                        self.pendingContinuation = nil
-                        pending.resume(throwing: error)
-                    }
+                    guard self.activeBleRequestSerial == requestID,
+                          let pending = self.pendingContinuation else { return }
+                    self.pendingContinuation = nil
+                    self.activeBleRequestSerial = 0
+                    pending.resume(throwing: error)
                     return
                 }
                 try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                if let pending = self.pendingContinuation {
-                    self.pendingContinuation = nil
-                    pending.resume(throwing: BleError.timeout)
-                }
+                // Nur eigener Request — kein Timeout auf den Nachfolger.
+                guard self.activeBleRequestSerial == requestID,
+                      let pending = self.pendingContinuation else { return }
+                self.pendingContinuation = nil
+                self.activeBleRequestSerial = 0
+                pending.resume(throwing: BleError.timeout)
             }
         }
     }
@@ -1095,6 +1226,7 @@ final class BleClient: NSObject, ObservableObject {
     private func deliverFrame(_ encrypted: Data) {
         if let continuation = pendingContinuation {
             pendingContinuation = nil
+            activeBleRequestSerial = 0
             continuation.resume(returning: encrypted)
             return
         }
@@ -1174,6 +1306,7 @@ final class BleClient: NSObject, ObservableObject {
         connectContinuation = nil
         notifyReadyFallback = nil
         pendingNotifyEnables = 0
+        activeBleRequestSerial = 0
         incomingEncryptedFrames.removeAll(keepingCapacity: false)
     }
 
