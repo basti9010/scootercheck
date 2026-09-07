@@ -223,6 +223,9 @@ enum ProtocolPDF {
             ("MCU-Seriennummer", result.reading.serialMcu ?? "—"),
             ("Kilometerstand", Format.km.format(result.reading.odometerKm)),
             ("MCU-Firmware", result.reading.fwMcu ?? "—"),
+            ("BLE-Firmware", result.reading.fwBle ?? "—"),
+            ("VCU-Firmware", result.reading.fwVcu ?? "—"),
+            ("BMS-Firmware", result.reading.fwBms ?? "—"),
             ("Protokoll-Generation", Format.num.format(result.reading.protocolGen))
         ]
         for (label, value) in rows {
@@ -237,6 +240,8 @@ enum ProtocolPDF {
         let text = """
         Die Auslese erfolgte über das Bluetooth-LE-Diagnoseprotokoll des Herstellers. \
         Ausgelesene Register werden mit typgenehmigungsrelevanten Sollwerten verglichen. \
+        Firmware-Module (MCU, BLE, VCU, BMS) werden als Versionsregister ausgelesen und — \
+        soweit für das Modell hinterlegt — mit öffentlich bekannten Serienständen abgeglichen. \
         Mustererkennung (Serienkonfiguration, Web-App, SHU) basiert auf definierten \
         Heuristiken. Alle Rohdaten werden im Anhang IV.a und als JSON-Anlage bereitgestellt.
         """
@@ -250,11 +255,34 @@ enum ProtocolPDF {
 
         let summaryFacts = result.facts.filter {
             [.speed, .serial, .firmware, .flags].contains($0.group)
-        }.prefix(18)
+        }.prefix(22)
 
         for fact in summaryFacts {
             cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 6)
             cursor = drawFactRow(fact, at: cursor)
+        }
+
+        cursor = ensureSpace(context: context, y: cursor, needed: 80)
+        cursor += 8
+        cursor = drawSubheading("IV.b Firmware-Analyse", at: cursor)
+        cursor = drawText(
+            "Modulversionen, Katalogstatus und Rohhex der Versionsregister.",
+            at: cursor,
+            font: bodyFont(size: 10),
+            color: Theme.UI.muted
+        )
+        let fwFacts = result.facts.filter { $0.group == .firmware }
+        for fact in fwFacts {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2 + 4)
+            cursor = drawKeyValue(fact.title, value: "\(fact.auslesewert) · \(fact.bewertung)", at: cursor)
+            if let raw = fact.raw, !raw.isEmpty {
+                cursor = drawText(
+                    "  Nachweis: \(raw)",
+                    at: cursor,
+                    font: monoFont(size: 8),
+                    color: Theme.UI.muted
+                )
+            }
         }
         return cursor + sectionGap
     }

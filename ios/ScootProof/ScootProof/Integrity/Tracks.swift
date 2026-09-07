@@ -267,12 +267,9 @@ enum TrackClassifier {
             weight: 0.2,
             description: "Firmware nicht im Serienkatalog"
         ) { reading, profile in
-            guard let catalog = StockFirmwareCatalog.entry(for: profile) else { return false }
-            let matches = [
-                StockFirmwareCatalog.classify(reading.fwMcu, in: catalog.mcu),
-                StockFirmwareCatalog.classify(reading.fwVcu, in: catalog.vcu),
-                StockFirmwareCatalog.classify(reading.fwBle, in: catalog.ble)
-            ]
+            guard StockFirmwareCatalog.entry(for: profile) != nil else { return false }
+            let matches = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
+                .components.map(\.match)
             return matches.contains(.notInCatalog) || matches.contains(.customMarked)
         },
         TrackPattern(

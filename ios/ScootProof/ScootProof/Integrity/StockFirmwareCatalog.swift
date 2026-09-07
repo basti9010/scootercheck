@@ -2,6 +2,7 @@ import Foundation
 
 /// Bekannte Serien-Firmware-Versionen (öffentliche Listen / Segway-Changelogs).
 /// Dient der Panic-resistenten Unterscheidung Serie vs. unbekannte/Custom-Builds.
+/// Quellen: Joey's Wiki (Max G3 Firmware), Segway-App-Changelogs, beobachtete Serienstände.
 enum StockFirmwareCatalog {
     struct Entry: Sendable {
         let mcu: Set<String>
@@ -41,11 +42,23 @@ enum StockFirmwareCatalog {
         return v
     }
 
-    enum Match: Sendable {
+    enum Match: Sendable, Equatable {
         case unknownComponent
         case listedStock
         case notInCatalog
         case customMarked
+        /// Version ausgelesen, aber für dieses Modul/Modell kein Serienkatalog.
+        case documentedOnly
+
+        var label: String {
+            switch self {
+            case .unknownComponent: return "nicht ausgelesen"
+            case .listedStock: return "im Serienkatalog"
+            case .notInCatalog: return "nicht im Serienkatalog"
+            case .customMarked: return "Custom-/Mod-Kennung"
+            case .documentedOnly: return "dokumentiert (kein Katalog)"
+            }
+        }
     }
 
     static func classify(_ version: String?, in listed: Set<String>) -> Match {
@@ -62,5 +75,100 @@ enum StockFirmwareCatalog {
             return .listedStock
         }
         return .notInCatalog
+    }
+
+    /// Komponenten-Analyse für Protokoll / Gesamtbewertung.
+    struct ComponentResult: Sendable, Equatable {
+        let id: String
+        let title: String
+        let version: String?
+        let rawHex: String?
+        let match: Match
+        let listed: Set<String>?
+    }
+
+    struct Analysis: Sendable, Equatable {
+        let components: [ComponentResult]
+        let hasCatalog: Bool
+
+        var readCount: Int { components.filter { $0.version != nil }.count }
+        var customCount: Int { components.filter { $0.match == .customMarked }.count }
+        var notInCatalogCount: Int { components.filter { $0.match == .notInCatalog }.count }
+        var stockCount: Int { components.filter { $0.match == .listedStock }.count }
+
+        var overallStatus: FactStatus {
+            if readCount == 0 { return .nichtFeststellbar }
+            if customCount > 0 { return .erheblichAbweichend }
+            if notInCatalogCount > 0 { return .abweichend }
+            if hasCatalog && stockCount > 0 { return .regelkonform }
+            // Ohne Katalog: Versionen dokumentiert, aber nicht gegen Serie prüfbar.
+            return .regelkonform
+        }
+
+        var overallBewertung: String {
+            if readCount == 0 { return "Keine Firmware-Versionen ausgelesen" }
+            if customCount > 0 {
+                return "Custom-/Mod-Firmware-Kennung (\(customCount) Komponente\(customCount == 1 ? "" : "n"))"
+            }
+            if notInCatalogCount > 0 {
+                return "\(notInCatalogCount) Version\(notInCatalogCount == 1 ? "" : "en") nicht im Serienkatalog"
+            }
+            if hasCatalog {
+                return "Alle ausgelesenen Versionen im Serienkatalog (\(stockCount))"
+            }
+            return "Versionen dokumentiert (kein Serienkatalog für dieses Modell)"
+        }
+
+        var summaryLine: String {
+            components.compactMap { c in
+                guard let v = c.version else { return nil }
+                return "\(c.title.replacingOccurrences(of: "-Firmware", with: ""))=\(v)"
+            }.joined(separator: ", ")
+        }
+    }
+
+    static func analyze(reading: IntegrityReading, profile: ScooterProfile) -> Analysis {
+        let catalog = entry(for: profile)
+        let specs: [(String, String, String?, Set<String>?, [String])] = [
+            ("fw.mcu", "MCU-Firmware", reading.fwMcu, catalog?.mcu, ["g3_mcu_fw", "g3_mcu_fw_fb", "mcu_fw", "dis_mcu_fw"]),
+            ("fw.ble", "BLE-Firmware", reading.fwBle, catalog?.ble, ["g3_ble_fw", "ble_fw"]),
+            ("fw.bms", "BMS-Firmware", reading.fwBms, catalog?.bms, ["g3_bms_fw", "bms_fw"]),
+            ("fw.vcu", "VCU-Firmware", reading.fwVcu, catalog?.vcu, ["g3_vcu_fw4", "g3_vcu_fw", "vcu_fw"]),
+            ("fw.esc", "ESC-Firmware", reading.fwEsc, nil, ["dis_ecu_fw", "dis_fw"])
+        ]
+
+        let components = specs.map { id, title, version, listed, rawNames in
+            let match: Match = {
+                if let listed { return classify(version, in: listed) }
+                guard let version, !version.isEmpty else { return .unknownComponent }
+                if TrackClassifier.matchesFwRegex(version, regex: TrackClassifier.customFwRegex)
+                    || TrackClassifier.matchesFwRegex(version, regex: TrackClassifier.shuFwRegex) {
+                    return .customMarked
+                }
+                if TrackClassifier.matchesFwRegex(version, regex: TrackClassifier.webappFwRegex) {
+                    return .customMarked
+                }
+                return .documentedOnly
+            }()
+            return ComponentResult(
+                id: id,
+                title: title,
+                version: version,
+                rawHex: rawHex(for: rawNames, in: reading),
+                match: match,
+                listed: listed
+            )
+        }
+
+        return Analysis(components: components, hasCatalog: catalog != nil)
+    }
+
+    private static func rawHex(for names: [String], in reading: IntegrityReading) -> String? {
+        for name in names {
+            if let reg = reading.rawRegisters.last(where: { $0.name == name }), !reg.valueHex.isEmpty {
+                return reg.valueHex
+            }
+        }
+        return nil
     }
 }

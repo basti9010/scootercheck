@@ -336,50 +336,65 @@ enum IntegrityAnalyzer {
 
     private static func buildFirmwareFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
-        let catalog = StockFirmwareCatalog.entry(for: profile)
-        let stockHint = catalog == nil
-            ? "Werkseitiges Muster (z. B. x.y.z_DE)"
-            : "Bekannte Serie (\(profile.shortLabel))"
+        let analysis = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
+        let stockHint = analysis.hasCatalog
+            ? "Bekannte Serie (\(profile.shortLabel))"
+            : "Werkseitiges Muster (z. B. x.y.z_DE)"
 
-        let components: [(String, String, String?, Set<String>?)] = [
-            ("fw.mcu", "MCU-Firmware", reading.fwMcu, catalog?.mcu),
-            ("fw.ble", "BLE-Firmware", reading.fwBle, catalog?.ble),
-            ("fw.bms", "BMS-Firmware", reading.fwBms, catalog?.bms),
-            ("fw.vcu", "VCU-Firmware", reading.fwVcu, catalog?.vcu),
-            ("fw.esc", "ESC-Firmware", reading.fwEsc, nil)
-        ]
+        facts.append(MeasuredFact(
+            id: "fw.analysis",
+            group: .firmware,
+            title: "Firmware-Analyse (Gesamt)",
+            auslesewert: analysis.summaryLine.isEmpty ? "—" : analysis.summaryLine,
+            sollwert: analysis.hasCatalog ? "Alle Module im Serienkatalog" : "Dokumentierte Serienversionen",
+            status: analysis.overallStatus,
+            bewertung: analysis.overallBewertung,
+            erlaeuterung: "Lesende Auswertung der Modul-Firmware (MCU/BLE/BMS/VCU) inkl. Rohwert und Abgleich mit öffentlich bekannten Serienständen. Kein Flash/Dump der Binary — nur Versionsregister. Custom-FW kann Versionen fälschen; dann zählen persistente Marker.",
+            raw: [
+                "read=\(analysis.readCount)",
+                "stock=\(analysis.stockCount)",
+                "miss=\(analysis.notInCatalogCount)",
+                "custom=\(analysis.customCount)"
+            ].joined(separator: ";")
+        ))
 
-        for (id, title, value, listed) in components {
-            let custom = value.map { TrackClassifier.matchesFwRegex($0, regex: TrackClassifier.customFwRegex) } ?? false
+        for component in analysis.components {
+            let value = component.version
             let webapp = value.map { TrackClassifier.matchesFwRegex($0, regex: TrackClassifier.webappFwRegex) } ?? false
-            let shu = value.map { TrackClassifier.matchesFwRegex($0, regex: TrackClassifier.shuFwRegex) } ?? false
-            let match = listed.map { StockFirmwareCatalog.classify(value, in: $0) } ?? .unknownComponent
 
             let status: FactStatus = {
                 if value == nil { return .nichtFeststellbar }
-                if shu || custom || match == .customMarked { return .erheblichAbweichend }
-                if webapp { return .abweichend }
-                if match == .notInCatalog { return .abweichend }
-                return .regelkonform
+                switch component.match {
+                case .customMarked: return .erheblichAbweichend
+                case .notInCatalog: return .abweichend
+                case .listedStock, .documentedOnly: return .regelkonform
+                case .unknownComponent:
+                    return webapp ? .abweichend : .regelkonform
+                }
             }()
 
-            var bewertung = "Serienmäßig"
-            if shu || match == .customMarked { bewertung = "Custom-/SHU-Kennung" }
-            else if webapp { bewertung = "Web-App-Kennung" }
-            else if custom { bewertung = "Custom-Firmware" }
-            else if match == .notInCatalog { bewertung = "Nicht in Serienkatalog" }
-            else if match == .listedStock { bewertung = "Im Serienkatalog" }
+            var bewertung = component.match.label.prefix(1).uppercased() + component.match.label.dropFirst()
+            if webapp && component.match != .customMarked { bewertung = "Web-App-Kennung" }
+
+            let hexNote = component.rawHex.map { " Rohhex \($0)." } ?? ""
+            let catalogNote: String = {
+                guard let listed = component.listed, !listed.isEmpty else {
+                    return "Kein Modul-Katalog hinterlegt — Version nur dokumentiert."
+                }
+                let sample = listed.sorted().prefix(4).joined(separator: ", ")
+                return "Serienkatalog u. a.: \(sample)\(listed.count > 4 ? ", …" : "")."
+            }()
 
             facts.append(MeasuredFact(
-                id: id,
+                id: component.id,
                 group: .firmware,
-                title: title,
+                title: component.title,
                 auslesewert: value ?? "—",
                 sollwert: stockHint,
                 status: status,
                 bewertung: bewertung,
-                erlaeuterung: "Vergleich mit bekannten Serienständen. Custom-FW kann Versionen fälschen — dann zählen persistente Marker (Region, Limit, Gänge).",
-                raw: value
+                erlaeuterung: "Versionsregister ausgelesen und mit Serienkatalog verglichen.\(hexNote) \(catalogNote)",
+                raw: [value, component.rawHex].compactMap { $0 }.joined(separator: "|")
             ))
         }
 
@@ -611,15 +626,9 @@ enum IntegrityAnalyzer {
         if TrackClassifier.hasCustomFirmware(reading) || reading.fwAppCustom == true {
             markers.append("Custom-FW")
         }
-        if let catalog = StockFirmwareCatalog.entry(for: profile) {
-            let comps = [
-                StockFirmwareCatalog.classify(reading.fwMcu, in: catalog.mcu),
-                StockFirmwareCatalog.classify(reading.fwVcu, in: catalog.vcu),
-                StockFirmwareCatalog.classify(reading.fwBle, in: catalog.ble)
-            ]
-            if comps.contains(.customMarked) { markers.append("FW-Kennung") }
-            else if comps.contains(.notInCatalog) { markers.append("FW außer Katalog") }
-        }
+        let fw = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
+        if fw.customCount > 0 { markers.append("FW-Kennung") }
+        else if fw.notInCatalogCount > 0 { markers.append("FW außer Katalog") }
 
         let status: FactStatus
         let bewertung: String
@@ -858,6 +867,20 @@ enum IntegrityAnalyzer {
                 detail: persistent.bewertung + " — Soft-Unlock/Panic allein reicht zum Verstecken nicht.",
                 relatedFactIds: [persistent.id],
                 trackHint: .shu
+            ))
+        }
+
+        if let fw = facts.first(where: {
+            $0.id == "fw.analysis" && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+        }) {
+            let related = facts.filter { $0.group == .firmware && $0.status != .regelkonform }.map(\.id)
+            findings.append(Finding(
+                id: "finding.firmware.analysis",
+                severity: fw.status,
+                title: "Firmware-Analyse auffällig",
+                detail: fw.bewertung + " — Modulversionen und Katalogabgleich sind im Protokoll dokumentiert.",
+                relatedFactIds: related.isEmpty ? [fw.id] : related,
+                trackHint: trackMatch.trackId
             ))
         }
 
