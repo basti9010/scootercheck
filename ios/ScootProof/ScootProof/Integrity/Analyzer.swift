@@ -1061,56 +1061,6 @@ enum IntegrityAnalyzer {
         return findings
     }
 
-    // MARK: - Scoring (legacy helpers retained for demos / fallbacks)
-
-    private static func computeScore(facts: [MeasuredFact], trackMatch: TrackMatch) -> Int {
-        // Bevorzugt Evidenzklassen, falls gesetzt.
-        var score = 100
-        var penalized = Set<String>()
-        for fact in facts {
-            if let cls = fact.evidenceClass, penalized.insert(fact.id).inserted {
-                score -= cls.scorePenalty
-                continue
-            }
-            switch fact.status {
-            case .regelkonform, .nichtFeststellbar:
-                break
-            case .abweichend:
-                score -= 4
-            case .erheblichAbweichend:
-                score -= 12
-            }
-        }
-
-        switch trackMatch.trackId {
-        case .stock:
-            score = min(100, score + 5)
-        case .webapp:
-            score -= 8
-        case .shu:
-            score -= 12
-        case .shuDump:
-            score -= 18
-        case .unknown:
-            break
-        }
-
-        return min(100, max(0, score))
-    }
-
-    private static func verdictFor(score: Int, facts: [MeasuredFact], trackMatch: TrackMatch) -> VerdictLevel {
-        // Legacy: nicht mehr primär genutzt — Evidenzmatrix entscheidet.
-        let nachweis = facts.filter { $0.evidenceClass == .nachweis }.count
-        let indiz = facts.filter { $0.evidenceClass == .indiz }.count
-        if nachweis >= 1 { return .tuned }
-        if trackMatch.trackId == .shuDump && indiz >= 1 { return .tuned }
-        if score < 40 && indiz >= 2 { return .tuned }
-        if !facts.filter({ $0.status == .abweichend || $0.status == .erheblichAbweichend }).isEmpty || score < 85 {
-            return .watch
-        }
-        return .stock
-    }
-
     // MARK: - Evidence matrix integration
 
     private static func blendVerdict(
