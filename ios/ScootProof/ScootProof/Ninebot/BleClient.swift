@@ -370,7 +370,7 @@ final class BleClient: NSObject, ObservableObject {
                 return
             }
 
-            clearPassword()
+            // Passwort behalten — sonst erzwungenes Re-Pairing und Disconnects.
             phase = .detecting
             statusMessage = "Max G3: Enc2 über Nordic-UART…"
             activateEnc2(useNordicUART: true)
@@ -550,7 +550,8 @@ final class BleClient: NSObject, ObservableObject {
                 throw BleError.notConnected
             }
             do {
-                try await runHandshake(gen: gen)
+                // Max G3 / Flasher: Pairing komplett Non-SN (kein startSN nach PRE_COMM).
+                try await runHandshake(gen: gen, nonSNPairing: preferGen2)
                 protocolGen = gen
                 detectedStack = .ninebotEnc2
                 activeStack = .ninebotEnc2
@@ -594,7 +595,7 @@ final class BleClient: NSObject, ObservableObject {
 
     // MARK: - Handshake
 
-    private func runHandshake(gen: ProtocolGen) async throws {
+    private func runHandshake(gen: ProtocolGen, nonSNPairing: Bool = false) async throws {
         crypto = NbCrypto(gen: gen)
         guard let crypto else { throw BleError.encryptionFailed }
 
@@ -653,28 +654,51 @@ final class BleClient: NSObject, ObservableObject {
         }
 
         crypto.setAuthParam(authParam)
-        crypto.startSN()
+        // Max G3 (offizieller App-/Flasher-Pfad): nach PRE_COMM im Non-SN bleiben.
+        // Klassisches NinebotCrypto/SHU: SN-Modus für SET_PWD/AUTH.
+        if nonSNPairing {
+            crypto.resetSN()
+        } else {
+            crypto.startSN()
+        }
 
         // Phase 2: SET_PWD (if needed)
         var password = loadPassword()
 
         if password == nil && hasStoredPwd {
-            statusMessage = "Gespeichertes Passwort fehlt — neues Pairing nötig"
+            statusMessage = "Neues Pairing — gleich Power-Taste am Scooter drücken"
         }
 
         if password == nil {
             crypto.setKey(nameKey, authParam)
-            password = generatePassword(auth: authParam)
-
-            let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
-            let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 8)
-            guard let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue else {
-                throw BleError.handshakeFailed("Ungültige SET_PWD-Antwort")
+            // Stabiles App-Key-Material wie Max-G3-Flasher (0x00…0x0F), nicht jedes Mal neu random.
+            if nonSNPairing {
+                password = Data(0..<16)
+            } else {
+                password = generatePassword(auth: authParam)
             }
 
-            if setParsed.index == 0 {
-                phase = .waitingButton
-                statusMessage = "Bitte Power-Taste am Scooter drücken…"
+            phase = .waitingButton
+            statusMessage = "Bitte jetzt die Power-Taste am Scooter drücken…"
+
+            let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
+            // Erstes SET_PWD; bei Index 0 weiter pollen (Flasher-Stil).
+            var setAccepted = false
+            do {
+                let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 3)
+                if let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue {
+                    if setParsed.index == 1 {
+                        setAccepted = true
+                    } else if setParsed.index != 0 {
+                        throw BleError.handshakeFailed("SET_PWD abgelehnt")
+                    }
+                }
+            } catch {
+                if case BleError.notConnected = error { throw error }
+                // Timeout → Button-Wait
+            }
+
+            if !setAccepted {
                 let retryResp = try await waitForButtonPress(
                     crypto: crypto,
                     gen: gen,
@@ -686,8 +710,6 @@ final class BleClient: NSObject, ObservableObject {
                       retryParsed.index == 1 else {
                     throw BleError.handshakeFailed("SET_PWD abgelehnt (Taste nicht gedrückt?)")
                 }
-            } else if setParsed.index != 1 {
-                throw BleError.handshakeFailed("SET_PWD abgelehnt")
             }
         }
 
@@ -696,11 +718,17 @@ final class BleClient: NSObject, ObservableObject {
 
         // Phase 3: AUTH
         crypto.setKey(sessionPassword, authParam)
+        if nonSNPairing {
+            crypto.resetSN()
+        }
         let authPlain = Nb.auth(serialNumber: serialNumber, target: pairingBoard, gen: gen)
         var authParsed: Nb.ParsedFrame?
         for attempt in 1...6 {
             guard peripheral != nil else { throw BleError.notConnected }
             statusMessage = "Enc2 AUTH (Versuch \(attempt)/6)…"
+            if nonSNPairing {
+                crypto.resetSN()
+            }
             do {
                 let authResp = try await sendReceive(plain: authPlain, crypto: crypto, timeout: 4)
                 if let parsed = Nb.parse(authResp), parsed.cmd == Nb.Cmd.auth.rawValue {
@@ -720,6 +748,13 @@ final class BleClient: NSObject, ObservableObject {
         if authParsed.index != 1 {
             clearPassword()
             throw BleError.handshakeFailed("AUTH abgelehnt — Passwort gelöscht")
+        }
+
+        // Nach erfolgreichem Pairing: Max G3 oft weiter Non-SN; sonst SN für Register.
+        if nonSNPairing {
+            crypto.resetSN()
+        } else {
+            crypto.startSN()
         }
 
         statusMessage = "Authentifiziert (\(gen.rawValue), Board 0x\(String(format: "%02X", pairingBoard.rawValue)))"
