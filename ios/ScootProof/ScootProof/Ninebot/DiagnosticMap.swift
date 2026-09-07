@@ -120,61 +120,37 @@ enum DiagnosticMap {
         Spec(id: "bms_g3_sn", board: .bmsG3, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
     ]
 
-    /// Max G3: Limits auf den Boards, die live antworten (VCU/DIS/MCU) — klassische G30-Map ist oft tot.
+    /// Max G3: Limits/Speed auf VCU laut Segway-Config 10258 (nicht G30-DIS-Map).
     private static let g3LimitFields: [Spec] = [
-        Spec(id: "vcu_g3_limit", board: .vcuG3, register: Nb.Register.speedLimit, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_rated", board: .vcuG3, register: Nb.Register.ratedSpeed, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_safe", board: .vcuG3, register: Nb.Register.speedSafeLock, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_max", board: .vcuG3, register: Nb.Register.mcuMaxSpeed, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_gear", board: .vcuG3, register: Nb.Register.gearTopSpeed, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_cfg", board: .vcuG3, register: 0x74, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_g1", board: .vcuG3, register: 0x7E, readLen: 2, category: .limit),
-        Spec(id: "vcu_g3_g2", board: .vcuG3, register: 0x7F, readLen: 2, category: .limit),
-        Spec(id: "dis_limit", board: .dis, register: Nb.Register.speedLimit, readLen: 2, category: .limit),
-        Spec(id: "dis_rated", board: .dis, register: Nb.Register.ratedSpeed, readLen: 2, category: .limit),
-        Spec(id: "mcu_g3_limit", board: .mcuG3, register: Nb.Register.speedLimit, readLen: 2, category: .limit),
-        Spec(id: "mcu_g3_rated", board: .mcuG3, register: Nb.Register.ratedSpeed, readLen: 2, category: .limit),
-        Spec(id: "mcu_g3_max", board: .mcuG3, register: Nb.Register.mcuMaxSpeed, readLen: 2, category: .limit),
-        Spec(id: "mcu_g3_safe", board: .mcuG3, register: Nb.Register.speedSafeLock, readLen: 2, category: .limit),
-        Spec(id: "mcu_g3_gear", board: .mcuG3, register: Nb.Register.gearTopSpeed, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_speed", board: .vcuG3, register: Nb.G3Register.currentSpeed, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_maxspd", board: .vcuG3, register: Nb.G3Register.maxSpeed, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_startspd", board: .vcuG3, register: Nb.G3Register.startSpeed, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_gear", board: .vcuG3, register: Nb.G3Register.gearMode, readLen: 2, category: .limit),
     ]
 
     private static let g3HistoryFields: [Spec] = [
-        Spec(id: "vcu_g3_trip_max", board: .vcuG3, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
-        Spec(id: "vcu_g3_speed", board: .vcuG3, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
-        Spec(id: "vcu_g3_range", board: .vcuG3, register: Nb.Register.remainingRange, readLen: 2, category: .history),
-        Spec(id: "vcu_g3_odo", board: .vcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
-        Spec(id: "vcu_g3_trip_km", board: .vcuG3, register: Nb.Register.tripDistance, readLen: 2, category: .history),
-        Spec(id: "vcu_g3_trip4", board: .vcuG3, register: Nb.Register.tripDistance, readLen: 4, category: .history),
-        Spec(id: "dis_trip_max", board: .dis, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
-        Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
-        Spec(id: "dis_range", board: .dis, register: Nb.Register.remainingRange, readLen: 2, category: .history),
+        // SHU/Segway: Gesamtkilometer = VCU rMileage @ 0x62 (4 Byte), nicht DIS 0xB7.
+        Spec(id: "vcu_g3_odo", board: .vcuG3, register: Nb.G3Register.totalMileage, readLen: 4, category: .history),
+        Spec(id: "vcu_g3_remain", board: .vcuG3, register: Nb.G3Register.remainingMileage, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_precise", board: .vcuG3, register: Nb.G3Register.preciseMileage, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_trip", board: .vcuG3, register: Nb.G3Register.singleMileage, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_runtime", board: .vcuG3, register: Nb.G3Register.runtime, readLen: 4, category: .history),
+        Spec(id: "vcu_g3_ridetime", board: .vcuG3, register: Nb.G3Register.rideTime, readLen: 4, category: .history),
+        // Fallback klassische Adressen (falls Firmware sie noch spiegelt)
         Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer, readLen: 4, category: .history),
-        Spec(id: "dis_trip_km", board: .dis, register: Nb.Register.tripDistance, readLen: 2, category: .history),
-        Spec(id: "dis_trip4", board: .dis, register: Nb.Register.tripDistance, readLen: 4, category: .history),
-        Spec(id: "dis_trip_time", board: .dis, register: Nb.Register.tripTime, readLen: 2, category: .history),
-        Spec(id: "tft_odo", board: .tft, register: Nb.Register.odometer, readLen: 4, category: .history),
-        Spec(id: "tft_trip4", board: .tft, register: Nb.Register.tripDistance, readLen: 4, category: .history),
-        Spec(id: "mcu_g3_odo", board: .mcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
+        Spec(id: "vcu_legacy_odo", board: .vcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
     ]
 
     private static let g3BatteryFields: [Spec] = [
-        Spec(id: "dis_battery", board: .dis, register: Nb.Register.batteryPercent, readLen: 2, category: .battery),
-        Spec(id: "vcu_g3_battery", board: .vcuG3, register: Nb.Register.batteryPercent, readLen: 2, category: .battery),
-        Spec(id: "bms_g3_voltage", board: .bmsG3, register: Nb.Register.bmsVoltage, readLen: 2, category: .battery),
-        Spec(id: "bms_g3_cycles", board: .bmsG3, register: Nb.Register.cycleCount, readLen: 2, category: .battery),
-        Spec(id: "bms_g3_soc", board: .bmsG3, register: Nb.Register.bmsSoc, readLen: 2, category: .battery),
+        Spec(id: "vcu_g3_battery", board: .vcuG3, register: Nb.G3Register.batteryPercent, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_voltage", board: .bmsG3, register: 0x8C, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_soc", board: .bmsG3, register: 0x8F, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_cycles", board: .bmsG3, register: 0x59, readLen: 2, category: .battery),
     ]
 
     private static let g3StatusFields: [Spec] = [
-        Spec(id: "vcu_g3_error", board: .vcuG3, register: Nb.Register.error, readLen: 2, category: .status),
-        Spec(id: "vcu_g3_alarm", board: .vcuG3, register: Nb.Register.alarm, readLen: 2, category: .status),
-        Spec(id: "dis_error", board: .dis, register: Nb.Register.error, readLen: 2, category: .status),
-        Spec(id: "dis_alarm", board: .dis, register: Nb.Register.alarm, readLen: 2, category: .status),
-        Spec(id: "mcu_g3_error", board: .mcuG3, register: Nb.Register.error, readLen: 2, category: .status),
-        // Soft-Unlock / Session-Flags: unbekannte Indizes als Rohdaten für Heuristik
-        Spec(id: "vcu_g3_flag_a", board: .vcuG3, register: 0x5E, readLen: 2, category: .status),
-        Spec(id: "vcu_g3_flag_b", board: .vcuG3, register: 0xA4, readLen: 4, category: .status),
+        Spec(id: "vcu_g3_error", board: .vcuG3, register: Nb.G3Register.errorCode, readLen: 2, category: .status),
+        Spec(id: "vcu_g3_alarm", board: .vcuG3, register: Nb.G3Register.warnCode, readLen: 2, category: .status),
     ]
 
     private static let limitFields: [Spec] = [
@@ -242,30 +218,50 @@ enum DiagnosticMap {
             return Nb.asciiString(data)
 
         case "dis_limit", "mcu_max", "mcu_safe", "mcu_gear",
-             "vcu_g3_limit", "vcu_g3_safe", "vcu_g3_max", "vcu_g3_gear",
-             "mcu_g3_limit", "mcu_g3_max", "mcu_g3_safe", "mcu_g3_gear",
-             "vcu_g3_cfg", "vcu_g3_g1", "vcu_g3_g2":
+             "vcu_g3_maxspd", "vcu_g3_startspd":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.kmh.format(Optional(RegisterScale.kmhWhole(raw)))
+            // G3 MaxSpeed/StartSpeed oft 0.1 km/h; Werte > 120 → /10.
+            let whole = RegisterScale.kmhWhole(raw)
+            let scaled = RegisterScale.kmh(raw)
+            let kmh = whole > 120 ? scaled : whole
+            return Format.kmh.format(Optional(kmh))
 
-        case "dis_rated", "dis_trip_max", "dis_trip_avg", "dis_speed",
-             "vcu_g3_rated", "vcu_g3_trip_max", "vcu_g3_speed",
-             "mcu_g3_rated":
+        case "vcu_g3_speed":
             guard let raw = Nb.u16(data) else { return nil }
             return Format.kmh.format(Optional(RegisterScale.kmh(raw)))
 
-        case "dis_range", "vcu_g3_range":
+        case "vcu_g3_gear":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.km.format(Optional(RegisterScale.rangeKm(raw)))
+            return Format.num.format(Int(raw))
 
-        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo":
+        case "dis_rated", "dis_trip_max", "dis_trip_avg", "dis_speed",
+             "vcu_g3_rated", "vcu_g3_trip_max", "mcu_g3_rated":
+            guard let raw = Nb.u16(data) else { return nil }
+            return Format.kmh.format(Optional(RegisterScale.kmh(raw)))
+
+        case "dis_range", "vcu_g3_range", "vcu_g3_remain", "vcu_g3_precise":
+            guard let raw = Nb.u16(data) else { return nil }
+            // G3 Remaining oft 0.1 km; bei großen Werten Meter→km.
+            let asTenths = RegisterScale.rangeKm(raw)
+            let asMetres = Double(raw) / 1000.0
+            if asTenths > 0, asTenths < 500 { return Format.km.format(Optional(asTenths)) }
+            return Format.km.format(Optional(asMetres))
+
+        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo", "vcu_legacy_odo":
             return Format.km.format(plausibleOdometerKm(data))
 
-        case "dis_trip_km", "vcu_g3_trip_km":
+        case "dis_trip_km", "vcu_g3_trip_km", "vcu_g3_trip":
             guard let raw = Nb.u16(data) else { return nil }
-            return Format.km.format(Optional(RegisterScale.tripKm(raw)))
+            let trip = RegisterScale.tripKm(raw)
+            let metres = Double(raw) / 1000.0
+            if trip < 500 { return Format.km.format(Optional(trip)) }
+            return Format.km.format(Optional(metres))
 
-        case "dis_trip4", "vcu_g3_trip4", "tft_trip4":
+        case "dis_trip4", "vcu_g3_trip4", "tft_trip4", "vcu_g3_runtime", "vcu_g3_ridetime":
+            if spec.id == "vcu_g3_runtime" || spec.id == "vcu_g3_ridetime" {
+                guard let raw = Nb.u32(data) else { return nil }
+                return Format.minutes.format(Int(Double(raw) / 60.0))
+            }
             return Format.km.format(plausibleOdometerKm(data))
 
         case "dis_trip_time":
@@ -354,8 +350,19 @@ enum DiagnosticMap {
         case "dis_limit", "vcu_g3_limit", "mcu_g3_limit":
             if let raw = Nb.u16(data) {
                 let kmh = RegisterScale.kmhWhole(raw)
-                // 0 oft „kein Soft-Limit“ / leeres Register — nicht als Peak werten.
                 if kmh > 0 {
+                    reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
+                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                    markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
+                }
+            }
+
+        case "vcu_g3_maxspd", "vcu_g3_startspd":
+            if let raw = Nb.u16(data) {
+                let whole = RegisterScale.kmhWhole(raw)
+                let kmh = whole > 120 ? RegisterScale.kmh(raw) : whole
+                if kmh > 0, kmh < 120 {
+                    reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
                     reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                     markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
@@ -382,25 +389,41 @@ enum DiagnosticMap {
             }
 
         case "dis_trip_avg":
-            if let raw = Nb.u16(data) { _ = RegisterScale.kmh(raw) }
+            break
 
         case "dis_speed", "vcu_g3_speed":
             if let raw = Nb.u16(data) { reading.speedCurrentKmh = RegisterScale.kmh(raw) }
 
-        case "dis_range", "vcu_g3_range":
-            if let raw = Nb.u16(data) { reading.remainKm = RegisterScale.rangeKm(raw) }
+        case "dis_range", "vcu_g3_range", "vcu_g3_remain", "vcu_g3_precise":
+            if let raw = Nb.u16(data) {
+                let tenths = RegisterScale.rangeKm(raw)
+                let metres = Double(raw) / 1000.0
+                reading.remainKm = (tenths > 0 && tenths < 500) ? tenths : metres
+            }
 
-        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo":
+        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo", "vcu_legacy_odo":
             if let km = plausibleOdometerKm(data) {
                 reading.odometerKm = max(reading.odometerKm ?? 0, km)
             }
 
-        case "dis_trip_km", "vcu_g3_trip_km":
-            if let raw = Nb.u16(data) { reading.tripKm = RegisterScale.tripKm(raw) }
+        case "dis_trip_km", "vcu_g3_trip_km", "vcu_g3_trip":
+            if let raw = Nb.u16(data) {
+                let trip = RegisterScale.tripKm(raw)
+                let metres = Double(raw) / 1000.0
+                reading.tripKm = trip < 500 ? trip : metres
+            }
 
         case "dis_trip4", "vcu_g3_trip4", "tft_trip4":
             if let km = plausibleOdometerKm(data) {
                 reading.tripKm = max(reading.tripKm ?? 0, km)
+            }
+
+        case "vcu_g3_runtime", "vcu_g3_ridetime":
+            if let raw = Nb.u32(data) {
+                reading.totalRideTimeMinutes = Int(Double(raw) / 60.0)
+                if spec.id == "vcu_g3_ridetime" {
+                    reading.rideTimeMinutes = Int(Double(raw) / 60.0)
+                }
             }
 
         case "dis_trip_time":
@@ -408,7 +431,7 @@ enum DiagnosticMap {
                 reading.rideTimeMinutes = Int(RegisterScale.minutesFromSeconds(raw).rounded())
             }
 
-        case "mcu_max", "vcu_g3_max", "mcu_g3_max", "vcu_g3_gear", "mcu_g3_gear", "mcu_gear",
+        case "mcu_max", "vcu_g3_max", "mcu_g3_max", "mcu_g3_gear", "mcu_gear",
              "vcu_g3_g1", "vcu_g3_g2":
             if let raw = Nb.u16(data) {
                 let kmh = RegisterScale.kmhWhole(raw)
@@ -419,10 +442,18 @@ enum DiagnosticMap {
                 }
             }
 
+        case "vcu_g3_gear":
+            if let raw = Nb.u16(data) {
+                reading.gearMode = Int(raw)
+                reading.gearMax = max(reading.gearMax ?? 0, Int(raw))
+                if SoftUnlockSettings.isEnabledSnapshot(), Int(raw) > 1 {
+                    reading.hiddenTuningDetected = true
+                }
+            }
+
         case "mcu_safe", "vcu_g3_safe", "mcu_g3_safe":
             if let raw = Nb.u16(data) {
                 let kmh = RegisterScale.kmhWhole(raw)
-                // SafeLock: >0 oft aktiv; 0 = offen / Soft-Unlock-Hinweis.
                 reading.safeLockActive = kmh > 0
                 if kmh > 0 && kmh < 120 {
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
@@ -431,9 +462,10 @@ enum DiagnosticMap {
 
         case "vcu_g3_cfg":
             if let raw = Nb.u16(data), raw > 1 {
-                // Erweiterter Fahrmodus / Config — Hinweis auf Soft-Unlock.
                 reading.gearMax = max(reading.gearMax ?? 1, Int(raw))
-                if raw >= 2 { reading.hiddenTuningDetected = reading.hiddenTuningDetected ?? true }
+                if SoftUnlockSettings.isEnabledSnapshot() {
+                    reading.hiddenTuningDetected = true
+                }
             }
 
         case "dis_fw":

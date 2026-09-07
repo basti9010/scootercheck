@@ -36,6 +36,20 @@ enum Nb {
         static let mcuVersion: UInt8 = 0x19
         static let mcuVersionFallback: UInt8 = 0x18
         static let bmsVersion: UInt8 = 0x19
+        // Segway-Config Max G3 (Server-ID 10258) — VCU-Telemetrie (nicht DIS 0xB7!).
+        static let batteryPercent: UInt8 = 0x55
+        static let currentSpeed: UInt8 = 0x57
+        static let errorCode: UInt8 = 0x58
+        static let warnCode: UInt8 = 0x59
+        static let gearMode: UInt8 = 0x5A
+        static let preciseMileage: UInt8 = 0x5E
+        static let remainingMileage: UInt8 = 0x5F
+        static let totalMileage: UInt8 = 0x62
+        static let runtime: UInt8 = 0x64
+        static let rideTime: UInt8 = 0x66
+        static let singleMileage: UInt8 = 0x68
+        static let maxSpeed: UInt8 = 0x46
+        static let startSpeed: UInt8 = 0x42
     }
 
     /// Register addresses are board-scoped; the same byte may mean different
@@ -132,7 +146,10 @@ enum Nb {
         length: Int,
         gen: ProtocolGen = .gen2
     ) -> Data {
-        frame(target: board, cmd: .read, index: register, data: Data([UInt8(length)]), gen: gen)
+        // Max-G3-/Enc2-Apps und Flasher senden die Länge als u16 LE (z. B. 04 00).
+        let len = max(0, min(length, 0xFFFF))
+        let lenBytes = Data([UInt8(len & 0xFF), UInt8((len >> 8) & 0xFF)])
+        return frame(target: board, cmd: .read, index: register, data: lenBytes, gen: gen)
     }
 
     // MARK: - Parsing
