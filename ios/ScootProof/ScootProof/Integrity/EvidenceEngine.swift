@@ -447,11 +447,19 @@ enum EvidenceEngine {
         let score = densifyScore(results)
         let decisive = decisiveEvidence(from: results, verdict: verdict, correlations: correlations)
         // Attribution NACH dem Urteil — beeinflusst es nie.
-        let attribution = AttributionEngine.assess(
+        let rawAttribution = AttributionEngine.assess(
             results: results,
             powerCycle: powerCycle,
             correlations: correlations
         )
+        let attribution: AttributionAssessment? = {
+            if rawAttribution.suspectedMethod == nil,
+               rawAttribution.supportingMarkerIds.isEmpty,
+               rawAttribution.confidence < 0.2 {
+                return nil
+            }
+            return rawAttribution
+        }()
         var warnings: [String] = []
         if results.contains(where: { $0.fact.knowledgeSource == .heuristic && $0.classification.rank >= 2 }) {
             warnings.append("Mindestens ein Indiz beruht auf Heuristik — Belastbarkeit prüfen.")
