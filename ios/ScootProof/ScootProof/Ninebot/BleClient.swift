@@ -1036,33 +1036,55 @@ final class BleClient: NSObject, ObservableObject {
         pendingNotifyEnables = 0
     }
 
-    /// Öffentliche Heuristik für UI-Badge / optionalen Filter — blockiert den Scan nicht.
+    /// Strikte Heuristik für „Nur Scooter“ — lieber zu wenig als Nuki/OLED/TV als Scooter.
     nonisolated static func isLikelyScooterName(_ name: String?) -> Bool {
         guard let name, !name.isEmpty else { return false }
         let upper = name.uppercased()
+        let compact = String(upper.filter { $0.isLetter || $0.isNumber })
+
+        // Bekannte Nicht-Scooter (Smart Home, Displays, Audio…)
+        let blocklist = [
+            "NUKI", "OLED", "IPHONE", "IPAD", "WATCH", "AIRPOD", "GALAXY", "SAMSUNG",
+            "PIXEL", "HUAWEI", "SONOS", "BOSE", "JBL", "HEADPHONE", "SPEAKER",
+            "TV", "LG ", "SONY", "XBOX", "PLAYSTATION", "SWITCH", "FITBIT",
+            "GARMIN", "COROS", "WHOOP", "THERMOSTAT", "HUE ", "NEST", "RING",
+            "CORE300", "Q-SERIES", "QSERIES"
+        ]
+        if blocklist.contains(where: { upper.contains($0) || compact.contains($0.replacingOccurrences(of: " ", with: "")) }) {
+            return false
+        }
+
+        // Marken / Modellnamen
         let tokens = [
-            "NINEBOT", "SEGWAY", "ZT3", "G30", "G3", "MAX3", "MAX",
+            "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX3", "MAX G3", "G3 PLUS",
             "XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER",
-            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "SCOOTER"
+            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "KICKSCOOTER"
         ]
         if tokens.contains(where: { upper.contains($0) }) { return true }
-        if upper.hasPrefix("NB") || upper.hasPrefix("N2") || upper.hasPrefix("N4") { return true }
-        if upper.hasPrefix("S1D") || upper.hasPrefix("MI") { return true }
-        // F-/D-Serie Kurzformen in BT-Namen
-        if upper.range(of: #"\bF[234]?0?\b"#, options: .regularExpression) != nil { return true }
-        if upper.range(of: #"\bD(18|28|38)\b"#, options: .regularExpression) != nil { return true }
+        // „SCOOTER“ nur als ganzes Wort (nicht in Zufallsstrings)
+        if upper.range(of: #"\bSCOOTER\b"#, options: .regularExpression) != nil { return true }
+        // „G3“ als Wort — nicht in beliebigen IDs
+        if upper.range(of: #"\bG3\b"#, options: .regularExpression) != nil { return true }
 
-        // Kompakte BLE-IDs neuer Max/G3-Modelle, z. B. „1CGBF25…“
-        // (nur Buchstaben/Ziffern zählen — Bindestriche/Spaces ignorieren)
-        let compact = String(upper.filter { $0.isLetter || $0.isNumber })
-        if compact.count >= 6 {
-            if compact.first?.isNumber == true { return true }
-            if compact.range(of: #"^[A-Z0-9]{6,20}$"#, options: .regularExpression) != nil {
-                // Keine typischen Handy-/TV-Prefixe
-                let phoneTV = ["IPHONE", "IPAD", "WATCH", "GALAXY", "SAMSUNG", "PIXEL", "HUAWEI"]
-                if !phoneTV.contains(where: { compact.contains($0) }) { return true }
-            }
+        // Serien-/BLE-Präfixe
+        if compact.hasPrefix("1C"), compact.count >= 10, compact.count <= 20 {
+            // Max G3 Advertisement-IDs, z. B. 1CGBF2531C0230
+            return true
         }
+        if compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") || compact.hasPrefix("N2FS")
+            || compact.hasPrefix("N2DS") || compact.hasPrefix("N4GS") || compact.hasPrefix("XN4B") {
+            return true
+        }
+        if upper.hasPrefix("NB-") || upper.hasPrefix("NB_") { return true }
+
+        // F-/D-Serie nur mit klaren Modellmustern
+        if upper.range(of: #"\bF[234](\s|/|-)?(PRO|PLUS|D|E)?\b"#, options: .regularExpression) != nil {
+            return true
+        }
+        if upper.range(of: #"\bD(18|28|38)\b"#, options: .regularExpression) != nil {
+            return true
+        }
+
         return false
     }
 

@@ -187,7 +187,7 @@ struct ContentView: View {
             .pickerStyle(.segmented)
 
             if ble.showOnlyLikelyScooters {
-                Text("Filter: Namen/IDs und BLE-Services, die nach Scooter aussehen. Max G3 oft als „1C…“ + „Ninebot Max G3“. Fehlt etwas → „Alle BLE“.")
+                Text("Filter: nur klare Scooter-Namen/IDs (Ninebot, 1C…, Segway, Xiaomi) oder UART-Service. Nuki/TV/Displays erscheinen unter „Alle BLE“.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             } else if listed.count > 1 {
