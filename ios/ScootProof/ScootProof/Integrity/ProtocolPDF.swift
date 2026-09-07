@@ -284,6 +284,34 @@ enum ProtocolPDF {
                 )
             }
         }
+
+        let customDiffs = result.facts.filter { $0.id.hasPrefix("diff.") }
+        if !customDiffs.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 60)
+            cursor += 8
+            cursor = drawSubheading("IV.c Custom-Firmware vs. Hersteller-Serie", at: cursor)
+            cursor = drawText(
+                "Messbare Abweichungen: Auslesewert gegenüber werkseitigem Soll.",
+                at: cursor,
+                font: bodyFont(size: 10),
+                color: Theme.UI.muted
+            )
+            for fact in customDiffs {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+                cursor = drawText(
+                    "• \(fact.title.replacingOccurrences(of: "Diff: ", with: ""))",
+                    at: cursor,
+                    font: bodyFont(size: 10, weight: .semibold),
+                    color: Theme.UI.text
+                )
+                cursor = drawText(
+                    "  Serie: \(fact.sollwert)  →  Auslese: \(fact.auslesewert)  [\(fact.status.label)]",
+                    at: cursor,
+                    font: bodyFont(size: 9),
+                    color: Theme.UI.fact(fact.status)
+                )
+            }
+        }
         return cursor + sectionGap
     }
 

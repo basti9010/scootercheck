@@ -202,6 +202,15 @@ enum TrackClassifier {
             hasCustomFirmware(reading)
                 && !matchesFwRegex(reading.fwMcu, regex: shuFwRegex)
         },
+        TrackPattern(
+            id: "webapp.fw.custom.diff",
+            trackId: .webapp,
+            weight: 0.4,
+            description: "Custom-Firmware-Diff zur Hersteller-Serie"
+        ) { reading, profile in
+            let result = CustomFirmwareDiff.analyze(reading: reading, profile: profile)
+            return result.level == .confirmed || (result.level == .suspected && result.severeDiffCount >= 2)
+        },
 
         // --- SHU ---
         TrackPattern(

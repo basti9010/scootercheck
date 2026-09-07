@@ -25,6 +25,7 @@
 		A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* XiaomiDiagnosticMap.swift */; };
 		A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* SoftUnlockSettings.swift */; };
 		A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* StockFirmwareCatalog.swift */; };
+		A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CustomFirmwareDiff.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +49,7 @@
 		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiDiagnosticMap.swift; sourceTree = "<group>"; };
 		B10000000000000000000012 /* SoftUnlockSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockSettings.swift; sourceTree = "<group>"; };
 		B10000000000000000000013 /* StockFirmwareCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalog.swift; sourceTree = "<group>"; };
+		B10000000000000000000014 /* CustomFirmwareDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFirmwareDiff.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +106,7 @@
 				B1000000000000000000000F /* ProtocolHistoryStore.swift */,
 				B10000000000000000000012 /* SoftUnlockSettings.swift */,
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
+				B10000000000000000000014 /* CustomFirmwareDiff.swift */,
 			);
 			path = Integrity;
 			sourceTree = "<group>";
@@ -222,6 +225,7 @@
 				A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */,
 				A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */,
 				A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */,
+				A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

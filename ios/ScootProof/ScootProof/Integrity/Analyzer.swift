@@ -18,6 +18,7 @@ enum IntegrityAnalyzer {
         facts += buildSerialFacts(reading: reading, profile: profile)
         facts += buildSpeedFacts(reading: reading, profile: profile)
         facts += buildFirmwareFacts(reading: reading, profile: profile)
+        facts += CustomFirmwareDiff.buildFacts(reading: reading, profile: profile)
         facts += buildOdometerFacts(reading: reading)
         facts += buildBatteryFacts(reading: reading)
         facts += buildTemperatureFacts(reading: reading)
@@ -611,32 +612,30 @@ enum IntegrityAnalyzer {
     /// Marker, die ein Panic-/Soft-Reset typischerweise nicht löscht.
     private static func persistentTuningFact(reading: IntegrityReading, profile: ScooterProfile) -> MeasuredFact {
         var markers: [String] = []
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
-        if region == .us && profile.market == .de20 {
-            markers.append("US-Region-SN")
-        }
-        let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? reading.peakSpeedKmh
-        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
-        if let limit, limit >= threshold {
-            markers.append("Limit/Max \(Format.kmh.format(Optional(limit)))")
-        }
-        if let gear = reading.gearMax, gear > 1 {
-            markers.append("Gänge>\(gear)")
-        }
-        if TrackClassifier.hasCustomFirmware(reading) || reading.fwAppCustom == true {
+        let custom = CustomFirmwareDiff.analyze(reading: reading, profile: profile)
+        if custom.level == .confirmed {
             markers.append("Custom-FW")
+        } else if custom.level == .suspected {
+            markers.append("FW/Parameter verdächtig")
         }
-        let fw = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
-        if fw.customCount > 0 { markers.append("FW-Kennung") }
-        else if fw.notInCatalogCount > 0 { markers.append("FW außer Katalog") }
+        for item in custom.diffs.prefix(6) {
+            // Kurzformen ohne Duplikat zu Custom-FW
+            if item.id.hasPrefix("diff.fw.") { continue }
+            if item.id == "diff.softunlock" { continue }
+            markers.append(item.title)
+        }
+        // Dedup
+        var seen = Set<String>()
+        markers = markers.filter { seen.insert($0).inserted }
 
         let status: FactStatus
         let bewertung: String
         if markers.isEmpty {
+            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? reading.peakSpeedKmh
             status = (limit == nil && reading.gearMax == nil && reading.fwMcu == nil)
                 ? .nichtFeststellbar : .regelkonform
             bewertung = status == .nichtFeststellbar ? "Nicht feststellbar" : "Keine persistenten Tuning-Marker"
-        } else if markers.contains(where: { $0.hasPrefix("US-") || $0.hasPrefix("Custom") || $0.hasPrefix("Limit") }) {
+        } else if custom.level == .confirmed || custom.severeDiffCount > 0 {
             status = .erheblichAbweichend
             bewertung = "Panic-resistent: \(markers.joined(separator: ", "))"
         } else {
@@ -881,6 +880,24 @@ enum IntegrityAnalyzer {
                 detail: fw.bewertung + " — Modulversionen und Katalogabgleich sind im Protokoll dokumentiert.",
                 relatedFactIds: related.isEmpty ? [fw.id] : related,
                 trackHint: trackMatch.trackId
+            ))
+        }
+
+        if let custom = facts.first(where: {
+            $0.id == "fw.custom.detect" && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+        }) {
+            let related = facts.filter {
+                $0.id == "fw.custom.detect" || $0.id == "fw.custom.diff" || $0.id.hasPrefix("diff.")
+            }.map(\.id)
+            let diffFact = facts.first { $0.id == "fw.custom.diff" }
+            findings.append(Finding(
+                id: "finding.firmware.custom",
+                severity: custom.status,
+                title: custom.bewertung,
+                detail: (diffFact?.bewertung ?? custom.erlaeuterung)
+                    + " Gegenüberstellung: Auslese vs. Hersteller-Serie.",
+                relatedFactIds: related,
+                trackHint: trackMatch.trackId == .stock ? .webapp : trackMatch.trackId
             ))
         }
 
