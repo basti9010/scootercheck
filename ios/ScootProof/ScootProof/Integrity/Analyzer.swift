@@ -538,11 +538,11 @@ enum IntegrityAnalyzer {
             MeasuredFact(
                 id: "flag.hidden",
                 group: .flags,
-                title: "Verstecktes / Soft-Unlock",
+                title: "Soft-Unlock",
                 auslesewert: {
                     if reading.hiddenTuningDetected == true {
                         let limit = reading.speedLimitKmh ?? reading.speedRatedKmh
-                        if let limit, limit >= 25 {
+                        if let limit, limit > 0 {
                             return "Limit \(Format.kmh.format(Optional(limit)))"
                         }
                         return "gesetzt"
@@ -552,18 +552,25 @@ enum IntegrityAnalyzer {
                 }(),
                 sollwert: "inaktiv",
                 status: {
+                    if !SoftUnlockSettings.isEnabledSnapshot() { return .nichtFeststellbar }
                     if reading.hiddenTuningDetected == true { return .erheblichAbweichend }
                     if reading.hiddenTuningDetected == false { return .regelkonform }
                     return .nichtFeststellbar
                 }(),
                 bewertung: {
+                    let gesture = SoftUnlockSettings.gestureSummarySnapshot()
+                    if !SoftUnlockSettings.isEnabledSnapshot() {
+                        return "Erkennung aus (Geste: \(gesture))"
+                    }
                     if reading.hiddenTuningDetected == true {
-                        return "Soft-Unlock / erhöhtes Limit (z. B. nach Bremshebel-Sequenz)"
+                        return "Soft-Unlock aktiv — konfigurierte Geste: \(gesture)"
                     }
                     if reading.hiddenTuningDetected == false { return "Serienzustand" }
                     return "Nicht feststellbar"
                 }(),
-                erlaeuterung: "Erhöhte Limits oder Unlock-Flags. Die Bremshebel-Geste selbst ist nicht speicherbar — nur ihre Wirkung auf Register.",
+                erlaeuterung: SoftUnlockSettings.isEnabledSnapshot()
+                    ? "Konfigurierte Bedienung: \(SoftUnlockSettings.gestureSummarySnapshot()). Die Geste selbst wird nicht über BLE gespeichert — erkannt wird die Wirkung (Limit ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot().rounded())) km/h)."
+                    : "Soft-Unlock-Erkennung ist in den Einstellungen ausgeschaltet.",
                 raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
             ),
             flagFact(id: "flag.unbound", title: "Unbound Rebound", value: reading.unboundRebound, soll: false, inverted: false)

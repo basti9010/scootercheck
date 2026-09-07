@@ -145,12 +145,17 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_range", board: .vcuG3, register: Nb.Register.remainingRange, readLen: 2, category: .history),
         Spec(id: "vcu_g3_odo", board: .vcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
         Spec(id: "vcu_g3_trip_km", board: .vcuG3, register: Nb.Register.tripDistance, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_trip4", board: .vcuG3, register: Nb.Register.tripDistance, readLen: 4, category: .history),
         Spec(id: "dis_trip_max", board: .dis, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
         Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
         Spec(id: "dis_range", board: .dis, register: Nb.Register.remainingRange, readLen: 2, category: .history),
         Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer, readLen: 4, category: .history),
         Spec(id: "dis_trip_km", board: .dis, register: Nb.Register.tripDistance, readLen: 2, category: .history),
+        Spec(id: "dis_trip4", board: .dis, register: Nb.Register.tripDistance, readLen: 4, category: .history),
         Spec(id: "dis_trip_time", board: .dis, register: Nb.Register.tripTime, readLen: 2, category: .history),
+        Spec(id: "tft_odo", board: .tft, register: Nb.Register.odometer, readLen: 4, category: .history),
+        Spec(id: "tft_trip4", board: .tft, register: Nb.Register.tripDistance, readLen: 4, category: .history),
+        Spec(id: "mcu_g3_odo", board: .mcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
     ]
 
     private static let g3BatteryFields: [Spec] = [
@@ -253,13 +258,15 @@ enum DiagnosticMap {
             guard let raw = Nb.u16(data) else { return nil }
             return Format.km.format(Optional(RegisterScale.rangeKm(raw)))
 
-        case "dis_odo", "vcu_g3_odo":
-            guard let raw = Nb.u32(data) else { return nil }
-            return Format.km.format(Optional(RegisterScale.km(raw)))
+        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo":
+            return Format.km.format(plausibleOdometerKm(data))
 
         case "dis_trip_km", "vcu_g3_trip_km":
             guard let raw = Nb.u16(data) else { return nil }
             return Format.km.format(Optional(RegisterScale.tripKm(raw)))
+
+        case "dis_trip4", "vcu_g3_trip4", "tft_trip4":
+            return Format.km.format(plausibleOdometerKm(data))
 
         case "dis_trip_time":
             guard let raw = Nb.u16(data) else { return nil }
@@ -351,7 +358,7 @@ enum DiagnosticMap {
                 if kmh > 0 {
                     reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
-                    if kmh >= 25 { reading.hiddenTuningDetected = true }
+                    markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
 
@@ -361,7 +368,7 @@ enum DiagnosticMap {
                 if kmh > 0 {
                     reading.speedRatedKmh = max(reading.speedRatedKmh ?? 0, kmh)
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
-                    if kmh >= 25 { reading.hiddenTuningDetected = true }
+                    markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
 
@@ -383,11 +390,18 @@ enum DiagnosticMap {
         case "dis_range", "vcu_g3_range":
             if let raw = Nb.u16(data) { reading.remainKm = RegisterScale.rangeKm(raw) }
 
-        case "dis_odo", "vcu_g3_odo":
-            if let raw = Nb.u32(data) { reading.odometerKm = RegisterScale.km(raw) }
+        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo":
+            if let km = plausibleOdometerKm(data) {
+                reading.odometerKm = max(reading.odometerKm ?? 0, km)
+            }
 
         case "dis_trip_km", "vcu_g3_trip_km":
             if let raw = Nb.u16(data) { reading.tripKm = RegisterScale.tripKm(raw) }
+
+        case "dis_trip4", "vcu_g3_trip4", "tft_trip4":
+            if let km = plausibleOdometerKm(data) {
+                reading.tripKm = max(reading.tripKm ?? 0, km)
+            }
 
         case "dis_trip_time":
             if let raw = Nb.u16(data) {
@@ -401,7 +415,7 @@ enum DiagnosticMap {
                 if kmh > 0 && kmh < 120 {
                     reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
-                    if kmh >= 25 { reading.hiddenTuningDetected = true }
+                    markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
 
@@ -493,6 +507,26 @@ enum DiagnosticMap {
             return true
         }
         return false
+    }
+
+    /// Odometer: BLE oft 0.001 km (Meter). Manche Boards liefern mm — plausibelste Skala wählen.
+    private static func plausibleOdometerKm(_ data: Data) -> Double? {
+        guard let raw = Nb.u32(data), raw > 0 else { return nil }
+        let asMetres = Double(raw) / 1000.0          // 0.001 km units
+        let asMillimetres = Double(raw) / 1_000_000.0
+        // Typischer Scooter: 0…50 000 km
+        if asMetres > 0, asMetres < 50_000 { return asMetres }
+        if asMillimetres > 0, asMillimetres < 50_000 { return asMillimetres }
+        if asMetres < 500_000 { return asMetres }
+        return nil
+    }
+
+    private static func markSoftUnlockIfNeeded(kmh: Double, into reading: inout IntegrityReading) {
+        guard SoftUnlockSettings.isEnabledSnapshot() else { return }
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+        if kmh >= threshold {
+            reading.hiddenTuningDetected = true
+        }
     }
 
     static func fields(for category: Category) -> [Spec] {

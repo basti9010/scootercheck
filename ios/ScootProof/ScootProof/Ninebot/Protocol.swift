@@ -23,8 +23,10 @@ enum Nb {
         case mcu = 0x20
         /// BLE-Legacy-Adresse (NinebotCrypto/SHU oft 0x21 in Pairing-Antworten).
         case bleLegacy = 0x21
-        /// Ältere Ninebot-BMS-Adresse (G30 o. ä.); auf Max G3 oft tot.
+        /// Ältere Ninebot-BMS-Adresse (G30 o. ä.); auf Max G3 oft tot / fl-apl.
         case bms = 0x22
+        /// Max G3 TFT-/Display-Board (Aggregat für Mileage o. ä.).
+        case tft = 0x23
     }
 
     /// G3-spezifische Version-Register (Ninebot-Max-G3-Flasher).

@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var ble = BleClient()
     @ObservedObject private var history = ProtocolHistoryStore.shared
+    @ObservedObject private var softUnlock = SoftUnlockSettings.shared
     @State private var profile: ScooterProfile = .maxG3D
     @State private var result: IntegrityResult?
     @State private var session: CheckSession?
@@ -393,6 +394,31 @@ struct ContentView: View {
                             }
                         }
                     }
+                }
+                Section("Soft-Unlock") {
+                    Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
+                    Picker("Bedienung", selection: $softUnlock.control) {
+                        ForEach(SoftUnlockControl.allCases) { kind in
+                            Text(kind.title).tag(kind)
+                        }
+                    }
+                    if softUnlock.control == .custom {
+                        TextField("Eigene Beschreibung", text: $softUnlock.customLabel)
+                    } else {
+                        Stepper("Wiederholungen: \(softUnlock.repetitions)×", value: $softUnlock.repetitions, in: 1...20)
+                    }
+                    Stepper(
+                        "Schwelle: \(Int(softUnlock.speedThresholdKmh.rounded())) km/h",
+                        value: Binding(
+                            get: { softUnlock.speedThresholdKmh },
+                            set: { softUnlock.speedThresholdKmh = $0 }
+                        ),
+                        in: 21...60,
+                        step: 1
+                    )
+                    Text(softUnlock.detectionHint)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 Section("Protokollverlauf") {
                     Button {

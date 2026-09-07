@@ -1077,6 +1077,7 @@ final class BleClient: NSObject, ObservableObject {
         case .mcuG3: return "MCU(G3)"
         case .bms: return "BMS"
         case .bmsG3: return "BMS(G3)"
+        case .tft: return "TFT"
         }
     }
 

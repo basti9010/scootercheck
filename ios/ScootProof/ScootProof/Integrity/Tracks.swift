@@ -235,11 +235,12 @@ enum TrackClassifier {
             id: "shu.soft.unlock.speed",
             trackId: .shu,
             weight: 0.5,
-            description: "Geschwindigkeitslimit deutlich über DE-Soll (Soft-Unlock)"
+            description: "Geschwindigkeitslimit über Soft-Unlock-Schwelle"
         ) { reading, profile in
-            guard profile.market == .de20 else { return false }
+            guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
+            guard profile.market == .de20 || profile.family == .maxG3 else { return false }
             let limit = reading.speedLimitKmh ?? reading.speedRatedKmh ?? reading.speedMaxKmh ?? 0
-            return limit >= profile.tuningClearKmh
+            return limit >= SoftUnlockSettings.thresholdKmhSnapshot()
         },
         TrackPattern(
             id: "shu.hidden.tuning",

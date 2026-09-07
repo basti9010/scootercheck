@@ -23,6 +23,7 @@
 		A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* ProtocolHistoryStore.swift */; };
 		A1000000000000000000000F /* XiaomiProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* XiaomiProtocol.swift */; };
 		A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* XiaomiDiagnosticMap.swift */; };
+		A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* SoftUnlockSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		B1000000000000000000000F /* ProtocolHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000010 /* XiaomiProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiProtocol.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiDiagnosticMap.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* SoftUnlockSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockSettings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +100,7 @@
 				B10000000000000000000006 /* Tracks.swift */,
 				B10000000000000000000007 /* ProtocolPDF.swift */,
 				B1000000000000000000000F /* ProtocolHistoryStore.swift */,
+				B10000000000000000000012 /* SoftUnlockSettings.swift */,
 			);
 			path = Integrity;
 			sourceTree = "<group>";
@@ -214,6 +217,7 @@
 				A1000000000000000000000B /* BleClient.swift in Sources */,
 				A1000000000000000000000F /* XiaomiProtocol.swift in Sources */,
 				A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */,
+				A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
