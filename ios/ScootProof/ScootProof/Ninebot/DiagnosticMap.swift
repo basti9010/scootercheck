@@ -341,19 +341,19 @@ enum DiagnosticMap {
 
         switch spec.id {
         case "dis_sn":
-            if let sn = Nb.asciiString(data), looksLikeVehicleSerial(sn) {
+            let sn = Nb.asciiString(data)
+            if looksLikeVehicleSerial(sn) {
                 reading.serialDisplay = sn
             }
         case "ble_sn":
             reading.serialBle = Nb.asciiString(data)
         case "vcu_sn", "vcu_g3_sn":
-            if let sn = Nb.asciiString(data) {
-                reading.serialVcu = sn
-                // Max G3: VCU-SN ist die Fahrzeug-SN.
-                if looksLikeVehicleSerial(sn) {
-                    reading.serialDisplay = reading.serialDisplay ?? sn
-                    reading.serialExpected = reading.serialExpected ?? sn
-                }
+            let sn = Nb.asciiString(data)
+            reading.serialVcu = sn
+            // Max G3: VCU-SN ist die Fahrzeug-SN.
+            if looksLikeVehicleSerial(sn) {
+                reading.serialDisplay = reading.serialDisplay ?? sn
+                reading.serialExpected = reading.serialExpected ?? sn
             }
         case "mcu_sn", "mcu_g3_sn":
             reading.serialMcu = Nb.asciiString(data)
