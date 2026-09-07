@@ -111,9 +111,14 @@ struct ScannedDevice: Identifiable, Equatable {
     let name: String
     let rssi: Int
     let peripheral: CBPeripheral
+    /// Heuristik anhand BLE-Name (nur Anzeige/Filter, kein Hard-Block beim Scan).
+    let looksLikeScooter: Bool
 
     static func == (lhs: ScannedDevice, rhs: ScannedDevice) -> Bool {
-        lhs.id == rhs.id && lhs.rssi == rhs.rssi && lhs.name == rhs.name
+        lhs.id == rhs.id
+            && lhs.rssi == rhs.rssi
+            && lhs.name == rhs.name
+            && lhs.looksLikeScooter == rhs.looksLikeScooter
     }
 
     /// 0…4 Balken für die UI
@@ -158,6 +163,10 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var reading = IntegrityReading()
     @Published private(set) var lastError: String?
     @Published private(set) var detectedStack: BleStack = .unknown
+    /// Wenn true: Liste nur mit Namen, die nach Scooter aussehen. Sonst alle BLE-Geräte.
+    @Published var showOnlyLikelyScooters = false
+
+    private static let maxTrackedDevices = 50
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -202,12 +211,23 @@ final class BleClient: NSObject, ObservableObject {
         }
         devices.removeAll()
         phase = .scanning
-        statusMessage = "Suche Scooter in der Nähe…"
+        statusMessage = showOnlyLikelyScooters
+            ? "Suche vermutete Scooter…"
+            : "Suche alle BLE-Geräte in der Nähe…"
         // AllowDuplicates: RSSI live aktualisieren, um bei mehreren Geräten das nähere zu erkennen.
+        // withServices: nil — wie SHU alle BLE-Advertiser erfassen (nicht nur bekannte Service-UUIDs).
         central.scanForPeripherals(
             withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
+    }
+
+    /// Gefilterte Ansicht für die UI (alle Geräte oder nur Scooter-Heuristik).
+    var visibleDevices: [ScannedDevice] {
+        if showOnlyLikelyScooters {
+            return devices.filter(\.looksLikeScooter)
+        }
+        return devices
     }
 
     func stopScan() {
@@ -784,13 +804,14 @@ final class BleClient: NSObject, ObservableObject {
         connectContinuation = nil
     }
 
-    nonisolated private static func isNinebotDevice(name: String?) -> Bool {
+    /// Öffentliche Heuristik für UI-Badge / optionalen Filter — blockiert den Scan nicht.
+    nonisolated static func isLikelyScooterName(_ name: String?) -> Bool {
         guard let name, !name.isEmpty else { return false }
         let upper = name.uppercased()
         let tokens = [
             "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX",
             "XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER",
-            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2"
+            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "SCOOTER"
         ]
         if tokens.contains(where: { upper.contains($0) }) { return true }
         if upper.hasPrefix("N2") || upper.hasPrefix("N4") || upper.hasPrefix("MI") { return true }
@@ -819,18 +840,37 @@ extension BleClient: CBCentralManagerDelegate {
         rssi RSSI: NSNumber
     ) {
         let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        let name = advName ?? peripheral.name ?? ""
-        guard Self.isNinebotDevice(name: name) else { return }
+        let rawName = (advName ?? peripheral.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let shortId = String(peripheral.identifier.uuidString.prefix(8))
+        let name = rawName.isEmpty ? "Ohne Namen (\(shortId))" : rawName
+        let rssiValue = RSSI.intValue
+        // Extrem schwache/ungültige Readings ignorieren (RSSI 127 = „nicht verfügbar“).
+        guard rssiValue < 20 else { return }
 
         Task { @MainActor in
-            let device = ScannedDevice(id: peripheral.identifier, name: name, rssi: RSSI.intValue, peripheral: peripheral)
+            let device = ScannedDevice(
+                id: peripheral.identifier,
+                name: name,
+                rssi: rssiValue,
+                peripheral: peripheral,
+                looksLikeScooter: Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
+            )
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
                 devices[index] = device
             } else {
                 devices.append(device)
             }
-            // Stärkstes Signal zuerst — hilft bei mehreren Scootern in Reichweite.
+            // Stärkstes Signal zuerst — hilft bei mehreren Geräten in Reichweite.
             devices.sort { $0.rssi > $1.rssi }
+            if devices.count > Self.maxTrackedDevices {
+                devices = Array(devices.prefix(Self.maxTrackedDevices))
+            }
+            if phase == .scanning {
+                let visible = showOnlyLikelyScooters
+                    ? devices.filter(\.looksLikeScooter).count
+                    : devices.count
+                statusMessage = "\(visible) Gerät\(visible == 1 ? "" : "e") · Signal live"
+            }
         }
     }
 

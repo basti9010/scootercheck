@@ -25,10 +25,10 @@ struct ContentView: View {
                         connectingCard
                     } else if let result {
                         resultCard(result)
-                    } else if ble.devices.isEmpty {
+                    } else if ble.visibleDevices.isEmpty {
                         emptyState
                     }
-                    if !ble.devices.isEmpty && !isBusyPhase && result == nil {
+                    if !ble.visibleDevices.isEmpty && !isBusyPhase && result == nil {
                         deviceSection
                     }
                 }
@@ -92,6 +92,12 @@ struct ContentView: View {
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
+            Text("Scooter erscheinen oft nicht unter iPhone-Einstellungen → Bluetooth. Tippe „Scooter suchen“ — ScooterCheck listet BLE-Geräte wie SHU.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 300)
+                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 36)
@@ -162,7 +168,8 @@ struct ContentView: View {
     }
 
     private var deviceSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let listed = ble.visibleDevices
+        return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Geräte").font(.headline).foregroundStyle(.white)
                 Spacer()
@@ -170,13 +177,25 @@ struct ContentView: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.muted)
             }
-            if ble.devices.count > 1 {
-                Text("Bei mehreren Scootern: Gerät wegschieben — das richtige Signal wird schwächer oder verschwindet.")
+
+            Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
+                Text("Alle BLE").tag(false)
+                Text("Nur Scooter").tag(true)
+            }
+            .pickerStyle(.segmented)
+
+            if ble.showOnlyLikelyScooters {
+                Text("Filter aktiv: nur Namen, die nach Scooter aussehen. Fehlt dein Gerät → „Alle BLE“.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+            } else if listed.count > 1 {
+                Text("Alle BLE-Geräte in Reichweite. Scooter-Verdacht ist markiert. Bei Unsicherheit: Gerät wegschieben — Signal wird schwächer.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             }
+
             VStack(spacing: 0) {
-                ForEach(Array(ble.devices.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
                     if index > 0 {
                         Divider().overlay(Theme.line)
                     }
@@ -191,13 +210,23 @@ struct ContentView: View {
                                     Text(item.name)
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
-                                    if index == 0, ble.devices.count > 1 {
-                                        Text("nächstes")
+                                        .lineLimit(1)
+                                    if item.looksLikeScooter {
+                                        Text("Scooter")
                                             .font(.caption2.weight(.bold))
                                             .foregroundStyle(Theme.ink)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
                                             .background(Theme.accent)
+                                            .clipShape(Capsule())
+                                    }
+                                    if index == 0, listed.count > 1 {
+                                        Text("nächstes")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(.white.opacity(0.9))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.white.opacity(0.18))
                                             .clipShape(Capsule())
                                     }
                                 }
