@@ -850,6 +850,17 @@ enum IntegrityAnalyzer {
             ))
         }
 
+        if let persistent = facts.first(where: { $0.id == "flag.persistent" && $0.status == .erheblichAbweichend }) {
+            findings.append(Finding(
+                id: "finding.persistent.tuning",
+                severity: .erheblichAbweichend,
+                title: "Persistente Tuning-Marker (Panic-resistent)",
+                detail: persistent.bewertung + " — Soft-Unlock/Panic allein reicht zum Verstecken nicht.",
+                relatedFactIds: [persistent.id],
+                trackHint: .shu
+            ))
+        }
+
         return findings
     }
 
