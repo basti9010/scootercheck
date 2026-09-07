@@ -50,6 +50,15 @@ enum Nb {
         static let singleMileage: UInt8 = 0x68
         static let maxSpeed: UInt8 = 0x46
         static let startSpeed: UInt8 = 0x42
+        static let gearEDMax: UInt8 = 0x45
+        static let sGear: UInt8 = 0x6E
+        static let eGear: UInt8 = 0x79
+        static let dGear: UInt8 = 0x7A
+        static let boolReg: UInt8 = 0x1C
+        static let funBool: UInt8 = 0x1D
+        static let funBool2: UInt8 = 0x1E
+        static let funBool3: UInt8 = 0x1F
+        static let encryptionFlag: UInt8 = 0xE8
     }
 
     /// Register addresses are board-scoped; the same byte may mean different

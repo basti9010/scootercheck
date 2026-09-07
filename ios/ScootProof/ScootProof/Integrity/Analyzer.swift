@@ -22,7 +22,7 @@ enum IntegrityAnalyzer {
         facts += buildBatteryFacts(reading: reading)
         facts += buildTemperatureFacts(reading: reading)
         facts += buildErrorFacts(reading: reading)
-        facts += buildFlagFacts(reading: reading)
+        facts += buildFlagFacts(reading: reading, profile: profile)
         facts += buildGearFacts(reading: reading, profile: profile)
         facts += buildProtocolFacts(reading: reading)
         facts += buildIntegrityFacts(reading: reading)
@@ -336,23 +336,39 @@ enum IntegrityAnalyzer {
 
     private static func buildFirmwareFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
-        let stockHint = "Werkseitiges Muster (z. B. x.y.z_DE)"
+        let catalog = StockFirmwareCatalog.entry(for: profile)
+        let stockHint = catalog == nil
+            ? "Werkseitiges Muster (z. B. x.y.z_DE)"
+            : "Bekannte Serie (\(profile.shortLabel))"
 
-        for (id, title, value) in [
-            ("fw.mcu", "MCU-Firmware", reading.fwMcu),
-            ("fw.ble", "BLE-Firmware", reading.fwBle),
-            ("fw.bms", "BMS-Firmware", reading.fwBms),
-            ("fw.vcu", "VCU-Firmware", reading.fwVcu),
-            ("fw.esc", "ESC-Firmware", reading.fwEsc)
-        ] {
+        let components: [(String, String, String?, Set<String>?)] = [
+            ("fw.mcu", "MCU-Firmware", reading.fwMcu, catalog?.mcu),
+            ("fw.ble", "BLE-Firmware", reading.fwBle, catalog?.ble),
+            ("fw.bms", "BMS-Firmware", reading.fwBms, catalog?.bms),
+            ("fw.vcu", "VCU-Firmware", reading.fwVcu, catalog?.vcu),
+            ("fw.esc", "ESC-Firmware", reading.fwEsc, nil)
+        ]
+
+        for (id, title, value, listed) in components {
             let custom = value.map { TrackClassifier.matchesFwRegex($0, regex: TrackClassifier.customFwRegex) } ?? false
             let webapp = value.map { TrackClassifier.matchesFwRegex($0, regex: TrackClassifier.webappFwRegex) } ?? false
             let shu = value.map { TrackClassifier.matchesFwRegex($0, regex: TrackClassifier.shuFwRegex) } ?? false
-            let status: FactStatus = value == nil ? .nichtFeststellbar : (shu || custom ? .erheblichAbweichend : (webapp ? .abweichend : .regelkonform))
+            let match = listed.map { StockFirmwareCatalog.classify(value, in: $0) } ?? .unknownComponent
+
+            let status: FactStatus = {
+                if value == nil { return .nichtFeststellbar }
+                if shu || custom || match == .customMarked { return .erheblichAbweichend }
+                if webapp { return .abweichend }
+                if match == .notInCatalog { return .abweichend }
+                return .regelkonform
+            }()
+
             var bewertung = "Serienmäßig"
-            if shu { bewertung = "SHU-Kennung" }
+            if shu || match == .customMarked { bewertung = "Custom-/SHU-Kennung" }
             else if webapp { bewertung = "Web-App-Kennung" }
             else if custom { bewertung = "Custom-Firmware" }
+            else if match == .notInCatalog { bewertung = "Nicht in Serienkatalog" }
+            else if match == .listedStock { bewertung = "Im Serienkatalog" }
 
             facts.append(MeasuredFact(
                 id: id,
@@ -362,7 +378,7 @@ enum IntegrityAnalyzer {
                 sollwert: stockHint,
                 status: status,
                 bewertung: bewertung,
-                erlaeuterung: "Firmware-Version des Steuergeräts; Abweichungen können auf Parameteränderungen hinweisen.",
+                erlaeuterung: "Vergleich mit bekannten Serienständen. Custom-FW kann Versionen fälschen — dann zählen persistente Marker (Region, Limit, Gänge).",
                 raw: value
             ))
         }
@@ -379,7 +395,6 @@ enum IntegrityAnalyzer {
             raw: reading.fwAppCustom.map { String($0) }
         ))
 
-        _ = profile // reserved for profile-specific fw checks
         return facts
     }
 
@@ -531,7 +546,7 @@ enum IntegrityAnalyzer {
         ]
     }
 
-    private static func buildFlagFacts(reading: IntegrityReading) -> [MeasuredFact] {
+    private static func buildFlagFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
         [
             flagFact(id: "flag.safelock", title: "SafeLock", value: reading.safeLockActive, soll: true, inverted: true),
             flagFact(id: "flag.panic", title: "Panic-Modus", value: reading.panicModeActive, soll: false, inverted: false),
@@ -569,12 +584,68 @@ enum IntegrityAnalyzer {
                     return "Nicht feststellbar"
                 }(),
                 erlaeuterung: SoftUnlockSettings.isEnabledSnapshot()
-                    ? "Konfigurierte Bedienung: \(SoftUnlockSettings.gestureSummarySnapshot()). Die Geste selbst wird nicht über BLE gespeichert — erkannt wird die Wirkung (Limit ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot().rounded())) km/h)."
+                    ? "Konfigurierte Bedienung: \(SoftUnlockSettings.gestureSummarySnapshot()). Session-Unlock kann per Panic verschwinden — siehe „Persistente Marker“."
                     : "Soft-Unlock-Erkennung ist in den Einstellungen ausgeschaltet.",
                 raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
             ),
+            persistentTuningFact(reading: reading, profile: profile),
             flagFact(id: "flag.unbound", title: "Unbound Rebound", value: reading.unboundRebound, soll: false, inverted: false)
         ]
+    }
+
+    /// Marker, die ein Panic-/Soft-Reset typischerweise nicht löscht.
+    private static func persistentTuningFact(reading: IntegrityReading, profile: ScooterProfile) -> MeasuredFact {
+        var markers: [String] = []
+        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+        if region == .us && profile.market == .de20 {
+            markers.append("US-Region-SN")
+        }
+        let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? reading.peakSpeedKmh
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+        if let limit, limit >= threshold {
+            markers.append("Limit/Max \(Format.kmh.format(Optional(limit)))")
+        }
+        if let gear = reading.gearMax, gear > 1 {
+            markers.append("Gänge>\(gear)")
+        }
+        if TrackClassifier.hasCustomFirmware(reading) || reading.fwAppCustom == true {
+            markers.append("Custom-FW")
+        }
+        if let catalog = StockFirmwareCatalog.entry(for: profile) {
+            let comps = [
+                StockFirmwareCatalog.classify(reading.fwMcu, in: catalog.mcu),
+                StockFirmwareCatalog.classify(reading.fwVcu, in: catalog.vcu),
+                StockFirmwareCatalog.classify(reading.fwBle, in: catalog.ble)
+            ]
+            if comps.contains(.customMarked) { markers.append("FW-Kennung") }
+            else if comps.contains(.notInCatalog) { markers.append("FW außer Katalog") }
+        }
+
+        let status: FactStatus
+        let bewertung: String
+        if markers.isEmpty {
+            status = (limit == nil && reading.gearMax == nil && reading.fwMcu == nil)
+                ? .nichtFeststellbar : .regelkonform
+            bewertung = status == .nichtFeststellbar ? "Nicht feststellbar" : "Keine persistenten Tuning-Marker"
+        } else if markers.contains(where: { $0.hasPrefix("US-") || $0.hasPrefix("Custom") || $0.hasPrefix("Limit") }) {
+            status = .erheblichAbweichend
+            bewertung = "Panic-resistent: \(markers.joined(separator: ", "))"
+        } else {
+            status = .abweichend
+            bewertung = "Verdächtig: \(markers.joined(separator: ", "))"
+        }
+
+        return MeasuredFact(
+            id: "flag.persistent",
+            group: .flags,
+            title: "Persistente Tuning-Marker",
+            auslesewert: markers.isEmpty ? "—" : markers.joined(separator: ", "),
+            sollwert: "keine",
+            status: status,
+            bewertung: bewertung,
+            erlaeuterung: "Hinweise, die Soft-Unlock/Panic typischerweise nicht zurücksetzen: Region-SN, gespeicherte Max-Limits, freigeschaltete Gänge, Custom-FW. Reines Session-Unlock ohne diese Marker ist nach Panic oft unsichtbar.",
+            raw: markers.joined(separator: "|")
+        )
     }
 
     private static func flagFact(id: String, title: String, value: Bool?, soll: Bool, inverted: Bool) -> MeasuredFact {
@@ -815,10 +886,14 @@ enum IntegrityAnalyzer {
 
     private static func verdictFor(score: Int, facts: [MeasuredFact], trackMatch: TrackMatch) -> VerdictLevel {
         let severeCount = facts.filter { $0.status == .erheblichAbweichend }.count
+        let persistent = facts.first { $0.id == "flag.persistent" }
+        let persistentSevere = persistent?.status == .erheblichAbweichend
         if score >= 80 && severeCount == 0 && (trackMatch.trackId == .stock || trackMatch.trackId == .unknown) {
             return .stock
         }
-        if score < 50 || severeCount >= 3 || trackMatch.trackId == .shu || trackMatch.trackId == .shuDump {
+        // Persistente Marker (Region/Limit/Gänge/FW) → getunt, auch wenn Soft-Unlock per Panic weg ist.
+        if persistentSevere || score < 50 || severeCount >= 3
+            || trackMatch.trackId == .shu || trackMatch.trackId == .shuDump {
             return .tuned
         }
         return .watch

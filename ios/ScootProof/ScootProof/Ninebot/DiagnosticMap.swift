@@ -125,7 +125,11 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_speed", board: .vcuG3, register: Nb.G3Register.currentSpeed, readLen: 2, category: .limit),
         Spec(id: "vcu_g3_maxspd", board: .vcuG3, register: Nb.G3Register.maxSpeed, readLen: 2, category: .limit),
         Spec(id: "vcu_g3_startspd", board: .vcuG3, register: Nb.G3Register.startSpeed, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_edmax", board: .vcuG3, register: Nb.G3Register.gearEDMax, readLen: 2, category: .limit),
         Spec(id: "vcu_g3_gear", board: .vcuG3, register: Nb.G3Register.gearMode, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_sgear", board: .vcuG3, register: Nb.G3Register.sGear, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_egear", board: .vcuG3, register: Nb.G3Register.eGear, readLen: 2, category: .limit),
+        Spec(id: "vcu_g3_dgear", board: .vcuG3, register: Nb.G3Register.dGear, readLen: 2, category: .limit),
     ]
 
     private static let g3HistoryFields: [Spec] = [
@@ -136,7 +140,6 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_trip", board: .vcuG3, register: Nb.G3Register.singleMileage, readLen: 2, category: .history),
         Spec(id: "vcu_g3_runtime", board: .vcuG3, register: Nb.G3Register.runtime, readLen: 4, category: .history),
         Spec(id: "vcu_g3_ridetime", board: .vcuG3, register: Nb.G3Register.rideTime, readLen: 4, category: .history),
-        // Fallback klassische Adressen (falls Firmware sie noch spiegelt)
         Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer, readLen: 4, category: .history),
         Spec(id: "vcu_legacy_odo", board: .vcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
     ]
@@ -151,6 +154,12 @@ enum DiagnosticMap {
     private static let g3StatusFields: [Spec] = [
         Spec(id: "vcu_g3_error", board: .vcuG3, register: Nb.G3Register.errorCode, readLen: 2, category: .status),
         Spec(id: "vcu_g3_alarm", board: .vcuG3, register: Nb.G3Register.warnCode, readLen: 2, category: .status),
+        // Persistente Flags — überleben typischerweise Soft-Unlock-/Panic-Umschaltung.
+        Spec(id: "vcu_g3_bool", board: .vcuG3, register: Nb.G3Register.boolReg, readLen: 2, category: .status),
+        Spec(id: "vcu_g3_fun", board: .vcuG3, register: Nb.G3Register.funBool, readLen: 2, category: .status),
+        Spec(id: "vcu_g3_fun2", board: .vcuG3, register: Nb.G3Register.funBool2, readLen: 2, category: .status),
+        Spec(id: "vcu_g3_fun3", board: .vcuG3, register: Nb.G3Register.funBool3, readLen: 2, category: .status),
+        Spec(id: "vcu_g3_encflag", board: .vcuG3, register: Nb.G3Register.encryptionFlag, readLen: 2, category: .status),
     ]
 
     private static let limitFields: [Spec] = [
@@ -218,7 +227,7 @@ enum DiagnosticMap {
             return Nb.asciiString(data)
 
         case "dis_limit", "mcu_max", "mcu_safe", "mcu_gear",
-             "vcu_g3_maxspd", "vcu_g3_startspd":
+             "vcu_g3_maxspd", "vcu_g3_startspd", "vcu_g3_edmax":
             guard let raw = Nb.u16(data) else { return nil }
             // G3 MaxSpeed/StartSpeed oft 0.1 km/h; Werte > 120 → /10.
             let whole = RegisterScale.kmhWhole(raw)
@@ -230,9 +239,13 @@ enum DiagnosticMap {
             guard let raw = Nb.u16(data) else { return nil }
             return Format.kmh.format(Optional(RegisterScale.kmh(raw)))
 
-        case "vcu_g3_gear":
+        case "vcu_g3_gear", "vcu_g3_sgear", "vcu_g3_egear", "vcu_g3_dgear":
             guard let raw = Nb.u16(data) else { return nil }
             return Format.num.format(Int(raw))
+
+        case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
+            guard let raw = Nb.u16(data) else { return nil }
+            return Format.code.format("0x\(String(format: "%04X", raw))")
 
         case "dis_rated", "dis_trip_max", "dis_trip_avg", "dis_speed",
              "vcu_g3_rated", "vcu_g3_trip_max", "mcu_g3_rated":
@@ -357,7 +370,7 @@ enum DiagnosticMap {
                 }
             }
 
-        case "vcu_g3_maxspd", "vcu_g3_startspd":
+        case "vcu_g3_maxspd", "vcu_g3_startspd", "vcu_g3_edmax":
             if let raw = Nb.u16(data) {
                 let whole = RegisterScale.kmhWhole(raw)
                 let kmh = whole > 120 ? RegisterScale.kmh(raw) : whole
@@ -365,6 +378,7 @@ enum DiagnosticMap {
                     reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
                     reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                    // Persistentes Limit — auch nach Panic/Soft-Unlock-Reset relevant.
                     markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
@@ -448,6 +462,24 @@ enum DiagnosticMap {
                 reading.gearMax = max(reading.gearMax ?? 0, Int(raw))
                 if SoftUnlockSettings.isEnabledSnapshot(), Int(raw) > 1 {
                     reading.hiddenTuningDetected = true
+                }
+            }
+
+        case "vcu_g3_sgear", "vcu_g3_egear", "vcu_g3_dgear":
+            if let raw = Nb.u16(data), raw > 0 {
+                reading.gearMax = max(reading.gearMax ?? 0, Int(raw))
+                // Freigeschaltete Zusatzgänge bleiben nach Panic oft gesetzt.
+                if SoftUnlockSettings.isEnabledSnapshot(), raw > 1 {
+                    reading.hiddenTuningDetected = true
+                }
+            }
+
+        case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
+            // Rohflags für Panic-resistente Heuristik (Bitmuster modellabhängig).
+            if let raw = Nb.u16(data), raw != 0 {
+                // Encryption-/Fun-Flags ≠ 0 allein kein Beweis — nur bei ungewöhnlichen Mustern.
+                if spec.id == "vcu_g3_encflag", raw == 0xFFFF || (raw & 0xFF00) == 0xFF00 {
+                    reading.fwAppCustom = true
                 }
             }
 

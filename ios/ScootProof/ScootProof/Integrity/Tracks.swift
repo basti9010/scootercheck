@@ -243,6 +243,39 @@ enum TrackClassifier {
             return limit >= SoftUnlockSettings.thresholdKmhSnapshot()
         },
         TrackPattern(
+            id: "shu.persistent.limit",
+            trackId: .shu,
+            weight: 0.45,
+            description: "Persistentes Max-Limit über Schwelle (Panic-resistent)"
+        ) { reading, profile in
+            guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
+            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? reading.peakSpeedKmh ?? 0
+            return limit >= SoftUnlockSettings.thresholdKmhSnapshot()
+                && (profile.market == .de20 || profile.family == .maxG3)
+        },
+        TrackPattern(
+            id: "shu.persistent.gears",
+            trackId: .shu,
+            weight: 0.35,
+            description: "Zusatzgänge freigeschaltet (oft panic-resistent)"
+        ) { reading, _ in
+            (reading.gearMax ?? 0) > 1
+        },
+        TrackPattern(
+            id: "shu.fw.catalog.miss",
+            trackId: .webapp,
+            weight: 0.2,
+            description: "Firmware nicht im Serienkatalog"
+        ) { reading, profile in
+            guard let catalog = StockFirmwareCatalog.entry(for: profile) else { return false }
+            let matches = [
+                StockFirmwareCatalog.classify(reading.fwMcu, in: catalog.mcu),
+                StockFirmwareCatalog.classify(reading.fwVcu, in: catalog.vcu),
+                StockFirmwareCatalog.classify(reading.fwBle, in: catalog.ble)
+            ]
+            return matches.contains(.notInCatalog) || matches.contains(.customMarked)
+        },
+        TrackPattern(
             id: "shu.hidden.tuning",
             trackId: .shu,
             weight: 0.5,
