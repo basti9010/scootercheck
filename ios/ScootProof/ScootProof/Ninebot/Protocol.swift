@@ -12,10 +12,23 @@ enum Nb {
 
     enum Board: UInt8, CaseIterable {
         case dis = 0x01
+        /// Max G3 / neuere Controller oft unter 0x02 (Flasher: MCU).
+        case mcuG3 = 0x02
         case ble = 0x04
         case vcu = 0x09
+        /// Max G3 VCU / Versions-Proxy (Flasher: Destination 0x16).
+        case vcuG3 = 0x16
         case mcu = 0x20
         case bms = 0x22
+    }
+
+    /// G3-spezifische Version-Register (Ninebot-Max-G3-Flasher).
+    enum G3Register {
+        static let bleVersion: UInt8 = 0x01
+        static let vcuVersion: UInt8 = 0x17
+        static let mcuVersion: UInt8 = 0x19
+        static let mcuVersionFallback: UInt8 = 0x18
+        static let bmsVersion: UInt8 = 0x19
     }
 
     /// Register addresses are board-scoped; the same byte may mean different

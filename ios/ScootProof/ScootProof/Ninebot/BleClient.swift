@@ -116,6 +116,11 @@ struct ScannedDevice: Identifiable, Equatable {
     let peripheral: CBPeripheral
     /// Heuristik anhand BLE-Name (nur Anzeige/Filter, kein Hard-Block beim Scan).
     let looksLikeScooter: Bool
+    /// SHU-ähnliche Modellbezeichnung aus dem Advertisement (z. B. „Ninebot Max G3“).
+    let modelLabel: String?
+    /// Kurzes Badge (z. B. „Max G3“), falls erkannt.
+    let modelBadge: String?
+    let suggestedProfile: ScooterProfile?
 
     static func == (lhs: ScannedDevice, rhs: ScannedDevice) -> Bool {
         lhs.id == rhs.id
@@ -123,6 +128,9 @@ struct ScannedDevice: Identifiable, Equatable {
             && lhs.name == rhs.name
             && lhs.cryptoName == rhs.cryptoName
             && lhs.looksLikeScooter == rhs.looksLikeScooter
+            && lhs.modelLabel == rhs.modelLabel
+            && lhs.modelBadge == rhs.modelBadge
+            && lhs.suggestedProfile == rhs.suggestedProfile
     }
 
     /// 0…4 Balken für die UI
@@ -195,6 +203,8 @@ final class BleClient: NSObject, ObservableObject {
     private var cryptoName = ""
     private var activeStack: BleStack = .unknown
     private var enc2PipeIsNordic = false
+    /// Profil-Hinweis für Register-Map (z. B. Max-G3-Board-Adressen).
+    private var dumpProfileHint: ScooterProfile = .maxG3D
 
     private let assembler = FrameAssembler()
     private let xiaomiAssembler = XiaomiFrameAssembler()
@@ -337,6 +347,7 @@ final class BleClient: NSObject, ObservableObject {
         phase = .detecting
         statusMessage = "Erkenne BLE-Protokoll…"
         detectedStack = .unknown
+        dumpProfileHint = profile
 
         let order = detectionOrder(profileHint: profile, name: cryptoName.isEmpty ? btName : cryptoName)
         var sawEncryptedXiaomi = false
@@ -673,6 +684,12 @@ final class BleClient: NSObject, ObservableObject {
         reading.bleStack = BleStack.ninebotEnc2.rawValue
         detectedStack = .ninebotEnc2
 
+        // Max G3: BLE-Name ist oft schon die Geräte-ID (wie in SHU).
+        if let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {
+            reading.serialDisplay = id
+            reading.serialBle = reading.serialBle ?? id
+        }
+
         var evidence = Data()
         var liveBoards = Set<String>()
 
@@ -690,9 +707,10 @@ final class BleClient: NSObject, ObservableObject {
         }
         reading.liveBoards = liveBoards.sorted()
 
-        // Read all diagnostic fields
-        let total = DiagnosticMap.fields.count
-        for (index, spec) in DiagnosticMap.fields.enumerated() {
+        // Read diagnostic fields (G3 nutzt zusätzliche Board-/Versions-Adressen)
+        let specs = DiagnosticMap.fields(for: dumpProfileHint)
+        let total = specs.count
+        for (index, spec) in specs.enumerated() {
             statusMessage = "Lese \(spec.id) (\(index + 1)/\(total))…"
 
             let request = Nb.read(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
@@ -707,17 +725,7 @@ final class BleClient: NSObject, ObservableObject {
                 evidence.append(spec.key.data(using: .utf8) ?? Data())
                 evidence.append(parsed.data)
 
-                let decoded = DiagnosticMap.decode(spec: spec, data: parsed.data)
                 DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
-                reading.rawRegisters.append(
-                    RawRegister(
-                        address: String(format: "%02X", spec.board.rawValue),
-                        index: Int(spec.register),
-                        name: spec.id,
-                        valueHex: parsed.data.map { String(format: "%02x", $0) }.joined(),
-                        valueDecoded: decoded
-                    )
-                )
             } catch {
                 continue
             }
@@ -727,6 +735,11 @@ final class BleClient: NSObject, ObservableObject {
         }
 
         reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
+        // If serial still empty but BLE name is a compact ID, keep the scan-time ID.
+        if reading.serialDisplay == nil,
+           let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {
+            reading.serialDisplay = id
+        }
         phase = .done
         statusMessage = "Diagnose abgeschlossen (\(BleStack.ninebotEnc2.shortLabel))"
     }
@@ -886,7 +899,9 @@ final class BleClient: NSObject, ObservableObject {
         case .dis: return "DIS"
         case .ble: return "BLE"
         case .vcu: return "VCU"
+        case .vcuG3: return "VCU(G3)"
         case .mcu: return "MCU"
+        case .mcuG3: return "MCU(G3)"
         case .bms: return "BMS"
         }
     }
@@ -993,23 +1008,30 @@ extension BleClient: CBCentralManagerDelegate {
         Task { @MainActor in
             let byName = Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
             let byService = Self.advertisementLooksLikeScooter(advertisementData)
+            let hint = BleModelHint.recognize(bleName: rawName.isEmpty ? nil : rawName)
             let device = ScannedDevice(
                 id: peripheral.identifier,
                 name: name,
                 cryptoName: rawName,
                 rssi: rssiValue,
                 peripheral: peripheral,
-                looksLikeScooter: byName || byService
+                looksLikeScooter: byName || byService || hint != nil,
+                modelLabel: hint?.title,
+                modelBadge: hint?.shortBadge,
+                suggestedProfile: hint?.profile
             )
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
-                // Badge beibehalten, sobald einmal als Scooter erkannt.
+                // Badge/Modell beibehalten, sobald einmal erkannt.
                 let merged = ScannedDevice(
                     id: device.id,
                     name: device.name,
                     cryptoName: device.cryptoName.isEmpty ? devices[index].cryptoName : device.cryptoName,
                     rssi: device.rssi,
                     peripheral: device.peripheral,
-                    looksLikeScooter: device.looksLikeScooter || devices[index].looksLikeScooter
+                    looksLikeScooter: device.looksLikeScooter || devices[index].looksLikeScooter,
+                    modelLabel: device.modelLabel ?? devices[index].modelLabel,
+                    modelBadge: device.modelBadge ?? devices[index].modelBadge,
+                    suggestedProfile: device.suggestedProfile ?? devices[index].suggestedProfile
                 )
                 devices[index] = merged
             } else {

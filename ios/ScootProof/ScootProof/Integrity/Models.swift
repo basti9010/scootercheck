@@ -146,34 +146,93 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
 
     /// Grobe Zuordnung aus Bluetooth-Namen / SN-Präfix (nur Vorschlag).
     static func suggested(fromBluetoothName name: String?, serial: String? = nil) -> ScooterProfile? {
-        let hay = [name, serial]
-            .compactMap { $0?.uppercased() }
-            .joined(separator: " ")
-        guard !hay.isEmpty else { return nil }
+        BleModelHint.recognize(bleName: name, serial: serial)?.profile
+    }
+}
 
-        if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET") {
-            return hay.contains("N2E") || hay.contains("25") ? .zt3ProE : .zt3ProD
+// MARK: - Scan-time model recognition (SHU-ähnlich)
+
+/// Erkennt Modell schon am BLE-Advertisement-Namen — ohne Verbindung.
+/// Max G3: Namen beginnend mit „1C…“ (SHU / G3-Flasher-Konvention).
+struct BleModelHint: Equatable, Sendable {
+    let title: String
+    let shortBadge: String
+    let profile: ScooterProfile
+
+    static func recognize(bleName: String?, serial: String? = nil) -> BleModelHint? {
+        let rawParts = [bleName, serial].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !rawParts.isEmpty else { return nil }
+
+        let hay = rawParts.map { $0.uppercased() }.joined(separator: " ")
+        let compact = String(hay.filter { $0.isLetter || $0.isNumber })
+
+        // Max G3 / MAX3 — BLE-IDs wie „1CGBF2531C0230“ (ohne „G3“ im Klartext)
+        if compact.hasPrefix("1C") {
+            // Markt (D/E) steckt nicht zuverlässig in der BLE-ID — DE als Default.
+            return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3D)
         }
-        // Max G3 / MAX3 (Typenschild „MAX3“, FIN oft XN4B…)
         if hay.contains("MAX3") || hay.contains("MAX G3") || hay.contains("G3 PLUS")
-            || hay.contains("XN4B") || hay.range(of: #"\bG3\b"#, options: .regularExpression) != nil {
-            return hay.contains("25") || hay.contains("G3E") ? .maxG3E : .maxG3D
+            || hay.contains("XN4B")
+            || hay.range(of: #"\bG3\b"#, options: .regularExpression) != nil {
+            let eu = hay.contains("G3E") || hay.contains("25 KM") || hay.contains("25KM")
+            let profile: ScooterProfile = eu ? .maxG3E : .maxG3D
+            return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: profile)
         }
-        if hay.contains("G30") || hay.contains("N4GS") || (hay.contains("MAX") && !hay.contains("MAX3")) {
-            return hay.contains("G30E") || hay.contains("N4GSE") ? .maxG30E : .maxG30D
+
+        if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET") || compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") {
+            let eu = hay.contains("N2E") || hay.contains("25")
+            return BleModelHint(
+                title: "Ninebot ZT3 Pro",
+                shortBadge: "ZT3 Pro",
+                profile: eu ? .zt3ProE : .zt3ProD
+            )
         }
+
+        if hay.contains("G30") || hay.contains("N4GS") || compact.hasPrefix("N4GS")
+            || (hay.contains("MAX") && !hay.contains("MAX3") && !compact.hasPrefix("1C")) {
+            let eu = hay.contains("G30E") || hay.contains("N4GSE")
+            return BleModelHint(
+                title: "Ninebot Max G30",
+                shortBadge: "Max G30",
+                profile: eu ? .maxG30E : .maxG30D
+            )
+        }
+
         if hay.contains("F2") || hay.range(of: #"\bF[234]0\b"#, options: .regularExpression) != nil {
-            return hay.contains("F25") || hay.contains("25") ? .ninebotFE : .ninebotFD
+            let eu = hay.contains("F25") || hay.contains("25")
+            return BleModelHint(
+                title: "Ninebot F-Serie",
+                shortBadge: "F-Serie",
+                profile: eu ? .ninebotFE : .ninebotFD
+            )
         }
+
         if hay.contains("D18") || hay.contains("D28") || hay.contains("D38") || hay.contains("D-SERIES") {
-            return .ninebotDD
+            return BleModelHint(title: "Ninebot D-Serie", shortBadge: "D-Serie", profile: .ninebotDD)
         }
+
         if hay.contains("PRO 2") || hay.contains("PRO2") || hay.contains("M365")
             || hay.contains("1S") || hay.contains("ESSENTIAL") {
-            return .xiaomiClassicD
+            return BleModelHint(title: "Xiaomi M365 / Pro 2", shortBadge: "Xiaomi", profile: .xiaomiClassicD)
         }
+
         if hay.contains("SCOOTER 3") || hay.contains("SCOOTER 4") || hay.contains("MI3") || hay.contains("MI4") {
-            return .xiaomiRecentD
+            return BleModelHint(title: "Xiaomi Scooter 3 / 4", shortBadge: "Xiaomi", profile: .xiaomiRecentD)
+        }
+
+        return nil
+    }
+
+    /// Kompakte BLE-Serien-ID (z. B. Max-G3-Advertisement), sonst nil.
+    static func compactScooterId(from bleName: String?) -> String? {
+        guard let bleName else { return nil }
+        let trimmed = bleName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("Ohne Namen") else { return nil }
+        let compact = String(trimmed.uppercased().filter { $0.isLetter || $0.isNumber })
+        guard compact.count >= 8, compact.count <= 20 else { return nil }
+        if compact.hasPrefix("1C") { return compact }
+        if compact.first?.isNumber == true, compact.allSatisfy({ $0.isLetter || $0.isNumber }) {
+            return compact
         }
         return nil
     }

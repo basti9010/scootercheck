@@ -187,7 +187,7 @@ struct ContentView: View {
             .pickerStyle(.segmented)
 
             if ble.showOnlyLikelyScooters {
-                Text("Filter: Namen/IDs und BLE-Services, die nach Scooter aussehen (z. B. 1CGBF25…). Fehlt etwas → „Alle BLE“.")
+                Text("Filter: Namen/IDs und BLE-Services, die nach Scooter aussehen. Max G3 oft als „1C…“ + „Ninebot Max G3“. Fehlt etwas → „Alle BLE“.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             } else if listed.count > 1 {
@@ -236,7 +236,15 @@ struct ContentView: View {
                                             .font(.body.weight(.semibold))
                                             .foregroundStyle(.white)
                                             .lineLimit(1)
-                                        if item.looksLikeScooter {
+                                        if let badge = item.modelBadge {
+                                            Text(badge)
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(Theme.ink)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Theme.accent)
+                                                .clipShape(Capsule())
+                                        } else if item.looksLikeScooter {
                                             Text("Scooter")
                                                 .font(.caption2.weight(.bold))
                                                 .foregroundStyle(Theme.ink)
@@ -254,6 +262,12 @@ struct ContentView: View {
                                                 .background(Color.white.opacity(0.18))
                                                 .clipShape(Capsule())
                                         }
+                                    }
+                                    if let model = item.modelLabel {
+                                        Text(model)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(Theme.accent)
+                                            .lineLimit(1)
                                     }
                                     Text("\(item.signalLabel) · \(item.rssi) dBm")
                                         .font(.caption)
@@ -415,7 +429,8 @@ struct ContentView: View {
     }
 
     private func connectAndCheck(_ device: ScannedDevice) async {
-        if let suggested = ScooterProfile.suggested(fromBluetoothName: device.name) {
+        if let suggested = device.suggestedProfile
+            ?? ScooterProfile.suggested(fromBluetoothName: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
             profile = suggested
         }
         busy = true
