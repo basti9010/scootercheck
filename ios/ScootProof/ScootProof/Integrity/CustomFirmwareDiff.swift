@@ -179,16 +179,16 @@ enum CustomFirmwareDiff {
             suspected = true
             reasons.append(
                 tempoFromLimit
-                    ? "Tempo-Unlock Limit \(Format.kmh.format(Optional(unlockLimit)))"
-                    : "Tempo-Unlock Trip-Peak \(Format.kmh.format(Optional(unlockPeak)))"
+                    ? "Tempo-Unlock Limit \(Format.kmh.format(unlockLimit))"
+                    : "Tempo-Unlock Trip-Peak \(Format.kmh.format(unlockPeak))"
             )
             diffs.append(DiffItem(
                 id: "diff.softunlock",
                 title: "Soft-Unlock (Tempo)",
                 stockValue: "≤ \(Format.kmh.format(Optional(profile.ratedMaxKmh)))",
                 observedValue: tempoFromLimit
-                    ? "Limit \(Format.kmh.format(Optional(unlockLimit)))"
-                    : "Trip-Peak \(Format.kmh.format(Optional(unlockPeak)))",
+                    ? "Limit \(Format.kmh.format(unlockLimit))"
+                    : "Trip-Peak \(Format.kmh.format(unlockPeak))",
                 severity: evidenceKmh >= profile.tuningClearKmh ? .erheblichAbweichend : .abweichend,
                 explanation: "Session-Unlock kann nach Panic verschwinden; gespeichertes Max-Limit oder Trip-Peak bleibt oft sichtbar."
             ))

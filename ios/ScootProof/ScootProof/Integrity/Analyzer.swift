@@ -711,8 +711,8 @@ enum IntegrityAnalyzer {
         }
 
         // Aktuell seriennah, früher Unlock → typisches Ausschalten/Panic.
-        let priorPeak = prior.peakSpeedKmh.map { Format.kmh.format(Optional($0)) } ?? "—"
-        let priorLimit = (prior.speedLimitKmh ?? prior.speedMaxKmh).map { Format.kmh.format(Optional($0)) } ?? "—"
+        let priorPeak = Format.kmh.format(prior.peakSpeedKmh)
+        let priorLimit = Format.kmh.format(prior.speedLimitKmh ?? prior.speedMaxKmh)
         return MeasuredFact(
             id: "flag.session.reset",
             group: .flags,
