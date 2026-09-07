@@ -181,8 +181,8 @@ struct ContentView: View {
             }
 
             Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
-                Text("Alle BLE").tag(false)
                 Text("Nur Scooter").tag(true)
+                Text("Alle BLE").tag(false)
             }
             .pickerStyle(.segmented)
 
@@ -204,7 +204,7 @@ struct ContentView: View {
                         .font(.subheadline)
                         .foregroundStyle(.white)
                     if ble.showOnlyLikelyScooters {
-                        Button("Zurück zu Alle BLE") {
+                        Button("Alle BLE anzeigen") {
                             ble.showOnlyLikelyScooters = false
                         }
                         .font(.subheadline.weight(.semibold))

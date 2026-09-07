@@ -179,7 +179,7 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var detectedStack: BleStack = .unknown
     /// Wenn true: Liste nur mit Namen, die nach Scooter aussehen. Sonst alle BLE-Geräte.
-    @Published var showOnlyLikelyScooters = false
+    @Published var showOnlyLikelyScooters = true
 
     private static let maxTrackedDevices = 50
 
@@ -218,6 +218,8 @@ final class BleClient: NSObject, ObservableObject {
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var notifyReadyFallback: CheckedContinuation<Void, Never>?
     private var pendingNotifyEnables = 0
+    /// Frames, die ankommen während kein sendReceive wartet (z. B. Power-Taste).
+    private var incomingEncryptedFrames: [Data] = []
 
     private static let passwordKeyPrefix = "ninebot_password_"
 
@@ -681,21 +683,24 @@ final class BleClient: NSObject, ObservableObject {
             phase = .waitingButton
             statusMessage = "Bitte jetzt die Power-Taste am Scooter drücken…"
 
-            let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
-            // Erstes SET_PWD; bei Index 0 weiter pollen (Flasher-Stil).
+            // Non-SN (Max G3): sofort pollen + RX-Queue — kein sendReceive-Fenster,
+            // das den Tasten-ACK zwischen Timeouts verwerfen würde.
+            // SN-Modus: erstes SET_PWD klassisch, dann pollend warten.
             var setAccepted = false
-            do {
-                let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 3)
-                if let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue {
-                    if setParsed.index == 1 {
-                        setAccepted = true
-                    } else if setParsed.index != 0 {
-                        throw BleError.handshakeFailed("SET_PWD abgelehnt")
+            if !nonSNPairing {
+                let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
+                do {
+                    let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 3)
+                    if let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue {
+                        if setParsed.index == 1 {
+                            setAccepted = true
+                        } else if setParsed.index != 0 {
+                            throw BleError.handshakeFailed("SET_PWD abgelehnt")
+                        }
                     }
+                } catch {
+                    if case BleError.notConnected = error { throw error }
                 }
-            } catch {
-                if case BleError.notConnected = error { throw error }
-                // Timeout → Button-Wait
             }
 
             if !setAccepted {
@@ -772,33 +777,57 @@ final class BleClient: NSObject, ObservableObject {
     ) async throws -> Data {
         let deadline = Date().addingTimeInterval(timeout)
         var lastSend = Date.distantPast
-        let setPlain = Nb.setPwd(password, target: pairingBoard, gen: gen)
+        // SET_PWD an Pairing-Board und Legacy — Scooter antwortet oft nur auf eines.
+        let targets: [Nb.Board] = [pairingBoard, .ble, .bleLegacy]
+        var targetIndex = 0
+
+        statusMessage = "Bitte jetzt die Power-Taste am Scooter drücken…"
+        // Queue nicht leeren: ACK kann schon zwischen erstem SET_PWD und hier angekommen sein.
 
         while Date() < deadline {
             guard peripheral != nil else { throw BleError.notConnected }
 
-            // Wie SHU/Flasher: SET_PWD alle ~0,5 s erneut, bis Power-Taste OK liefert.
-            if Date().timeIntervalSince(lastSend) >= 0.5 {
+            // Gepufferte Frames zuerst (Antwort nach Tastendruck kann asynchron kommen).
+            if let accepted = try drainSetPwdAccepted(crypto: crypto) {
+                return accepted
+            }
+
+            // Alle ~0,45 s SET_PWD feuern (ohne Request/Response-Fenster zu blockieren).
+            if Date().timeIntervalSince(lastSend) >= 0.45 {
                 lastSend = Date()
-                statusMessage = "Bitte jetzt die Power-Taste am Scooter drücken…"
-                // Non-SN-Pairing: Counter nicht hochlaufen lassen.
+                let target = targets[targetIndex % targets.count]
+                targetIndex += 1
+                statusMessage = "Power-Taste drücken… (Board 0x\(String(format: "%02X", target.rawValue)))"
                 crypto.resetSN()
+                let setPlain = Nb.setPwd(password, target: target, gen: gen)
                 do {
-                    let resp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 0.9)
-                    if let parsed = Nb.parse(resp),
-                       parsed.cmd == Nb.Cmd.setPwd.rawValue,
-                       parsed.index == 1 {
-                        return resp
-                    }
+                    let encrypted = try crypto.encrypt(setPlain)
+                    try await write(encrypted)
                 } catch {
                     if case BleError.notConnected = error { throw error }
-                    // Timeout = Taste noch nicht gedrückt — weiter pollen.
                 }
-            } else {
-                try? await Task.sleep(nanoseconds: 50_000_000)
             }
+
+            // Notify-Zeitfenster: Frames landen in der Queue via deliverFrame.
+            try? await Task.sleep(nanoseconds: 120_000_000)
         }
-        throw BleError.handshakeFailed("Timeout beim Warten auf Power-Taste")
+        throw BleError.handshakeFailed("Timeout beim Warten auf Power-Taste — Taste länger halten oder Scooter neu starten")
+    }
+
+    private func drainSetPwdAccepted(crypto: NbCrypto) throws -> Data? {
+        var remaining: [Data] = []
+        defer { incomingEncryptedFrames = remaining }
+        while !incomingEncryptedFrames.isEmpty {
+            let frame = incomingEncryptedFrames.removeFirst()
+            if let plain = try? crypto.decrypt(frame),
+               let parsed = Nb.parse(plain),
+               parsed.cmd == Nb.Cmd.setPwd.rawValue,
+               parsed.index == 1 {
+                return plain
+            }
+            // Andere Frames verwerfen (Index 0 / Noise), damit die Queue nicht volläuft.
+        }
+        return nil
     }
 
     // MARK: - Diagnostic dump
@@ -1001,9 +1030,16 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     private func deliverFrame(_ encrypted: Data) {
-        guard let continuation = pendingContinuation else { return }
-        pendingContinuation = nil
-        continuation.resume(returning: encrypted)
+        if let continuation = pendingContinuation {
+            pendingContinuation = nil
+            continuation.resume(returning: encrypted)
+            return
+        }
+        // Power-Taste / asynchrone Antworten nicht verwerfen.
+        incomingEncryptedFrames.append(encrypted)
+        if incomingEncryptedFrames.count > 48 {
+            incomingEncryptedFrames.removeFirst(incomingEncryptedFrames.count - 48)
+        }
     }
 
     // MARK: - Password persistence
@@ -1071,6 +1107,7 @@ final class BleClient: NSObject, ObservableObject {
         connectContinuation = nil
         notifyReadyFallback = nil
         pendingNotifyEnables = 0
+        incomingEncryptedFrames.removeAll(keepingCapacity: false)
     }
 
     /// Strikte Heuristik für „Nur Scooter“ — lieber zu wenig als Nuki/OLED/TV als Scooter.
