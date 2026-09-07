@@ -27,6 +27,7 @@ enum ProtocolJSON {
             reading: result.reading,
             facts: result.facts,
             findings: result.findings,
+            evidence: result.evidence,
             evidenceSha256: result.reading.evidenceSha256
         )
         let encoder = JSONEncoder()
@@ -57,6 +58,7 @@ enum ProtocolJSON {
         let reading: IntegrityReading
         let facts: [MeasuredFact]
         let findings: [Finding]
+        let evidence: EvidenceAssessment
         let evidenceSha256: String?
     }
 }
@@ -131,6 +133,7 @@ enum ProtocolPDF {
             y = drawSectionIII(context: context, y: y)
             y = drawSectionIV(context: context, result: result, y: y)
             y = drawSectionIVa(context: context, result: result, y: y)
+            y = drawSectionIVb(context: context, result: result, y: y)
             y = drawSectionV(context: context, result: result, y: y)
             y = drawSectionVI(context: context, result: result, y: y)
             y = drawSectionVII(context: context, result: result, y: y)
@@ -336,6 +339,91 @@ enum ProtocolPDF {
                 cursor = drawText("    Hinweis: \(note)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.danger)
             }
         }
+        return cursor + sectionGap
+    }
+
+    private static func drawSectionIVb(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
+        var cursor = ensureSpace(context: context, y: y, needed: 80)
+        cursor = drawHeading("IV.d Evidenzmatrix (Persistenz & Beweisgewicht)", at: cursor)
+        cursor = drawText(
+            result.evidence.summary,
+            at: cursor,
+            font: bodyFont(size: 10),
+            color: Theme.UI.text
+        )
+        cursor = drawText(
+            "Klassen: flüchtig / semi-persistent / persistent · Nachweis / Indiz / Abweichung. Isoliertes Limit ≠ automatisch getunt.",
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+
+        for hit in result.evidence.hits {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
+            cursor = drawText(
+                "• \(hit.title) [\(hit.volatility.label) · \(hit.evidenceClass.label)]",
+                at: cursor,
+                font: bodyFont(size: 10, weight: .semibold),
+                color: Theme.UI.text
+            )
+            cursor = drawText(
+                "  \(hit.rawCitation)",
+                at: cursor,
+                font: monoFont(size: 8),
+                color: Theme.UI.muted
+            )
+            cursor = drawText(
+                "  Reset bei Ausschalten: \(hit.resetsOnPowerOff ? "typisch ja" : "typisch nein")",
+                at: cursor,
+                font: bodyFont(size: 9),
+                color: Theme.UI.muted
+            )
+        }
+
+        if !result.evidence.correlations.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 40)
+            cursor = drawSubheading("Korrelationen", at: cursor)
+            for corr in result.evidence.correlations {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
+                cursor = drawText("• \(corr)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.text)
+            }
+        }
+
+        if !result.evidence.temporalDeltas.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 40)
+            cursor = drawSubheading("Zeitliche Historie (gleiche SN)", at: cursor)
+            for delta in result.evidence.temporalDeltas {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
+                cursor = drawText(
+                    "• \(delta.title): \(delta.previous) → \(delta.current) (Protokoll \(delta.priorProtocol))",
+                    at: cursor,
+                    font: bodyFont(size: 9),
+                    color: Theme.UI.text
+                )
+            }
+        }
+
+        if !result.evidence.crossBoardIssues.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 40)
+            cursor = drawSubheading("Cross-Board-Konsistenz", at: cursor)
+            for issue in result.evidence.crossBoardIssues {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
+                cursor = drawText(
+                    "• \(issue.title): \(issue.detail)",
+                    at: cursor,
+                    font: bodyFont(size: 9),
+                    color: Theme.UI.text
+                )
+            }
+        }
+
+        cursor = ensureSpace(context: context, y: cursor, needed: 36)
+        cursor = drawText(
+            "Baseline-Fingerprint: \(result.evidence.fingerprint.digestSHA256)",
+            at: cursor,
+            font: monoFont(size: 8),
+            color: Theme.UI.muted
+        )
         return cursor + sectionGap
     }
 

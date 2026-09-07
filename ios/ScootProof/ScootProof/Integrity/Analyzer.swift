@@ -11,12 +11,22 @@ enum IntegrityAnalyzer {
         reading: IntegrityReading,
         profile: ScooterProfile,
         sessionId: UUID = UUID(),
-        priorUnlock: PriorUnlockEvidence? = nil
+        priorUnlock: PriorUnlockEvidence? = nil,
+        priorReading: IntegrityReading? = nil,
+        priorProtocolNumber: String? = nil
     ) -> IntegrityResult {
         var reading = reading
         normalizeSpeedUnlockFlag(&reading)
 
         let trackMatch = TrackClassifier.classify(reading: reading, profile: profile)
+        let evidence = EvidenceMatrix.assess(
+            reading: reading,
+            profile: profile,
+            priorUnlock: priorUnlock,
+            priorReading: priorReading,
+            priorProtocolNumber: priorProtocolNumber
+        )
+
         var facts: [MeasuredFact] = []
 
         facts += buildSerialFacts(reading: reading, profile: profile)
@@ -34,10 +44,20 @@ enum IntegrityAnalyzer {
         facts += buildBoardFacts(reading: reading)
         facts += buildHistoryFacts(reading: reading)
         facts += buildPhysicalFacts(reading: reading)
+        facts += EvidenceMatrix.buildFacts(evidence)
 
-        let findings = buildFindings(facts: facts, trackMatch: trackMatch)
-        let score = computeScore(facts: facts, trackMatch: trackMatch)
-        let verdict = verdictFor(score: score, facts: facts, trackMatch: trackMatch)
+        // Rohdatenbezug für Kernfakten nachziehen (Region / Speed).
+        facts = enrichFactsWithRawCitations(facts, reading: reading, profile: profile)
+
+        var findings = buildFindings(facts: facts, trackMatch: trackMatch)
+        findings += evidenceFindings(evidence)
+
+        let score = evidence.score
+        let verdict = blendVerdict(
+            evidence: evidence,
+            trackMatch: trackMatch,
+            facts: facts
+        )
 
         return IntegrityResult(
             sessionId: sessionId,
@@ -47,7 +67,8 @@ enum IntegrityAnalyzer {
             findings: findings,
             trackMatch: trackMatch,
             score: score,
-            verdict: verdict
+            verdict: verdict,
+            evidence: evidence
         )
     }
 
@@ -1040,18 +1061,24 @@ enum IntegrityAnalyzer {
         return findings
     }
 
-    // MARK: - Scoring
+    // MARK: - Scoring (legacy helpers retained for demos / fallbacks)
 
     private static func computeScore(facts: [MeasuredFact], trackMatch: TrackMatch) -> Int {
+        // Bevorzugt Evidenzklassen, falls gesetzt.
         var score = 100
+        var penalized = Set<String>()
         for fact in facts {
+            if let cls = fact.evidenceClass, penalized.insert(fact.id).inserted {
+                score -= cls.scorePenalty
+                continue
+            }
             switch fact.status {
             case .regelkonform, .nichtFeststellbar:
                 break
             case .abweichend:
-                score -= 8
+                score -= 4
             case .erheblichAbweichend:
-                score -= 18
+                score -= 12
             }
         }
 
@@ -1059,61 +1086,163 @@ enum IntegrityAnalyzer {
         case .stock:
             score = min(100, score + 5)
         case .webapp:
-            score -= 15
+            score -= 8
         case .shu:
-            score -= 25
+            score -= 12
         case .shuDump:
-            score -= 30
+            score -= 18
         case .unknown:
-            score -= 5
+            break
         }
 
         return min(100, max(0, score))
     }
 
     private static func verdictFor(score: Int, facts: [MeasuredFact], trackMatch: TrackMatch) -> VerdictLevel {
-        let severeCount = facts.filter { $0.status == .erheblichAbweichend }.count
-        let speedSevere = facts.contains {
-            ($0.id.hasPrefix("speed.") || $0.id.hasPrefix("diff.speed") || $0.id == "flag.hidden")
-                && $0.status == .erheblichAbweichend
-        }
-        let customConfirmed = facts.first(where: { $0.id == "fw.custom.detect" })?.status == .erheblichAbweichend
-        let regionSevere = facts.contains { $0.id == "diff.region" && $0.status == .erheblichAbweichend }
-        let gearOnlyWatch = facts.contains {
-            ($0.id == "gear.max" || $0.id == "diff.gear.max") && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
-        }
-
-        if score >= 85 && severeCount == 0 && (trackMatch.trackId == .stock || trackMatch.trackId == .unknown) {
-            return .stock
-        }
-
-        // Klar getunt: Tempo über Typ, bestätigte Custom-FW, Region-Unlock oder starkes Dump-Muster.
-        if speedSevere || customConfirmed || regionSevere || trackMatch.trackId == .shuDump {
-            return .tuned
-        }
-        if trackMatch.trackId == .shu && trackMatch.confidence >= 0.55 && severeCount >= 2 {
-            return .tuned
-        }
-        if score < 35 && severeCount >= 4 {
-            return .tuned
-        }
-
-        // Früheres Unlock-Protokoll + aktuelle Session zurückgesetzt → mindestens beobachten.
-        let sessionReset = facts.contains {
-            $0.id == "flag.session.reset" && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
-        }
-        let persistentSevere = facts.contains {
-            $0.id == "flag.persistent" && $0.status == .erheblichAbweichend
-        }
-        if sessionReset && persistentSevere {
-            return .tuned
-        }
-
-        // Nur Gänge / schwache Marker → beobachten, nicht sofort „getunt“.
-        if sessionReset || gearOnlyWatch || severeCount >= 1 || score < 80 || trackMatch.trackId == .webapp {
+        // Legacy: nicht mehr primär genutzt — Evidenzmatrix entscheidet.
+        let nachweis = facts.filter { $0.evidenceClass == .nachweis }.count
+        let indiz = facts.filter { $0.evidenceClass == .indiz }.count
+        if nachweis >= 1 { return .tuned }
+        if trackMatch.trackId == .shuDump && indiz >= 1 { return .tuned }
+        if score < 40 && indiz >= 2 { return .tuned }
+        if !facts.filter({ $0.status == .abweichend || $0.status == .erheblichAbweichend }).isEmpty || score < 85 {
             return .watch
         }
         return .stock
+    }
+
+    // MARK: - Evidence matrix integration
+
+    private static func blendVerdict(
+        evidence: EvidenceAssessment,
+        trackMatch: TrackMatch,
+        facts: [MeasuredFact]
+    ) -> VerdictLevel {
+        // Evidenzmatrix führt — isoliertes Limit/Speed wird dort bereits gedrosselt.
+        var verdict = evidence.suggestedVerdict
+
+        // SHU-Dump bleibt starkes Muster, aber nur mit mindestens einem Indiz/Nachweis.
+        if trackMatch.trackId == .shuDump,
+           evidence.nachweisCount + evidence.indizCount >= 1 {
+            verdict = .tuned
+        }
+
+        // Reines Session-Unlock ohne persistente Indizien → höchstens beobachten.
+        let onlyFleeting = !evidence.hits.isEmpty
+            && evidence.hits.allSatisfy({ $0.volatility == .fleeting })
+        if onlyFleeting, verdict == .tuned {
+            verdict = .watch
+        }
+
+        // Persistente Marker-Fakt aus Flags: wenn erheblich + Matrix Indiz → tuned ok
+        _ = facts
+        return verdict
+    }
+
+    private static func evidenceFindings(_ evidence: EvidenceAssessment) -> [Finding] {
+        var findings: [Finding] = []
+        if evidence.nachweisCount > 0 {
+            findings.append(Finding(
+                id: "finding.evidence.nachweis",
+                severity: .erheblichAbweichend,
+                title: "Manipulationsnachweis (Evidenzmatrix)",
+                detail: evidence.summary,
+                relatedFactIds: evidence.hits.filter { $0.evidenceClass == .nachweis }.map { "evidence.\($0.id)" }
+            ))
+        } else if evidence.indizCount >= 2 {
+            findings.append(Finding(
+                id: "finding.evidence.indiz",
+                severity: .abweichend,
+                title: "Mehrere Manipulationsindizien",
+                detail: evidence.correlations.first ?? evidence.summary,
+                relatedFactIds: evidence.hits.filter { $0.evidenceClass == .indiz }.map { "evidence.\($0.id)" }
+            ))
+        }
+        for corr in evidence.correlations.prefix(3) {
+            findings.append(Finding(
+                id: "finding.evidence.corr.\(findings.count)",
+                severity: corr.contains("Nachweis") ? .erheblichAbweichend : .abweichend,
+                title: "Marker-Korrelation",
+                detail: corr,
+                relatedFactIds: ["evidence.summary"]
+            ))
+        }
+        return findings
+    }
+
+    private static func enrichFactsWithRawCitations(
+        _ facts: [MeasuredFact],
+        reading: IntegrityReading,
+        profile: ScooterProfile
+    ) -> [MeasuredFact] {
+        facts.map { fact in
+            switch fact.id {
+            case "serial.region":
+                let sn = reading.serialDisplay ?? reading.serialVcu ?? "—"
+                let raw = reading.rawRegisters.last(where: {
+                    ["vcu_g3_sn", "dis_sn", "vcu_sn"].contains($0.name)
+                })
+                let citation: String
+                if let raw {
+                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : "EU")"
+                } else {
+                    citation = "SN-Quelle: \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : "EU")"
+                }
+                return MeasuredFact(
+                    id: fact.id,
+                    group: fact.group,
+                    title: fact.title,
+                    auslesewert: fact.auslesewert,
+                    sollwert: fact.sollwert,
+                    status: fact.status,
+                    bewertung: fact.bewertung,
+                    erlaeuterung: citation,
+                    raw: citation,
+                    volatility: .persistent,
+                    evidenceClass: fact.status == .erheblichAbweichend ? .indiz : .abweichung,
+                    sourceBoard: raw.map { _ in "VCU/DIS" } ?? "SN",
+                    sourceRegister: "0x10",
+                    rawHex: raw?.valueHex,
+                    resetsOnPowerOff: false
+                )
+            case "speed.limit", "speed.max", "speed.peak":
+                let names: [String]
+                switch fact.id {
+                case "speed.peak": names = ["dis_trip_max", "vcu_g3_trip_max", "tft_trip_max"]
+                case "speed.max": names = ["vcu_g3_maxspd", "vcu_g3_edmax"]
+                default: names = ["vcu_g3_maxspd", "dis_limit", "vcu_g3_edmax"]
+                }
+                let raw = names.compactMap { name in reading.rawRegisters.last(where: { $0.name == name }) }.first
+                let vol: MarkerVolatility = fact.id == "speed.peak" ? .semiPersistent : .persistent
+                let citation: String
+                if let raw {
+                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex)"
+                        + (raw.valueDecoded.map { "; interpretiert als \($0)" } ?? "")
+                        + "; Typ-Soll: \(fact.sollwert)"
+                } else {
+                    citation = fact.erlaeuterung
+                }
+                return MeasuredFact(
+                    id: fact.id,
+                    group: fact.group,
+                    title: fact.title,
+                    auslesewert: fact.auslesewert,
+                    sollwert: fact.sollwert,
+                    status: fact.status,
+                    bewertung: fact.bewertung,
+                    erlaeuterung: citation,
+                    raw: citation,
+                    volatility: vol,
+                    evidenceClass: fact.status == .erheblichAbweichend ? .indiz : .abweichung,
+                    sourceBoard: raw?.name.split(separator: "_").first.map(String.init) ?? "VCU",
+                    sourceRegister: raw?.address ?? "—",
+                    rawHex: raw?.valueHex,
+                    resetsOnPowerOff: vol != .persistent
+                )
+            default:
+                return fact
+            }
+        }
     }
 
     // MARK: - Demo Registers

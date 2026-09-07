@@ -237,6 +237,12 @@ struct ContentView: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
+                    if report.evidence.nachweisCount + report.evidence.indizCount + report.evidence.abweichungCount > 0 {
+                        Text(report.evidence.summary)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     if let reset = report.facts.first(where: {
                         $0.id == "flag.session.reset"
                             && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
@@ -385,13 +391,15 @@ struct ContentView: View {
         if reading.serialExpected == nil, let sn = reading.serialDisplay {
             reading.serialExpected = sn
         }
-        let prior = history.priorUnlockEvidence(
-            forSerial: reading.serialDisplay ?? reading.serialVcu ?? reading.serialBle
-        )
+        let serial = reading.serialDisplay ?? reading.serialVcu ?? reading.serialBle
+        let snapshot = history.priorSnapshot(forSerial: serial)
+        let priorUnlock = history.priorUnlockEvidence(forSerial: serial)
         let analyzed = IntegrityAnalyzer.analyze(
             reading: reading,
             profile: profile,
-            priorUnlock: prior
+            priorUnlock: priorUnlock,
+            priorReading: snapshot?.reading,
+            priorProtocolNumber: snapshot?.protocolNumber
         )
         result = analyzed
         let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
@@ -793,6 +801,21 @@ struct FactRow: View {
                 Text("Bewertung: \(fact.status.rawValue)")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.fact(fact.status))
+                if let evidenceClass = fact.evidenceClass {
+                    Text("Beweis: \(evidenceClass.label)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+                if let volatility = fact.volatility {
+                    Text("Persistenz: \(volatility.label) · \(volatility.resetsOnPowerOffHint)")
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                }
+                if let board = fact.sourceBoard, let reg = fact.sourceRegister {
+                    Text("Quelle: \(board) \(reg)" + (fact.rawHex.map { " · Roh \($0)" } ?? ""))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Theme.muted)
+                }
                 Text(fact.erlaeuterung)
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)

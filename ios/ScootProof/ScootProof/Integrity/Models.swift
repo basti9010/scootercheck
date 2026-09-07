@@ -623,6 +623,7 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case boards = "Steuergeräte"
     case history = "Fahrhistorie"
     case gear = "Fahrmodus"
+    case evidence = "Evidenzmatrix"
 }
 
 struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
@@ -635,6 +636,13 @@ struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
     let bewertung: String
     let erlaeuterung: String
     let raw: String?
+    /// Persistenzklasse für Kontrollberichte (optional).
+    let volatility: MarkerVolatility?
+    let evidenceClass: EvidenceClass?
+    let sourceBoard: String?
+    let sourceRegister: String?
+    let rawHex: String?
+    let resetsOnPowerOff: Bool?
 
     init(
         id: String,
@@ -645,7 +653,13 @@ struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
         status: FactStatus,
         bewertung: String,
         erlaeuterung: String,
-        raw: String? = nil
+        raw: String? = nil,
+        volatility: MarkerVolatility? = nil,
+        evidenceClass: EvidenceClass? = nil,
+        sourceBoard: String? = nil,
+        sourceRegister: String? = nil,
+        rawHex: String? = nil,
+        resetsOnPowerOff: Bool? = nil
     ) {
         self.id = id
         self.group = group
@@ -656,6 +670,12 @@ struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
         self.bewertung = bewertung
         self.erlaeuterung = erlaeuterung
         self.raw = raw
+        self.volatility = volatility
+        self.evidenceClass = evidenceClass
+        self.sourceBoard = sourceBoard
+        self.sourceRegister = sourceRegister
+        self.rawHex = rawHex
+        self.resetsOnPowerOff = resetsOnPowerOff
     }
 }
 
@@ -696,6 +716,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     let trackMatch: TrackMatch
     let score: Int
     let verdict: VerdictLevel
+    let evidence: EvidenceAssessment
     let analyzedAt: Date
     let disclaimer: String
 
@@ -708,6 +729,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         trackMatch: TrackMatch,
         score: Int,
         verdict: VerdictLevel,
+        evidence: EvidenceAssessment = .empty,
         analyzedAt: Date = Date(),
         disclaimer: String = IntegrityResult.defaultDisclaimer
     ) {
@@ -720,15 +742,59 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         self.trackMatch = trackMatch
         self.score = min(100, max(0, score))
         self.verdict = verdict
+        self.evidence = evidence
         self.analyzedAt = analyzedAt
         self.disclaimer = disclaimer
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId, profile, reading, facts, factGroups, findings
+        case trackMatch, score, verdict, evidence, analyzedAt, disclaimer
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try c.decode(UUID.self, forKey: .sessionId)
+        profile = try c.decode(ScooterProfile.self, forKey: .profile)
+        reading = try c.decode(IntegrityReading.self, forKey: .reading)
+        facts = try c.decode([MeasuredFact].self, forKey: .facts)
+        if let groups = try c.decodeIfPresent([FactGroup: [MeasuredFact]].self, forKey: .factGroups) {
+            factGroups = groups
+        } else {
+            factGroups = Dictionary(grouping: facts, by: \.group)
+        }
+        findings = try c.decode([Finding].self, forKey: .findings)
+        trackMatch = try c.decode(TrackMatch.self, forKey: .trackMatch)
+        score = try c.decode(Int.self, forKey: .score)
+        verdict = try c.decode(VerdictLevel.self, forKey: .verdict)
+        evidence = try c.decodeIfPresent(EvidenceAssessment.self, forKey: .evidence) ?? .empty
+        analyzedAt = try c.decodeIfPresent(Date.self, forKey: .analyzedAt) ?? Date()
+        disclaimer = try c.decodeIfPresent(String.self, forKey: .disclaimer) ?? IntegrityResult.defaultDisclaimer
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(sessionId, forKey: .sessionId)
+        try c.encode(profile, forKey: .profile)
+        try c.encode(reading, forKey: .reading)
+        try c.encode(facts, forKey: .facts)
+        try c.encode(factGroups, forKey: .factGroups)
+        try c.encode(findings, forKey: .findings)
+        try c.encode(trackMatch, forKey: .trackMatch)
+        try c.encode(score, forKey: .score)
+        try c.encode(verdict, forKey: .verdict)
+        try c.encode(evidence, forKey: .evidence)
+        try c.encode(analyzedAt, forKey: .analyzedAt)
+        try c.encode(disclaimer, forKey: .disclaimer)
     }
 
     static let defaultDisclaimer = """
     Dieses Protokoll wurde ausschließlich auf Basis einer schreibgeschützten Auslesung erstellt. \
     Es erfolgt keine Veränderung von Fahrzeugparametern. Die Bewertung ersetzt keine amtliche \
     Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung im Sinne der \
-    Straßenverkehrs-Zulassungs-Ordnung (StVZO).
+    Straßenverkehrs-Zulassungs-Ordnung (StVZO). Die Bewertung gewichtet Marker nach Persistenz \
+    und Beweisqualität (Nachweis / Indiz / Abweichung); flüchtige Session-Marker allein begründen \
+    keinen Manipulationsnachweis.
     """
 }
 

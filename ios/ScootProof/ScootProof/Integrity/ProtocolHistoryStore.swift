@@ -135,6 +135,37 @@ final class ProtocolHistoryStore: ObservableObject {
         return nil
     }
 
+    struct PriorSnapshot: Sendable {
+        let protocolNumber: String
+        let createdAt: Date
+        let reading: IntegrityReading
+        let verdict: VerdictLevel?
+    }
+
+    /// Letzte frühere Session derselben SN (für zeitliche Deltas / Fingerprint-Vergleich).
+    func priorSnapshot(
+        forSerial serial: String?,
+        excludingSessionId: UUID? = nil
+    ) -> PriorSnapshot? {
+        guard let serial else { return nil }
+        let needle = Self.normalizeSerial(serial)
+        guard needle.count >= 8 else { return nil }
+
+        for entry in entries {
+            if let excludingSessionId, entry.id == excludingSessionId { continue }
+            guard let entrySN = entry.serialDisplay, Self.serialsMatch(needle, entrySN) else { continue }
+            guard let session = loadSession(id: entry.id) else { continue }
+            let reading = session.result?.reading ?? session.reading
+            return PriorSnapshot(
+                protocolNumber: session.protocolNumber,
+                createdAt: session.createdAt,
+                reading: reading,
+                verdict: session.result?.verdict
+            )
+        }
+        return nil
+    }
+
     private static func normalizeSerial(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
