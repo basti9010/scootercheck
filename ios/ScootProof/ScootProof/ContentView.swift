@@ -25,10 +25,12 @@ struct ContentView: View {
                         connectingCard
                     } else if let result {
                         resultCard(result)
-                    } else if ble.visibleDevices.isEmpty {
+                    } else if ble.devices.isEmpty {
                         emptyState
                     }
-                    if !ble.visibleDevices.isEmpty && !isBusyPhase && result == nil {
+                    // Geräteliste inkl. Filter auch zeigen, wenn „Nur Scooter“ leer filtert —
+                    // sonst verschwindet der Umschalter und man kommt nicht zurück.
+                    if !ble.devices.isEmpty && !isBusyPhase && result == nil {
                         deviceSection
                     }
                 }
