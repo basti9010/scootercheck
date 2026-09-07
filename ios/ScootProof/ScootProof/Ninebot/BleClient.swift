@@ -878,10 +878,34 @@ final class BleClient: NSObject, ObservableObject {
         // F-/D-Serie Kurzformen in BT-Namen
         if upper.range(of: #"\bF[234]?0?\b"#, options: .regularExpression) != nil { return true }
         if upper.range(of: #"\bD(18|28|38)\b"#, options: .regularExpression) != nil { return true }
-        // Manche Max/G3 werben mit kurzen alphanumerischen IDs (z. B. 1CGBF25…)
-        if upper.range(of: #"^[0-9A-F]{6,}$"#, options: .regularExpression) != nil { return true }
-        if upper.range(of: #"^[0-9][A-Z0-9]{5,}$"#, options: .regularExpression) != nil { return true }
+
+        // Kompakte BLE-IDs neuer Max/G3-Modelle, z. B. „1CGBF25…“
+        // (nur Buchstaben/Ziffern zählen — Bindestriche/Spaces ignorieren)
+        let compact = String(upper.filter { $0.isLetter || $0.isNumber })
+        if compact.count >= 6 {
+            if compact.first?.isNumber == true { return true }
+            if compact.range(of: #"^[A-Z0-9]{6,20}$"#, options: .regularExpression) != nil {
+                // Keine typischen Handy-/TV-Prefixe
+                let phoneTV = ["IPHONE", "IPAD", "WATCH", "GALAXY", "SAMSUNG", "PIXEL", "HUAWEI"]
+                if !phoneTV.contains(where: { compact.contains($0) }) { return true }
+            }
+        }
         return false
+    }
+
+    nonisolated static func advertisementLooksLikeScooter(_ advertisementData: [String: Any]) -> Bool {
+        let keys = [
+            CBAdvertisementDataServiceUUIDsKey,
+            CBAdvertisementDataOverflowServiceUUIDsKey
+        ]
+        var uuids: [CBUUID] = []
+        for key in keys {
+            if let list = advertisementData[key] as? [CBUUID] {
+                uuids.append(contentsOf: list)
+            }
+        }
+        let scooterServices: Set<CBUUID> = [NbUUID.service, XiaomiUUID.service]
+        return uuids.contains { scooterServices.contains($0) }
     }
 }
 

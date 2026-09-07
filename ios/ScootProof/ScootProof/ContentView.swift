@@ -185,7 +185,7 @@ struct ContentView: View {
             .pickerStyle(.segmented)
 
             if ble.showOnlyLikelyScooters {
-                Text("Filter aktiv: nur Namen, die nach Scooter aussehen. Fehlt dein Gerät → „Alle BLE“.")
+                Text("Filter: Namen/IDs und BLE-Services, die nach Scooter aussehen (z. B. 1CGBF25…). Fehlt etwas → „Alle BLE“.")
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
             } else if listed.count > 1 {
