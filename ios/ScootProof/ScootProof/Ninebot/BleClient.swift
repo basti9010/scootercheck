@@ -876,9 +876,14 @@ final class BleClient: NSObject, ObservableObject {
         var lastSend = Date.distantPast
         // Max G3: nur Pairing-Board — weniger TX-Flood / Disconnects.
         // Sonst Pairing + Legacy rotieren.
-        let targets: [Nb.Board] = preferPairingBoardOnly
-            ? [pairingBoard]
-            : Array(Set([pairingBoard, .ble, .bleLegacy]))
+        let targets: [Nb.Board] = {
+            if preferPairingBoardOnly { return [pairingBoard] }
+            var list = [pairingBoard]
+            for board in [Nb.Board.ble, .bleLegacy] where !list.contains(board) {
+                list.append(board)
+            }
+            return list
+        }()
         var targetIndex = 0
         var sendInterval: TimeInterval = preferPairingBoardOnly ? 0.9 : 0.45
         var sendCount = 0
