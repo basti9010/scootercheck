@@ -211,6 +211,8 @@ final class BleClient: NSObject, ObservableObject {
     /// Letztes Scan-Gerät für einen Reconnect-Versuch nach Abbruch.
     private var lastConnectDevice: ScannedDevice?
     private var maxG3Enc2RetryUsed = false
+    /// Erwarteter Disconnect (z. B. vor „Erneut prüfen“) — kein Fehlerstatus.
+    private var expectDisconnect = false
     /// Pairing-Zielboard aus PRE_COMM-Antwort (oft 0x04 oder 0x21).
     private var pairingBoard: Nb.Board = .ble
     private var discoveredServiceSummary = ""
@@ -242,17 +244,105 @@ final class BleClient: NSObject, ObservableObject {
             phase = .failed
             return
         }
+        // Verbundene Scooter werben oft nicht — trennen und als Seed behalten,
+        // sonst bleibt „Erneut prüfen“ leer, obwohl das Handy noch verbunden ist.
+        let seed = disconnectForRescan()
         devices.removeAll()
+        if let seed {
+            devices.append(seed)
+        }
+        for peripheral in retrieveAlreadyConnectedScooters() {
+            upsertScanned(fromConnected: peripheral)
+        }
         phase = .scanning
+        let seeded = !devices.isEmpty
         statusMessage = showOnlyLikelyScooters
-            ? "Suche vermutete Scooter…"
-            : "Suche alle BLE-Geräte in der Nähe…"
+            ? (seeded ? "Verbunden · suche weitere Scooter…" : "Suche vermutete Scooter…")
+            : (seeded ? "Verbunden · suche weitere BLE-Geräte…" : "Suche alle BLE-Geräte in der Nähe…")
         // AllowDuplicates: RSSI live aktualisieren, um bei mehreren Geräten das nähere zu erkennen.
         // withServices: nil — wie SHU alle BLE-Advertiser erfassen (nicht nur bekannte Service-UUIDs).
         central.scanForPeripherals(
             withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
+    }
+
+    /// Trennt die aktive Session, damit der Scooter wieder advertisieren kann.
+    /// Gibt das zuletzt verbundene Gerät zurück, damit die UI es sofort anzeigt.
+    private func disconnectForRescan() -> ScannedDevice? {
+        let active = peripheral ?? lastConnectDevice?.peripheral
+        guard let active else { return nil }
+        let connected = active.state == .connected || active.state == .connecting
+        guard connected || peripheral != nil else { return nil }
+
+        let seed = lastConnectDevice.map { previous in
+            ScannedDevice(
+                id: active.identifier,
+                name: previous.name,
+                cryptoName: previous.cryptoName.isEmpty
+                    ? (cryptoName.isEmpty ? btName : cryptoName)
+                    : previous.cryptoName,
+                rssi: max(previous.rssi, -55),
+                peripheral: active,
+                looksLikeScooter: true,
+                modelLabel: previous.modelLabel,
+                modelBadge: previous.modelBadge,
+                suggestedProfile: previous.suggestedProfile
+            )
+        } ?? ScannedDevice(
+            id: active.identifier,
+            name: btName.isEmpty ? (active.name ?? "Verbunden") : btName,
+            cryptoName: cryptoName.isEmpty ? (active.name ?? "") : cryptoName,
+            rssi: -55,
+            peripheral: active,
+            looksLikeScooter: true,
+            modelLabel: nil,
+            modelBadge: nil,
+            suggestedProfile: nil
+        )
+
+        central.cancelPeripheralConnection(active)
+        expectDisconnect = true
+        resetSession()
+        return seed
+    }
+
+    private func retrieveAlreadyConnectedScooters() -> [CBPeripheral] {
+        central.retrieveConnectedPeripherals(withServices: [NbUUID.service, XiaomiUUID.service])
+    }
+
+    private func upsertScanned(fromConnected peripheral: CBPeripheral) {
+        let rawName = (peripheral.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let shortId = String(peripheral.identifier.uuidString.prefix(8))
+        let name = rawName.isEmpty ? "Verbunden (\(shortId))" : rawName
+        let hint = BleModelHint.recognize(bleName: rawName.isEmpty ? nil : rawName)
+        let device = ScannedDevice(
+            id: peripheral.identifier,
+            name: name,
+            cryptoName: rawName,
+            rssi: -50,
+            peripheral: peripheral,
+            looksLikeScooter: true,
+            modelLabel: hint?.title,
+            modelBadge: hint?.shortBadge,
+            suggestedProfile: hint?.profile
+        )
+        if let index = devices.firstIndex(where: { $0.id == device.id }) {
+            let existing = devices[index]
+            devices[index] = ScannedDevice(
+                id: device.id,
+                name: existing.name.isEmpty ? device.name : existing.name,
+                cryptoName: existing.cryptoName.isEmpty ? device.cryptoName : existing.cryptoName,
+                rssi: existing.rssi,
+                peripheral: peripheral,
+                looksLikeScooter: true,
+                modelLabel: existing.modelLabel ?? device.modelLabel,
+                modelBadge: existing.modelBadge ?? device.modelBadge,
+                suggestedProfile: existing.suggestedProfile ?? device.suggestedProfile
+            )
+        } else {
+            devices.append(device)
+        }
     }
 
     /// Gefilterte Ansicht für die UI (alle Geräte oder nur Scooter-Heuristik).
@@ -653,6 +743,7 @@ final class BleClient: NSObject, ObservableObject {
 
     func disconnect() {
         if let peripheral {
+            expectDisconnect = true
             central.cancelPeripheralConnection(peripheral)
         }
         resetSession()
@@ -1483,7 +1574,13 @@ extension BleClient: CBCentralManagerDelegate {
             }
             finishNotifyReady()
 
-            let wasActive = phase != .idle && phase != .done && phase != .failed
+            if expectDisconnect {
+                expectDisconnect = false
+                resetSession()
+                return
+            }
+
+            let wasActive = phase != .idle && phase != .done && phase != .failed && phase != .scanning
             resetSession()
             if wasActive {
                 fail(

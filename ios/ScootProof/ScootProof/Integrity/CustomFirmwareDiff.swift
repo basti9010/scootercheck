@@ -116,7 +116,7 @@ enum CustomFirmwareDiff {
         )
         appendSpeedDiff(
             id: "diff.speed.peak",
-            title: "Peak-/Safe-Geschwindigkeit",
+            title: "Trip-Spitzengeschwindigkeit",
             value: reading.peakSpeedKmh,
             rated: rated,
             ratedText: ratedText,
@@ -170,18 +170,27 @@ enum CustomFirmwareDiff {
         // --- Soft-Unlock nur über Tempo, nicht über Gänge ---
         let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
         let unlockLimit = reading.speedLimitKmh ?? reading.speedMaxKmh
-        let tempoUnlock = reading.hiddenTuningDetected == true
-            || (unlockLimit ?? 0) >= threshold
-        if tempoUnlock, let lim = unlockLimit, lim >= threshold {
+        let unlockPeak = reading.peakSpeedKmh
+        let tempoFromLimit = (unlockLimit ?? 0) >= threshold
+        let tempoFromPeak = (unlockPeak ?? 0) >= threshold
+        let tempoUnlock = reading.hiddenTuningDetected == true || tempoFromLimit || tempoFromPeak
+        if tempoUnlock, tempoFromLimit || tempoFromPeak {
+            let evidenceKmh = max(unlockLimit ?? 0, unlockPeak ?? 0)
             suspected = true
-            reasons.append("Tempo-Unlock Limit \(Format.kmh.format(Optional(lim)))")
+            reasons.append(
+                tempoFromLimit
+                    ? "Tempo-Unlock Limit \(Format.kmh.format(Optional(unlockLimit)))"
+                    : "Tempo-Unlock Trip-Peak \(Format.kmh.format(Optional(unlockPeak)))"
+            )
             diffs.append(DiffItem(
                 id: "diff.softunlock",
                 title: "Soft-Unlock (Tempo)",
                 stockValue: "≤ \(Format.kmh.format(Optional(profile.ratedMaxKmh)))",
-                observedValue: "Limit \(Format.kmh.format(Optional(lim)))",
-                severity: lim >= profile.tuningClearKmh ? .erheblichAbweichend : .abweichend,
-                explanation: "Session-Unlock kann nach Panic verschwinden; gespeichertes Max-Limit bleibt oft sichtbar."
+                observedValue: tempoFromLimit
+                    ? "Limit \(Format.kmh.format(Optional(unlockLimit)))"
+                    : "Trip-Peak \(Format.kmh.format(Optional(unlockPeak)))",
+                severity: evidenceKmh >= profile.tuningClearKmh ? .erheblichAbweichend : .abweichend,
+                explanation: "Session-Unlock kann nach Panic verschwinden; gespeichertes Max-Limit oder Trip-Peak bleibt oft sichtbar."
             ))
         }
 

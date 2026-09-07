@@ -33,6 +33,14 @@ enum RegisterScale {
         return nil
     }
 
+    /// Trip-Spitze (rSigMaxSpeed): klassisch ×0.1 km/h; Fallback G3-High-Byte.
+    static func tripPeakKmh(_ raw: UInt16) -> Double? {
+        guard raw > 0 else { return nil }
+        let tenths = Double(raw) / 10.0
+        if tenths >= 1, tenths <= 100 { return tenths }
+        return g3StoredSpeedKmh(raw)
+    }
+
     /// Millimetre odometer → km.
     static func km(_ millimetres: UInt32) -> Double {
         Double(millimetres) / 1000.0
@@ -153,6 +161,13 @@ enum DiagnosticMap {
     ]
 
     private static let g3HistoryFields: [Spec] = [
+        // Trip-Peak (nicht das konfigurierte Limit): DIS rSigMaxSpeed 0x24 = ×0.1 km/h.
+        // Max G3 speichert Telemetrie oft auf VCU — deshalb zusätzliche Probes.
+        Spec(id: "dis_trip_max", board: .dis, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
+        Spec(id: "dis_trip_avg", board: .dis, register: Nb.Register.averageSpeed, readLen: 2, category: .history),
+        Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_trip_max", board: .vcuG3, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
+        Spec(id: "tft_trip_max", board: .tft, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
         // SHU/Segway: Gesamtkilometer = VCU rMileage @ 0x62 (4 Byte), nicht DIS 0xB7.
         Spec(id: "vcu_g3_odo", board: .vcuG3, register: Nb.G3Register.totalMileage, readLen: 4, category: .history),
         Spec(id: "vcu_g3_remain", board: .vcuG3, register: Nb.G3Register.remainingMileage, readLen: 2, category: .history),
@@ -276,8 +291,13 @@ enum DiagnosticMap {
             guard let raw = Nb.u16(data) else { return nil }
             return Format.code.format("0x\(String(format: "%04X", raw))")
 
-        case "dis_rated", "dis_trip_max", "dis_trip_avg", "dis_speed",
-             "vcu_g3_rated", "vcu_g3_trip_max", "mcu_g3_rated":
+        case "dis_trip_max", "vcu_g3_trip_max", "tft_trip_max":
+            guard let raw = Nb.u16(data),
+                  let kmh = RegisterScale.tripPeakKmh(raw) else { return nil }
+            return Format.kmh.format(Optional(kmh))
+
+        case "dis_rated", "dis_trip_avg", "dis_speed",
+             "vcu_g3_rated", "mcu_g3_rated":
             guard let raw = Nb.u16(data) else { return nil }
             return Format.kmh.format(Optional(RegisterScale.kmh(raw)))
 
@@ -394,7 +414,7 @@ enum DiagnosticMap {
                 let kmh = RegisterScale.kmhWhole(raw)
                 if kmh > 0 {
                     reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
-                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                    // Limit ≠ Trip-Peak — Peak nur aus rSigMaxSpeed / Live-Speed.
                     markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
@@ -403,7 +423,6 @@ enum DiagnosticMap {
             if let raw = Nb.u16(data), let kmh = RegisterScale.g3StoredSpeedKmh(raw) {
                 reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
                 reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
-                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                 markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
             }
 
@@ -412,7 +431,6 @@ enum DiagnosticMap {
             if let raw = Nb.u16(data), let kmh = RegisterScale.g3StoredSpeedKmh(raw), kmh >= 15 {
                 reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
                 reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
-                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                 markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
             }
 
@@ -425,25 +443,30 @@ enum DiagnosticMap {
                 let kmh = RegisterScale.kmh(raw)
                 if kmh > 0 {
                     reading.speedRatedKmh = max(reading.speedRatedKmh ?? 0, kmh)
-                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                     markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
 
-        case "dis_trip_max", "vcu_g3_trip_max":
-            if let raw = Nb.u16(data) {
-                let kmh = RegisterScale.kmh(raw)
-                if kmh > 0 {
-                    reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
-                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
-                }
+        case "dis_trip_max", "vcu_g3_trip_max", "tft_trip_max":
+            // Tatsächliche Trip-Spitze (nicht konfiguriertes Limit).
+            if let raw = Nb.u16(data), let kmh = RegisterScale.tripPeakKmh(raw), kmh > 0 {
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                // Peak über Soft-Unlock-Schwelle = gefahrenes Tempo-Unlock.
+                markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
             }
 
         case "dis_trip_avg":
             break
 
         case "dis_speed", "vcu_g3_speed":
-            if let raw = Nb.u16(data) { reading.speedCurrentKmh = RegisterScale.kmh(raw) }
+            if let raw = Nb.u16(data) {
+                let kmh = RegisterScale.kmh(raw)
+                reading.speedCurrentKmh = kmh
+                // Live-Speed während der Auslese kann die Trip-Spitze ergänzen.
+                if kmh >= 5 {
+                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                }
+            }
 
         case "dis_range", "vcu_g3_range", "vcu_g3_remain", "vcu_g3_precise":
             if let raw = Nb.u16(data) {
@@ -488,7 +511,6 @@ enum DiagnosticMap {
                 let kmh = RegisterScale.kmhWhole(raw)
                 if kmh > 0 && kmh < 120 {
                     reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
-                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                     markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
                 }
             }
@@ -518,9 +540,7 @@ enum DiagnosticMap {
             if let raw = Nb.u16(data) {
                 let kmh = RegisterScale.kmhWhole(raw)
                 reading.safeLockActive = kmh > 0
-                if kmh > 0 && kmh < 120 {
-                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
-                }
+                // Safe-Lock ist ein Limit, keine Trip-Spitze.
             }
 
         case "vcu_g3_cfg":

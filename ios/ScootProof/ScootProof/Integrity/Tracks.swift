@@ -258,8 +258,19 @@ enum TrackClassifier {
             description: "Persistentes Max-Limit über Schwelle (Panic-resistent)"
         ) { reading, profile in
             guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
-            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? reading.peakSpeedKmh ?? 0
+            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
             return limit >= SoftUnlockSettings.thresholdKmhSnapshot()
+                && (profile.market == .de20 || profile.family == .maxG3)
+        },
+        TrackPattern(
+            id: "shu.trip.peak",
+            trackId: .shu,
+            weight: 0.55,
+            description: "Trip-Spitze über Soft-Unlock-Schwelle"
+        ) { reading, profile in
+            guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
+            let peak = reading.peakSpeedKmh ?? 0
+            return peak >= SoftUnlockSettings.thresholdKmhSnapshot()
                 && (profile.market == .de20 || profile.family == .maxG3)
         },
         TrackPattern(

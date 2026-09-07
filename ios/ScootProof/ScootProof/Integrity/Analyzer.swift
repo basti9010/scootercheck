@@ -311,10 +311,13 @@ enum IntegrityAnalyzer {
         for (id, title, value, fmt) in [
             ("speed.limit", "Geschwindigkeitslimit", reading.speedLimitKmh, Format.kmh),
             ("speed.max", "Maximale Geschwindigkeit (gespeichert)", reading.speedMaxKmh, Format.kmh),
-            ("speed.peak", "Spitzengeschwindigkeit (Peak)", reading.peakSpeedKmh, Format.kmh),
+            ("speed.peak", "Trip-Spitzengeschwindigkeit (Peak)", reading.peakSpeedKmh, Format.kmh),
             ("speed.rated", "Bauartbedingte Höchstgeschwindigkeit", reading.speedRatedKmh, Format.kmh)
         ] as [(String, String, Double?, Format)] {
             let status = speedStatus(value: value, profile: profile)
+            let peakNote = id == "speed.peak"
+                ? "Höchstwert der aktuellen/letzten Fahrt (rSigMaxSpeed), nicht das konfigurierte Limit."
+                : "Vergleich mit typgenehmigter Höchstgeschwindigkeit (\(profile.shortLabel))."
             facts.append(MeasuredFact(
                 id: id,
                 group: .speed,
@@ -323,7 +326,7 @@ enum IntegrityAnalyzer {
                 sollwert: fmt.format(rated),
                 status: status,
                 bewertung: speedBewertung(value: value, profile: profile),
-                erlaeuterung: "Vergleich mit typgenehmigter Höchstgeschwindigkeit (\(profile.shortLabel)).",
+                erlaeuterung: peakNote,
                 raw: value.map { String($0) }
             ))
         }
@@ -660,8 +663,8 @@ enum IntegrityAnalyzer {
         let status: FactStatus
         let bewertung: String
         if markers.isEmpty {
-            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? reading.peakSpeedKmh
-            status = (limit == nil && reading.gearMax == nil && reading.fwMcu == nil)
+            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
+            status = (limit == nil && reading.gearMax == nil && reading.fwMcu == nil && reading.peakSpeedKmh == nil)
                 ? .nichtFeststellbar : .regelkonform
             bewertung = status == .nichtFeststellbar ? "Nicht feststellbar" : "Keine persistenten Tuning-Marker"
         } else if custom.level == .confirmed || custom.severeDiffCount > 0 {
