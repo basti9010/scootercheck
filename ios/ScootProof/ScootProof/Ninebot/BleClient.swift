@@ -935,16 +935,27 @@ extension BleClient: CBCentralManagerDelegate {
         guard rssiValue < 20 else { return }
 
         Task { @MainActor in
+            let byName = Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
+            let byService = Self.advertisementLooksLikeScooter(advertisementData)
             let device = ScannedDevice(
                 id: peripheral.identifier,
                 name: name,
                 cryptoName: rawName,
                 rssi: rssiValue,
                 peripheral: peripheral,
-                looksLikeScooter: Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
+                looksLikeScooter: byName || byService
             )
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
-                devices[index] = device
+                // Badge beibehalten, sobald einmal als Scooter erkannt.
+                let merged = ScannedDevice(
+                    id: device.id,
+                    name: device.name,
+                    cryptoName: device.cryptoName.isEmpty ? devices[index].cryptoName : device.cryptoName,
+                    rssi: device.rssi,
+                    peripheral: device.peripheral,
+                    looksLikeScooter: device.looksLikeScooter || devices[index].looksLikeScooter
+                )
+                devices[index] = merged
             } else {
                 devices.append(device)
             }
