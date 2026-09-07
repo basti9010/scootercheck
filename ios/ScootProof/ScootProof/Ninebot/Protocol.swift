@@ -146,7 +146,18 @@ enum Nb {
         length: Int,
         gen: ProtocolGen = .gen2
     ) -> Data {
-        // Max-G3-/Enc2-Apps und Flasher senden die Länge als u16 LE (z. B. 04 00).
+        // Payload: Länge in Bytes. Max-G3-Flasher nutzt oft u16 LE — zusätzlich als Variante.
+        _ = gen
+        return frame(target: board, cmd: .read, index: register, data: Data([UInt8(max(0, min(length, 255)))]), gen: gen)
+    }
+
+    /// Enc2-Lesevariante mit u16-LE-Länge (Segway-App / Max-G3-Flasher).
+    static func readU16Len(
+        board: Board,
+        register: UInt8,
+        length: Int,
+        gen: ProtocolGen = .gen2
+    ) -> Data {
         let len = max(0, min(length, 0xFFFF))
         let lenBytes = Data([UInt8(len & 0xFF), UInt8((len >> 8) & 0xFF)])
         return frame(target: board, cmd: .read, index: register, data: lenBytes, gen: gen)

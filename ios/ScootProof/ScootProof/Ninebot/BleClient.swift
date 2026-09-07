@@ -874,7 +874,13 @@ final class BleClient: NSObject, ObservableObject {
         for (index, spec) in specs.enumerated() {
             statusMessage = "Lese \(spec.id) (\(index + 1)/\(total))…"
 
-            let request = Nb.read(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
+            let request: Data
+            if dumpProfileHint.family == .maxG3 {
+                // Segway/G3-Flasher: Längenfeld als u16 LE.
+                request = Nb.readU16Len(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
+            } else {
+                request = Nb.read(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
+            }
             do {
                 let resp = try await sendReceive(plain: request, crypto: crypto, timeout: 3)
                 guard let parsed = Nb.parse(resp),
