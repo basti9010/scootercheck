@@ -12,6 +12,9 @@ enum IntegrityAnalyzer {
         profile: ScooterProfile,
         sessionId: UUID = UUID()
     ) -> IntegrityResult {
+        var reading = reading
+        normalizeSpeedUnlockFlag(&reading)
+
         let trackMatch = TrackClassifier.classify(reading: reading, profile: profile)
         var facts: [MeasuredFact] = []
 
@@ -186,6 +189,14 @@ enum IntegrityAnalyzer {
     }
 
     // MARK: - Fact Builders
+
+    /// Soft-Unlock-Flag nur aus Tempo-Limit ableiten (nicht aus Gängen).
+    private static func normalizeSpeedUnlockFlag(_ reading: inout IntegrityReading) {
+        guard SoftUnlockSettings.isEnabledSnapshot() else { return }
+        let lim = reading.speedLimitKmh ?? reading.speedMaxKmh
+        guard let lim else { return }
+        reading.hiddenTuningDetected = lim >= SoftUnlockSettings.thresholdKmhSnapshot()
+    }
 
     private static func buildSerialFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
@@ -468,15 +479,16 @@ enum IntegrityAnalyzer {
             ))
         }
         if let v = reading.batteryVoltage {
+            let ok = (30...52).contains(v)
             facts.append(MeasuredFact(
                 id: "bat.voltage",
                 group: .battery,
                 title: "Batteriespannung",
                 auslesewert: String(format: "%.1f V", v),
-                sollwert: "36–42 V (typ.)",
-                status: (30...45).contains(v) ? .regelkonform : .abweichend,
-                bewertung: (30...45).contains(v) ? "Plausibel" : "Unplausibel",
-                erlaeuterung: "Nennspannung des Akkupacks.",
+                sollwert: "36–50 V (typ. 10s / Max G3)",
+                status: ok ? .regelkonform : .abweichend,
+                bewertung: ok ? "Plausibel" : "Unplausibel",
+                erlaeuterung: "Packspannung; Max G3 liegt werkseitig oft bei ca. 36–50 V.",
                 raw: String(v)
             ))
         }
@@ -534,15 +546,17 @@ enum IntegrityAnalyzer {
     }
 
     private static func buildErrorFacts(reading: IntegrityReading) -> [MeasuredFact] {
-        let hasError = reading.errorActive == true
-            || (reading.errorCode != nil && reading.errorCode != "0" && reading.errorCode != "—")
+        let errorZero = isInactiveDiagCode(reading.errorCode)
+        let alarmZero = isInactiveDiagCode(reading.alarmCode)
+        let hasError = reading.errorActive == true || (reading.errorCode != nil && !errorZero)
+        let hasAlarm = reading.alarmCode != nil && !alarmZero
         return [
             MeasuredFact(
                 id: "error.code",
                 group: .error,
                 title: "Fehlercode",
                 auslesewert: reading.errorCode ?? "—",
-                sollwert: "0",
+                sollwert: "0 / 0x0000",
                 status: hasError ? .abweichend : (reading.errorCode == nil ? .nichtFeststellbar : .regelkonform),
                 bewertung: hasError ? "Fehler aktiv" : "Kein Fehler",
                 erlaeuterung: "Aktiver Diagnosefehlercode des Fahrzeugsystems.",
@@ -553,13 +567,22 @@ enum IntegrityAnalyzer {
                 group: .error,
                 title: "Alarmcode",
                 auslesewert: reading.alarmCode ?? "—",
-                sollwert: "0",
-                status: (reading.alarmCode != nil && reading.alarmCode != "0") ? .abweichend : .regelkonform,
-                bewertung: (reading.alarmCode != nil && reading.alarmCode != "0") ? "Alarm gesetzt" : "Kein Alarm",
+                sollwert: "0 / 0x0000",
+                status: hasAlarm ? .abweichend : (reading.alarmCode == nil ? .nichtFeststellbar : .regelkonform),
+                bewertung: hasAlarm ? "Alarm gesetzt" : "Kein Alarm",
                 erlaeuterung: "Alarmzustand des Batterie- oder Antriebssystems.",
                 raw: reading.alarmCode
             )
         ]
+    }
+
+    /// `0`, `0x0000`, `0x0` usw. gelten als inaktiv.
+    private static func isInactiveDiagCode(_ code: String?) -> Bool {
+        guard var s = code?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty, s != "—" else {
+            return true
+        }
+        if s.lowercased().hasPrefix("0x") { s = String(s.dropFirst(2)) }
+        return s.allSatisfy { $0 == "0" }
     }
 
     private static func buildFlagFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
@@ -569,23 +592,28 @@ enum IntegrityAnalyzer {
             MeasuredFact(
                 id: "flag.hidden",
                 group: .flags,
-                title: "Soft-Unlock",
+                title: "Soft-Unlock (Tempo)",
                 auslesewert: {
                     if reading.hiddenTuningDetected == true {
-                        let limit = reading.speedLimitKmh ?? reading.speedRatedKmh
+                        let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
                         if let limit, limit > 0 {
                             return "Limit \(Format.kmh.format(Optional(limit)))"
                         }
-                        return "gesetzt"
+                        return "Tempo über Schwelle"
                     }
                     if reading.hiddenTuningDetected == false { return "inaktiv" }
                     return "—"
                 }(),
-                sollwert: "inaktiv",
+                sollwert: "inaktiv (≤ Typ \(Format.kmh.format(Optional(profile.ratedMaxKmh))))",
                 status: {
                     if !SoftUnlockSettings.isEnabledSnapshot() { return .nichtFeststellbar }
                     if reading.hiddenTuningDetected == true { return .erheblichAbweichend }
                     if reading.hiddenTuningDetected == false { return .regelkonform }
+                    // Kein Flag gesetzt, aber Limit klar über Typ → trotzdem auffällig.
+                    if let lim = reading.speedLimitKmh ?? reading.speedMaxKmh,
+                       lim >= SoftUnlockSettings.thresholdKmhSnapshot() {
+                        return .erheblichAbweichend
+                    }
                     return .nichtFeststellbar
                 }(),
                 bewertung: {
@@ -593,14 +621,15 @@ enum IntegrityAnalyzer {
                     if !SoftUnlockSettings.isEnabledSnapshot() {
                         return "Erkennung aus (Geste: \(gesture))"
                     }
-                    if reading.hiddenTuningDetected == true {
-                        return "Soft-Unlock aktiv — konfigurierte Geste: \(gesture)"
+                    let lim = reading.speedLimitKmh ?? reading.speedMaxKmh
+                    if reading.hiddenTuningDetected == true || (lim ?? 0) >= SoftUnlockSettings.thresholdKmhSnapshot() {
+                        return "Freigeschaltetes Tempo — Geste: \(gesture)"
                     }
-                    if reading.hiddenTuningDetected == false { return "Serienzustand" }
+                    if reading.hiddenTuningDetected == false { return "Kein Tempo-Unlock erkannt" }
                     return "Nicht feststellbar"
                 }(),
                 erlaeuterung: SoftUnlockSettings.isEnabledSnapshot()
-                    ? "Konfigurierte Bedienung: \(SoftUnlockSettings.gestureSummarySnapshot()). Session-Unlock kann per Panic verschwinden — siehe „Persistente Marker“."
+                    ? "Nur wenn gespeichertes Limit ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h. Zusatzgänge sind ein separater Marker und zählen hier nicht."
                     : "Soft-Unlock-Erkennung ist in den Einstellungen ausgeschaltet.",
                 raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
             ),
@@ -701,9 +730,9 @@ enum IntegrityAnalyzer {
                 title: "Maximaler Fahrmodus",
                 auslesewert: Format.num.format(maxGear),
                 sollwert: "1 (\(profile.shortLabel))",
-                status: maxGear == nil ? .nichtFeststellbar : ((maxGear ?? 1) > 1 ? .erheblichAbweichend : .regelkonform),
+                status: maxGear == nil ? .nichtFeststellbar : ((maxGear ?? 1) > 1 ? .abweichend : .regelkonform),
                 bewertung: maxGear == nil ? "Nicht feststellbar" : ((maxGear ?? 1) > 1 ? "Mehr als Serienmodus" : "Serienmodus"),
-                erlaeuterung: "Höchster verfügbarer Fahrmodus laut Steuergerät.",
+                erlaeuterung: "Höchster verfügbarer Fahrmodus. Zusatzgänge sind ein persistenter Hinweis, aber allein noch kein Nachweis für Tempo > Typ.",
                 raw: maxGear.map { String($0) }
             )
         ]
@@ -937,17 +966,36 @@ enum IntegrityAnalyzer {
 
     private static func verdictFor(score: Int, facts: [MeasuredFact], trackMatch: TrackMatch) -> VerdictLevel {
         let severeCount = facts.filter { $0.status == .erheblichAbweichend }.count
-        let persistent = facts.first { $0.id == "flag.persistent" }
-        let persistentSevere = persistent?.status == .erheblichAbweichend
-        if score >= 80 && severeCount == 0 && (trackMatch.trackId == .stock || trackMatch.trackId == .unknown) {
+        let speedSevere = facts.contains {
+            ($0.id.hasPrefix("speed.") || $0.id.hasPrefix("diff.speed") || $0.id == "flag.hidden")
+                && $0.status == .erheblichAbweichend
+        }
+        let customConfirmed = facts.first(where: { $0.id == "fw.custom.detect" })?.status == .erheblichAbweichend
+        let regionSevere = facts.contains { $0.id == "diff.region" && $0.status == .erheblichAbweichend }
+        let gearOnlyWatch = facts.contains {
+            ($0.id == "gear.max" || $0.id == "diff.gear.max") && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+        }
+
+        if score >= 85 && severeCount == 0 && (trackMatch.trackId == .stock || trackMatch.trackId == .unknown) {
             return .stock
         }
-        // Persistente Marker (Region/Limit/Gänge/FW) → getunt, auch wenn Soft-Unlock per Panic weg ist.
-        if persistentSevere || score < 50 || severeCount >= 3
-            || trackMatch.trackId == .shu || trackMatch.trackId == .shuDump {
+
+        // Klar getunt: Tempo über Typ, bestätigte Custom-FW, Region-Unlock oder starkes Dump-Muster.
+        if speedSevere || customConfirmed || regionSevere || trackMatch.trackId == .shuDump {
             return .tuned
         }
-        return .watch
+        if trackMatch.trackId == .shu && trackMatch.confidence >= 0.55 && severeCount >= 2 {
+            return .tuned
+        }
+        if score < 35 && severeCount >= 4 {
+            return .tuned
+        }
+
+        // Nur Gänge / schwache Marker → beobachten, nicht sofort „getunt“.
+        if gearOnlyWatch || severeCount >= 1 || score < 80 || trackMatch.trackId == .webapp {
+            return .watch
+        }
+        return .stock
     }
 
     // MARK: - Demo Registers

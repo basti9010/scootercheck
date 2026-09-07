@@ -13,6 +13,26 @@ enum RegisterScale {
         Double(raw)
     }
 
+    /// Max G3 gespeicherte Speed-Register (MaxSpeed / ED-Max u. ä.).
+    /// Beobachtet: `0x2D00` → 45 km/h, `0x1616` → 22 km/h, `0x140F` → 20 km/h (High-Byte = km/h).
+    /// Fallback: ganze Zahl oder 0.1-km/h-Skalierung.
+    static func g3StoredSpeedKmh(_ raw: UInt16) -> Double? {
+        let hi = Int((raw >> 8) & 0xFF)
+        let lo = Int(raw & 0xFF)
+        if hi >= 5, hi <= 80 {
+            // Low-Byte: 0, gleich hi, oder Padding/Bruch — km/h sitzt im High-Byte.
+            return Double(hi)
+        }
+        if raw > 0, raw <= 120 {
+            return Double(raw)
+        }
+        let tenths = Double(raw) / 10.0
+        if tenths >= 5, tenths <= 80 {
+            return tenths
+        }
+        return nil
+    }
+
     /// Millimetre odometer → km.
     static func km(_ millimetres: UInt32) -> Double {
         Double(millimetres) / 1000.0
@@ -226,13 +246,22 @@ enum DiagnosticMap {
         case "dis_sn", "ble_sn", "vcu_sn", "mcu_sn", "bms_sn", "mcu_g3_sn", "vcu_g3_sn", "bms_g3_sn":
             return Nb.asciiString(data)
 
-        case "dis_limit", "mcu_max", "mcu_safe", "mcu_gear",
-             "vcu_g3_maxspd", "vcu_g3_startspd", "vcu_g3_edmax":
+        case "dis_limit", "mcu_max", "mcu_safe", "mcu_gear":
             guard let raw = Nb.u16(data) else { return nil }
-            // G3 MaxSpeed/StartSpeed oft 0.1 km/h; Werte > 120 → /10.
             let whole = RegisterScale.kmhWhole(raw)
             let scaled = RegisterScale.kmh(raw)
             let kmh = whole > 120 ? scaled : whole
+            return Format.kmh.format(Optional(kmh))
+
+        case "vcu_g3_maxspd", "vcu_g3_edmax":
+            guard let raw = Nb.u16(data),
+                  let kmh = RegisterScale.g3StoredSpeedKmh(raw) else { return nil }
+            return Format.kmh.format(Optional(kmh))
+
+        case "vcu_g3_startspd":
+            guard let raw = Nb.u16(data) else { return nil }
+            // Startgeschwindigkeit: kleine Ganzzahl (z. B. 3 km/h), nicht das Fahrtlimit.
+            let kmh = raw <= 120 ? RegisterScale.kmhWhole(raw) : RegisterScale.kmh(raw)
             return Format.kmh.format(Optional(kmh))
 
         case "vcu_g3_speed":
@@ -370,18 +399,26 @@ enum DiagnosticMap {
                 }
             }
 
-        case "vcu_g3_maxspd", "vcu_g3_startspd", "vcu_g3_edmax":
-            if let raw = Nb.u16(data) {
-                let whole = RegisterScale.kmhWhole(raw)
-                let kmh = whole > 120 ? RegisterScale.kmh(raw) : whole
-                if kmh > 0, kmh < 120 {
-                    reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
-                    reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
-                    reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
-                    // Persistentes Limit — auch nach Panic/Soft-Unlock-Reset relevant.
-                    markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
-                }
+        case "vcu_g3_maxspd":
+            if let raw = Nb.u16(data), let kmh = RegisterScale.g3StoredSpeedKmh(raw) {
+                reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
+                reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
             }
+
+        case "vcu_g3_edmax":
+            // Eco/Drive-Max: Limit nur wenn plausibel als Höchsttempo (≥ Typbereich).
+            if let raw = Nb.u16(data), let kmh = RegisterScale.g3StoredSpeedKmh(raw), kmh >= 15 {
+                reading.speedMaxKmh = max(reading.speedMaxKmh ?? 0, kmh)
+                reading.speedLimitKmh = max(reading.speedLimitKmh ?? 0, kmh)
+                reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
+                markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
+            }
+
+        case "vcu_g3_startspd":
+            // Nur Anfahrgeschwindigkeit — niemals als Fahrtlimit übernehmen.
+            break
 
         case "dis_rated", "vcu_g3_rated", "mcu_g3_rated":
             if let raw = Nb.u16(data) {
@@ -460,18 +497,12 @@ enum DiagnosticMap {
             if let raw = Nb.u16(data) {
                 reading.gearMode = Int(raw)
                 reading.gearMax = max(reading.gearMax ?? 0, Int(raw))
-                if SoftUnlockSettings.isEnabledSnapshot(), Int(raw) > 1 {
-                    reading.hiddenTuningDetected = true
-                }
+                // Gänge ≠ Soft-Unlock — separat als persistenter Marker.
             }
 
         case "vcu_g3_sgear", "vcu_g3_egear", "vcu_g3_dgear":
             if let raw = Nb.u16(data), raw > 0 {
                 reading.gearMax = max(reading.gearMax ?? 0, Int(raw))
-                // Freigeschaltete Zusatzgänge bleiben nach Panic oft gesetzt.
-                if SoftUnlockSettings.isEnabledSnapshot(), raw > 1 {
-                    reading.hiddenTuningDetected = true
-                }
             }
 
         case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
@@ -495,9 +526,6 @@ enum DiagnosticMap {
         case "vcu_g3_cfg":
             if let raw = Nb.u16(data), raw > 1 {
                 reading.gearMax = max(reading.gearMax ?? 1, Int(raw))
-                if SoftUnlockSettings.isEnabledSnapshot() {
-                    reading.hiddenTuningDetected = true
-                }
             }
 
         case "dis_fw":

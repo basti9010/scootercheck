@@ -147,8 +147,8 @@ enum CustomFirmwareDiff {
                 title: "Maximaler Fahrmodus",
                 stockValue: "1 (Serie \(profile.shortLabel))",
                 observedValue: "\(gear)",
-                severity: .erheblichAbweichend,
-                explanation: "Hersteller-Serie typischerweise ein Fahrmodus; höhere Werte oft nach Unlock/Custom."
+                severity: .abweichend,
+                explanation: "Zusatzgänge sind ein persistenter Hinweis; allein noch kein Nachweis für Tempo über Typ."
             ))
         }
 
@@ -167,21 +167,21 @@ enum CustomFirmwareDiff {
             ))
         }
 
-        // --- Soft-Unlock / Session ---
-        if reading.hiddenTuningDetected == true {
+        // --- Soft-Unlock nur über Tempo, nicht über Gänge ---
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+        let unlockLimit = reading.speedLimitKmh ?? reading.speedMaxKmh
+        let tempoUnlock = reading.hiddenTuningDetected == true
+            || (unlockLimit ?? 0) >= threshold
+        if tempoUnlock, let lim = unlockLimit, lim >= threshold {
             suspected = true
-            reasons.append("Soft-Unlock / erhöhte Limits aktiv")
-            let observed = {
-                if let lim = reading.speedLimitKmh { return "aktiv, Limit \(Format.kmh.format(Optional(lim)))" }
-                return "aktiv"
-            }()
+            reasons.append("Tempo-Unlock Limit \(Format.kmh.format(Optional(lim)))")
             diffs.append(DiffItem(
                 id: "diff.softunlock",
-                title: "Soft-Unlock",
-                stockValue: "inaktiv",
-                observedValue: observed,
-                severity: .erheblichAbweichend,
-                explanation: "Session-Unlock kann nach Panic verschwinden; prüfe persistente Diffs."
+                title: "Soft-Unlock (Tempo)",
+                stockValue: "≤ \(Format.kmh.format(Optional(profile.ratedMaxKmh)))",
+                observedValue: "Limit \(Format.kmh.format(Optional(lim)))",
+                severity: lim >= profile.tuningClearKmh ? .erheblichAbweichend : .abweichend,
+                explanation: "Session-Unlock kann nach Panic verschwinden; gespeichertes Max-Limit bleibt oft sichtbar."
             ))
         }
 
