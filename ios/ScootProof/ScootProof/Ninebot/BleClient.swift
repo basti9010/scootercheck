@@ -1111,7 +1111,7 @@ final class BleClient: NSObject, ObservableObject {
         var liveBoards = Set<String>()
 
         // Probe boards — Max G3 nur bekannte Zielboards, sonst BLE-Flut/Disconnects.
-        let boardsToProbe: [Nb.Board] = dumpProfileHint.family == .maxG3
+        let boardsToProbe: [Nb.Board] = dumpProfileHint.usesG3RegisterMap
             ? [.ble, .bleLegacy, .vcuG3, .mcuG3, .bmsG3, .tft]
             : Array(Nb.Board.allCases)
         for board in boardsToProbe {
@@ -1135,7 +1135,7 @@ final class BleClient: NSObject, ObservableObject {
             statusMessage = "Lese \(spec.id) (\(index + 1)/\(total))…"
 
             let request: Data
-            if dumpProfileHint.family == .maxG3 {
+            if dumpProfileHint.usesG3RegisterMap {
                 // Segway/G3-Flasher: Längenfeld als u16 LE.
                 request = Nb.readU16Len(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
             } else {
@@ -1426,15 +1426,16 @@ final class BleClient: NSObject, ObservableObject {
 
         // Marken / Modellnamen
         let tokens = [
-            "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX3", "MAX G3", "G3 PLUS",
+            "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX3", "MAX G3", "G3 PLUS", "MAX G2", "MAXG2",
             "XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER",
-            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "KICKSCOOTER"
+            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "PRO 3", "PRO3", "ESSENTIAL", "KICKSCOOTER"
         ]
         if tokens.contains(where: { upper.contains($0) }) { return true }
         // „SCOOTER“ nur als ganzes Wort (nicht in Zufallsstrings)
         if upper.range(of: #"\bSCOOTER\b"#, options: .regularExpression) != nil { return true }
-        // „G3“ als Wort — nicht in beliebigen IDs
+        // „G3“ / „G2“ als Wort — nicht in beliebigen IDs
         if upper.range(of: #"\bG3\b"#, options: .regularExpression) != nil { return true }
+        if upper.range(of: #"\bG2\b"#, options: .regularExpression) != nil { return true }
 
         // Serien-/BLE-Präfixe
         if compact.hasPrefix("1C"), compact.count >= 10, compact.count <= 20 {
@@ -1442,16 +1443,20 @@ final class BleClient: NSObject, ObservableObject {
             return true
         }
         if compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") || compact.hasPrefix("N2FS")
-            || compact.hasPrefix("N2DS") || compact.hasPrefix("N4GS") || compact.hasPrefix("XN4B") {
+            || compact.hasPrefix("N2DS") || compact.hasPrefix("N2ES") || compact.hasPrefix("N4GS")
+            || compact.hasPrefix("XN4B") {
             return true
         }
         if upper.hasPrefix("NB-") || upper.hasPrefix("NB_") { return true }
 
-        // F-/D-Serie nur mit klaren Modellmustern
+        // F-/D-/E-Serie nur mit klaren Modellmustern
         if upper.range(of: #"\bF[234](\s|/|-)?(PRO|PLUS|D|E)?\b"#, options: .regularExpression) != nil {
             return true
         }
         if upper.range(of: #"\bD(18|28|38)\b"#, options: .regularExpression) != nil {
+            return true
+        }
+        if upper.range(of: #"\bE(2[0-9]|4[0-9]|5[0-9])\b"#, options: .regularExpression) != nil {
             return true
         }
 

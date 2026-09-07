@@ -23,10 +23,29 @@ enum StockFirmwareCatalog {
         bms: ["4.1.2.8", "4.1.3.0", "4.1.4.8", "4.1.6.8"]
     )
 
+    /// Bekannte Serienstände für Max G30 / G2 (öffentlich beobachtete Versionen — unvollständig).
+    static let maxG30Family = Entry(
+        mcu: ["1.6.4", "1.7.0", "1.7.3", "1.8.2", "1.9.0"],
+        vcu: ["0.8.0", "0.9.0", "1.0.0", "1.1.0"],
+        ble: ["1.0.6", "1.1.0", "1.1.4", "1.2.0"],
+        bms: ["1.2.6", "1.3.0", "1.3.4", "1.4.0"]
+    )
+
+    /// ZT3 Pro — beobachtete Serienstände (unvollständig).
+    static let zt3Pro = Entry(
+        mcu: ["1.0.0", "1.1.0", "1.2.0", "1.2.4"],
+        vcu: ["1.0.0", "1.1.0", "1.2.0"],
+        ble: ["0.9.0", "1.0.0", "1.0.4"],
+        bms: ["1.0.0", "1.1.0", "1.2.0"]
+    )
+
     static func entry(for profile: ScooterProfile) -> Entry? {
         switch profile.family {
         case .maxG3: return maxG3
-        default: return nil
+        case .maxG30, .maxG2: return maxG30Family
+        case .zt3Pro: return zt3Pro
+        case .ninebotF, .ninebotF3, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
+            return nil
         }
     }
 

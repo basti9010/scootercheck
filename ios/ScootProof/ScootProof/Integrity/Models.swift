@@ -14,9 +14,12 @@ enum ScooterMarket: String, Codable, Sendable {
 
 enum ScooterFamily: String, CaseIterable, Codable, Sendable {
     case zt3Pro
+    case maxG2
     case maxG30
     case maxG3
     case ninebotF
+    case ninebotF3
+    case ninebotE
     case ninebotD
     case xiaomiClassic
     case xiaomiRecent
@@ -24,12 +27,29 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
     var title: String {
         switch self {
         case .zt3Pro: return "Ninebot ZT3 Pro"
+        case .maxG2: return "Ninebot Max G2"
         case .maxG30: return "Ninebot Max G30"
         case .maxG3: return "Ninebot Max G3 / MAX3"
-        case .ninebotF: return "Ninebot F-Serie"
+        case .ninebotF: return "Ninebot F2 / F-Serie"
+        case .ninebotF3: return "Ninebot F3"
+        case .ninebotE: return "Ninebot E-Serie"
         case .ninebotD: return "Ninebot D-Serie"
-        case .xiaomiClassic: return "Xiaomi M365 / Pro 2"
+        case .xiaomiClassic: return "Xiaomi M365 / Pro 2 / Essential"
         case .xiaomiRecent: return "Xiaomi Scooter 3 / 4"
+        }
+    }
+
+    /// Kurzer Hinweis zur Auslese-Tiefe in der UI.
+    var supportNote: String {
+        switch self {
+        case .maxG3:
+            return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog."
+        case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
+            return "Ninebot Enc2 — Registerkarte wie G30/Legacy; Firmware-Katalog ggf. eingeschränkt."
+        case .xiaomiClassic:
+            return "Xiaomi Klartext (55 AA) — typisch M365 / Pro 2 / Essential / 1S."
+        case .xiaomiRecent:
+            return "Xiaomi 3/4 oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich."
         }
     }
 }
@@ -37,12 +57,18 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
 enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     case zt3ProD
     case zt3ProE
+    case maxG2D
+    case maxG2E
     case maxG30D
     case maxG30E
     case maxG3D
     case maxG3E
     case ninebotFD
     case ninebotFE
+    case ninebotF3D
+    case ninebotF3E
+    case ninebotED
+    case ninebotEE
     case ninebotDD
     case ninebotDE
     case xiaomiClassicD
@@ -55,9 +81,12 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     var family: ScooterFamily {
         switch self {
         case .zt3ProD, .zt3ProE: return .zt3Pro
+        case .maxG2D, .maxG2E: return .maxG2
         case .maxG30D, .maxG30E: return .maxG30
         case .maxG3D, .maxG3E: return .maxG3
         case .ninebotFD, .ninebotFE: return .ninebotF
+        case .ninebotF3D, .ninebotF3E: return .ninebotF3
+        case .ninebotED, .ninebotEE: return .ninebotE
         case .ninebotDD, .ninebotDE: return .ninebotD
         case .xiaomiClassicD, .xiaomiClassicE: return .xiaomiClassic
         case .xiaomiRecentD, .xiaomiRecentE: return .xiaomiRecent
@@ -66,9 +95,11 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var market: ScooterMarket {
         switch self {
-        case .zt3ProD, .maxG30D, .maxG3D, .ninebotFD, .ninebotDD, .xiaomiClassicD, .xiaomiRecentD:
+        case .zt3ProD, .maxG2D, .maxG30D, .maxG3D, .ninebotFD, .ninebotF3D, .ninebotED, .ninebotDD,
+             .xiaomiClassicD, .xiaomiRecentD:
             return .de20
-        case .zt3ProE, .maxG30E, .maxG3E, .ninebotFE, .ninebotDE, .xiaomiClassicE, .xiaomiRecentE:
+        case .zt3ProE, .maxG2E, .maxG30E, .maxG3E, .ninebotFE, .ninebotF3E, .ninebotEE, .ninebotDE,
+             .xiaomiClassicE, .xiaomiRecentE:
             return .eu25
         }
     }
@@ -81,12 +112,18 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .zt3ProD: return "ZT3 Pro D"
         case .zt3ProE: return "ZT3 Pro E"
+        case .maxG2D: return "Max G2 D"
+        case .maxG2E: return "Max G2 E"
         case .maxG30D: return "Max G30D"
         case .maxG30E: return "Max G30E"
         case .maxG3D: return "Max G3 / MAX3 D"
         case .maxG3E: return "Max G3 / MAX3 E"
-        case .ninebotFD: return "F-Serie D"
-        case .ninebotFE: return "F-Serie E"
+        case .ninebotFD: return "F2 / F-Serie D"
+        case .ninebotFE: return "F2 / F-Serie E"
+        case .ninebotF3D: return "F3 D"
+        case .ninebotF3E: return "F3 E"
+        case .ninebotED: return "E-Serie D"
+        case .ninebotEE: return "E-Serie E"
         case .ninebotDD: return "D-Serie D"
         case .ninebotDE: return "D-Serie E"
         case .xiaomiClassicD: return "Xiaomi Classic D"
@@ -105,28 +142,37 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .zt3ProD: return ["N2DT", "N2D"]
         case .zt3ProE: return ["N2ET", "N2E"]
+        case .maxG2D: return ["N4GSD", "N4GS", "G2", "MAXG2"]
+        case .maxG2E: return ["N4GSE", "N4GS", "G2", "MAXG2"]
         case .maxG30D: return ["N4GSD", "N4GS", "N4G"]
         case .maxG30E: return ["N4GSE", "N4GS", "N4G"]
         case .maxG3D: return ["1CGB", "1CG", "MAX3", "G3"]
         case .maxG3E: return ["1CGE", "1CG", "MAX3", "G3"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
+        case .ninebotF3D, .ninebotF3E: return ["N2FS", "N2F", "F3"]
+        case .ninebotED, .ninebotEE: return ["N2ES", "N2E", "E2", "E45", "E25"]
         case .ninebotDD: return ["N2DS", "N2D8", "D18", "D28", "D38"]
         case .ninebotDE: return ["N2DS", "N2D8", "D18", "D28", "D38"]
         case .xiaomiClassicD, .xiaomiClassicE:
-            return ["16159", "25708", "M365", "PRO2", "1S"]
+            return ["16159", "25708", "M365", "PRO2", "1S", "ESSENTIAL"]
         case .xiaomiRecentD, .xiaomiRecentE:
-            return ["MI3", "MI4", "XIAOMI"]
+            return ["MI3", "MI4", "XIAOMI", "PRO3", "PRO4"]
         }
     }
 
     /// Ninebot Enc2 vs. Xiaomi Klartext (55 AA). Xiaomi 3/4 ggf. verschlüsselt (55 AB) — dann eingeschränkt.
     var usesNinebotEnc2: Bool {
         switch family {
-        case .zt3Pro, .maxG30, .maxG3, .ninebotF, .ninebotD: return true
-        case .xiaomiClassic, .xiaomiRecent: return false
+        case .zt3Pro, .maxG2, .maxG30, .maxG3, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
+            return true
+        case .xiaomiClassic, .xiaomiRecent:
+            return false
         }
     }
+
+    /// Welche Registerkarte bei der Auslese verwendet wird.
+    var usesG3RegisterMap: Bool { family == .maxG3 }
 
     var legalText: String {
         let speedNote = market == .de20
@@ -167,8 +213,13 @@ struct BleModelHint: Equatable, Sendable {
         let compact = String(hay.filter { $0.isLetter || $0.isNumber })
 
         // Max G3 / MAX3 — BLE-IDs wie „1CGBF2531C0230“ (ohne „G3“ im Klartext)
-        if compact.hasPrefix("1C") {
-            // Markt (D/E) steckt nicht zuverlässig in der BLE-ID — DE als Default.
+        if compact.hasPrefix("1CGB") {
+            return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3D)
+        }
+        if compact.hasPrefix("1CGE") {
+            return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3E)
+        }
+        if compact.hasPrefix("1CGC") || compact.hasPrefix("1CGD") || compact.hasPrefix("1C") {
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3D)
         }
         if hay.contains("MAX3") || hay.contains("MAX G3") || hay.contains("G3 PLUS")
@@ -179,7 +230,8 @@ struct BleModelHint: Equatable, Sendable {
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: profile)
         }
 
-        if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET") || compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") {
+        if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET")
+            || compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") {
             let eu = hay.contains("N2E") || hay.contains("25")
             return BleModelHint(
                 title: "Ninebot ZT3 Pro",
@@ -188,8 +240,19 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
+        // Max G2 vor G30, damit „G2“ nicht als G30 landet
+        if hay.contains("MAX G2") || hay.contains("MAXG2")
+            || hay.range(of: #"\bG2\b"#, options: .regularExpression) != nil {
+            let eu = hay.contains("G2E") || hay.contains("25 KM") || hay.contains("25KM")
+            return BleModelHint(
+                title: "Ninebot Max G2",
+                shortBadge: "Max G2",
+                profile: eu ? .maxG2E : .maxG2D
+            )
+        }
+
         if hay.contains("G30") || hay.contains("N4GS") || compact.hasPrefix("N4GS")
-            || (hay.contains("MAX") && !hay.contains("MAX3") && !compact.hasPrefix("1C")) {
+            || (hay.contains("MAX") && !hay.contains("MAX3") && !hay.contains("MAXG2") && !compact.hasPrefix("1C")) {
             let eu = hay.contains("G30E") || hay.contains("N4GSE")
             return BleModelHint(
                 title: "Ninebot Max G30",
@@ -198,26 +261,65 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        if hay.contains("F2") || hay.range(of: #"\bF[234]0\b"#, options: .regularExpression) != nil {
-            let eu = hay.contains("F25") || hay.contains("25")
+        // F3 vor generischem F2
+        if hay.contains("F3") || hay.range(of: #"\bF3(\s|/|-)?(PRO|PLUS|D|E)?\b"#, options: .regularExpression) != nil {
+            let eu = hay.contains("F3E") || hay.contains("25")
             return BleModelHint(
-                title: "Ninebot F-Serie",
-                shortBadge: "F-Serie",
+                title: "Ninebot F3",
+                shortBadge: "F3",
+                profile: eu ? .ninebotF3E : .ninebotF3D
+            )
+        }
+
+        if hay.contains("F2") || hay.range(of: #"\bF[24]0\b"#, options: .regularExpression) != nil
+            || hay.range(of: #"\bF2(\s|/|-)?(PRO|PLUS|D|E)?\b"#, options: .regularExpression) != nil {
+            let eu = hay.contains("F25") || hay.contains("F2E") || hay.contains("25")
+            return BleModelHint(
+                title: "Ninebot F2 / F-Serie",
+                shortBadge: "F2",
                 profile: eu ? .ninebotFE : .ninebotFD
             )
         }
 
+        // E-Serie (nicht mit N2ET/ZT3 verwechseln — ZT3 bereits oben)
+        if hay.range(of: #"\bE(2[0-9]|4[0-9]|5[0-9])\b"#, options: .regularExpression) != nil
+            || hay.contains("E-SERIES") || hay.contains("E SERIE")
+            || compact.hasPrefix("N2ES") {
+            let eu = hay.contains("25") || hay.contains("E25") || hay.contains("E45E")
+            return BleModelHint(
+                title: "Ninebot E-Serie",
+                shortBadge: "E-Serie",
+                profile: eu ? .ninebotEE : .ninebotED
+            )
+        }
+
         if hay.contains("D18") || hay.contains("D28") || hay.contains("D38") || hay.contains("D-SERIES") {
-            return BleModelHint(title: "Ninebot D-Serie", shortBadge: "D-Serie", profile: .ninebotDD)
+            let eu = hay.contains("25") || hay.contains("D28E") || hay.contains("D38E")
+            return BleModelHint(
+                title: "Ninebot D-Serie",
+                shortBadge: "D-Serie",
+                profile: eu ? .ninebotDE : .ninebotDD
+            )
+        }
+
+        if hay.contains("SCOOTER 3") || hay.contains("SCOOTER 4") || hay.contains("MI3") || hay.contains("MI4")
+            || hay.contains("PRO 3") || hay.contains("PRO3") || hay.contains("PRO 4") || hay.contains("PRO4") {
+            let eu = hay.contains("25")
+            return BleModelHint(
+                title: "Xiaomi Scooter 3 / 4",
+                shortBadge: "Xiaomi 3/4",
+                profile: eu ? .xiaomiRecentE : .xiaomiRecentD
+            )
         }
 
         if hay.contains("PRO 2") || hay.contains("PRO2") || hay.contains("M365")
             || hay.contains("1S") || hay.contains("ESSENTIAL") {
-            return BleModelHint(title: "Xiaomi M365 / Pro 2", shortBadge: "Xiaomi", profile: .xiaomiClassicD)
-        }
-
-        if hay.contains("SCOOTER 3") || hay.contains("SCOOTER 4") || hay.contains("MI3") || hay.contains("MI4") {
-            return BleModelHint(title: "Xiaomi Scooter 3 / 4", shortBadge: "Xiaomi", profile: .xiaomiRecentD)
+            let eu = hay.contains("25")
+            return BleModelHint(
+                title: "Xiaomi M365 / Pro 2 / Essential",
+                shortBadge: "Xiaomi",
+                profile: eu ? .xiaomiClassicE : .xiaomiClassicD
+            )
         }
 
         return nil

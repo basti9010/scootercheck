@@ -122,7 +122,7 @@ enum DiagnosticMap {
 
     /// Profilabhängige Registerliste — Max G3 nutzt andere Board-/Versions-Adressen.
     static func fields(for profile: ScooterProfile) -> [Spec] {
-        if profile.family == .maxG3 {
+        if profile.usesG3RegisterMap {
             return g3IdentityFields + g3LimitFields + g3HistoryFields
                 + g3FirmwareFields + g3BatteryFields + g3StatusFields
         }

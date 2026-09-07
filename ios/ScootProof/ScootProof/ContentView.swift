@@ -554,10 +554,16 @@ struct ContentView: View {
             List {
                 Section("Soll-Profil") {
                     ForEach(ScooterFamily.allCases, id: \.self) { family in
-                        Picker(family.title, selection: $profile) {
-                            ForEach(ScooterProfile.profiles(in: family)) { p in
-                                Text(p.shortLabel).tag(p)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Picker(family.title, selection: $profile) {
+                                ForEach(ScooterProfile.profiles(in: family)) { p in
+                                    Text(p.shortLabel).tag(p)
+                                }
                             }
+                            Text(family.supportNote)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }

@@ -247,7 +247,7 @@ enum TrackClassifier {
             description: "Geschwindigkeitslimit über Soft-Unlock-Schwelle"
         ) { reading, profile in
             guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
-            guard profile.market == .de20 || profile.family == .maxG3 else { return false }
+            guard profile.market == .de20 || profile.usesNinebotEnc2 else { return false }
             let limit = reading.speedLimitKmh ?? reading.speedRatedKmh ?? reading.speedMaxKmh ?? 0
             return limit >= SoftUnlockSettings.thresholdKmhSnapshot()
         },
@@ -260,7 +260,7 @@ enum TrackClassifier {
             guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
             let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
             return limit >= SoftUnlockSettings.thresholdKmhSnapshot()
-                && (profile.market == .de20 || profile.family == .maxG3)
+                && (profile.market == .de20 || profile.usesNinebotEnc2)
         },
         TrackPattern(
             id: "shu.trip.peak",
@@ -271,7 +271,7 @@ enum TrackClassifier {
             guard SoftUnlockSettings.isEnabledSnapshot() else { return false }
             let peak = reading.peakSpeedKmh ?? 0
             return peak >= SoftUnlockSettings.thresholdKmhSnapshot()
-                && (profile.market == .de20 || profile.family == .maxG3)
+                && (profile.market == .de20 || profile.usesNinebotEnc2)
         },
         TrackPattern(
             id: "shu.persistent.gears",

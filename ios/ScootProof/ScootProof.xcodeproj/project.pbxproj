@@ -31,6 +31,7 @@
 		A10000000000000000000016 /* AttributionEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* AttributionEngineTests.swift */; };
 		A10000000000000000000017 /* EvidenceExplanationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* EvidenceExplanationEngine.swift */; };
 		A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */; };
+		A10000000000000000000019 /* BleModelHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* BleModelHintTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 		B10000000000000000000017 /* AttributionEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngineTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000018 /* EvidenceExplanationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceExplanationEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceExplanationEngineTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000001A /* BleModelHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleModelHintTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000002 /* ScootProofTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScootProofTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -132,6 +134,7 @@
 			children = (
 				B10000000000000000000017 /* AttributionEngineTests.swift */,
 				B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */,
+				B1000000000000000000001A /* BleModelHintTests.swift */,
 			);
 			path = ScootProofTests;
 			sourceTree = "<group>";
@@ -284,6 +287,7 @@
 			files = (
 				A10000000000000000000016 /* AttributionEngineTests.swift in Sources */,
 				A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */,
+				A10000000000000000000019 /* BleModelHintTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
