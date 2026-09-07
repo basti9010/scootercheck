@@ -15,6 +15,7 @@ enum ScooterMarket: String, Codable, Sendable {
 enum ScooterFamily: String, CaseIterable, Codable, Sendable {
     case zt3Pro
     case maxG30
+    case maxG3
     case ninebotF
     case ninebotD
     case xiaomiClassic
@@ -24,6 +25,7 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         switch self {
         case .zt3Pro: return "Ninebot ZT3 Pro"
         case .maxG30: return "Ninebot Max G30"
+        case .maxG3: return "Ninebot Max G3 / MAX3"
         case .ninebotF: return "Ninebot F-Serie"
         case .ninebotD: return "Ninebot D-Serie"
         case .xiaomiClassic: return "Xiaomi M365 / Pro 2"
@@ -37,6 +39,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     case zt3ProE
     case maxG30D
     case maxG30E
+    case maxG3D
+    case maxG3E
     case ninebotFD
     case ninebotFE
     case ninebotDD
@@ -52,6 +56,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         switch self {
         case .zt3ProD, .zt3ProE: return .zt3Pro
         case .maxG30D, .maxG30E: return .maxG30
+        case .maxG3D, .maxG3E: return .maxG3
         case .ninebotFD, .ninebotFE: return .ninebotF
         case .ninebotDD, .ninebotDE: return .ninebotD
         case .xiaomiClassicD, .xiaomiClassicE: return .xiaomiClassic
@@ -61,9 +66,9 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var market: ScooterMarket {
         switch self {
-        case .zt3ProD, .maxG30D, .ninebotFD, .ninebotDD, .xiaomiClassicD, .xiaomiRecentD:
+        case .zt3ProD, .maxG30D, .maxG3D, .ninebotFD, .ninebotDD, .xiaomiClassicD, .xiaomiRecentD:
             return .de20
-        case .zt3ProE, .maxG30E, .ninebotFE, .ninebotDE, .xiaomiClassicE, .xiaomiRecentE:
+        case .zt3ProE, .maxG30E, .maxG3E, .ninebotFE, .ninebotDE, .xiaomiClassicE, .xiaomiRecentE:
             return .eu25
         }
     }
@@ -78,6 +83,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .zt3ProE: return "ZT3 Pro E"
         case .maxG30D: return "Max G30D"
         case .maxG30E: return "Max G30E"
+        case .maxG3D: return "Max G3 / MAX3 D"
+        case .maxG3E: return "Max G3 / MAX3 E"
         case .ninebotFD: return "F-Serie D"
         case .ninebotFE: return "F-Serie E"
         case .ninebotDD: return "D-Serie D"
@@ -100,6 +107,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .zt3ProE: return ["N2ET", "N2E"]
         case .maxG30D: return ["N4GSD", "N4GS", "N4G"]
         case .maxG30E: return ["N4GSE", "N4GS", "N4G"]
+        case .maxG3D: return ["XN4B", "N4B", "MAX3", "G3"]
+        case .maxG3E: return ["XN4B", "N4B", "MAX3", "G3"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
         case .ninebotDD: return ["N2DS", "N2D8", "D18", "D28", "D38"]
@@ -114,7 +123,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     /// Ninebot Enc2 vs. Xiaomi Klartext (55 AA). Xiaomi 3/4 ggf. verschlüsselt (55 AB) — dann eingeschränkt.
     var usesNinebotEnc2: Bool {
         switch family {
-        case .zt3Pro, .maxG30, .ninebotF, .ninebotD: return true
+        case .zt3Pro, .maxG30, .maxG3, .ninebotF, .ninebotD: return true
         case .xiaomiClassic, .xiaomiRecent: return false
         }
     }
@@ -145,7 +154,12 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET") {
             return hay.contains("N2E") || hay.contains("25") ? .zt3ProE : .zt3ProD
         }
-        if hay.contains("MAX") || hay.contains("G30") || hay.contains("N4GS") {
+        // Max G3 / MAX3 (Typenschild „MAX3“, FIN oft XN4B…)
+        if hay.contains("MAX3") || hay.contains("MAX G3") || hay.contains("G3 PLUS")
+            || hay.contains("XN4B") || hay.range(of: #"\bG3\b"#, options: .regularExpression) != nil {
+            return hay.contains("25") || hay.contains("G3E") ? .maxG3E : .maxG3D
+        }
+        if hay.contains("G30") || hay.contains("N4GS") || (hay.contains("MAX") && !hay.contains("MAX3")) {
             return hay.contains("G30E") || hay.contains("N4GSE") ? .maxG30E : .maxG30D
         }
         if hay.contains("F2") || hay.range(of: #"\bF[234]0\b"#, options: .regularExpression) != nil {

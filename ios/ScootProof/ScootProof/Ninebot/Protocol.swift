@@ -4,8 +4,10 @@ import Foundation
 
 enum Nb {
     static let sync1: UInt8 = 0x5A
+    /// BLE Encryption2/3 uses 0xA5. 0xB5 is WiFi v2 only — never for BLE.
+    static let sync2BLE: UInt8 = 0xA5
     static let sync2Gen2: UInt8 = 0xA5
-    static let sync2Gen3: UInt8 = 0xB5
+    static let sync2Gen3: UInt8 = 0xA5
     static let btId: UInt8 = 0x3E
 
     enum Board: UInt8, CaseIterable {
@@ -68,7 +70,9 @@ enum Nb {
     // MARK: - Frame builders
 
     static func sync2(for gen: ProtocolGen) -> UInt8 {
-        gen == .gen2 ? sync2Gen2 : sync2Gen3
+        // Gen2/Gen3 unterscheiden nur die Crypto-ECB-Eingabe, nicht den BLE-Sync.
+        _ = gen
+        return sync2BLE
     }
 
     static func frame(

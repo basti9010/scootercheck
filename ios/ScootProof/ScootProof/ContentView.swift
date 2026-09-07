@@ -3,7 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var ble = BleClient()
     @ObservedObject private var history = ProtocolHistoryStore.shared
-    @State private var profile: ScooterProfile = .zt3ProD
+    @State private var profile: ScooterProfile = .maxG3D
     @State private var result: IntegrityResult?
     @State private var session: CheckSession?
     @State private var showMenu = false

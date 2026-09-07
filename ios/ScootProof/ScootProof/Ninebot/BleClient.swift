@@ -108,7 +108,10 @@ extension Data {
 
 struct ScannedDevice: Identifiable, Equatable {
     let id: UUID
+    /// Anzeigename (kann „Ohne Namen (…)“ sein).
     let name: String
+    /// Roher BLE-Advertisement-Name für Enc2-Key-Material (leer wenn unbekannt).
+    let cryptoName: String
     let rssi: Int
     let peripheral: CBPeripheral
     /// Heuristik anhand BLE-Name (nur Anzeige/Filter, kein Hard-Block beim Scan).
@@ -118,6 +121,7 @@ struct ScannedDevice: Identifiable, Equatable {
         lhs.id == rhs.id
             && lhs.rssi == rhs.rssi
             && lhs.name == rhs.name
+            && lhs.cryptoName == rhs.cryptoName
             && lhs.looksLikeScooter == rhs.looksLikeScooter
     }
 
@@ -187,7 +191,10 @@ final class BleClient: NSObject, ObservableObject {
     private var serialNumber = Data()
     private var sessionPassword = Data()
     private var btName = ""
+    /// Name für Enc2-Key (Advertisement Local Name), nie der UI-Platzhalter.
+    private var cryptoName = ""
     private var activeStack: BleStack = .unknown
+    private var enc2PipeIsNordic = false
 
     private let assembler = FrameAssembler()
     private let xiaomiAssembler = XiaomiFrameAssembler()
@@ -245,8 +252,15 @@ final class BleClient: NSObject, ObservableObject {
         lastError = nil
         detectedStack = .unknown
         activeStack = .unknown
+        enc2PipeIsNordic = false
         peripheral = device.peripheral
         btName = device.name
+        // Enc2 leitet den Session-Key aus dem echten BLE-Namen ab.
+        cryptoName = device.cryptoName.isEmpty ? device.name : device.cryptoName
+        if cryptoName.hasPrefix("Ohne Namen") {
+            // Fallback: Peripheral-Name aus CoreBluetooth, sonst leerer Key (wird scheitern).
+            cryptoName = device.peripheral.name ?? ""
+        }
         peripheral?.delegate = self
         assembler.reset()
         xiaomiAssembler.reset()
@@ -262,6 +276,26 @@ final class BleClient: NSObject, ObservableObject {
             connectContinuation = continuation
             central.connect(device.peripheral, options: nil)
         }
+
+        // iOS: CCCD/Notify neu setzen, sonst bleiben Antworten oft aus.
+        await prepareNotifyChannel()
+    }
+
+    private func prepareNotifyChannel() async {
+        guard let peripheral else { return }
+        let notifies = [ninebotNotify, xiaomiNotify].compactMap { $0 }
+        for char in notifies {
+            peripheral.setNotifyValue(false, for: char)
+        }
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        for char in notifies {
+            peripheral.setNotifyValue(true, for: char)
+        }
+        // Stale Notifications ablaufen lassen
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        assembler.reset()
+        xiaomiAssembler.reset()
+        pendingContinuation = nil
     }
 
     /// Erkennt den BLE-Stack automatisch und startet die passende Read-only-Auslese.
@@ -276,7 +310,7 @@ final class BleClient: NSObject, ObservableObject {
         statusMessage = "Erkenne BLE-Protokoll…"
         detectedStack = .unknown
 
-        let order = detectionOrder(profileHint: profile, name: btName)
+        let order = detectionOrder(profileHint: profile, name: cryptoName.isEmpty ? btName : cryptoName)
         var sawEncryptedXiaomi = false
         var lastFailure: String?
 
@@ -300,18 +334,25 @@ final class BleClient: NSObject, ObservableObject {
                 }
 
             case .ninebotEnc2:
-                guard hasNinebotPipe else { continue }
-                phase = .detecting
-                statusMessage = "Prüfe Ninebot Enc2…"
-                activate(.ninebotEnc2)
-                assembler.reset()
-                do {
-                    try await runNinebotHandshakeAndDump()
-                    return
-                } catch {
-                    lastFailure = error.localizedDescription
-                    crypto = nil
-                    continue
+                // 1) Ninebot-Custom-UART, 2) Enc2 über Nordic UART (Kompatibilität)
+                let pipes: [(String, Bool)] = [
+                    hasNinebotPipe ? ("Ninebot-UART", false) : nil,
+                    hasXiaomiPipe ? ("Nordic-UART/Enc2", true) : nil
+                ].compactMap { $0 }
+
+                for (label, useNordic) in pipes {
+                    phase = .detecting
+                    statusMessage = "Prüfe Ninebot Enc2 (\(label))…"
+                    activateEnc2(useNordicUART: useNordic)
+                    assembler.reset()
+                    do {
+                        try await runNinebotHandshakeAndDump()
+                        return
+                    } catch {
+                        lastFailure = "\(label): \(error.localizedDescription)"
+                        crypto = nil
+                        continue
+                    }
                 }
 
             case .xiaomiEncrypted, .unknown:
@@ -326,12 +367,14 @@ final class BleClient: NSObject, ObservableObject {
 
         let pipes: [String] = [
             hasNinebotPipe ? "Ninebot-UART" : nil,
-            hasXiaomiPipe ? "Xiaomi-NUS" : nil
+            hasXiaomiPipe ? "Xiaomi/Nordic-NUS" : nil
         ].compactMap { $0 }
         let pipeInfo = pipes.isEmpty ? "kein UART-Service" : pipes.joined(separator: " + ")
+        let nameHint = cryptoName.isEmpty ? "ohne BLE-Namen" : "BLE-Name „\(cryptoName)“"
         fail(
-            "Kein unterstütztes Protokoll erkannt (\(pipeInfo))"
+            "Kein unterstütztes Protokoll erkannt (\(pipeInfo), \(nameHint))"
                 + (lastFailure.map { " — \($0)" } ?? "")
+                + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
         )
     }
 
@@ -364,6 +407,7 @@ final class BleClient: NSObject, ObservableObject {
 
     private func activate(_ stack: BleStack) {
         activeStack = stack
+        enc2PipeIsNordic = false
         switch stack {
         case .xiaomiPlain, .xiaomiEncrypted:
             writeChar = xiaomiWrite
@@ -374,6 +418,19 @@ final class BleClient: NSObject, ObservableObject {
         case .unknown:
             writeChar = nil
             notifyChar = nil
+        }
+    }
+
+    /// Enc2 kann auf Ninebot-Custom-UART oder Nordic-UART (Kompatibilität) laufen.
+    private func activateEnc2(useNordicUART: Bool) {
+        activeStack = .ninebotEnc2
+        enc2PipeIsNordic = useNordicUART
+        if useNordicUART {
+            writeChar = xiaomiWrite
+            notifyChar = xiaomiNotify
+        } else {
+            writeChar = ninebotWrite
+            notifyChar = ninebotNotify
         }
     }
 
@@ -456,16 +513,16 @@ final class BleClient: NSObject, ObservableObject {
         crypto = NbCrypto(gen: gen)
         guard let crypto else { throw BleError.encryptionFailed }
 
-        // Phase 1: PRE_COMM
+        // Phase 1: PRE_COMM — key2 immer null/zeros; fw_data wirkt nur als Gen2-ECB-Input.
         crypto.resetSN()
-        let initialKey2: Data? = gen == .gen2 ? Data(NbCryptoConstants.fwData) : nil
-        crypto.setKey(Data(btName.utf8), initialKey2)
+        let nameKey = Data((cryptoName.isEmpty ? btName : cryptoName).utf8)
+        crypto.setKey(nameKey, nil)
 
         let prePlain = Nb.preComm(gen: gen)
-        let preResp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 5)
+        let preResp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 8)
 
         if preResp == prePlain {
-            throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt")
+            throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
         }
 
         guard let parsed = Nb.parse(preResp), parsed.cmd == Nb.Cmd.preComm.rawValue else {
@@ -490,7 +547,7 @@ final class BleClient: NSObject, ObservableObject {
         }
 
         if password == nil {
-            crypto.setKey(Data(btName.utf8), authParam)
+            crypto.setKey(nameKey, authParam)
             password = generatePassword(auth: authParam)
 
             let setPlain = Nb.setPwd(password!, gen: gen)
@@ -798,6 +855,8 @@ final class BleClient: NSObject, ObservableObject {
         crypto = nil
         activeStack = .unknown
         detectedStack = .unknown
+        enc2PipeIsNordic = false
+        cryptoName = ""
         assembler.reset()
         xiaomiAssembler.reset()
         pendingContinuation = nil
@@ -809,15 +868,19 @@ final class BleClient: NSObject, ObservableObject {
         guard let name, !name.isEmpty else { return false }
         let upper = name.uppercased()
         let tokens = [
-            "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX",
+            "NINEBOT", "SEGWAY", "ZT3", "G30", "G3", "MAX3", "MAX",
             "XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER",
             "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "SCOOTER"
         ]
         if tokens.contains(where: { upper.contains($0) }) { return true }
-        if upper.hasPrefix("N2") || upper.hasPrefix("N4") || upper.hasPrefix("MI") { return true }
+        if upper.hasPrefix("NB") || upper.hasPrefix("N2") || upper.hasPrefix("N4") { return true }
+        if upper.hasPrefix("S1D") || upper.hasPrefix("MI") { return true }
         // F-/D-Serie Kurzformen in BT-Namen
         if upper.range(of: #"\bF[234]?0?\b"#, options: .regularExpression) != nil { return true }
         if upper.range(of: #"\bD(18|28|38)\b"#, options: .regularExpression) != nil { return true }
+        // Manche Max/G3 werben mit kurzen alphanumerischen IDs (z. B. 1CGBF25…)
+        if upper.range(of: #"^[0-9A-F]{6,}$"#, options: .regularExpression) != nil { return true }
+        if upper.range(of: #"^[0-9][A-Z0-9]{5,}$"#, options: .regularExpression) != nil { return true }
         return false
     }
 }
@@ -851,6 +914,7 @@ extension BleClient: CBCentralManagerDelegate {
             let device = ScannedDevice(
                 id: peripheral.identifier,
                 name: name,
+                cryptoName: rawName,
                 rssi: rssiValue,
                 peripheral: peripheral,
                 looksLikeScooter: Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
@@ -985,15 +1049,18 @@ extension BleClient: CBPeripheralDelegate {
         guard let data = characteristic.value else { return }
         Task { @MainActor in
             if characteristic.uuid == XiaomiUUID.notify {
-                let frames = xiaomiAssembler.append(data)
-                // Nur zustellen, wenn Xiaomi-Stack aktiv (oder während Xiaomi-Probe).
-                guard activeStack == .xiaomiPlain || activeStack == .xiaomiEncrypted else { return }
-                for frame in frames {
-                    deliverFrame(frame)
+                // Nordic-UART kann Xiaomi-Klartext ODER Ninebot-Enc2 (Kompatibilität) tragen.
+                if activeStack == .ninebotEnc2, enc2PipeIsNordic {
+                    let frames = assembler.append(data)
+                    for frame in frames { deliverFrame(frame) }
+                } else {
+                    let frames = xiaomiAssembler.append(data)
+                    guard activeStack == .xiaomiPlain || activeStack == .xiaomiEncrypted else { return }
+                    for frame in frames { deliverFrame(frame) }
                 }
             } else if characteristic.uuid == NbUUID.notify {
                 let frames = assembler.append(data)
-                guard activeStack == .ninebotEnc2 else { return }
+                guard activeStack == .ninebotEnc2, !enc2PipeIsNordic else { return }
                 for frame in frames {
                     deliverFrame(frame)
                 }
