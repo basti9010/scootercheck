@@ -200,6 +200,8 @@ final class BleClient: NSObject, ObservableObject {
     private let xiaomiAssembler = XiaomiFrameAssembler()
     private var pendingContinuation: CheckedContinuation<Data, Error>?
     private var connectContinuation: CheckedContinuation<Void, Error>?
+    private var notifyReadyFallback: CheckedContinuation<Void, Never>?
+    private var pendingNotifyEnables = 0
 
     private static let passwordKeyPrefix = "ninebot_password_"
 
@@ -284,18 +286,44 @@ final class BleClient: NSObject, ObservableObject {
     private func prepareNotifyChannel() async {
         guard let peripheral else { return }
         let notifies = [ninebotNotify, xiaomiNotify].compactMap { $0 }
+        guard !notifies.isEmpty else { return }
+
         for char in notifies {
             peripheral.setNotifyValue(false, for: char)
         }
         try? await Task.sleep(nanoseconds: 300_000_000)
-        for char in notifies {
-            peripheral.setNotifyValue(true, for: char)
+
+        pendingNotifyEnables = notifies.count
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            self.notifyReadyFallback = continuation
+            for char in notifies {
+                peripheral.setNotifyValue(true, for: char)
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                self.finishNotifyReady()
+            }
         }
-        // Stale Notifications ablaufen lassen
-        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        try? await Task.sleep(nanoseconds: 150_000_000)
         assembler.reset()
         xiaomiAssembler.reset()
         pendingContinuation = nil
+    }
+
+    private func finishNotifyReady() {
+        guard let cont = notifyReadyFallback else { return }
+        notifyReadyFallback = nil
+        pendingNotifyEnables = 0
+        cont.resume()
+    }
+
+    private func noteNotifyStateUpdated(enabled: Bool) {
+        guard enabled, pendingNotifyEnables > 0 else { return }
+        pendingNotifyEnables -= 1
+        if pendingNotifyEnables <= 0 {
+            finishNotifyReady()
+        }
     }
 
     /// Erkennt den BLE-Stack automatisch und startet die passende Read-only-Auslese.
@@ -514,15 +542,32 @@ final class BleClient: NSObject, ObservableObject {
         guard let crypto else { throw BleError.encryptionFailed }
 
         // Phase 1: PRE_COMM — key2 immer null/zeros; fw_data wirkt nur als Gen2-ECB-Input.
-        crypto.resetSN()
         let nameKey = Data((cryptoName.isEmpty ? btName : cryptoName).utf8)
-        crypto.setKey(nameKey, nil)
-
         let prePlain = Nb.preComm(gen: gen)
-        let preResp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 8)
 
-        if preResp == prePlain {
-            throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
+        var preResp: Data?
+        var lastPreError: Error?
+        // Docs: bis ~10 Retries á ~2s — schnelle Antworten sonst Race/Timeout.
+        for attempt in 1...8 {
+            crypto.resetSN()
+            crypto.setKey(nameKey, nil)
+            assembler.reset()
+            statusMessage = "Enc2 PRE_COMM (\(gen.rawValue), Versuch \(attempt)/8)…"
+            do {
+                let resp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 2.5)
+                if resp == prePlain {
+                    throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
+                }
+                preResp = resp
+                break
+            } catch {
+                lastPreError = error
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+        }
+
+        guard let preResp else {
+            throw lastPreError ?? BleError.timeout
         }
 
         guard let parsed = Nb.parse(preResp), parsed.cmd == Nb.Cmd.preComm.rawValue else {
@@ -591,11 +636,21 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     private func waitForButtonPress(crypto: NbCrypto, gen: ProtocolGen, timeout: TimeInterval) async throws -> Data {
+        _ = gen
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             do {
-                let frame = try await receiveEncrypted(crypto: crypto, timeout: 2)
-                return frame
+                let frame = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+                    pendingContinuation = continuation
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        if let pending = self.pendingContinuation {
+                            self.pendingContinuation = nil
+                            pending.resume(throwing: BleError.timeout)
+                        }
+                    }
+                }
+                return try crypto.decrypt(frame)
             } catch {
                 continue
             }
@@ -743,19 +798,28 @@ final class BleClient: NSObject, ObservableObject {
 
     private func sendReceive(plain: Data, crypto: NbCrypto, timeout: TimeInterval) async throws -> Data {
         let encrypted = try crypto.encrypt(plain)
-        try await write(encrypted)
-        return try await receiveEncrypted(crypto: crypto, timeout: timeout)
+        // Continuation VOR dem Write setzen — sonst gehen schnelle Antworten verloren.
+        let encryptedResp = try await requestResponse(encrypted, timeout: timeout)
+        return try crypto.decrypt(encryptedResp)
     }
 
     private func sendReceiveXiaomi(_ frame: Data, timeout: TimeInterval) async throws -> Data {
-        try await write(frame)
-        return try await receiveRaw(timeout: timeout)
+        try await requestResponse(frame, timeout: timeout)
     }
 
-    private func receiveRaw(timeout: TimeInterval) async throws -> Data {
+    private func requestResponse(_ data: Data, timeout: TimeInterval) async throws -> Data {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
             pendingContinuation = continuation
             Task { @MainActor in
+                do {
+                    try await self.write(data)
+                } catch {
+                    if let pending = self.pendingContinuation {
+                        self.pendingContinuation = nil
+                        pending.resume(throwing: error)
+                    }
+                    return
+                }
                 try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
                 if let pending = self.pendingContinuation {
                     self.pendingContinuation = nil
@@ -768,33 +832,23 @@ final class BleClient: NSObject, ObservableObject {
     private func write(_ data: Data) async throws {
         guard let peripheral, let writeChar else { throw BleError.notConnected }
 
-        let mtu = peripheral.maximumWriteValueLength(for: .withoutResponse)
+        let canWithoutResponse = writeChar.properties.contains(.writeWithoutResponse)
+        let canWithResponse = writeChar.properties.contains(.write)
+        let type: CBCharacteristicWriteType = canWithoutResponse ? .withoutResponse : .withResponse
+        guard canWithoutResponse || canWithResponse else { throw BleError.notConnected }
+
+        let mtu = peripheral.maximumWriteValueLength(for: type)
         let chunkSize = max(mtu, 20)
         var offset = 0
         while offset < data.count {
             let end = min(offset + chunkSize, data.count)
             let chunk = data.subdata(in: offset..<end)
-            peripheral.writeValue(chunk, for: writeChar, type: .withoutResponse)
+            peripheral.writeValue(chunk, for: writeChar, type: type)
             offset = end
             if offset < data.count {
-                try await Task.sleep(nanoseconds: 10_000_000)
+                try await Task.sleep(nanoseconds: 15_000_000)
             }
         }
-    }
-
-    private func receiveEncrypted(crypto: NbCrypto, timeout: TimeInterval) async throws -> Data {
-        let encrypted = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
-            pendingContinuation = continuation
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                if let pending = self.pendingContinuation {
-                    self.pendingContinuation = nil
-                    pending.resume(throwing: BleError.timeout)
-                }
-            }
-        }
-
-        return try crypto.decrypt(encrypted)
     }
 
     private func deliverFrame(_ encrypted: Data) {
@@ -861,6 +915,8 @@ final class BleClient: NSObject, ObservableObject {
         xiaomiAssembler.reset()
         pendingContinuation = nil
         connectContinuation = nil
+        notifyReadyFallback = nil
+        pendingNotifyEnables = 0
     }
 
     /// Öffentliche Heuristik für UI-Badge / optionalen Filter — blockiert den Scan nicht.
@@ -1077,6 +1133,20 @@ extension BleClient: CBPeripheralDelegate {
             statusMessage = "Verbunden (\(parts.joined(separator: " + ")))"
             connectContinuation?.resume()
             connectContinuation = nil
+        }
+    }
+
+    nonisolated func peripheral(
+        _ peripheral: CBPeripheral,
+        didUpdateNotificationStateFor characteristic: CBCharacteristic,
+        error: Error?
+    ) {
+        Task { @MainActor in
+            if let error {
+                // Notify-Fehler nicht hart abbrechen — Timeout in prepareNotifyChannel greift.
+                statusMessage = "Notify: \(error.localizedDescription)"
+            }
+            noteNotifyStateUpdated(enabled: characteristic.isNotifying)
         }
     }
 
