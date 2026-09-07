@@ -1108,7 +1108,9 @@ final class BleClient: NSObject, ObservableObject {
     // MARK: - Password persistence
 
     private var passwordDefaultsKey: String {
-        guard let id = peripheral?.identifier.uuidString else { return Self.passwordKeyPrefix + "unknown" }
+        let id = peripheral?.identifier.uuidString
+            ?? lastConnectDevice?.peripheral.identifier.uuidString
+            ?? "unknown"
         return Self.passwordKeyPrefix + id
     }
 
