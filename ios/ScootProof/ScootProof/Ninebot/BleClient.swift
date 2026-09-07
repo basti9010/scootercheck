@@ -5,9 +5,12 @@ import Combine
 // MARK: - BLE UUIDs
 
 private enum NbUUID {
+    /// Klassische Ninebot-UART-Service-UUID (ältere Modelle).
     static let service = CBUUID(string: "6E400001-0000-0000-006E-696E65626F74")
     static let write = CBUUID(string: "6E400002-0000-0000-006E-696E65626F74")
+    /// Manche Firmwares nutzen 003, manche 004 als Notify.
     static let notify = CBUUID(string: "6E400004-0000-0000-006E-696E65626F74")
+    static let notifyAlt = CBUUID(string: "6E400003-0000-0000-006E-696E65626F74")
 }
 
 /// Erkanntes BLE-Diagnose-Protokoll (Stack) am Scooter.
@@ -205,6 +208,9 @@ final class BleClient: NSObject, ObservableObject {
     private var enc2PipeIsNordic = false
     /// Profil-Hinweis für Register-Map (z. B. Max-G3-Board-Adressen).
     private var dumpProfileHint: ScooterProfile = .maxG3D
+    /// Pairing-Zielboard aus PRE_COMM-Antwort (oft 0x04 oder 0x21).
+    private var pairingBoard: Nb.Board = .ble
+    private var discoveredServiceSummary = ""
 
     private let assembler = FrameAssembler()
     private let xiaomiAssembler = XiaomiFrameAssembler()
@@ -352,44 +358,33 @@ final class BleClient: NSObject, ObservableObject {
         let name = cryptoName.isEmpty ? btName : cryptoName
         let isMaxG3 = profile.family == .maxG3 || name.uppercased().hasPrefix("1C")
 
-        // Max G3 (SHU/Flasher): nur Enc2 über Nordic-UART — kein Xiaomi-Klartext-Probe
-        // (55 AA auf dem gleichen UART kann die Verbindung killen).
+        // Max G3 (SHU/Flasher): ausschließlich Nordic-UART — Ninebot-Custom-UART
+        // timed out bisher und verdeckte den eigentlichen Nordic-Fehler.
         if isMaxG3 {
-            let pipes: [(String, Bool)] = [
-                hasXiaomiPipe ? ("Nordic-UART/Enc2", true) : nil,
-                hasNinebotPipe ? ("Ninebot-UART", false) : nil
-            ].compactMap { $0 }
-
-            guard !pipes.isEmpty else {
-                fail("Kein UART-Service für Max G3 — Scooter neu starten und erneut scannen.")
+            guard hasXiaomiPipe else {
+                fail(
+                    "Max G3: Nordic-UART fehlt"
+                        + (discoveredServiceSummary.isEmpty ? "" : " (gefunden: \(discoveredServiceSummary))")
+                        + ". Scooter neu starten und erneut scannen."
+                )
                 return
             }
 
-            var lastFailure: String?
-            for (label, useNordic) in pipes {
-                guard peripheral != nil else {
-                    fail("Scooter hat die Verbindung getrennt. Erneut verbinden.")
-                    return
-                }
-                phase = .detecting
-                statusMessage = "Max G3: Enc2 über \(label)…"
-                activateEnc2(useNordicUART: useNordic)
-                assembler.reset()
-                do {
-                    try await runNinebotHandshakeAndDump(preferGen2: true)
-                    return
-                } catch {
-                    lastFailure = "\(label): \(error.localizedDescription)"
-                    crypto = nil
-                    continue
-                }
+            clearPassword()
+            phase = .detecting
+            statusMessage = "Max G3: Enc2 über Nordic-UART…"
+            activateEnc2(useNordicUART: true)
+            assembler.reset()
+            do {
+                try await runNinebotHandshakeAndDump(preferGen2: true)
+                return
+            } catch {
+                fail(
+                    "Max G3 Enc2 fehlgeschlagen — Nordic-UART: \(error.localizedDescription)"
+                        + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
+                )
+                return
             }
-            fail(
-                "Max G3 Enc2 fehlgeschlagen"
-                    + (lastFailure.map { " — \($0)" } ?? "")
-                    + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
-            )
-            return
         }
 
         let order = detectionOrder(profileHint: profile, name: name)
@@ -604,30 +599,35 @@ final class BleClient: NSObject, ObservableObject {
         guard let crypto else { throw BleError.encryptionFailed }
 
         // Phase 1: PRE_COMM — Gen2: key2/ECB = fw_data (SHU/NinebotCrypto); Gen3: Nullen.
+        // Ziel 0x04 und Fallback 0x21 (BLE-Legacy), danach Pairing an Antwort-Board.
         let nameKey = Data((cryptoName.isEmpty ? btName : cryptoName).utf8)
-        let prePlain = Nb.preComm(gen: gen)
 
         var preResp: Data?
         var lastPreError: Error?
-        // Weniger Spam: falsche Schlüssel/Pipes disconnecten sonst den Scooter.
+        var usedTarget: Nb.Board = .ble
         let preAttempts = preferGen2StyleRetries(for: gen)
-        for attempt in 1...preAttempts {
-            guard peripheral != nil else { throw BleError.notConnected }
-            crypto.resetSN()
-            crypto.setKey(nameKey, nil)
-            assembler.reset()
-            statusMessage = "Enc2 PRE_COMM (\(gen.rawValue), Versuch \(attempt)/\(preAttempts))…"
-            do {
-                let resp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 2.0)
-                if resp == prePlain {
-                    throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
+
+        targetLoop: for target in [Nb.Board.ble, .bleLegacy] {
+            for attempt in 1...preAttempts {
+                guard peripheral != nil else { throw BleError.notConnected }
+                crypto.resetSN()
+                crypto.setKey(nameKey, nil)
+                assembler.reset()
+                statusMessage = "Enc2 PRE_COMM (\(gen.rawValue), Board 0x\(String(format: "%02X", target.rawValue)), \(attempt)/\(preAttempts))…"
+                let prePlain = Nb.preComm(target: target, gen: gen)
+                do {
+                    let resp = try await sendReceive(plain: prePlain, crypto: crypto, timeout: 2.0)
+                    if resp == prePlain {
+                        throw BleError.handshakeFailed("Gerät hat PRE_COMM zurückgespiegelt (iOS-BLE-Echo)")
+                    }
+                    preResp = resp
+                    usedTarget = target
+                    break targetLoop
+                } catch {
+                    lastPreError = error
+                    if case BleError.notConnected = error { throw error }
+                    try? await Task.sleep(nanoseconds: 200_000_000)
                 }
-                preResp = resp
-                break
-            } catch {
-                lastPreError = error
-                if case BleError.notConnected = error { throw error }
-                try? await Task.sleep(nanoseconds: 250_000_000)
             }
         }
 
@@ -646,6 +646,12 @@ final class BleClient: NSObject, ObservableObject {
         serialNumber = parsed.data.subdata(in: 16..<30)
         let hasStoredPwd = parsed.index != 0
 
+        if let peer = Nb.Board(rawValue: parsed.boardId) {
+            pairingBoard = peer
+        } else {
+            pairingBoard = usedTarget
+        }
+
         crypto.setAuthParam(authParam)
         crypto.startSN()
 
@@ -660,7 +666,7 @@ final class BleClient: NSObject, ObservableObject {
             crypto.setKey(nameKey, authParam)
             password = generatePassword(auth: authParam)
 
-            let setPlain = Nb.setPwd(password!, gen: gen)
+            let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
             let setResp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 8)
             guard let setParsed = Nb.parse(setResp), setParsed.cmd == Nb.Cmd.setPwd.rawValue else {
                 throw BleError.handshakeFailed("Ungültige SET_PWD-Antwort")
@@ -690,8 +696,7 @@ final class BleClient: NSObject, ObservableObject {
 
         // Phase 3: AUTH
         crypto.setKey(sessionPassword, authParam)
-        let authPlain = Nb.auth(serialNumber: serialNumber, gen: gen)
-        // SHU/Flasher: AUTH mehrfach senden bis OK
+        let authPlain = Nb.auth(serialNumber: serialNumber, target: pairingBoard, gen: gen)
         var authParsed: Nb.ParsedFrame?
         for attempt in 1...6 {
             guard peripheral != nil else { throw BleError.notConnected }
@@ -717,12 +722,11 @@ final class BleClient: NSObject, ObservableObject {
             throw BleError.handshakeFailed("AUTH abgelehnt — Passwort gelöscht")
         }
 
-        statusMessage = "Authentifiziert (\(gen.rawValue))"
+        statusMessage = "Authentifiziert (\(gen.rawValue), Board 0x\(String(format: "%02X", pairingBoard.rawValue)))"
     }
 
     private func preferGen2StyleRetries(for gen: ProtocolGen) -> Int {
-        // Max G3 / Gen2: schnell und wenig Retries; Gen3-Probe nicht 8× spammen.
-        gen == .gen2 ? 5 : 3
+        gen == .gen2 ? 4 : 2
     }
 
     private func waitForButtonPress(
@@ -733,7 +737,7 @@ final class BleClient: NSObject, ObservableObject {
     ) async throws -> Data {
         let deadline = Date().addingTimeInterval(timeout)
         var lastSend = Date.distantPast
-        let setPlain = Nb.setPwd(password, gen: gen)
+        let setPlain = Nb.setPwd(password, target: pairingBoard, gen: gen)
 
         while Date() < deadline {
             guard peripheral != nil else { throw BleError.notConnected }
@@ -938,7 +942,11 @@ final class BleClient: NSObject, ObservableObject {
 
         let canWithoutResponse = writeChar.properties.contains(.writeWithoutResponse)
         let canWithResponse = writeChar.properties.contains(.write)
-        let type: CBCharacteristicWriteType = canWithoutResponse ? .withoutResponse : .withResponse
+        // Nordic-UART/Enc2: ohne Response wie SHU/Flasher — withResponse kann hängen.
+        let type: CBCharacteristicWriteType =
+            (enc2PipeIsNordic && canWithoutResponse) || (canWithoutResponse && !canWithResponse)
+            ? .withoutResponse
+            : (canWithResponse ? .withResponse : .withoutResponse)
         guard canWithoutResponse || canWithResponse else { throw BleError.notConnected }
 
         let mtu = peripheral.maximumWriteValueLength(for: type)
@@ -989,6 +997,7 @@ final class BleClient: NSObject, ObservableObject {
         switch board {
         case .dis: return "DIS"
         case .ble: return "BLE"
+        case .bleLegacy: return "BLE(0x21)"
         case .vcu: return "VCU"
         case .vcuG3: return "VCU(G3)"
         case .mcu: return "MCU"
@@ -1016,6 +1025,8 @@ final class BleClient: NSObject, ObservableObject {
         activeStack = .unknown
         detectedStack = .unknown
         enc2PipeIsNordic = false
+        pairingBoard = .ble
+        discoveredServiceSummary = ""
         cryptoName = ""
         assembler.reset()
         xiaomiAssembler.reset()
@@ -1145,7 +1156,8 @@ extension BleClient: CBCentralManagerDelegate {
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         Task { @MainActor in
             statusMessage = "Suche Diagnose-Services…"
-            peripheral.discoverServices([NbUUID.service, XiaomiUUID.service])
+            // Alle Services: Max G3 nutzt Nordic-UART; Filter auf bekannte UUIDs kann fehlschlagen.
+            peripheral.discoverServices(nil)
         }
     }
 
@@ -1196,24 +1208,35 @@ extension BleClient: CBPeripheralDelegate {
             }
 
             let services = peripheral.services ?? []
-            let ninebot = services.first(where: { $0.uuid == NbUUID.service })
-            let xiaomi = services.first(where: { $0.uuid == XiaomiUUID.service })
+            discoveredServiceSummary = services.map { $0.uuid.uuidString.lowercased() }.joined(separator: ", ")
 
-            guard ninebot != nil || xiaomi != nil else {
+            let ninebot = services.first(where: { $0.uuid == NbUUID.service })
+            // Exakt Nordic-UART; nicht die Ninebot-Custom-UUID (ebenfalls 6e400001-…).
+            let nordic = services.first(where: { $0.uuid == XiaomiUUID.service })
+                ?? services.first(where: {
+                    let u = $0.uuid.uuidString.lowercased()
+                    return u.hasPrefix("6e400001-b5a3")
+                })
+
+            guard ninebot != nil || nordic != nil else {
                 connectContinuation?.resume(throwing: BleError.notConnected)
                 connectContinuation = nil
-                fail("Weder Ninebot- noch Xiaomi-UART-Service gefunden")
+                fail(
+                    "Kein UART-Service gefunden"
+                        + (discoveredServiceSummary.isEmpty ? "" : ": \(discoveredServiceSummary)")
+                )
                 return
             }
 
             pendingCharDiscoveries = 0
             if let ninebot {
                 pendingCharDiscoveries += 1
-                peripheral.discoverCharacteristics([NbUUID.write, NbUUID.notify], for: ninebot)
+                // Alle Characteristics — Notify kann 003 oder 004 sein.
+                peripheral.discoverCharacteristics(nil, for: ninebot)
             }
-            if let xiaomi {
+            if let nordic {
                 pendingCharDiscoveries += 1
-                peripheral.discoverCharacteristics([XiaomiUUID.write, XiaomiUUID.notify], for: xiaomi)
+                peripheral.discoverCharacteristics(nil, for: nordic)
             }
         }
     }
@@ -1229,16 +1252,37 @@ extension BleClient: CBPeripheralDelegate {
 
             if service.uuid == NbUUID.service {
                 for char in service.characteristics ?? [] {
-                    if char.uuid == NbUUID.write { ninebotWrite = char }
-                    if char.uuid == NbUUID.notify { ninebotNotify = char }
+                    if char.uuid == NbUUID.write || char.properties.contains(.write) || char.properties.contains(.writeWithoutResponse) {
+                        if ninebotWrite == nil || char.uuid == NbUUID.write { ninebotWrite = char }
+                    }
+                    if char.uuid == NbUUID.notify || char.uuid == NbUUID.notifyAlt || char.properties.contains(.notify) {
+                        if ninebotNotify == nil
+                            || char.uuid == NbUUID.notify
+                            || char.uuid == NbUUID.notifyAlt {
+                            ninebotNotify = char
+                        }
+                    }
                 }
                 if let ninebotNotify {
                     peripheral.setNotifyValue(true, for: ninebotNotify)
                 }
-            } else if service.uuid == XiaomiUUID.service {
+            } else if service.uuid == XiaomiUUID.service
+                        || service.uuid.uuidString.lowercased().hasPrefix("6e400001-b5a3") {
                 for char in service.characteristics ?? [] {
-                    if char.uuid == XiaomiUUID.write { xiaomiWrite = char }
-                    if char.uuid == XiaomiUUID.notify { xiaomiNotify = char }
+                    let u = char.uuid.uuidString.lowercased()
+                    if char.uuid == XiaomiUUID.write || u.contains("6e400002")
+                        || char.properties.contains(.writeWithoutResponse)
+                        || char.properties.contains(.write) {
+                        if xiaomiWrite == nil || char.uuid == XiaomiUUID.write || u.contains("6e400002") {
+                            xiaomiWrite = char
+                        }
+                    }
+                    if char.uuid == XiaomiUUID.notify || u.contains("6e400003") || u.contains("6e400004")
+                        || char.properties.contains(.notify) {
+                        if xiaomiNotify == nil || char.uuid == XiaomiUUID.notify || u.contains("6e400003") {
+                            xiaomiNotify = char
+                        }
+                    }
                 }
                 if let xiaomiNotify {
                     peripheral.setNotifyValue(true, for: xiaomiNotify)
@@ -1282,7 +1326,9 @@ extension BleClient: CBPeripheralDelegate {
     nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
         Task { @MainActor in
-            if characteristic.uuid == XiaomiUUID.notify {
+            if characteristic.uuid == XiaomiUUID.notify
+                || characteristic === xiaomiNotify
+                || (enc2PipeIsNordic && characteristic === notifyChar) {
                 // Nordic-UART kann Xiaomi-Klartext ODER Ninebot-Enc2 (Kompatibilität) tragen.
                 if activeStack == .ninebotEnc2, enc2PipeIsNordic {
                     let frames = assembler.append(data)
@@ -1292,7 +1338,9 @@ extension BleClient: CBPeripheralDelegate {
                     guard activeStack == .xiaomiPlain || activeStack == .xiaomiEncrypted else { return }
                     for frame in frames { deliverFrame(frame) }
                 }
-            } else if characteristic.uuid == NbUUID.notify {
+            } else if characteristic.uuid == NbUUID.notify
+                        || characteristic.uuid == NbUUID.notifyAlt
+                        || characteristic === ninebotNotify {
                 let frames = assembler.append(data)
                 guard activeStack == .ninebotEnc2, !enc2PipeIsNordic else { return }
                 for frame in frames {

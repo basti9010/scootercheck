@@ -19,6 +19,8 @@ enum Nb {
         /// Max G3 VCU / Versions-Proxy (Flasher: Destination 0x16).
         case vcuG3 = 0x16
         case mcu = 0x20
+        /// BLE-Legacy-Adresse (NinebotCrypto/SHU oft 0x21 in Pairing-Antworten).
+        case bleLegacy = 0x21
         case bms = 0x22
     }
 
@@ -107,16 +109,16 @@ enum Nb {
         return out
     }
 
-    static func preComm(gen: ProtocolGen = .gen2) -> Data {
-        frame(target: .ble, cmd: .preComm, index: 0x00, gen: gen)
+    static func preComm(target: Board = .ble, gen: ProtocolGen = .gen2) -> Data {
+        frame(target: target, cmd: .preComm, index: 0x00, gen: gen)
     }
 
-    static func setPwd(_ password: Data, gen: ProtocolGen = .gen2) -> Data {
-        frame(target: .ble, cmd: .setPwd, index: 0x00, data: password.prefix(16), gen: gen)
+    static func setPwd(_ password: Data, target: Board = .ble, gen: ProtocolGen = .gen2) -> Data {
+        frame(target: target, cmd: .setPwd, index: 0x00, data: password.prefix(16), gen: gen)
     }
 
-    static func auth(serialNumber: Data, gen: ProtocolGen = .gen2) -> Data {
-        frame(target: .ble, cmd: .auth, index: 0x00, data: serialNumber.prefix(14), gen: gen)
+    static func auth(serialNumber: Data, target: Board = .ble, gen: ProtocolGen = .gen2) -> Data {
+        frame(target: target, cmd: .auth, index: 0x00, data: serialNumber.prefix(14), gen: gen)
     }
 
     static func read(
@@ -135,10 +137,16 @@ enum Nb {
         guard decrypted[0] == sync1 else { return nil }
         let sync2 = decrypted[1]
         guard sync2 == sync2Gen2 || sync2 == sync2Gen3 else { return nil }
-        guard decrypted[4] == btId else { return nil }
+
+        // Antwort: src=Board, dst=0x3E. Manche Paths spiegeln 0x3E an anderer Stelle —
+        // akzeptiere, wenn eines der Adressfelder die App-ID trägt.
+        let src = decrypted[3]
+        let dst = decrypted[4]
+        guard src == btId || dst == btId else { return nil }
 
         let length = Int(decrypted[2])
-        let boardId = decrypted[3]
+        // Bei Antwort ist Board die Gegenstelle (src), außer src ist die App selbst.
+        let boardId = (dst == btId) ? src : dst
         let cmd = decrypted[5]
         let index = decrypted[6]
         let end = min(7 + length, decrypted.count)
