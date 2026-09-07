@@ -196,58 +196,82 @@ struct ContentView: View {
                     .foregroundStyle(Theme.muted)
             }
 
-            VStack(spacing: 0) {
-                ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
-                    if index > 0 {
-                        Divider().overlay(Theme.line)
-                    }
-                    Button {
-                        Task { await connectAndCheck(item) }
-                    } label: {
-                        HStack(spacing: 14) {
-                            SignalStrengthView(rssi: item.rssi)
-                                .frame(width: 28)
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 8) {
-                                    Text(item.name)
-                                        .font(.body.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .lineLimit(1)
-                                    if item.looksLikeScooter {
-                                        Text("Scooter")
-                                            .font(.caption2.weight(.bold))
-                                            .foregroundStyle(Theme.ink)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Theme.accent)
-                                            .clipShape(Capsule())
-                                    }
-                                    if index == 0, listed.count > 1 {
-                                        Text("nächstes")
-                                            .font(.caption2.weight(.bold))
-                                            .foregroundStyle(.white.opacity(0.9))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.white.opacity(0.18))
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                                Text("\(item.signalLabel) · \(item.rssi) dBm")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.muted)
-                            }
-                            Spacer()
-                            Text("Verbinden")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
+            if listed.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(ble.showOnlyLikelyScooters
+                         ? "Kein vermuteter Scooter in der gefilterten Liste (\(ble.devices.count) BLE-Geräte gesamt)."
+                         : "Keine Geräte.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                    if ble.showOnlyLikelyScooters {
+                        Button("Zurück zu Alle BLE") {
+                            ble.showOnlyLikelyScooters = false
                         }
-                        .padding(.vertical, 14)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Theme.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
-                    .disabled(busy || isBusyPhase)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .scootCard()
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 {
+                            Divider().overlay(Theme.line)
+                        }
+                        Button {
+                            Task { await connectAndCheck(item) }
+                        } label: {
+                            HStack(spacing: 14) {
+                                SignalStrengthView(rssi: item.rssi)
+                                    .frame(width: 28)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 8) {
+                                        Text(item.name)
+                                            .font(.body.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                            .lineLimit(1)
+                                        if item.looksLikeScooter {
+                                            Text("Scooter")
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(Theme.ink)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Theme.accent)
+                                                .clipShape(Capsule())
+                                        }
+                                        if index == 0, listed.count > 1 {
+                                            Text("nächstes")
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(.white.opacity(0.9))
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(Color.white.opacity(0.18))
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                    Text("\(item.signalLabel) · \(item.rssi) dBm")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.muted)
+                                }
+                                Spacer()
+                                Text("Verbinden")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                            .padding(.vertical, 14)
+                        }
+                        .disabled(busy || isBusyPhase)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .scootCard()
             }
-            .padding(.horizontal, 4)
-            .scootCard()
         }
     }
 
