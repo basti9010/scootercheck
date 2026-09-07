@@ -148,6 +148,8 @@ struct EvidenceResult: Identifiable, Codable, Hashable, Sendable {
     var relevanceExplanation: String? { plainLanguage.relevanceExplanation }
     var verdictContributionExplanation: String? { plainLanguage.verdictContributionExplanation }
     var technicalExplanation: String? { plainLanguage.technicalExplanation }
+    var initialClassification: EvidenceClass { classBeforeNeutralization }
+    var confidence: Double { fact.confidence }
 
     var chainCitation: String {
         var lines = [
@@ -905,7 +907,11 @@ enum EvidenceEngine {
 
     // MARK: - UI facts (Anzeige der Engine-Ausgabe, keine Neubewertung)
 
-    static func buildFacts(_ assessment: EvidenceAssessment) -> [MeasuredFact] {
+    static func buildFacts(
+        _ assessment: EvidenceAssessment,
+        reading: IntegrityReading = IntegrityReading(),
+        profile: ScooterProfile = .maxG3D
+    ) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
         facts.append(MeasuredFact(
             id: "evidence.summary",
@@ -938,7 +944,7 @@ enum EvidenceEngine {
             facts.append(MeasuredFact(
                 id: "evidence.decisive.\(idx)",
                 group: .evidence,
-                title: "Entscheidende Evidenz",
+                title: "Wesentliche Feststellung",
                 auslesewert: line,
                 sollwert: "—",
                 status: .abweichend,
@@ -980,7 +986,7 @@ enum EvidenceEngine {
                 plain.summary,
                 plain.expectedState.map { "Erwartung: \($0)" },
                 plain.relevance.map { "Bedeutung: \($0)" },
-                plain.verdictContribution.map { "Urteil: \($0)" }
+                plain.verdictContribution.map { "Gesamturteil: \($0)" }
             ].compactMap { $0 }.joined(separator: "\n")
             facts.append(MeasuredFact(
                 id: "evidence.\(r.fact.markerID)",
@@ -989,7 +995,7 @@ enum EvidenceEngine {
                 auslesewert: r.fact.interpretedValue ?? r.fact.rawValue,
                 sollwert: r.fact.expectedValue ?? "—",
                 status: r.isNeutralized ? .regelkonform : status(for: r.classification),
-                bewertung: r.contributionLabel,
+                bewertung: r.classification.label,
                 erlaeuterung: detail,
                 raw: r.chainCitation,
                 volatility: r.fact.persistence,
@@ -1000,6 +1006,13 @@ enum EvidenceEngine {
                 resetsOnPowerOff: r.fact.resetResistant == false
             ))
         }
+
+        facts += EvidenceExplanationEngine.positiveFindings(
+            reading: reading,
+            profile: profile,
+            results: assessment.results,
+            powerCycle: assessment.powerCycle
+        )
 
         if let pc = assessment.powerCycle {
             facts.append(MeasuredFact(
@@ -1014,16 +1027,17 @@ enum EvidenceEngine {
                 raw: pc.summary
             ))
             for row in pc.rows {
+                let plain = EvidenceExplanationEngine.explanation(forPowerCycleRow: row)
                 facts.append(MeasuredFact(
                     id: "evidence.powercycle.\(row.markerID)",
                     group: .evidence,
-                    title: "Power-Cycle: \(row.title)",
+                    title: plain.title,
                     auslesewert: "A \(row.scanA) → B \(row.scanB)",
                     sollwert: row.catalogPersistence?.label ?? "—",
                     status: .regelkonform,
-                    bewertung: "beobachtet \(row.observedPersistence.label)",
-                    erlaeuterung: row.note,
-                    raw: "\(row.scanA)|\(row.scanB)",
+                    bewertung: "\(row.changeKind.label) · \(row.observedPersistence.label)",
+                    erlaeuterung: [plain.summary, plain.relevance].compactMap { $0 }.joined(separator: "\n"),
+                    raw: row.note,
                     volatility: row.observedPersistence,
                     evidenceClass: .info,
                     sourceBoard: "PowerCycle",
@@ -1058,7 +1072,7 @@ enum EvidenceEngine {
                 sollwert: "unverändert",
                 status: .abweichend,
                 bewertung: delta.priorProtocol,
-                erlaeuterung: "Zeitlicher Vergleich derselben SN.",
+                erlaeuterung: "Zeitlicher Vergleich derselben Fahrzeugkennung zwischen Analyseberichten.",
                 raw: delta.priorProtocol,
                 volatility: .persistent,
                 evidenceClass: .indiz
@@ -1073,7 +1087,7 @@ enum EvidenceEngine {
             sollwert: assessment.fingerprint.profileId,
             status: .regelkonform,
             bewertung: "Katalog v\(assessment.catalogVersion)",
-            erlaeuterung: assessment.fingerprint.digestSHA256,
+            erlaeuterung: "\(TechnicalGlossary.explanation(for: .fingerprint)) \(assessment.fingerprint.digestSHA256)",
             raw: assessment.fingerprint.digestSHA256,
             evidenceClass: .info
         ))

@@ -659,7 +659,7 @@ struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
     let bewertung: String
     let erlaeuterung: String
     let raw: String?
-    /// Persistenzklasse für Kontrollberichte (optional).
+    /// Persistenzklasse für Analyseberichte (optional).
     let volatility: MarkerVolatility?
     let evidenceClass: EvidenceClass?
     let sourceBoard: String?

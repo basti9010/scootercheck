@@ -138,18 +138,11 @@ enum ProtocolPDF {
         return renderer.pdfData { context in
             var y = beginStyledPage(context)
             y = drawLetterhead(context: context, session: session, result: result, y: y)
-            y = drawSectionI(context: context, y: y)
-            y = drawSectionII(context: context, session: session, result: result, y: y)
-            y = drawSectionIII(context: context, y: y)
-            y = drawSectionIV(context: context, result: result, y: y)
-            y = drawSectionIVd(context: context, result: result, y: y)
-            y = drawSectionIVa(context: context, result: result, y: y)
-            y = drawSectionV(context: context, result: result, y: y)
-            y = drawSectionVI(context: context, result: result, y: y)
-            y = drawSectionVII(context: context, result: result, y: y)
-            y = drawSectionVIII(context: context, result: result, y: y)
-            y = drawSectionIX(context: context, y: y)
-            _ = drawSectionX(context: context, session: session, y: y)
+            y = drawPlainSectionI(context: context, session: session, result: result, y: y)
+            y = drawPlainSectionII(context: context, result: result, y: y)
+            y = drawPlainSectionIII(context: context, result: result, y: y)
+            y = drawPlainSectionIV(context: context, result: result, y: y)
+            y = drawClosingNotes(context: context, session: session, result: result, y: y)
         }
     }
 
@@ -208,244 +201,258 @@ enum ProtocolPDF {
         return cursor + stripH + sectionGap
     }
 
-    // MARK: Sections I–X
+    // MARK: Sections I–IV (Klartext-Bericht)
 
-    private static func drawSectionI(context: UIGraphicsPDFRendererContext, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 120)
-        cursor = drawHeading("I. Gegenstand und Zweck", at: cursor)
-        let text = """
-        Gegenstand dieses Protokolls ist die dokumentierte, ausschließlich lesende Auswertung \
-        elektronisch gespeicherter Fahrzeugparameter eines Elektrokleinstfahrzeugs. Zweck ist die \
-        nachvollziehbare Feststellung, ob Auslesewerte mit werkseitigen Sollwerten übereinstimmen \
-        oder Abweichungen erkennbar sind. Es werden keine Parameter verändert.
-        """
-        return drawParagraph(text, at: cursor) + sectionGap
-    }
-
-    private static func drawSectionII(
+    private static func drawPlainSectionI(
         context: UIGraphicsPDFRendererContext,
         session: CheckSession,
         result: IntegrityResult,
         y: CGFloat
     ) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 160)
-        cursor = drawHeading("II. Sachverhalt / Gerätedaten", at: cursor)
-        let rows: [(String, String)] = [
-            ("Fahrzeugtyp", result.profile.label),
-            ("Angezeigte Seriennummer", result.reading.serialDisplay ?? "—"),
-            ("MCU-Seriennummer", result.reading.serialMcu ?? "—"),
-            ("Kilometerstand", Format.km.format(result.reading.odometerKm)),
-            ("MCU-Firmware", result.reading.fwMcu ?? "—"),
-            ("BLE-Firmware", result.reading.fwBle ?? "—"),
-            ("VCU-Firmware", result.reading.fwVcu ?? "—"),
-            ("BMS-Firmware", result.reading.fwBms ?? "—"),
-            ("Protokoll-Generation", Format.num.format(result.reading.protocolGen))
-        ]
-        for (label, value) in rows {
-            cursor = drawKeyValue(label, value: value, at: cursor)
-        }
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionIII(context: UIGraphicsPDFRendererContext, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 100)
-        cursor = drawHeading("III. Methodik", at: cursor)
-        let text = """
-        Die Auslese erfolgte über das Bluetooth-LE-Diagnoseprotokoll des Herstellers. \
-        Ausgelesene Register werden mit typgenehmigungsrelevanten Sollwerten verglichen. \
-        Firmware-Module (MCU, BLE, VCU, BMS) werden als Versionsregister ausgelesen und — \
-        soweit für das Modell hinterlegt — mit öffentlich bekannten Serienständen abgeglichen. \
-        Mustererkennung (Serienkonfiguration, Web-App, SHU) basiert auf definierten \
-        Heuristiken. Alle Rohdaten werden im Anhang IV.a und als JSON-Anlage bereitgestellt.
-        """
-        return drawParagraph(text, at: cursor) + sectionGap
-    }
-
-    private static func drawSectionIV(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 80)
-        cursor = drawHeading("IV. Auslesewerte (Zusammenfassung)", at: cursor)
-        cursor = drawTableHeader(at: cursor)
-
-        let summaryFacts = result.facts.filter {
-            [.speed, .serial, .firmware, .flags].contains($0.group)
-        }.prefix(22)
-
-        for fact in summaryFacts {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 6)
-            cursor = drawFactRow(fact, at: cursor)
-        }
-
-        cursor = ensureSpace(context: context, y: cursor, needed: 80)
-        cursor += 8
-        cursor = drawSubheading("IV.b Firmware-Analyse", at: cursor)
-        cursor = drawText(
-            "Modulversionen, Katalogstatus und Rohhex der Versionsregister.",
-            at: cursor,
-            font: bodyFont(size: 10),
-            color: Theme.UI.muted
-        )
-        let fwFacts = result.facts.filter { $0.group == .firmware }
-        for fact in fwFacts {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2 + 4)
-            cursor = drawKeyValue(fact.title, value: "\(fact.auslesewert) · \(fact.bewertung)", at: cursor)
-            if let raw = fact.raw, !raw.isEmpty {
-                cursor = drawText(
-                    "  Nachweis: \(raw)",
-                    at: cursor,
-                    font: monoFont(size: 8),
-                    color: Theme.UI.muted
-                )
-            }
-        }
-
-        let customDiffs = result.facts.filter { $0.id.hasPrefix("diff.") }
-        if !customDiffs.isEmpty {
-            cursor = ensureSpace(context: context, y: cursor, needed: 60)
-            cursor += 8
-            cursor = drawSubheading("IV.c Custom-Firmware vs. Hersteller-Serie", at: cursor)
-            cursor = drawText(
-                "Messbare Abweichungen: Auslesewert gegenüber werkseitigem Soll.",
-                at: cursor,
-                font: bodyFont(size: 10),
-                color: Theme.UI.muted
-            )
-            for fact in customDiffs {
-                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
-                cursor = drawText(
-                    "• \(fact.title.replacingOccurrences(of: "Diff: ", with: ""))",
-                    at: cursor,
-                    font: bodyFont(size: 10, weight: .semibold),
-                    color: Theme.UI.text
-                )
-                cursor = drawText(
-                    "  Serie: \(fact.sollwert)  →  Auslese: \(fact.auslesewert)  [\(fact.status.label)]",
-                    at: cursor,
-                    font: bodyFont(size: 9),
-                    color: Theme.UI.fact(fact.status)
-                )
-            }
-        }
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionIVa(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 60)
-        cursor = drawHeading("IV.a Anhang — Rohdatenregister", at: cursor)
-        cursor = drawText(
-            "Vollständige Liste der ausgelesenen Register (\(result.reading.rawRegisters.count) Einträge).",
-            at: cursor,
-            font: bodyFont(size: 10),
-            color: Theme.UI.muted
-        )
-
-        for reg in result.reading.rawRegisters {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
-            let line = "\(reg.address)  \(reg.name)  \(reg.valueHex)"
-            cursor = drawText(line, at: cursor, font: monoFont(size: 9), color: Theme.UI.text)
-            if let decoded = reg.valueDecoded {
-                cursor = drawText("    → \(decoded)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
-            }
-            if let note = reg.note {
-                cursor = drawText("    Hinweis: \(note)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.danger)
-            }
-        }
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionIVd(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 80)
-        cursor = drawHeading("IV.d EvidenceEngine — drei Ebenen", at: cursor)
-        cursor = drawText(
-            "evidenceCatalogVersion = \(result.evidence.catalogVersion)",
-            at: cursor,
-            font: monoFont(size: 9),
-            color: Theme.UI.muted
-        )
-
-        // Ebene 1: Kurzurteil (wenig Technik)
-        cursor = drawSubheading("1. Kurzurteil", at: cursor)
+        var cursor = ensureSpace(context: context, y: y, needed: 140)
+        cursor = drawHeading("I. Zusammenfassung", at: cursor)
         cursor = drawText(
             result.verdict.label,
             at: cursor,
-            font: bodyFont(size: 12, weight: .semibold),
+            font: bodyFont(size: 13, weight: .semibold),
             color: Theme.UI.verdict(result.verdict)
         )
         cursor = drawParagraph(result.evidence.shortVerdictText, at: cursor)
         cursor = drawText(
-            "Score \(result.score)/100 dient nur der Verdichtung und erzeugt kein Urteil.",
+            "Score \(result.score)/100 verdichtet nur die Feststellungen und erzeugt kein Gesamturteil.",
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        cursor += 6
+        cursor = drawSubheading("Fahrzeugdaten", at: cursor)
+        let rows: [(String, String)] = [
+            ("Fahrzeugtyp", result.profile.label),
+            ("Angezeigte Seriennummer", result.reading.serialDisplay ?? "—"),
+            ("Kilometerstand", Format.km.format(result.reading.odometerKm)),
+            ("Protokoll", session.protocolNumber),
+            ("Katalogversion", "v\(result.evidence.catalogVersion)")
+        ]
+        for (label, value) in rows {
+            cursor = drawKeyValue(label, value: value, at: cursor)
+        }
+        cursor += 4
+        cursor = drawParagraph(
+            """
+            Dieses Dokument ist eine technische Dokumentation und Zustandsprüfung auf Basis einer \
+            schreibgeschützten Auslese. Es werden keine Fahrzeugparameter verändert.
+            """,
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        return cursor + sectionGap
+    }
+
+    private static func drawPlainSectionII(
+        context: UIGraphicsPDFRendererContext,
+        result: IntegrityResult,
+        y: CGFloat
+    ) -> CGFloat {
+        var cursor = ensureSpace(context: context, y: y, needed: 80)
+        cursor = drawHeading("II. Wesentliche technische Feststellungen", at: cursor)
+        cursor = drawText(
+            "Nur die für das Gesamturteil maßgeblichen Marker in Alltagssprache.",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
         )
 
-        if let attr = result.evidence.attribution {
-            cursor = ensureSpace(context: context, y: cursor, needed: 70)
-            cursor = drawSubheading("Vermutete Manipulationsmethode", at: cursor)
-            cursor = drawText(
-                "heuristische technische Zuordnung, kein alleiniger Nachweis des verwendeten Werkzeugs",
-                at: cursor,
-                font: bodyFont(size: 8),
-                color: Theme.UI.muted
+        let markers = result.evidence.justifyingMarkers
+        if markers.isEmpty {
+            cursor = drawParagraph(
+                "Es wurden keine abweichenden Marker festgestellt, die zum Gesamturteil beitragen.",
+                at: cursor
             )
+        }
+        for r in markers.prefix(12) {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 5)
             cursor = drawText(
-                attr.headline,
+                r.plainLanguage.title,
                 at: cursor,
                 font: bodyFont(size: 11, weight: .semibold),
                 color: Theme.UI.text
             )
+            cursor = drawParagraph(r.plainLanguage.summary, at: cursor)
             cursor = drawText(
-                "Konfidenz: \(attr.confidenceLabel) (\(String(format: "%.2f", attr.confidence))) · Katalog \(attr.catalogVersion)",
+                "Festgestellt: \(r.fact.interpretedValue ?? r.fact.rawValue)  ·  Erwartet: \(r.fact.expectedValue ?? "—")",
                 at: cursor,
                 font: bodyFont(size: 9),
                 color: Theme.UI.muted
             )
-            cursor = drawParagraph(EvidenceExplanationEngine.attributionPlain(attr), at: cursor)
-            if let pattern = attr.knownPatternId {
-                cursor = drawText("Pattern: \(pattern)", at: cursor, font: monoFont(size: 8), color: Theme.UI.muted)
-            }
-        }
-
-        // Ebene 2: entscheidende Marker
-        cursor = ensureSpace(context: context, y: cursor, needed: 40)
-        cursor = drawSubheading("2. Begründende / entscheidende Marker", at: cursor)
-        for line in result.evidence.decisiveEvidence.prefix(10) {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
-            cursor = drawText("• \(line)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.text)
-        }
-        for r in result.evidence.justifyingMarkers.prefix(8) {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
             cursor = drawText(
-                "• \(r.plainLanguage.title) [\(r.classification.label)]",
+                "Einordnung: \(r.classification.label)",
                 at: cursor,
-                font: bodyFont(size: 10, weight: .semibold),
+                font: bodyFont(size: 9, weight: .medium),
                 color: Theme.UI.text
             )
-            cursor = drawParagraph(r.plainLanguage.summary, at: cursor)
-            if let expected = r.plainLanguage.expectedState {
-                cursor = drawText("  Erwartung: \(expected)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
-            }
-            if let relevance = r.plainLanguage.relevance {
-                cursor = drawText("  Bedeutung: \(relevance)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
-            }
             if let contrib = r.plainLanguage.verdictContribution {
-                cursor = drawText("  Gesamturteil: \(contrib)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+                cursor = drawText("Bedeutung: \(contrib)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
             }
-            cursor = drawText("  Technische Details:", at: cursor, font: bodyFont(size: 8, weight: .semibold), color: Theme.UI.muted)
-            for line in r.chainCitation.split(separator: "\n", omittingEmptySubsequences: false) {
-                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight)
-                cursor = drawText(
-                    "  \(line)",
-                    at: cursor,
-                    font: monoFont(size: 7),
-                    color: Theme.UI.muted
-                )
+            cursor += 4
+        }
+
+        let positives = result.facts.filter { $0.id.hasPrefix("positive.") }
+        if !positives.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 40)
+            cursor = drawSubheading("Unauffällige Befunde", at: cursor)
+            for fact in positives.prefix(8) {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+                cursor = drawText("• \(fact.title)", at: cursor, font: bodyFont(size: 9, weight: .semibold), color: Theme.UI.text)
+                cursor = drawText("  \(fact.erlaeuterung)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+            }
+        }
+        return cursor + sectionGap
+    }
+
+    private static func drawPlainSectionIII(
+        context: UIGraphicsPDFRendererContext,
+        result: IntegrityResult,
+        y: CGFloat
+    ) -> CGFloat {
+        guard let attr = result.evidence.attribution else { return y }
+        var cursor = ensureSpace(context: context, y: y, needed: 90)
+        cursor = drawHeading("III. Vermutete Art der Veränderung", at: cursor)
+        cursor = drawText(
+            "Heuristische technische Zuordnung — kein alleiniger Nachweis des verwendeten Werkzeugs.",
+            at: cursor,
+            font: bodyFont(size: 8),
+            color: Theme.UI.muted
+        )
+        cursor = drawText(
+            attr.headline,
+            at: cursor,
+            font: bodyFont(size: 12, weight: .semibold),
+            color: Theme.UI.text
+        )
+        cursor = drawText(
+            "Konfidenz: \(attr.confidenceLabel) (\(String(format: "%.2f", attr.confidence))) · Katalog \(attr.catalogVersion)",
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        cursor = drawParagraph(EvidenceExplanationEngine.attributionPlain(attr), at: cursor)
+        if let pattern = attr.knownPatternId {
+            cursor = drawText("Pattern: \(pattern)", at: cursor, font: monoFont(size: 8), color: Theme.UI.muted)
+        }
+        if !attr.supportingMarkerIds.isEmpty {
+            cursor = drawText(
+                "Stützende Marker: \(attr.supportingMarkerIds.joined(separator: ", "))",
+                at: cursor,
+                font: bodyFont(size: 8),
+                color: Theme.UI.muted
+            )
+        }
+        if !attr.contradictingMarkerIds.isEmpty {
+            cursor = drawText(
+                "Gegenbelege: \(attr.contradictingMarkerIds.joined(separator: ", "))",
+                at: cursor,
+                font: bodyFont(size: 8),
+                color: Theme.UI.muted
+            )
+        }
+        return cursor + sectionGap
+    }
+
+    private static func drawPlainSectionIV(
+        context: UIGraphicsPDFRendererContext,
+        result: IntegrityResult,
+        y: CGFloat
+    ) -> CGFloat {
+        var cursor = ensureSpace(context: context, y: y, needed: 60)
+        cursor = drawHeading("IV. Technische Details", at: cursor)
+        cursor = drawText(
+            "Maschinennahe Auslese zur technischen Überprüfbarkeit. Katalog v\(result.evidence.catalogVersion).",
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+
+        // IV.a Rohdaten
+        cursor = ensureSpace(context: context, y: cursor, needed: 40)
+        cursor = drawSubheading("IV.a Rohdatenregister", at: cursor)
+        cursor = drawText(
+            "\(result.reading.rawRegisters.count) Register ausgelesen.",
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        for reg in result.reading.rawRegisters {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+            cursor = drawText(
+                "\(reg.address)  \(reg.name)  \(reg.valueHex)",
+                at: cursor,
+                font: monoFont(size: 8),
+                color: Theme.UI.text
+            )
+            if let decoded = reg.valueDecoded {
+                cursor = drawText("    → \(decoded)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
             }
         }
 
+        // IV.b Boards
+        cursor = ensureSpace(context: context, y: cursor, needed: 50)
+        cursor = drawSubheading("IV.b Boards / Steuergeräte", at: cursor)
+        let boards: [(String, String?)] = [
+            ("Fahrzeug/Display", result.reading.serialDisplay),
+            ("VCU", result.reading.serialVcu),
+            ("MCU", result.reading.serialMcu),
+            ("BLE", result.reading.serialBle),
+            ("BMS", result.reading.serialBms)
+        ]
+        for (name, sn) in boards {
+            cursor = drawKeyValue(name, value: sn ?? "—", at: cursor)
+        }
+        for issue in result.evidence.crossBoardIssues {
+            cursor = drawText("• \(issue.title): \(issue.detail)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.danger)
+        }
+
+        // IV.c Firmware
+        cursor = ensureSpace(context: context, y: cursor, needed: 50)
+        cursor = drawSubheading("IV.c Firmware / Seriennummern", at: cursor)
+        cursor = drawKeyValue("MCU-FW", value: result.reading.fwMcu ?? "—", at: cursor)
+        cursor = drawKeyValue("BLE-FW", value: result.reading.fwBle ?? "—", at: cursor)
+        cursor = drawKeyValue("VCU-FW", value: result.reading.fwVcu ?? "—", at: cursor)
+        cursor = drawKeyValue("BMS-FW", value: result.reading.fwBms ?? "—", at: cursor)
+        for fact in result.facts.filter({ $0.group == .firmware || $0.id.hasPrefix("diff.") }).prefix(12) {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+            cursor = drawText(
+                "• \(fact.title): \(fact.auslesewert) [\(fact.status.label)]",
+                at: cursor,
+                font: bodyFont(size: 8),
+                color: Theme.UI.text
+            )
+        }
+
+        // IV.d Evidenzmatrix
+        cursor = ensureSpace(context: context, y: cursor, needed: 50)
+        cursor = drawSubheading("IV.d Evidenzmatrix", at: cursor)
+        for r in result.evidence.results {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
+            cursor = drawText(
+                "• \(r.fact.markerID) · \(r.classification.label) · \(r.fact.persistence.label)",
+                at: cursor,
+                font: bodyFont(size: 9, weight: .semibold),
+                color: Theme.UI.text
+            )
+            for line in r.chainCitation.split(separator: "\n").prefix(8) {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight)
+                cursor = drawText("  \(line)", at: cursor, font: monoFont(size: 7), color: Theme.UI.muted)
+            }
+        }
+
+        // IV.e Neutralisierungen
         let neutrals = result.evidence.results.flatMap(\.neutralizations)
-        if !neutrals.isEmpty {
-            cursor = ensureSpace(context: context, y: cursor, needed: 40)
-            cursor = drawSubheading("Neutralisierungen", at: cursor)
+        cursor = ensureSpace(context: context, y: cursor, needed: 40)
+        cursor = drawSubheading("IV.e Neutralisierungen", at: cursor)
+        if neutrals.isEmpty {
+            cursor = drawText("Keine Neutralisierungen.", at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
+        } else {
             for n in neutrals {
                 cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
                 cursor = drawText(
@@ -458,133 +465,86 @@ enum ProtocolPDF {
             }
         }
 
+        // IV.f Power-Cycle
+        cursor = ensureSpace(context: context, y: cursor, needed: 40)
+        cursor = drawSubheading("IV.f Power-Cycle-Vergleich", at: cursor)
         if let pc = result.evidence.powerCycle {
-            cursor = ensureSpace(context: context, y: cursor, needed: 50)
-            cursor = drawSubheading("Power-Cycle (beobachtete Persistenz)", at: cursor)
             cursor = drawText(pc.summary, at: cursor, font: bodyFont(size: 9), color: Theme.UI.text)
             for row in pc.rows {
-                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 2)
-                cursor = drawText(
-                    "• \(row.title): A \(row.scanA) → B \(row.scanB) · \(row.changeKind.label) · \(row.observedPersistence.label)",
-                    at: cursor,
-                    font: monoFont(size: 8),
-                    color: Theme.UI.muted
-                )
-            }
-        }
-
-        // Ebene 3: Rohdaten
-        cursor = ensureSpace(context: context, y: cursor, needed: 40)
-        cursor = drawSubheading("3. Rohdaten", at: cursor)
-        cursor = drawText(
-            "Vollständige Register in IV.a (\(result.reading.rawRegisters.count)). Fingerprint: \(result.evidence.fingerprint.digestSHA256)",
-            at: cursor,
-            font: monoFont(size: 8),
-            color: Theme.UI.muted
-        )
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionV(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 60)
-        cursor = drawHeading("V. Bewertung der Einzelfakten", at: cursor)
-
-        for group in FactGroup.allCases {
-            guard let groupFacts = result.factGroups[group], !groupFacts.isEmpty else { continue }
-            cursor = ensureSpace(context: context, y: cursor, needed: 40)
-            cursor = drawSubheading(group.rawValue, at: cursor)
-            for fact in groupFacts where fact.status != .regelkonform {
+                let plain = EvidenceExplanationEngine.explanation(forPowerCycleRow: row)
                 cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
+                cursor = drawText("• \(plain.title)", at: cursor, font: bodyFont(size: 9, weight: .semibold), color: Theme.UI.text)
+                cursor = drawText("  \(plain.summary)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
                 cursor = drawText(
-                    "• \(fact.title): \(fact.bewertung)",
+                    "  A \(row.scanA) → B \(row.scanB) · \(row.changeKind.label)",
                     at: cursor,
-                    font: bodyFont(size: 10, weight: .semibold),
-                    color: Theme.UI.text
-                )
-                cursor = drawText(
-                    "  [\(fact.status.label)]",
-                    at: cursor,
-                    font: bodyFont(size: 9, weight: .medium),
-                    color: Theme.UI.fact(fact.status)
-                )
-                cursor = drawText(
-                    "  Auslesewert: \(fact.auslesewert)  ·  Sollwert: \(fact.sollwert)",
-                    at: cursor,
-                    font: bodyFont(size: 9),
-                    color: Theme.UI.muted
-                )
-                cursor = drawText(
-                    "  \(fact.erlaeuterung)",
-                    at: cursor,
-                    font: bodyFont(size: 9),
+                    font: monoFont(size: 7),
                     color: Theme.UI.muted
                 )
             }
+        } else {
+            cursor = drawText(
+                "Kein Power-Cycle-Vergleich in diesem Bericht.",
+                at: cursor,
+                font: bodyFont(size: 9),
+                color: Theme.UI.muted
+            )
         }
-        return cursor + sectionGap
-    }
 
-    private static func drawSectionVI(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 110)
-        cursor = drawHeading("VI. Gesamtbewertung", at: cursor)
-        cursor = drawKeyValue("Integritätsscore", value: "\(result.score) / 100", at: cursor)
-        cursor = drawKeyValue("Bewertung", value: result.verdict.label, at: cursor, valueColor: Theme.UI.verdict(result.verdict))
-        cursor = drawKeyValue(
-            "Musterzuordnung",
-            value: "\(result.trackMatch.trackId.label) (\(Int(result.trackMatch.confidence * 100)) %)",
-            at: cursor
-        )
-        cursor += 4
-        cursor = drawParagraph(result.verdict.laymanText, at: cursor)
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionVII(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 80)
-        cursor = drawHeading("VII. Rechtliche Hinweise", at: cursor)
-        cursor = drawParagraph(result.profile.legalText, at: cursor)
-        cursor += 4
-        cursor = drawParagraph(result.disclaimer, at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionVIII(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 60)
-        cursor = drawHeading("VIII. Integritätsnachweis", at: cursor)
-        cursor = drawKeyValue("SHA-256 (Evidenz)", value: result.reading.evidenceSha256 ?? "—", at: cursor)
+        // IV.g Fingerprint
+        cursor = ensureSpace(context: context, y: cursor, needed: 50)
+        cursor = drawSubheading("IV.g Fingerprint / Hash / Katalogversion", at: cursor)
+        cursor = drawKeyValue("Katalog", value: "v\(result.evidence.catalogVersion)", at: cursor)
+        cursor = drawKeyValue("Fingerprint", value: result.evidence.fingerprint.digestSHA256, at: cursor)
+        cursor = drawKeyValue("SHA-256 Auslese", value: result.reading.evidenceSha256 ?? "—", at: cursor)
         cursor = drawKeyValue("Analysezeitpunkt", value: germanDate(result.analyzedAt), at: cursor)
         return cursor + sectionGap
     }
 
-    private static func drawSectionIX(context: UIGraphicsPDFRendererContext, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 50)
-        cursor = drawHeading("IX. Anlagen", at: cursor)
-        cursor = drawText("1. JSON-Datensatz (siehe Exportpaket)", at: cursor, font: bodyFont(size: 10), color: Theme.UI.text)
-        cursor = drawText("2. Rohdatenregister (Abschnitt IV.a)", at: cursor, font: bodyFont(size: 10), color: Theme.UI.text)
-        return cursor + sectionGap
-    }
-
-    private static func drawSectionX(context: UIGraphicsPDFRendererContext, session: CheckSession, y: CGFloat) -> CGFloat {
-        var cursor = ensureSpace(context: context, y: y, needed: 90)
-        cursor = drawHeading("X. Protokollvermerk", at: cursor)
-        let text = """
-        Das vorliegende Protokoll wurde maschinell erstellt und ohne Eingriff in die \
-        Fahrzeugelektronik ausgewertet. Die Auslese war schreibgeschützt. \
-        Ort, Datum: _________________________    Unterschrift: _________________________
-        """
-        cursor = drawParagraph(text, at: cursor)
-        cursor += 10
+    private static func drawClosingNotes(
+        context: UIGraphicsPDFRendererContext,
+        session: CheckSession,
+        result: IntegrityResult,
+        y: CGFloat
+    ) -> CGFloat {
+        var cursor = ensureSpace(context: context, y: y, needed: 120)
+        cursor = drawHeading("Hinweise zur Methodik", at: cursor)
+        cursor = drawParagraph(
+            """
+            Die Auslese erfolgte über das Bluetooth-LE-Diagnoseprotokoll des Herstellers. \
+            Register werden mit Serienprofilen verglichen. Firmware-Module (MCU, BLE, VCU, BMS) \
+            werden — soweit hinterlegt — mit bekannten Serienständen abgeglichen. \
+            Mustererkennung basiert auf definierten Heuristiken. Rohdaten liegen in Abschnitt IV \
+            und als JSON-Anlage vor.
+            """,
+            at: cursor
+        )
+        cursor = ensureSpace(context: context, y: cursor, needed: 80)
+        cursor = drawHeading("Rechtliche Hinweise", at: cursor)
+        cursor = drawParagraph(result.profile.legalText, at: cursor)
+        cursor += 4
+        cursor = drawParagraph(result.disclaimer, at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
+        cursor = ensureSpace(context: context, y: cursor, needed: 70)
+        cursor = drawHeading("Protokollvermerk", at: cursor)
+        cursor = drawParagraph(
+            """
+            Das vorliegende Protokoll wurde maschinell erstellt und ohne Eingriff in die \
+            Fahrzeugelektronik ausgewertet. Die Auslese war schreibgeschützt. \
+            Ort, Datum: _________________________    Unterschrift: _________________________
+            """,
+            at: cursor
+        )
+        cursor += 8
         _ = drawText(
-            "— Ende des Protokolls \(session.protocolNumber) —",
+            "— Ende des Analyseberichts \(session.protocolNumber) —",
             at: cursor,
             font: bodyFont(size: 9),
-            color: Theme.UI.muted,
-            alignment: .center
+            color: Theme.UI.muted
         )
         return cursor
     }
 
-    // MARK: Drawing Primitives
+    // Unused legacy stubs removed — PDF uses drawPlainSectionI…IV + drawClosingNotes.
 
     @discardableResult
     private static func beginStyledPage(_ context: UIGraphicsPDFRendererContext) -> CGFloat {

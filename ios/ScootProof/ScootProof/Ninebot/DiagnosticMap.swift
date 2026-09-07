@@ -530,7 +530,7 @@ enum DiagnosticMap {
         case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
             // Rohflags für Panic-resistente Heuristik (Bitmuster modellabhängig).
             if let raw = Nb.u16(data), raw != 0 {
-                // Encryption-/Fun-Flags ≠ 0 allein kein Beweis — nur bei ungewöhnlichen Mustern.
+                // Encryption-/Fun-Flags ≠ 0 allein kein belastbarer Hinweis — nur bei ungewöhnlichen Mustern.
                 if spec.id == "vcu_g3_encflag", raw == 0xFFFF || (raw & 0xFF00) == 0xFF00 {
                     reading.fwAppCustom = true
                 }

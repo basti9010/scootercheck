@@ -212,6 +212,8 @@ final class EvidenceExplanationEngineTests: XCTestCase {
         XCTAssertTrue(text.lowercased().contains("vereinbar") || text.lowercased().contains("heuristisch"))
         XCTAssertFalse(text.lowercased().contains("scooterhacking"))
         XCTAssertFalse(text.lowercased().contains("definitiv mit"))
+        XCTAssertFalse(text.lowercased().contains("beweist nicht"))
+        XCTAssertTrue(text.lowercased().contains("zeigt nicht") || text.lowercased().contains("heuristisch"))
     }
 
     func testEindeutigVerdictPlainLanguage() {
@@ -232,6 +234,25 @@ final class EvidenceExplanationEngineTests: XCTestCase {
         let r = result(fact(id: "region.sn"), class: .indiz, neutralized: n)
         XCTAssertFalse(r.contributesToVerdict)
         XCTAssertTrue(r.verdictContributionExplanation?.contains("Kein Beitrag") == true)
+    }
+
+    func testPositiveFindingsForStockReading() {
+        let reading = IntegrityReading(
+            serialDisplay: "1CGBTEST0001",
+            speedLimitKmh: 20,
+            peakSpeedKmh: 18,
+            fwMcu: "1.0.0"
+        )
+        let positives = EvidenceExplanationEngine.positiveFindings(
+            reading: reading,
+            profile: .maxG3D,
+            results: [],
+            powerCycle: nil
+        )
+        XCTAssertTrue(positives.contains { $0.id == "positive.limit.stock" })
+        XCTAssertTrue(positives.contains { $0.id == "positive.region.stock" })
+        XCTAssertTrue(positives.contains { $0.id == "positive.fw.stock" })
+        XCTAssertTrue(positives.contains { $0.id == "positive.boards.consistent" })
     }
 
     func testGlossaryCoversCoreTerms() {

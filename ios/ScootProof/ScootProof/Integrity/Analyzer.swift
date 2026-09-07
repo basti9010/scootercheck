@@ -47,7 +47,7 @@ enum IntegrityAnalyzer {
         facts += buildHistoryFacts(reading: reading)
         facts += buildPhysicalFacts(reading: reading)
         // Nur Engine-Ausgabe — keine Neubewertung in Analyzer/UI.
-        facts += EvidenceEngine.buildFacts(evidence)
+        facts += EvidenceEngine.buildFacts(evidence, reading: reading, profile: profile)
         facts = enrichFactsWithRawCitations(facts, reading: reading, profile: profile)
 
         var findings = buildFindings(facts: facts, trackMatch: trackMatch)

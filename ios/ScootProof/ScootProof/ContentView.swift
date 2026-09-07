@@ -932,7 +932,7 @@ struct FactRow: View {
                 .foregroundStyle(Theme.fact(fact.status))
                 .frame(width: 18)
                 .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(fact.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
@@ -940,27 +940,23 @@ struct FactRow: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Feststellung: \(fact.auslesewert)")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.9))
-                Text("Erwartung: \(fact.sollwert)")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
-                Text("Einordnung: \(fact.status.rawValue)")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Theme.fact(fact.status))
                 if let evidenceClass = fact.evidenceClass {
-                    Text("Technische Klasse: \(evidenceClass.label)")
-                        .font(.caption.weight(.semibold))
+                    Text("Einordnung: \(evidenceClass.label)")
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.accent)
+                } else {
+                    Text("Einordnung: \(fact.status.rawValue)")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Theme.fact(fact.status))
                 }
-                if let volatility = fact.volatility {
-                    Text("Persistenz: \(volatility.label) · \(volatility.resetsOnPowerOffHint)")
-                        .font(.caption)
-                        .foregroundStyle(Theme.muted)
-                }
+                Text("Festgestellt: \(fact.auslesewert)")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                Text("Erwartet: \(fact.sollwert)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
 
-                if fact.raw != nil || fact.sourceBoard != nil {
+                if fact.raw != nil || fact.sourceBoard != nil || fact.volatility != nil {
                     Button {
                         showTechnical.toggle()
                     } label: {
@@ -972,17 +968,29 @@ struct FactRow: View {
                 }
 
                 if showTechnical {
-                    if let board = fact.sourceBoard, let reg = fact.sourceRegister {
-                        Text("Quelle: \(board) \(reg)" + (fact.rawHex.map { " · Roh \($0)" } ?? ""))
-                            .font(.caption.monospaced())
-                            .foregroundStyle(Theme.muted)
+                    VStack(alignment: .leading, spacing: 3) {
+                        if let board = fact.sourceBoard {
+                            Text("Quelle: \(board)" + (fact.sourceRegister.map { " / \($0)" } ?? ""))
+                        }
+                        if let hex = fact.rawHex {
+                            Text("Rohwert: \(hex)")
+                        }
+                        Text("Interpretation: \(fact.auslesewert)")
+                        Text("Soll: \(fact.sollwert)")
+                        if let volatility = fact.volatility {
+                            Text("Persistenz: \(volatility.label) · \(volatility.resetsOnPowerOffHint)")
+                        }
+                        if let evidenceClass = fact.evidenceClass {
+                            Text("Technische Klasse: \(evidenceClass.label)")
+                        }
+                        Text("Status: \(fact.status.rawValue)")
+                        if let raw = fact.raw, !raw.isEmpty {
+                            Text(raw)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    if let raw = fact.raw, !raw.isEmpty {
-                        Text(raw)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(Theme.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    .font(.caption.monospaced())
+                    .foregroundStyle(Theme.muted)
                 }
             }
         }

@@ -306,7 +306,7 @@ enum EvidenceExplanationEngine {
             lines.append(method.compatiblePhrase)
         }
         lines.append(
-            "Diese Zuordnung ist heuristisch und beweist nicht, mit welchem konkreten Werkzeug eine Veränderung vorgenommen wurde."
+            "Diese Zuordnung ist heuristisch und zeigt nicht, mit welchem konkreten Werkzeug eine Veränderung vorgenommen wurde."
         )
         lines.append("Konfidenz: \(attr.confidenceLabel) (\(String(format: "%.2f", attr.confidence))).")
         return lines.joined(separator: "\n")
@@ -314,6 +314,109 @@ enum EvidenceExplanationEngine {
 
     static func verdictPlain(_ verdict: VerdictLevel) -> String {
         verdict.laymanText
+    }
+
+    /// Unauffällige / positive Feststellungen — nur Dokumentation, keine Neubewertung.
+    static func positiveFindings(
+        reading: IntegrityReading,
+        profile: ScooterProfile,
+        results: [EvidenceResult],
+        powerCycle: PowerCycleReport?
+    ) -> [MeasuredFact] {
+        let ids = Set(results.map(\.fact.markerID))
+        var facts: [MeasuredFact] = []
+
+        if !ids.contains(where: { $0.hasPrefix("serial.cross") }) {
+            facts.append(MeasuredFact(
+                id: "positive.boards.consistent",
+                group: .evidence,
+                title: "Steuergerät-Kennungen konsistent",
+                auslesewert: "keine Cross-Board-Abweichung erkannt",
+                sollwert: "zueinander passende Kennungen",
+                status: .regelkonform,
+                bewertung: "unauffällig",
+                erlaeuterung: "Die vorliegenden Modulkennungen passen plausibel zum Fahrzeug. (\(TechnicalGlossary.explanation(for: .crossBoard)))",
+                raw: nil,
+                volatility: .persistent,
+                evidenceClass: .info
+            ))
+        }
+
+        if !ids.contains("fw.custom"), !ids.contains("fw.unknown") {
+            facts.append(MeasuredFact(
+                id: "positive.fw.stock",
+                group: .evidence,
+                title: "Firmware entspricht dem Serienkatalog",
+                auslesewert: reading.fwMcu ?? reading.fwVcu ?? "Serienstand",
+                sollwert: "katalogisierter Serienstand",
+                status: .regelkonform,
+                bewertung: "unauffällig",
+                erlaeuterung: "Es wurde keine bekannte Custom-Firmware-Signatur und kein unbekannter Mod-Fingerprint festgestellt. (\(TechnicalGlossary.explanation(for: .firmware)))",
+                raw: nil,
+                volatility: .persistent,
+                evidenceClass: .info
+            ))
+        }
+
+        if !ids.contains("region.sn") {
+            let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+            facts.append(MeasuredFact(
+                id: "positive.region.stock",
+                group: .evidence,
+                title: "Region entspricht dem Serienprofil",
+                auslesewert: region.label,
+                sollwert: profile.market == .de20 ? "DE-Profil" : "EU-Profil",
+                status: .regelkonform,
+                bewertung: "unauffällig",
+                erlaeuterung: "Die interne Regionseinstellung passt zum erwarteten Serienprofil. (\(TechnicalGlossary.explanation(for: .region)))",
+                raw: nil,
+                volatility: .persistent,
+                evidenceClass: .info
+            ))
+        }
+
+        if !ids.contains("speed.limit") {
+            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
+            facts.append(MeasuredFact(
+                id: "positive.limit.stock",
+                group: .evidence,
+                title: "Geschwindigkeitslimit entspricht dem Soll",
+                auslesewert: limit.map { Format.kmh.format(Optional($0)) } ?? "im Rahmen",
+                sollwert: "≤ \(Format.kmh.format(Optional(profile.ratedMaxKmh)))",
+                status: .regelkonform,
+                bewertung: "unauffällig",
+                erlaeuterung: "Das aktuell gespeicherte Geschwindigkeitslimit entspricht dem erwarteten Serienwert. Dieser Wert liefert aktuell keinen Hinweis auf eine Abweichung vom Serienzustand.",
+                raw: nil,
+                volatility: .persistent,
+                evidenceClass: .info
+            ))
+        }
+
+        if let pc = powerCycle {
+            let persistentAnomalies = pc.rows.filter {
+                $0.changeKind == .unchanged
+                    && ($0.markerID == "speed.limit" || $0.markerID.hasPrefix("fw."))
+                    && $0.scanA != "—"
+                    && ids.contains($0.markerID)
+            }
+            if persistentAnomalies.isEmpty {
+                facts.append(MeasuredFact(
+                    id: "positive.powercycle.calm",
+                    group: .evidence,
+                    title: "Power-Cycle ohne auffällige persistente Abweichung",
+                    auslesewert: pc.summary,
+                    sollwert: "keine zusätzlichen persistenten Auffälligkeiten",
+                    status: .regelkonform,
+                    bewertung: "unauffällig",
+                    erlaeuterung: "Der Vergleich vor/nach Aus- und Einschalten zeigt keine zusätzlichen persistenten Auffälligkeiten. (\(TechnicalGlossary.explanation(for: .powerCycle)))",
+                    raw: pc.summary,
+                    volatility: .persistent,
+                    evidenceClass: .info
+                ))
+            }
+        }
+
+        return facts
     }
 
     private static func verdictContributionText(_ result: EvidenceResult) -> String {
