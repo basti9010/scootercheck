@@ -589,7 +589,7 @@ enum IntegrityAnalyzer {
             auslesewert: auslese,
             sollwert: sollText,
             status: status,
-            bewertung: status == .regelkonform ? "Unauffällig" : "Auffällig",
+            bewertung: status == .regelkonform ? "Unauffällig" : (status == .nichtFeststellbar ? "Nicht feststellbar" : "Auffällig"),
             erlaeuterung: "Sicherheits- bzw. Manipulationsrelevantes Flag.",
             raw: value.map { String($0) }
         )
