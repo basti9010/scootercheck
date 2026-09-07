@@ -5,7 +5,7 @@ import CryptoKit
 
 enum EvidenceCatalog {
     /// Bei Regel-/Marker-Änderungen hochzählen — landet in PDF/JSON.
-    static let version = 12
+    static let version = 13
 }
 
 // MARK: - Taxonomy
@@ -132,6 +132,8 @@ struct EvidenceResult: Identifiable, Codable, Hashable, Sendable {
     let correlations: [String]
     let neutralizations: [NeutralizationRecord]
     let explanation: String
+    /// Verständliche Alltagssprache — nie bewertungsändernd.
+    let plainLanguage: EvidenceExplanation
 
     var isNeutralized: Bool { !neutralizations.isEmpty }
 
@@ -139,23 +141,90 @@ struct EvidenceResult: Identifiable, Codable, Hashable, Sendable {
         !isNeutralized && classification.rank >= EvidenceClass.abweichung.rank
     }
 
+    /// Convenience aliases for JSON/UI.
+    var shortTitle: String { plainLanguage.shortTitle }
+    var humanReadableExplanation: String { plainLanguage.humanReadableExplanation }
+    var expectedStateExplanation: String? { plainLanguage.expectedStateExplanation }
+    var relevanceExplanation: String? { plainLanguage.relevanceExplanation }
+    var verdictContributionExplanation: String? { plainLanguage.verdictContributionExplanation }
+    var technicalExplanation: String? { plainLanguage.technicalExplanation }
+
     var chainCitation: String {
-        var parts = [
-            "Quelle: \(fact.source)" + (fact.register.map { " / \($0)" } ?? ""),
+        var lines = [
+            "\(fact.title) / \(fact.source)",
             "Rohwert: \(fact.rawValue)",
             "Interpretation: \(fact.interpretedValue ?? "—")",
-            "Soll: \(fact.expectedValue ?? "—")",
+            "Sollprofil: \(fact.expectedValue ?? "—")",
             "Persistenz: \(fact.persistence.label)",
-            "Erkenntnis: \(fact.knowledgeSource.label)",
-            "Initiale Klasse: \(classBeforeNeutralization.label)",
-            "Finale Klasse: \(classification.label)"
+            "Erkenntnisquelle: \(fact.knowledgeSource.label)",
+            "Konfidenz: \(String(format: "%.2f", fact.confidence))",
+            "Initiale Klasse: \(classBeforeNeutralization.label)"
         ]
-        if let mod = fact.knownModMatchId { parts.append("Mod-Match: \(mod)") }
-        for n in neutralizations {
-            parts.append("Neutralisierung \(n.ruleId): \(n.reason)")
+        if let mod = fact.knownModMatchId {
+            lines.append("Mod-Match-ID: \(mod)")
         }
-        parts.append(contributesToVerdict ? "Beitrag Urteil: ja (Gewicht \(weight))" : "Beitrag Urteil: keiner")
-        return parts.joined(separator: " · ")
+        if let stock = fact.knownStockMatch {
+            lines.append("Stock-Match: \(stock ? "ja" : "nein")")
+        }
+        for n in neutralizations {
+            lines.append("Neutralisierung: \(n.ruleId)")
+            lines.append("  (\(n.classBefore.label) → \(n.classAfter.label)) \(n.reason)")
+        }
+        lines.append("Finale Klasse: \(classification.label)")
+        lines.append(contributesToVerdict ? "Beitrag Urteil: ja (Gewicht \(weight))" : "Beitrag Urteil: keiner")
+        return lines.joined(separator: "\n")
+    }
+
+    init(
+        fact: EvidenceFact,
+        classification: EvidenceClass,
+        classBeforeNeutralization: EvidenceClass,
+        weight: Int,
+        correlations: [String],
+        neutralizations: [NeutralizationRecord],
+        explanation: String,
+        plainLanguage: EvidenceExplanation? = nil
+    ) {
+        self.fact = fact
+        self.classification = classification
+        self.classBeforeNeutralization = classBeforeNeutralization
+        self.weight = weight
+        self.correlations = correlations
+        self.neutralizations = neutralizations
+        self.explanation = explanation
+        if let plainLanguage {
+            self.plainLanguage = plainLanguage
+        } else {
+            // Platzhalter — Enrich folgt nach Neutralisierung.
+            self.plainLanguage = EvidenceExplanation(
+                title: fact.title,
+                summary: explanation,
+                expectedState: fact.expectedValue,
+                relevance: nil,
+                verdictContribution: nil,
+                technical: nil
+            )
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        fact = try c.decode(EvidenceFact.self, forKey: .fact)
+        classification = try c.decode(EvidenceClass.self, forKey: .classification)
+        classBeforeNeutralization = try c.decode(EvidenceClass.self, forKey: .classBeforeNeutralization)
+        weight = try c.decode(Int.self, forKey: .weight)
+        correlations = try c.decodeIfPresent([String].self, forKey: .correlations) ?? []
+        neutralizations = try c.decodeIfPresent([NeutralizationRecord].self, forKey: .neutralizations) ?? []
+        explanation = try c.decode(String.self, forKey: .explanation)
+        plainLanguage = try c.decodeIfPresent(EvidenceExplanation.self, forKey: .plainLanguage)
+            ?? EvidenceExplanation(
+                title: fact.title,
+                summary: explanation,
+                expectedState: fact.expectedValue,
+                relevance: nil,
+                verdictContribution: nil,
+                technical: nil
+            )
     }
 }
 
@@ -189,7 +258,44 @@ struct PowerCycleDiffRow: Identifiable, Codable, Hashable, Sendable {
     /// Am konkreten Fahrzeug beobachtet.
     let observedPersistence: PersistenceClass
     let catalogPersistence: PersistenceClass?
+    let changeKind: PowerCycleChangeKind
     let note: String
+
+    init(
+        markerID: String,
+        title: String,
+        scanA: String,
+        scanB: String,
+        observedPersistence: PersistenceClass,
+        catalogPersistence: PersistenceClass?,
+        changeKind: PowerCycleChangeKind,
+        note: String
+    ) {
+        self.markerID = markerID
+        self.title = title
+        self.scanA = scanA
+        self.scanB = scanB
+        self.observedPersistence = observedPersistence
+        self.catalogPersistence = catalogPersistence
+        self.changeKind = changeKind
+        self.note = note
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        markerID = try c.decode(String.self, forKey: .markerID)
+        title = try c.decode(String.self, forKey: .title)
+        scanA = try c.decode(String.self, forKey: .scanA)
+        scanB = try c.decode(String.self, forKey: .scanB)
+        observedPersistence = try c.decode(PersistenceClass.self, forKey: .observedPersistence)
+        catalogPersistence = try c.decodeIfPresent(PersistenceClass.self, forKey: .catalogPersistence)
+        note = try c.decode(String.self, forKey: .note)
+        if let kind = try c.decodeIfPresent(PowerCycleChangeKind.self, forKey: .changeKind) {
+            changeKind = kind
+        } else {
+            changeKind = PowerCycleChangeClassifier.classify(scanA: scanA, scanB: scanB)
+        }
+    }
 }
 
 struct PowerCycleReport: Codable, Hashable, Sendable {
@@ -213,6 +319,8 @@ struct EvidenceAssessment: Codable, Hashable, Sendable {
     let fingerprint: BaselineFingerprint
     let unknownRegisters: [RawRegister]
     let powerCycle: PowerCycleReport?
+    /// Heuristische Methoden-Zuordnung — strikt getrennt vom Haupturteil.
+    let attribution: AttributionAssessment?
 
     // Kompatibilität / Anzeigehelfer
     var integrityScore: Int { score }
@@ -257,7 +365,8 @@ struct EvidenceAssessment: Codable, Hashable, Sendable {
         crossBoardIssues: [],
         fingerprint: BaselineFingerprint(profileId: "", digestSHA256: "", fields: [:]),
         unknownRegisters: [],
-        powerCycle: nil
+        powerCycle: nil,
+        attribution: nil
     )
 }
 
@@ -327,6 +436,8 @@ enum EvidenceEngine {
 
         // Neutralisierungen (explizit pro Result)
         results = applyNeutralizations(results, reading: reading, profile: profile)
+        // Klartext — nach finaler Klasse, ohne Bewertung zu ändern
+        results = EvidenceExplanationEngine.enrich(results)
 
         let temporal = temporalDeltas(current: reading, prior: priorReading, priorProtocol: priorProtocolNumber)
         let fingerprint = baselineFingerprint(reading: reading, profile: profile)
@@ -335,12 +446,23 @@ enum EvidenceEngine {
         let verdict = ruleBasedVerdict(results: results, correlations: correlations, powerCycle: powerCycle)
         let score = densifyScore(results)
         let decisive = decisiveEvidence(from: results, verdict: verdict, correlations: correlations)
+        // Attribution NACH dem Urteil — beeinflusst es nie.
+        let attribution = AttributionEngine.assess(
+            results: results,
+            powerCycle: powerCycle,
+            correlations: correlations
+        )
         var warnings: [String] = []
         if results.contains(where: { $0.fact.knowledgeSource == .heuristic && $0.classification.rank >= 2 }) {
             warnings.append("Mindestens ein Indiz beruht auf Heuristik — Belastbarkeit prüfen.")
         }
         if let pc = powerCycle, pc.rows.contains(where: { $0.observedPersistence != $0.catalogPersistence && $0.catalogPersistence != nil }) {
             warnings.append("Beobachtete Persistenz weicht vom Katalog ab — siehe Power-Cycle-Diff.")
+        }
+        if let attribution, attribution.isDeterminate {
+            warnings.append(
+                "Methoden-Zuordnung ist heuristisch (Katalog \(attribution.catalogVersion)) und kein Nachweis des verwendeten Werkzeugs."
+            )
         }
 
         return EvidenceAssessment(
@@ -356,7 +478,8 @@ enum EvidenceEngine {
             crossBoardIssues: cross,
             fingerprint: fingerprint,
             unknownRegisters: unknown,
-            powerCycle: powerCycle
+            powerCycle: powerCycle,
+            attribution: attribution
         )
     }
 
@@ -817,16 +940,49 @@ enum EvidenceEngine {
             ))
         }
 
+        if let attr = assessment.attribution {
+            facts.append(MeasuredFact(
+                id: "evidence.attribution",
+                group: .evidence,
+                title: "Vermutete Manipulationsart",
+                auslesewert: attr.headline,
+                sollwert: "heuristisch, nicht urteilsbildend",
+                status: attr.isDeterminate ? .abweichend : .nichtFeststellbar,
+                bewertung: "Konfidenz \(attr.confidenceLabel) (\(String(format: "%.2f", attr.confidence)))",
+                erlaeuterung: EvidenceExplanationEngine.attributionPlain(attr),
+                raw: [
+                    "method=\(attr.suspectedMethod?.rawValue ?? "nil")",
+                    "pattern=\(attr.knownPatternId ?? "—")",
+                    "catalog=\(attr.catalogVersion)",
+                    "support=\(attr.supportingMarkerIds.joined(separator: ","))",
+                    "contra=\(attr.contradictingMarkerIds.joined(separator: ","))"
+                ].joined(separator: ";"),
+                volatility: .persistent,
+                evidenceClass: .info,
+                sourceBoard: "AttributionEngine",
+                sourceRegister: attr.knownPatternId ?? "heuristic",
+                rawHex: nil,
+                resetsOnPowerOff: false
+            ))
+        }
+
         for r in assessment.results {
+            let plain = r.plainLanguage
+            let detail = [
+                plain.summary,
+                plain.expectedState.map { "Erwartung: \($0)" },
+                plain.relevance.map { "Bedeutung: \($0)" },
+                plain.verdictContribution.map { "Urteil: \($0)" }
+            ].compactMap { $0 }.joined(separator: "\n")
             facts.append(MeasuredFact(
                 id: "evidence.\(r.fact.markerID)",
                 group: .evidence,
-                title: "\(r.fact.title) [\(r.fact.persistence.label)]",
+                title: plain.title,
                 auslesewert: r.fact.interpretedValue ?? r.fact.rawValue,
                 sollwert: r.fact.expectedValue ?? "—",
                 status: r.isNeutralized ? .regelkonform : status(for: r.classification),
                 bewertung: r.contributionLabel,
-                erlaeuterung: r.chainCitation,
+                erlaeuterung: detail,
                 raw: r.chainCitation,
                 volatility: r.fact.persistence,
                 evidenceClass: r.classification,
@@ -1060,13 +1216,26 @@ enum PowerCycleAnalyzer {
         ]
 
         let rows: [PowerCycleDiffRow] = pairs.map { p in
-            let same = p.a == p.b
-            let observed: PersistenceClass = same ? .persistent : .fleeting
+            let kind = PowerCycleChangeClassifier.classify(scanA: String(p.a), scanB: String(p.b))
+            let observed: PersistenceClass
+            switch kind {
+            case .unchanged: observed = .persistent
+            case .unavailableAfterRestart: observed = p.catalog ?? .semiPersistent
+            case .changed, .disappeared, .appeared: observed = .fleeting
+            }
             let note: String
-            if same {
+            switch kind {
+            case .unchanged:
                 note = "Unverändert nach Power-Cycle → beobachtet persistent"
                     + (p.catalog.map { $0 == .persistent ? " (Katalog bestätigt)" : " (Katalog: \($0.label))" } ?? "")
-            } else {
+            case .disappeared:
+                note = "Wert verschwunden A→B (nicht: unavailable)"
+                    + (p.catalog.map { " (Katalog: \($0.label))" } ?? "")
+            case .unavailableAfterRestart:
+                note = "Nach Neustart nicht auslesbar — zählt nicht als Session-Clear"
+            case .appeared:
+                note = "Wert neu nach Power-Cycle"
+            case .changed:
                 note = "Geändert A→B → beobachtet flüchtig"
                     + (p.catalog.map { $0 == .fleeting ? " (Katalog bestätigt)" : " (Katalog erwartete \($0.label))" } ?? "")
             }
@@ -1077,6 +1246,7 @@ enum PowerCycleAnalyzer {
                 scanB: String(p.b),
                 observedPersistence: observed,
                 catalogPersistence: p.catalog,
+                changeKind: kind,
                 note: note
             )
         }

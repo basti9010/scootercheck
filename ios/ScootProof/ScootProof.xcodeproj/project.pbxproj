@@ -27,6 +27,10 @@
 		A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* StockFirmwareCatalog.swift */; };
 		A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CustomFirmwareDiff.swift */; };
 		A10000000000000000000014 /* EvidenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* EvidenceEngine.swift */; };
+		A10000000000000000000015 /* AttributionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* AttributionEngine.swift */; };
+		A10000000000000000000016 /* AttributionEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* AttributionEngineTests.swift */; };
+		A10000000000000000000017 /* EvidenceExplanationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* EvidenceExplanationEngine.swift */; };
+		A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +56,11 @@
 		B10000000000000000000013 /* StockFirmwareCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalog.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* CustomFirmwareDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFirmwareDiff.swift; sourceTree = "<group>"; };
 		B10000000000000000000015 /* EvidenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000016 /* AttributionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000017 /* AttributionEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngineTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000018 /* EvidenceExplanationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceExplanationEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceExplanationEngineTests.swift; sourceTree = "<group>"; };
+		C10000000000000000000002 /* ScootProofTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScootProofTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				E10000000000000000000002 /* ScootProof */,
+				E10000000000000000000008 /* ScootProofTests */,
 				E10000000000000000000003 /* Frameworks */,
 				E10000000000000000000004 /* Products */,
 			);
@@ -79,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				C10000000000000000000001 /* ScootProof.app */,
+				C10000000000000000000002 /* ScootProofTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -110,8 +121,19 @@
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
 				B10000000000000000000014 /* CustomFirmwareDiff.swift */,
 				B10000000000000000000015 /* EvidenceEngine.swift */,
+				B10000000000000000000016 /* AttributionEngine.swift */,
+				B10000000000000000000018 /* EvidenceExplanationEngine.swift */,
 			);
 			path = Integrity;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000008 /* ScootProofTests */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000017 /* AttributionEngineTests.swift */,
+				B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */,
+			);
+			path = ScootProofTests;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000006 /* Ninebot */ = {
@@ -162,6 +184,22 @@
 			productReference = C10000000000000000000001 /* ScootProof.app */;
 			productType = "com.apple.product-type.application";
 		};
+		F10000000000000000000010 /* ScootProofTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000000000000000000011 /* Build configuration list for PBXNativeTarget "ScootProofTests" */;
+			buildPhases = (
+				F10000000000000000000012 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F10000000000000000000013 /* PBXTargetDependency */,
+			);
+			name = ScootProofTests;
+			productName = ScootProofTests;
+			productReference = C10000000000000000000002 /* ScootProofTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -174,6 +212,10 @@
 				TargetAttributes = {
 					F10000000000000000000001 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					F10000000000000000000010 = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = F10000000000000000000001;
 					};
 				};
 			};
@@ -192,6 +234,7 @@
 			projectRoot = "";
 			targets = (
 				F10000000000000000000001 /* ScootProof */,
+				F10000000000000000000010 /* ScootProofTests */,
 			);
 		};
 /* End PBXProject section */
@@ -230,6 +273,17 @@
 				A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */,
 				A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */,
 				A10000000000000000000014 /* EvidenceEngine.swift in Sources */,
+				A10000000000000000000015 /* AttributionEngine.swift in Sources */,
+				A10000000000000000000017 /* EvidenceExplanationEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000012 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000016 /* AttributionEngineTests.swift in Sources */,
+				A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -293,6 +347,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				ENABLE_TESTABILITY = YES;
 			};
 			name = Debug;
 		};
@@ -321,6 +376,43 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				ENABLE_TESTABILITY = YES;
+			};
+			name = Release;
+		};
+		F10000000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.scootercheck.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScootProof.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScootProof";
+			};
+			name = Debug;
+		};
+		F10000000000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.scootercheck.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScootProof.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScootProof";
 			};
 			name = Release;
 		};
@@ -345,7 +437,34 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		F10000000000000000000011 /* Build configuration list for PBXNativeTarget "ScootProofTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F10000000000000000000014 /* Debug */,
+				F10000000000000000000015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin PBXTargetDependency section */
+		F10000000000000000000013 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F10000000000000000000001 /* ScootProof */;
+			targetProxy = F10000000000000000000016 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		F10000000000000000000016 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F10000000000000000000005 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F10000000000000000000001;
+			remoteInfo = ScootProof;
+		};
+/* End PBXContainerItemProxy section */
 	};
 	rootObject = F10000000000000000000005 /* Project object */;
 }

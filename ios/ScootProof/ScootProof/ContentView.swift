@@ -257,6 +257,21 @@ struct ContentView: View {
                             .foregroundStyle(Theme.accent)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if let attr = report.evidence.attribution {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Vermutete Manipulationsart")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                            Text(attr.headline)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("Konfidenz: \(attr.confidenceLabel) · heuristisch, nicht urteilsbildend")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.muted)
+                        }
+                        .padding(.top, 4)
+                    }
                     if let reset = report.facts.first(where: {
                         $0.id == "flag.session.reset"
                             && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
@@ -909,6 +924,8 @@ struct SignalStrengthView: View {
 
 struct FactRow: View {
     let fact: MeasuredFact
+    @State private var showTechnical = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
@@ -919,17 +936,21 @@ struct FactRow: View {
                 Text(fact.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
-                Text("Auslesewert: \(fact.auslesewert)")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.9))
-                Text("Sollwert: \(fact.sollwert)")
+                Text(fact.erlaeuterung)
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
-                Text("Bewertung: \(fact.status.rawValue)")
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Feststellung: \(fact.auslesewert)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                Text("Erwartung: \(fact.sollwert)")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+                Text("Einordnung: \(fact.status.rawValue)")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.fact(fact.status))
                 if let evidenceClass = fact.evidenceClass {
-                    Text("Beweis: \(evidenceClass.label)")
+                    Text("Technische Klasse: \(evidenceClass.label)")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                 }
@@ -938,15 +959,31 @@ struct FactRow: View {
                         .font(.caption)
                         .foregroundStyle(Theme.muted)
                 }
-                if let board = fact.sourceBoard, let reg = fact.sourceRegister {
-                    Text("Quelle: \(board) \(reg)" + (fact.rawHex.map { " · Roh \($0)" } ?? ""))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(Theme.muted)
+
+                if fact.raw != nil || fact.sourceBoard != nil {
+                    Button {
+                        showTechnical.toggle()
+                    } label: {
+                        Text(showTechnical ? "Technische Details ausblenden" : "Technische Details")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.plain)
                 }
-                Text(fact.erlaeuterung)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+
+                if showTechnical {
+                    if let board = fact.sourceBoard, let reg = fact.sourceRegister {
+                        Text("Quelle: \(board) \(reg)" + (fact.rawHex.map { " · Roh \($0)" } ?? ""))
+                            .font(.caption.monospaced())
+                            .foregroundStyle(Theme.muted)
+                    }
+                    if let raw = fact.raw, !raw.isEmpty {
+                        Text(raw)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
         }
         .padding(.vertical, 12)

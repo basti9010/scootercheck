@@ -25,6 +25,7 @@ enum ProtocolJSON {
             justifyingMarkers: result.evidence.justifyingMarkers,
             decisiveEvidence: result.evidence.decisiveEvidence,
             evidenceCatalogVersion: result.evidence.catalogVersion,
+            attribution: result.evidence.attribution,
             trackId: result.trackMatch.trackId.rawValue,
             trackConfidence: result.trackMatch.confidence,
             disclaimer: result.disclaimer,
@@ -60,6 +61,7 @@ enum ProtocolJSON {
         let justifyingMarkers: [EvidenceResult]
         let decisiveEvidence: [String]
         let evidenceCatalogVersion: Int
+        let attribution: AttributionAssessment?
         let trackId: String
         let trackConfidence: Double
         let disclaimer: String
@@ -140,8 +142,8 @@ enum ProtocolPDF {
             y = drawSectionII(context: context, session: session, result: result, y: y)
             y = drawSectionIII(context: context, y: y)
             y = drawSectionIV(context: context, result: result, y: y)
+            y = drawSectionIVd(context: context, result: result, y: y)
             y = drawSectionIVa(context: context, result: result, y: y)
-            y = drawSectionIVb(context: context, result: result, y: y)
             y = drawSectionV(context: context, result: result, y: y)
             y = drawSectionVI(context: context, result: result, y: y)
             y = drawSectionVII(context: context, result: result, y: y)
@@ -350,7 +352,7 @@ enum ProtocolPDF {
         return cursor + sectionGap
     }
 
-    private static func drawSectionIVb(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
+    private static func drawSectionIVd(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
         var cursor = ensureSpace(context: context, y: y, needed: 80)
         cursor = drawHeading("IV.d EvidenceEngine — drei Ebenen", at: cursor)
         cursor = drawText(
@@ -376,6 +378,33 @@ enum ProtocolPDF {
             color: Theme.UI.muted
         )
 
+        if let attr = result.evidence.attribution {
+            cursor = ensureSpace(context: context, y: cursor, needed: 70)
+            cursor = drawSubheading("Vermutete Manipulationsmethode", at: cursor)
+            cursor = drawText(
+                "heuristische technische Zuordnung, kein alleiniger Nachweis des verwendeten Werkzeugs",
+                at: cursor,
+                font: bodyFont(size: 8),
+                color: Theme.UI.muted
+            )
+            cursor = drawText(
+                attr.headline,
+                at: cursor,
+                font: bodyFont(size: 11, weight: .semibold),
+                color: Theme.UI.text
+            )
+            cursor = drawText(
+                "Konfidenz: \(attr.confidenceLabel) (\(String(format: "%.2f", attr.confidence))) · Katalog \(attr.catalogVersion)",
+                at: cursor,
+                font: bodyFont(size: 9),
+                color: Theme.UI.muted
+            )
+            cursor = drawParagraph(EvidenceExplanationEngine.attributionPlain(attr), at: cursor)
+            if let pattern = attr.knownPatternId {
+                cursor = drawText("Pattern: \(pattern)", at: cursor, font: monoFont(size: 8), color: Theme.UI.muted)
+            }
+        }
+
         // Ebene 2: entscheidende Marker
         cursor = ensureSpace(context: context, y: cursor, needed: 40)
         cursor = drawSubheading("2. Begründende / entscheidende Marker", at: cursor)
@@ -384,14 +413,33 @@ enum ProtocolPDF {
             cursor = drawText("• \(line)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.text)
         }
         for r in result.evidence.justifyingMarkers.prefix(8) {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
             cursor = drawText(
-                "• \(r.fact.title) [\(r.fact.persistence.label) · \(r.classification.label)]",
+                "• \(r.plainLanguage.title) [\(r.classification.label)]",
                 at: cursor,
                 font: bodyFont(size: 10, weight: .semibold),
                 color: Theme.UI.text
             )
-            cursor = drawText("  \(r.chainCitation)", at: cursor, font: monoFont(size: 7), color: Theme.UI.muted)
+            cursor = drawParagraph(r.plainLanguage.summary, at: cursor)
+            if let expected = r.plainLanguage.expectedState {
+                cursor = drawText("  Erwartung: \(expected)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+            }
+            if let relevance = r.plainLanguage.relevance {
+                cursor = drawText("  Bedeutung: \(relevance)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+            }
+            if let contrib = r.plainLanguage.verdictContribution {
+                cursor = drawText("  Gesamturteil: \(contrib)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+            }
+            cursor = drawText("  Technische Details:", at: cursor, font: bodyFont(size: 8, weight: .semibold), color: Theme.UI.muted)
+            for line in r.chainCitation.split(separator: "\n", omittingEmptySubsequences: false) {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight)
+                cursor = drawText(
+                    "  \(line)",
+                    at: cursor,
+                    font: monoFont(size: 7),
+                    color: Theme.UI.muted
+                )
+            }
         }
 
         let neutrals = result.evidence.results.flatMap(\.neutralizations)
@@ -417,7 +465,7 @@ enum ProtocolPDF {
             for row in pc.rows {
                 cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 2)
                 cursor = drawText(
-                    "• \(row.title): A \(row.scanA) → B \(row.scanB) · beobachtet \(row.observedPersistence.label)",
+                    "• \(row.title): A \(row.scanA) → B \(row.scanB) · \(row.changeKind.label) · \(row.observedPersistence.label)",
                     at: cursor,
                     font: monoFont(size: 8),
                     color: Theme.UI.muted

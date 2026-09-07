@@ -279,24 +279,22 @@ enum VerdictLevel: String, Codable, CaseIterable, Sendable {
         switch self {
         case .stock:
             return """
-            Die ausgelesenen Werte entsprechen überwiegend dem werkseitigen Sollzustand. \
-            Es liegen keine hinreichenden Anhaltspunkte für eine unzulässige Leistungssteigerung vor.
+            Bei den geprüften Daten wurden keine technisch relevanten Abweichungen vom bekannten Serienzustand festgestellt.
             """
         case .auffaellig:
             return """
-            Einzelne Auslesewerte weichen vom Soll ab oder sind nicht eindeutig zuordenbar. \
-            Soft-Unlock kann nach Ausschalten unsichtbar sein — dann zählen persistente Marker \
-            und frühere Protokolle. Der Score verdichtet nur; das Urteil folgt Regeln und Markerketten.
+            Es wurden einzelne technische Abweichungen festgestellt. Diese reichen derzeit nicht aus, \
+            um eine eindeutige technische Veränderung anzunehmen.
             """
         case .hinweise:
             return """
-            Mehrere Manipulationsindizien oder ein starker Hinweis sprechen für Abweichungen vom \
-            Serienzustand. Die begründenden Marker mit Quelle, Rohwert und Persistenz sind im Protokoll dokumentiert.
+            Mehrere technische Merkmale sprechen in ihrer Kombination für eine Veränderung des Serienzustands. \
+            Die maßgeblichen Feststellungen sind im Analysebericht dokumentiert.
             """
         case .eindeutig:
             return """
-            Die Evidenzmatrix enthält technisch eindeutige Abweichungen (z. B. bestätigte Custom-Firmware \
-            oder korrelierte persistente Marker). Nachvollziehbar über Kurzurteil, begründende Marker und Rohdaten.
+            Mindestens ein technisch eindeutiges Merkmal weicht vom bekannten Serienzustand ab. \
+            Die zugrunde liegenden technischen Daten sind im Bericht dokumentiert.
             """
         }
     }
@@ -818,8 +816,8 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     Es erfolgt keine Veränderung von Fahrzeugparametern. Die Bewertung ersetzt keine amtliche \
     Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung im Sinne der \
     Straßenverkehrs-Zulassungs-Ordnung (StVZO). Die Bewertung gewichtet Marker nach Persistenz \
-    und Beweisqualität (Info / Abweichung / Manipulationsindiz / starker Manipulationshinweis). \
-    Der Score verdichtet Evidenzen nur; das Kurzurteil folgt festen Regeln. Flüchtige Session-Marker \
+    und technischer Einordnung (Info / Abweichung / Manipulationsindiz / starker Manipulationshinweis). \
+    Der Score verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln. Flüchtige Session-Marker \
     allein begründen keinen Manipulationshinweis.
     """
 }

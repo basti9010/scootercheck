@@ -1080,9 +1080,18 @@ enum IntegrityAnalyzer {
             findings.append(Finding(
                 id: "finding.evidence.marker.\(r.fact.markerID)",
                 severity: r.classification == .starkerHinweis ? .erheblichAbweichend : .abweichend,
-                title: r.fact.title,
-                detail: r.chainCitation,
+                title: r.plainLanguage.title,
+                detail: r.plainLanguage.summary,
                 relatedFactIds: ["evidence.\(r.fact.markerID)"]
+            ))
+        }
+        if let attr = evidence.attribution {
+            findings.append(Finding(
+                id: "finding.evidence.attribution",
+                severity: attr.isDeterminate ? .abweichend : .nichtFeststellbar,
+                title: "Vermutete Manipulationsart",
+                detail: EvidenceExplanationEngine.attributionPlain(attr),
+                relatedFactIds: ["evidence.attribution"]
             ))
         }
         for n in evidence.results.flatMap(\.neutralizations).prefix(4) {
