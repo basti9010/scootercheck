@@ -780,7 +780,9 @@ final class BleClient: NSObject, ObservableObject {
             // Wie SHU/Flasher: SET_PWD alle ~0,5 s erneut, bis Power-Taste OK liefert.
             if Date().timeIntervalSince(lastSend) >= 0.5 {
                 lastSend = Date()
-                statusMessage = "Bitte Power-Taste am Scooter drücken…"
+                statusMessage = "Bitte jetzt die Power-Taste am Scooter drücken…"
+                // Non-SN-Pairing: Counter nicht hochlaufen lassen.
+                crypto.resetSN()
                 do {
                     let resp = try await sendReceive(plain: setPlain, crypto: crypto, timeout: 0.9)
                     if let parsed = Nb.parse(resp),
