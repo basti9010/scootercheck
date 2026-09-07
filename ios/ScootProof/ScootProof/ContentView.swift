@@ -237,6 +237,15 @@ struct ContentView: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let reset = report.facts.first(where: {
+                        $0.id == "flag.session.reset"
+                            && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+                    }) {
+                        Text(reset.bewertung)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
 
@@ -376,7 +385,14 @@ struct ContentView: View {
         if reading.serialExpected == nil, let sn = reading.serialDisplay {
             reading.serialExpected = sn
         }
-        let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
+        let prior = history.priorUnlockEvidence(
+            forSerial: reading.serialDisplay ?? reading.serialVcu ?? reading.serialBle
+        )
+        let analyzed = IntegrityAnalyzer.analyze(
+            reading: reading,
+            profile: profile,
+            priorUnlock: prior
+        )
         result = analyzed
         let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
         session = newSession
@@ -417,6 +433,9 @@ struct ContentView: View {
                         step: 1
                     )
                     Text(softUnlock.detectionHint)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Keine Tastenkombinationen werden gesucht oder ausgeführt. Nachweis nach Ausschalten: gespeichertes Protokoll + persistente Marker.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

@@ -101,7 +101,11 @@ final class SoftUnlockSettings: ObservableObject {
         guard isEnabled else {
             return "Soft-Unlock-Erkennung ist ausgeschaltet."
         }
-        return "Geste „\(gestureSummary)“ ist konfiguriert; erkannt wird nur die Wirkung (Limit ≥ \(Int(speedThresholdKmh.rounded())) km/h), nicht die Bedienung selbst."
+        return """
+        Geste „\(gestureSummary)“ ist nur Hinweistext; erkannt wird die Wirkung \
+        (Limit/Peak ≥ \(Int(speedThresholdKmh.rounded())) km/h). Nach Ausschalten oft weg — \
+        vorher auslesen/speichern; danach zählen persistente Marker und der Protokollverlauf.
+        """
     }
 
     nonisolated static func thresholdKmhSnapshot() -> Double {

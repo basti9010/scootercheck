@@ -281,14 +281,38 @@ enum VerdictLevel: String, Codable, CaseIterable, Sendable {
         case .watch:
             return """
             Einzelne Auslesewerte weichen vom Soll ab oder sind nicht eindeutig zuordenbar. \
-            Eine abschließende Bewertung erfordert zusätzliche Prüfungen oder Sachverständigengutachten.
+            Soft-Unlock kann nach Ausschalten unsichtbar sein — dann zählen persistente Marker \
+            und frühere Protokolle derselben Seriennummer. Eine abschließende Bewertung kann \
+            zusätzliche Prüfungen erfordern.
             """
         case .tuned:
             return """
             Mehrere unabhängige Anhaltspunkte sprechen für eine Abweichung vom werkseitigen Zustand \
-            (z. B. erhöhte Geschwindigkeitswerte, Firmware-Merkmale oder Seriennummer-Inkonsistenzen).
+            (z. B. erhöhte Geschwindigkeitswerte, Firmware-Merkmale, Seriennummer-Inkonsistenzen \
+            oder persistente Marker trotz zurückgesetztem Session-Unlock).
             """
         }
+    }
+}
+
+/// Frühere Auslese derselben SN mit freigeschaltetem Tempo (für Nachweis nach Ausschalten).
+struct PriorUnlockEvidence: Sendable, Equatable {
+    let protocolNumber: String
+    let createdAt: Date
+    let peakSpeedKmh: Double?
+    let speedLimitKmh: Double?
+    let speedMaxKmh: Double?
+    let verdict: VerdictLevel?
+    let hiddenTuningDetected: Bool?
+
+    var observedTempoKmh: Double {
+        max(peakSpeedKmh ?? 0, speedLimitKmh ?? 0, speedMaxKmh ?? 0)
+    }
+
+    func showsUnlock(threshold: Double) -> Bool {
+        observedTempoKmh >= threshold
+            || hiddenTuningDetected == true
+            || verdict == .tuned
     }
 }
 

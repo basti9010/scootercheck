@@ -104,6 +104,51 @@ final class ProtocolHistoryStore: ObservableObject {
         return try? decoder.decode(CheckSession.self, from: data)
     }
 
+    /// Letzte frühere Auslese derselben SN mit erhöhtem Tempo / Unlock-Nachweis.
+    func priorUnlockEvidence(
+        forSerial serial: String?,
+        excludingSessionId: UUID? = nil
+    ) -> PriorUnlockEvidence? {
+        guard let serial else { return nil }
+        let needle = Self.normalizeSerial(serial)
+        guard needle.count >= 8 else { return nil }
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+
+        for entry in entries {
+            if let excludingSessionId, entry.id == excludingSessionId { continue }
+            guard let entrySN = entry.serialDisplay, Self.serialsMatch(needle, entrySN) else { continue }
+            guard let session = loadSession(id: entry.id) else { continue }
+            let reading = session.result?.reading ?? session.reading
+            let evidence = PriorUnlockEvidence(
+                protocolNumber: session.protocolNumber,
+                createdAt: session.createdAt,
+                peakSpeedKmh: reading.peakSpeedKmh,
+                speedLimitKmh: reading.speedLimitKmh,
+                speedMaxKmh: reading.speedMaxKmh,
+                verdict: session.result?.verdict,
+                hiddenTuningDetected: reading.hiddenTuningDetected
+            )
+            if evidence.showsUnlock(threshold: threshold) {
+                return evidence
+            }
+        }
+        return nil
+    }
+
+    private static func normalizeSerial(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+
+    private static func serialsMatch(_ a: String, _ b: String) -> Bool {
+        let left = normalizeSerial(a)
+        let right = normalizeSerial(b)
+        if left == right { return true }
+        // Gleiche Fahrzeug-SN trotz kurzer Anzeigevarianten
+        let prefixLen = min(12, min(left.count, right.count))
+        guard prefixLen >= 8 else { return false }
+        return left.prefix(prefixLen) == right.prefix(prefixLen)
+    }
+
     func packURLs(for entry: Entry) -> ProtocolPack.PackURLs? {
         let dir = packDirectory(for: entry.protocolNumber)
         let base = ProtocolPack.fileBaseName(protocolNumber: entry.protocolNumber)

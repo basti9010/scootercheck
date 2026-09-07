@@ -10,7 +10,8 @@ enum IntegrityAnalyzer {
     static func analyze(
         reading: IntegrityReading,
         profile: ScooterProfile,
-        sessionId: UUID = UUID()
+        sessionId: UUID = UUID(),
+        priorUnlock: PriorUnlockEvidence? = nil
     ) -> IntegrityResult {
         var reading = reading
         normalizeSpeedUnlockFlag(&reading)
@@ -26,7 +27,7 @@ enum IntegrityAnalyzer {
         facts += buildBatteryFacts(reading: reading)
         facts += buildTemperatureFacts(reading: reading)
         facts += buildErrorFacts(reading: reading)
-        facts += buildFlagFacts(reading: reading, profile: profile)
+        facts += buildFlagFacts(reading: reading, profile: profile, priorUnlock: priorUnlock)
         facts += buildGearFacts(reading: reading, profile: profile)
         facts += buildProtocolFacts(reading: reading)
         facts += buildIntegrityFacts(reading: reading)
@@ -193,9 +194,14 @@ enum IntegrityAnalyzer {
     /// Soft-Unlock-Flag nur aus Tempo-Limit ableiten (nicht aus Gängen).
     private static func normalizeSpeedUnlockFlag(_ reading: inout IntegrityReading) {
         guard SoftUnlockSettings.isEnabledSnapshot() else { return }
-        let lim = reading.speedLimitKmh ?? reading.speedMaxKmh
-        guard let lim else { return }
-        reading.hiddenTuningDetected = lim >= SoftUnlockSettings.thresholdKmhSnapshot()
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+        let lim = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
+        let peak = reading.peakSpeedKmh ?? 0
+        if lim >= threshold || peak >= threshold {
+            reading.hiddenTuningDetected = true
+        } else if reading.hiddenTuningDetected == nil {
+            reading.hiddenTuningDetected = false
+        }
     }
 
     private static func buildSerialFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
@@ -588,23 +594,31 @@ enum IntegrityAnalyzer {
         return s.allSatisfy { $0 == "0" }
     }
 
-    private static func buildFlagFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
+    private static func buildFlagFacts(
+        reading: IntegrityReading,
+        profile: ScooterProfile,
+        priorUnlock: PriorUnlockEvidence?
+    ) -> [MeasuredFact] {
         [
             flagFact(id: "flag.safelock", title: "SafeLock", value: reading.safeLockActive, soll: true, inverted: true),
             flagFact(id: "flag.panic", title: "Panic-Modus", value: reading.panicModeActive, soll: false, inverted: false),
             MeasuredFact(
                 id: "flag.hidden",
                 group: .flags,
-                title: "Soft-Unlock (Tempo)",
+                title: "Soft-Unlock (Tempo, aktuelle Session)",
                 auslesewert: {
                     if reading.hiddenTuningDetected == true {
                         let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
+                        let peak = reading.peakSpeedKmh
                         if let limit, limit > 0 {
                             return "Limit \(Format.kmh.format(Optional(limit)))"
                         }
+                        if let peak, peak > 0 {
+                            return "Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                        }
                         return "Tempo über Schwelle"
                     }
-                    if reading.hiddenTuningDetected == false { return "inaktiv" }
+                    if reading.hiddenTuningDetected == false { return "inaktiv / zurückgesetzt" }
                     return "—"
                 }(),
                 sollwert: "inaktiv (≤ Typ \(Format.kmh.format(Optional(profile.ratedMaxKmh))))",
@@ -612,9 +626,10 @@ enum IntegrityAnalyzer {
                     if !SoftUnlockSettings.isEnabledSnapshot() { return .nichtFeststellbar }
                     if reading.hiddenTuningDetected == true { return .erheblichAbweichend }
                     if reading.hiddenTuningDetected == false { return .regelkonform }
-                    // Kein Flag gesetzt, aber Limit klar über Typ → trotzdem auffällig.
-                    if let lim = reading.speedLimitKmh ?? reading.speedMaxKmh,
-                       lim >= SoftUnlockSettings.thresholdKmhSnapshot() {
+                    // Kein Flag gesetzt, aber Limit/Peak klar über Typ → trotzdem auffällig.
+                    let lim = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
+                    let peak = reading.peakSpeedKmh ?? 0
+                    if max(lim, peak) >= SoftUnlockSettings.thresholdKmhSnapshot() {
                         return .erheblichAbweichend
                     }
                     return .nichtFeststellbar
@@ -625,20 +640,96 @@ enum IntegrityAnalyzer {
                         return "Erkennung aus (Geste: \(gesture))"
                     }
                     let lim = reading.speedLimitKmh ?? reading.speedMaxKmh
-                    if reading.hiddenTuningDetected == true || (lim ?? 0) >= SoftUnlockSettings.thresholdKmhSnapshot() {
+                    let peak = reading.peakSpeedKmh
+                    if reading.hiddenTuningDetected == true
+                        || (lim ?? 0) >= SoftUnlockSettings.thresholdKmhSnapshot()
+                        || (peak ?? 0) >= SoftUnlockSettings.thresholdKmhSnapshot() {
                         return "Freigeschaltetes Tempo — Geste: \(gesture)"
                     }
-                    if reading.hiddenTuningDetected == false { return "Kein Tempo-Unlock erkannt" }
+                    if reading.hiddenTuningDetected == false {
+                        return "Kein Session-Unlock — nach Ausschalten oft unsichtbar"
+                    }
                     return "Nicht feststellbar"
                 }(),
                 erlaeuterung: SoftUnlockSettings.isEnabledSnapshot()
-                    ? "Nur wenn gespeichertes Limit ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h. Zusatzgänge sind ein separater Marker und zählen hier nicht."
+                    ? "Session-Unlock (Wirkung Limit/Peak ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h). Nach Ausschalten/Panic oft weg — dann zählen persistente Marker und frühere Protokolle."
                     : "Soft-Unlock-Erkennung ist in den Einstellungen ausgeschaltet.",
                 raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
             ),
+            sessionResetFact(reading: reading, profile: profile, priorUnlock: priorUnlock),
             persistentTuningFact(reading: reading, profile: profile),
             flagFact(id: "flag.unbound", title: "Unbound Rebound", value: reading.unboundRebound, soll: false, inverted: false)
         ]
+    }
+
+    /// Vergleicht aktuelle Session mit früherer Auslese derselben SN (ohne Unlock-Geste).
+    private static func sessionResetFact(
+        reading: IntegrityReading,
+        profile: ScooterProfile,
+        priorUnlock: PriorUnlockEvidence?
+    ) -> MeasuredFact {
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+        let currentTempo = max(
+            reading.speedLimitKmh ?? 0,
+            reading.speedMaxKmh ?? 0,
+            reading.peakSpeedKmh ?? 0
+        )
+        let sessionActive = reading.hiddenTuningDetected == true || currentTempo >= threshold
+
+        guard let prior = priorUnlock, prior.showsUnlock(threshold: threshold) else {
+            return MeasuredFact(
+                id: "flag.session.reset",
+                group: .flags,
+                title: "Session nach Ausschalten",
+                auslesewert: sessionActive ? "Unlock aktiv" : "kein früherer Unlock-Nachweis",
+                sollwert: "persistente Marker / Vorher-Auslese",
+                status: .nichtFeststellbar,
+                bewertung: sessionActive
+                    ? "Aktuelles Session-Unlock sichtbar — Protokoll speichern, bevor ausgeschaltet wird"
+                    : "Kein Vergleichsprotokoll mit erhöhtem Tempo für diese SN",
+                erlaeuterung: """
+                Soft-Unlock verschwindet oft nach Ausschalten. Lösung ohne Tastenkombination: \
+                während freigeschaltetem Tempo auslesen und speichern; danach beweisen persistente Marker \
+                (gespeichertes Max-Limit, FW, Region, Gänge) bzw. das gespeicherte Protokoll den Zustand.
+                """,
+                raw: nil
+            )
+        }
+
+        if sessionActive {
+            return MeasuredFact(
+                id: "flag.session.reset",
+                group: .flags,
+                title: "Session nach Ausschalten",
+                auslesewert: "Unlock aktiv · früher \(Format.kmh.format(Optional(prior.observedTempoKmh))) (\(prior.protocolNumber))",
+                sollwert: "persistente Marker / Vorher-Auslese",
+                status: .erheblichAbweichend,
+                bewertung: "Aktuell und früher erhöhtes Tempo — Protokoll \(prior.protocolNumber)",
+                erlaeuterung: "Frühere Auslese derselben Seriennummer zeigte bereits freigeschaltetes Tempo.",
+                raw: prior.protocolNumber
+            )
+        }
+
+        // Aktuell seriennah, früher Unlock → typisches Ausschalten/Panic.
+        let priorPeak = prior.peakSpeedKmh.map { Format.kmh.format(Optional($0)) } ?? "—"
+        let priorLimit = (prior.speedLimitKmh ?? prior.speedMaxKmh).map { Format.kmh.format(Optional($0)) } ?? "—"
+        return MeasuredFact(
+            id: "flag.session.reset",
+            group: .flags,
+            title: "Session nach Ausschalten",
+            auslesewert: "zurückgesetzt · früher Peak \(priorPeak) / Limit \(priorLimit)",
+            sollwert: "persistente Marker / Vorher-Auslese",
+            status: prior.observedTempoKmh >= profile.tuningClearKmh
+                ? .erheblichAbweichend
+                : .abweichend,
+            bewertung: "Session-Unlock vermutlich nach Ausschalten weg — Nachweis in Protokoll \(prior.protocolNumber)",
+            erlaeuterung: """
+            Aktuelle Limits wirken seriennah, frühere Auslese derselben SN (\(prior.protocolNumber)) zeigte \
+            jedoch erhöhtes Tempo. Das ist typisch für Soft-Unlock nach Power-Off — ohne erneute Freischaltung. \
+            Gerichtstauglich bleibt das gespeicherte Vorher-Protokoll plus persistente Marker dieser Auslese.
+            """,
+            raw: prior.protocolNumber
+        )
     }
 
     /// Marker, die ein Panic-/Soft-Reset typischerweise nicht löscht.
@@ -901,6 +992,19 @@ enum IntegrityAnalyzer {
             ))
         }
 
+        if let reset = facts.first(where: {
+            $0.id == "flag.session.reset" && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+        }) {
+            findings.append(Finding(
+                id: "finding.session.reset",
+                severity: reset.status,
+                title: "Session-Unlock nach Ausschalten",
+                detail: reset.bewertung + " " + reset.erlaeuterung,
+                relatedFactIds: [reset.id, "flag.hidden", "flag.persistent"],
+                trackHint: .shu
+            ))
+        }
+
         if let fw = facts.first(where: {
             $0.id == "fw.analysis" && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
         }) {
@@ -994,8 +1098,19 @@ enum IntegrityAnalyzer {
             return .tuned
         }
 
+        // Früheres Unlock-Protokoll + aktuelle Session zurückgesetzt → mindestens beobachten.
+        let sessionReset = facts.contains {
+            $0.id == "flag.session.reset" && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+        }
+        let persistentSevere = facts.contains {
+            $0.id == "flag.persistent" && $0.status == .erheblichAbweichend
+        }
+        if sessionReset && persistentSevere {
+            return .tuned
+        }
+
         // Nur Gänge / schwache Marker → beobachten, nicht sofort „getunt“.
-        if gearOnlyWatch || severeCount >= 1 || score < 80 || trackMatch.trackId == .webapp {
+        if sessionReset || gearOnlyWatch || severeCount >= 1 || score < 80 || trackMatch.trackId == .webapp {
             return .watch
         }
         return .stock
