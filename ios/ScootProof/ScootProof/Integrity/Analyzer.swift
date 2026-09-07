@@ -19,7 +19,7 @@ enum IntegrityAnalyzer {
         normalizeSpeedUnlockFlag(&reading)
 
         let trackMatch = TrackClassifier.classify(reading: reading, profile: profile)
-        let evidence = EvidenceMatrix.assess(
+        let evidence = EvidenceEngine.evaluate(
             reading: reading,
             profile: profile,
             priorUnlock: priorUnlock,
@@ -44,7 +44,7 @@ enum IntegrityAnalyzer {
         facts += buildBoardFacts(reading: reading)
         facts += buildHistoryFacts(reading: reading)
         facts += buildPhysicalFacts(reading: reading)
-        facts += EvidenceMatrix.buildFacts(evidence)
+        facts += EvidenceEngine.buildFacts(evidence)
 
         // Rohdatenbezug für Kernfakten nachziehen (Region / Speed).
         facts = enrichFactsWithRawCitations(facts, reading: reading, profile: profile)
@@ -52,12 +52,9 @@ enum IntegrityAnalyzer {
         var findings = buildFindings(facts: facts, trackMatch: trackMatch)
         findings += evidenceFindings(evidence)
 
-        let score = evidence.score
-        let verdict = blendVerdict(
-            evidence: evidence,
-            trackMatch: trackMatch,
-            facts: facts
-        )
+        // Score = Verdichtung; Urteil = regelbasiert aus der Engine (nicht aus Score).
+        let score = evidence.integrityScore
+        let verdict = evidence.verdict
 
         return IntegrityResult(
             sessionId: sessionId,
@@ -1061,59 +1058,42 @@ enum IntegrityAnalyzer {
         return findings
     }
 
-    // MARK: - Evidence matrix integration
+    // MARK: - EvidenceEngine findings
 
-    private static func blendVerdict(
-        evidence: EvidenceAssessment,
-        trackMatch: TrackMatch,
-        facts: [MeasuredFact]
-    ) -> VerdictLevel {
-        // Evidenzmatrix führt — isoliertes Limit/Speed wird dort bereits gedrosselt.
-        var verdict = evidence.suggestedVerdict
-
-        // SHU-Dump bleibt starkes Muster, aber nur mit mindestens einem Indiz/Nachweis.
-        if trackMatch.trackId == .shuDump,
-           evidence.nachweisCount + evidence.indizCount >= 1 {
-            verdict = .tuned
-        }
-
-        // Reines Session-Unlock ohne persistente Indizien → höchstens beobachten.
-        let onlyFleeting = !evidence.hits.isEmpty
-            && evidence.hits.allSatisfy({ $0.volatility == .fleeting })
-        if onlyFleeting, verdict == .tuned {
-            verdict = .watch
-        }
-
-        // Persistente Marker-Fakt aus Flags: wenn erheblich + Matrix Indiz → tuned ok
-        _ = facts
-        return verdict
-    }
-
-    private static func evidenceFindings(_ evidence: EvidenceAssessment) -> [Finding] {
+    private static func evidenceFindings(_ evidence: EvidenceEngineResult) -> [Finding] {
         var findings: [Finding] = []
-        if evidence.nachweisCount > 0 {
+        findings.append(Finding(
+            id: "finding.evidence.verdict",
+            severity: evidence.verdict == .stock ? .regelkonform
+                : (evidence.verdict == .auffaellig ? .abweichend : .erheblichAbweichend),
+            title: "Kurzurteil: \(evidence.verdict.label)",
+            detail: evidence.shortVerdictText,
+            relatedFactIds: ["evidence.summary"]
+        ))
+        for marker in evidence.justifyingMarkers.prefix(8) {
             findings.append(Finding(
-                id: "finding.evidence.nachweis",
-                severity: .erheblichAbweichend,
-                title: "Manipulationsnachweis (Evidenzmatrix)",
-                detail: evidence.summary,
-                relatedFactIds: evidence.hits.filter { $0.evidenceClass == .nachweis }.map { "evidence.\($0.id)" }
-            ))
-        } else if evidence.indizCount >= 2 {
-            findings.append(Finding(
-                id: "finding.evidence.indiz",
-                severity: .abweichend,
-                title: "Mehrere Manipulationsindizien",
-                detail: evidence.correlations.first ?? evidence.summary,
-                relatedFactIds: evidence.hits.filter { $0.evidenceClass == .indiz }.map { "evidence.\($0.id)" }
+                id: "finding.evidence.marker.\(marker.markerId)",
+                severity: marker.evidenceClass == .starkerHinweis ? .erheblichAbweichend : .abweichend,
+                title: marker.title,
+                detail: marker.chainCitation,
+                relatedFactIds: ["evidence.\(marker.markerId)"]
             ))
         }
         for corr in evidence.correlations.prefix(3) {
             findings.append(Finding(
                 id: "finding.evidence.corr.\(findings.count)",
-                severity: corr.contains("Nachweis") ? .erheblichAbweichend : .abweichend,
+                severity: corr.contains("starker") ? .erheblichAbweichend : .abweichend,
                 title: "Marker-Korrelation",
                 detail: corr,
+                relatedFactIds: ["evidence.summary"]
+            ))
+        }
+        for note in evidence.neutralizationNotes.prefix(3) {
+            findings.append(Finding(
+                id: "finding.evidence.neutral.\(findings.count)",
+                severity: .regelkonform,
+                title: "Neutralisierung",
+                detail: note,
                 relatedFactIds: ["evidence.summary"]
             ))
         }

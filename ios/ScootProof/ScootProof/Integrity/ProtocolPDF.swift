@@ -21,6 +21,8 @@ enum ProtocolJSON {
             score: result.score,
             verdict: result.verdict.rawValue,
             verdictLabel: result.verdict.label,
+            shortVerdict: result.evidence.shortVerdictText,
+            justifyingMarkers: result.evidence.justifyingMarkers,
             trackId: result.trackMatch.trackId.rawValue,
             trackConfidence: result.trackMatch.confidence,
             disclaimer: result.disclaimer,
@@ -52,13 +54,15 @@ enum ProtocolJSON {
         let score: Int
         let verdict: String
         let verdictLabel: String
+        let shortVerdict: String
+        let justifyingMarkers: [EvidenceMarker]
         let trackId: String
         let trackConfidence: Double
         let disclaimer: String
         let reading: IntegrityReading
         let facts: [MeasuredFact]
         let findings: [Finding]
-        let evidence: EvidenceAssessment
+        let evidence: EvidenceEngineResult
         let evidenceSha256: String?
     }
 }
@@ -344,44 +348,57 @@ enum ProtocolPDF {
 
     private static func drawSectionIVb(context: UIGraphicsPDFRendererContext, result: IntegrityResult, y: CGFloat) -> CGFloat {
         var cursor = ensureSpace(context: context, y: y, needed: 80)
-        cursor = drawHeading("IV.d Evidenzmatrix (Persistenz & Beweisgewicht)", at: cursor)
+        cursor = drawHeading("IV.d EvidenceEngine — drei Ebenen", at: cursor)
+
+        // Ebene 1: Kurzurteil
+        cursor = drawSubheading("1. Kurzurteil", at: cursor)
         cursor = drawText(
-            result.evidence.summary,
+            "\(result.verdict.label) · Score-Verdichtung \(result.score)/100 (Score allein erzeugt kein Urteil)",
             at: cursor,
-            font: bodyFont(size: 10),
-            color: Theme.UI.text
+            font: bodyFont(size: 11, weight: .semibold),
+            color: Theme.UI.verdict(result.verdict)
         )
+        cursor = drawParagraph(result.evidence.shortVerdictText, at: cursor)
+
+        // Ebene 2: begründende Marker
+        cursor = ensureSpace(context: context, y: cursor, needed: 40)
+        cursor = drawSubheading("2. Begründende Marker", at: cursor)
         cursor = drawText(
-            "Klassen: flüchtig / semi-persistent / persistent · Nachweis / Indiz / Abweichung. Isoliertes Limit ≠ automatisch getunt.",
+            "Kette: Quelle → Rohwert → Interpretation → Persistenz → Beweisgewicht → Beitrag",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
         )
-
-        for hit in result.evidence.hits {
+        let justifying = result.evidence.justifyingMarkers.isEmpty
+            ? result.evidence.markers.filter { !$0.neutralized && $0.evidenceClass.rank >= EvidenceClass.abweichung.rank }
+            : result.evidence.justifyingMarkers
+        for marker in justifying {
             cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
             cursor = drawText(
-                "• \(hit.title) [\(hit.volatility.label) · \(hit.evidenceClass.label)]",
+                "• \(marker.title) [\(marker.persistenceClass.label) · \(marker.evidenceClass.label)]",
                 at: cursor,
                 font: bodyFont(size: 10, weight: .semibold),
                 color: Theme.UI.text
             )
             cursor = drawText(
-                "  \(hit.rawCitation)",
+                "  \(marker.chainCitation)",
                 at: cursor,
                 font: monoFont(size: 8),
                 color: Theme.UI.muted
             )
-            cursor = drawText(
-                "  Reset bei Ausschalten: \(hit.resetsOnPowerOff ? "typisch ja" : "typisch nein")",
-                at: cursor,
-                font: bodyFont(size: 9),
-                color: Theme.UI.muted
-            )
+        }
+
+        if !result.evidence.neutralizationNotes.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 36)
+            cursor = drawSubheading("Neutralisierungen (False-Positive-Schutz)", at: cursor)
+            for note in result.evidence.neutralizationNotes {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
+                cursor = drawText("• \(note)", at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
+            }
         }
 
         if !result.evidence.correlations.isEmpty {
-            cursor = ensureSpace(context: context, y: cursor, needed: 40)
+            cursor = ensureSpace(context: context, y: cursor, needed: 36)
             cursor = drawSubheading("Korrelationen", at: cursor)
             for corr in result.evidence.correlations {
                 cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
@@ -390,12 +407,12 @@ enum ProtocolPDF {
         }
 
         if !result.evidence.temporalDeltas.isEmpty {
-            cursor = ensureSpace(context: context, y: cursor, needed: 40)
-            cursor = drawSubheading("Zeitliche Historie (gleiche SN)", at: cursor)
+            cursor = ensureSpace(context: context, y: cursor, needed: 36)
+            cursor = drawSubheading("Zeitliche Historie", at: cursor)
             for delta in result.evidence.temporalDeltas {
                 cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
                 cursor = drawText(
-                    "• \(delta.title): \(delta.previous) → \(delta.current) (Protokoll \(delta.priorProtocol))",
+                    "• \(delta.title): \(delta.previous) → \(delta.current) (\(delta.priorProtocol))",
                     at: cursor,
                     font: bodyFont(size: 9),
                     color: Theme.UI.text
@@ -403,23 +420,11 @@ enum ProtocolPDF {
             }
         }
 
-        if !result.evidence.crossBoardIssues.isEmpty {
-            cursor = ensureSpace(context: context, y: cursor, needed: 40)
-            cursor = drawSubheading("Cross-Board-Konsistenz", at: cursor)
-            for issue in result.evidence.crossBoardIssues {
-                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight + 4)
-                cursor = drawText(
-                    "• \(issue.title): \(issue.detail)",
-                    at: cursor,
-                    font: bodyFont(size: 9),
-                    color: Theme.UI.text
-                )
-            }
-        }
-
-        cursor = ensureSpace(context: context, y: cursor, needed: 36)
+        // Ebene 3: Verweis auf Rohdaten (IV.a) + Fingerprint
+        cursor = ensureSpace(context: context, y: cursor, needed: 40)
+        cursor = drawSubheading("3. Rohdaten", at: cursor)
         cursor = drawText(
-            "Baseline-Fingerprint: \(result.evidence.fingerprint.digestSHA256)",
+            "Vollständige Registerliste in Abschnitt IV.a (\(result.reading.rawRegisters.count) Einträge). Fingerprint: \(result.evidence.fingerprint.digestSHA256)",
             at: cursor,
             font: monoFont(size: 8),
             color: Theme.UI.muted

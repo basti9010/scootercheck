@@ -260,14 +260,18 @@ enum FactStatus: String, Codable, CaseIterable, Sendable {
 
 enum VerdictLevel: String, Codable, CaseIterable, Sendable {
     case stock
-    case watch
-    case tuned
+    /// Früher `watch`.
+    case auffaellig = "auffaellig"
+    case hinweise
+    /// Früher `tuned` — technisch eindeutige Abweichung.
+    case eindeutig = "eindeutig"
 
     var label: String {
         switch self {
         case .stock: return "Serienzustand"
-        case .watch: return "Auffälligkeiten"
-        case .tuned: return "Manipuliert / getunt"
+        case .auffaellig: return "auffällig"
+        case .hinweise: return "Manipulationshinweise"
+        case .eindeutig: return "technisch eindeutige Abweichung"
         }
     }
 
@@ -278,20 +282,40 @@ enum VerdictLevel: String, Codable, CaseIterable, Sendable {
             Die ausgelesenen Werte entsprechen überwiegend dem werkseitigen Sollzustand. \
             Es liegen keine hinreichenden Anhaltspunkte für eine unzulässige Leistungssteigerung vor.
             """
-        case .watch:
+        case .auffaellig:
             return """
             Einzelne Auslesewerte weichen vom Soll ab oder sind nicht eindeutig zuordenbar. \
             Soft-Unlock kann nach Ausschalten unsichtbar sein — dann zählen persistente Marker \
-            und frühere Protokolle derselben Seriennummer. Eine abschließende Bewertung kann \
-            zusätzliche Prüfungen erfordern.
+            und frühere Protokolle. Der Score verdichtet nur; das Urteil folgt Regeln und Markerketten.
             """
-        case .tuned:
+        case .hinweise:
             return """
-            Mehrere unabhängige Anhaltspunkte sprechen für eine Abweichung vom werkseitigen Zustand \
-            (z. B. erhöhte Geschwindigkeitswerte, Firmware-Merkmale, Seriennummer-Inkonsistenzen \
-            oder persistente Marker trotz zurückgesetztem Session-Unlock).
+            Mehrere Manipulationsindizien oder ein starker Hinweis sprechen für Abweichungen vom \
+            Serienzustand. Die begründenden Marker mit Quelle, Rohwert und Persistenz sind im Protokoll dokumentiert.
+            """
+        case .eindeutig:
+            return """
+            Die Evidenzmatrix enthält technisch eindeutige Abweichungen (z. B. bestätigte Custom-Firmware \
+            oder korrelierte persistente Marker). Nachvollziehbar über Kurzurteil, begründende Marker und Rohdaten.
             """
         }
+    }
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        switch raw {
+        case "stock": self = .stock
+        case "watch", "auffaellig", "Auffälligkeiten": self = .auffaellig
+        case "hinweise", "Manipulationshinweise": self = .hinweise
+        case "tuned", "eindeutig", "Manipuliert / getunt": self = .eindeutig
+        default:
+            self = VerdictLevel(rawValue: raw) ?? .stock
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        try c.encode(rawValue)
     }
 }
 
@@ -312,7 +336,8 @@ struct PriorUnlockEvidence: Sendable, Equatable {
     func showsUnlock(threshold: Double) -> Bool {
         observedTempoKmh >= threshold
             || hiddenTuningDetected == true
-            || verdict == .tuned
+            || verdict == .eindeutig
+            || verdict == .hinweise
     }
 }
 
@@ -793,8 +818,9 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     Es erfolgt keine Veränderung von Fahrzeugparametern. Die Bewertung ersetzt keine amtliche \
     Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung im Sinne der \
     Straßenverkehrs-Zulassungs-Ordnung (StVZO). Die Bewertung gewichtet Marker nach Persistenz \
-    und Beweisqualität (Nachweis / Indiz / Abweichung); flüchtige Session-Marker allein begründen \
-    keinen Manipulationsnachweis.
+    und Beweisqualität (Info / Abweichung / Manipulationsindiz / starker Manipulationshinweis). \
+    Der Score verdichtet Evidenzen nur; das Kurzurteil folgt festen Regeln. Flüchtige Session-Marker \
+    allein begründen keinen Manipulationshinweis.
     """
 }
 

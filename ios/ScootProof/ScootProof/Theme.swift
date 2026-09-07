@@ -14,8 +14,9 @@ enum Theme {
     static func verdict(_ level: VerdictLevel) -> Color {
         switch level {
         case .stock: return accent
-        case .watch: return warn
-        case .tuned: return danger
+        case .auffaellig: return warn
+        case .hinweise: return Color(red: 0.98, green: 0.55, blue: 0.22)
+        case .eindeutig: return danger
         }
     }
 
@@ -42,8 +43,9 @@ enum Theme {
         static func verdict(_ level: VerdictLevel) -> UIColor {
             switch level {
             case .stock: return accent
-            case .watch: return warn
-            case .tuned: return danger
+            case .auffaellig: return warn
+            case .hinweise: return UIColor(red: 0.98, green: 0.55, blue: 0.22, alpha: 1)
+            case .eindeutig: return danger
             }
         }
 

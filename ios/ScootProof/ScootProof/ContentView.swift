@@ -237,7 +237,7 @@ struct ContentView: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    if report.evidence.nachweisCount + report.evidence.indizCount + report.evidence.abweichungCount > 0 {
+                    if report.evidence.starkerHinweisCount + report.evidence.indizCount + report.evidence.abweichungCount > 0 {
                         Text(report.evidence.summary)
                             .font(.caption.weight(.medium))
                             .foregroundStyle(Theme.accent)
@@ -339,7 +339,7 @@ struct ContentView: View {
     }
 
     private var primaryInk: Color {
-        if result?.verdict == .tuned { return .white }
+        if result?.verdict == .eindeutig || result?.verdict == .hinweise { return .white }
         return Theme.ink
     }
 
