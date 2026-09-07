@@ -219,72 +219,20 @@ struct ContentView: View {
                 .padding(14)
                 .scootCard()
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: 10) {
                     ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
-                        if index > 0 {
-                            Divider().overlay(Theme.line)
-                        }
                         Button {
                             Task { await connectAndCheck(item) }
                         } label: {
-                            HStack(spacing: 14) {
-                                SignalStrengthView(rssi: item.rssi)
-                                    .frame(width: 28)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 8) {
-                                        Text(item.name)
-                                            .font(.body.weight(.semibold))
-                                            .foregroundStyle(.white)
-                                            .lineLimit(1)
-                                        if let badge = item.modelBadge {
-                                            Text(badge)
-                                                .font(.caption2.weight(.bold))
-                                                .foregroundStyle(Theme.ink)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Theme.accent)
-                                                .clipShape(Capsule())
-                                        } else if item.looksLikeScooter {
-                                            Text("Scooter")
-                                                .font(.caption2.weight(.bold))
-                                                .foregroundStyle(Theme.ink)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Theme.accent)
-                                                .clipShape(Capsule())
-                                        }
-                                        if index == 0, listed.count > 1 {
-                                            Text("nächstes")
-                                                .font(.caption2.weight(.bold))
-                                                .foregroundStyle(.white.opacity(0.9))
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Color.white.opacity(0.18))
-                                                .clipShape(Capsule())
-                                        }
-                                    }
-                                    if let model = item.modelLabel {
-                                        Text(model)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(Theme.accent)
-                                            .lineLimit(1)
-                                    }
-                                    Text("\(item.signalLabel) · \(item.rssi) dBm")
-                                        .font(.caption)
-                                        .foregroundStyle(Theme.muted)
-                                }
-                                Spacer()
-                                Text("Verbinden")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(Theme.accent)
-                            }
-                            .padding(.vertical, 14)
+                            ScooterDeviceCard(
+                                device: item,
+                                isNearest: index == 0 && listed.count > 1
+                            )
                         }
+                        .buttonStyle(.plain)
                         .disabled(busy || isBusyPhase)
                     }
                 }
-                .padding(.horizontal, 4)
-                .scootCard()
             }
         }
     }
@@ -656,8 +604,113 @@ struct Wordmark: View {
     }
 }
 
+/// SHU-ähnliche Gerätezeile: Bild · ID · Modell · Signalbalken.
+struct ScooterDeviceCard: View {
+    let device: ScannedDevice
+    var isNearest: Bool = false
+
+    private var displayId: String {
+        if let compact = BleModelHint.compactScooterId(from: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
+            return compact
+        }
+        return device.name
+    }
+
+    private var modelTitle: String {
+        device.modelLabel
+            ?? (device.looksLikeScooter ? "Scooter" : "BLE-Gerät")
+    }
+
+    private var thumbName: String {
+        if device.suggestedProfile?.family == .maxG3
+            || device.modelBadge == "Max G3"
+            || displayId.uppercased().hasPrefix("1C") {
+            return "ScooterMaxG3"
+        }
+        if device.looksLikeScooter || device.modelLabel != nil {
+            return "ScooterGeneric"
+        }
+        return "ScooterGeneric"
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(thumbName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 64, height: 52)
+                .padding(6)
+                .background(Color.white.opacity(0.94))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayId)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text(modelTitle)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    if device.looksLikeScooter || device.modelLabel != nil {
+                        Label("Erkannt", systemImage: "bolt.fill")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Theme.accent.opacity(0.9))
+                            .clipShape(Capsule())
+                    }
+                    if isNearest {
+                        Text("nächstes")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.16))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            VStack(alignment: .trailing, spacing: 8) {
+                SignalStrengthView(rssi: device.rssi, style: .shu)
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.accent)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+        }
+        .padding(12)
+        .background(Theme.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Theme.line, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(modelTitle), \(displayId), \(device.signalLabel)")
+    }
+}
+
 struct SignalStrengthView: View {
+    enum Style {
+        case compact
+        case shu
+    }
+
     let rssi: Int
+    var style: Style = .compact
 
     private var bars: Int {
         switch rssi {
@@ -668,12 +721,29 @@ struct SignalStrengthView: View {
         }
     }
 
+    private var activeColor: Color {
+        switch style {
+        case .compact:
+            return Theme.accent
+        case .shu:
+            switch bars {
+            case 4: return Theme.accent
+            case 3: return Color(red: 0.98, green: 0.62, blue: 0.22) // SHU-Orange
+            case 2: return Theme.warn
+            default: return Theme.danger
+            }
+        }
+    }
+
     var body: some View {
-        HStack(alignment: .bottom, spacing: 2) {
+        HStack(alignment: .bottom, spacing: style == .shu ? 2.5 : 2) {
             ForEach(1...4, id: \.self) { level in
                 RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(level <= bars ? Theme.accent : Color.white.opacity(0.15))
-                    .frame(width: 4, height: CGFloat(6 + level * 3))
+                    .fill(level <= bars ? activeColor : Color.white.opacity(style == .shu ? 0.22 : 0.15))
+                    .frame(
+                        width: style == .shu ? 4.5 : 4,
+                        height: CGFloat((style == .shu ? 7 : 6) + level * (style == .shu ? 3.5 : 3))
+                    )
             }
         }
         .accessibilityLabel("Signalstärke \(bars) von 4")
