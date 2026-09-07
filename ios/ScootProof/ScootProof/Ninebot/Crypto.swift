@@ -26,9 +26,9 @@ enum BleError: LocalizedError {
         case .replayDetected: return "Replay counter rejected"
         case .invalidFrame: return "Invalid frame"
         case .handshakeFailed(let msg): return "Handshake failed: \(msg)"
-        case .timeout: return "BLE operation timed out"
-        case .notConnected: return "Not connected to scooter"
-        }
+        case .timeout: return "Zeitüberschreitung bei BLE"
+        case .notConnected: return "Keine Verbindung zum Scooter"
+    }
     }
 }
 

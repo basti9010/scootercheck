@@ -208,6 +208,9 @@ final class BleClient: NSObject, ObservableObject {
     private var enc2PipeIsNordic = false
     /// Profil-Hinweis für Register-Map (z. B. Max-G3-Board-Adressen).
     private var dumpProfileHint: ScooterProfile = .maxG3D
+    /// Letztes Scan-Gerät für einen Reconnect-Versuch nach Abbruch.
+    private var lastConnectDevice: ScannedDevice?
+    private var maxG3Enc2RetryUsed = false
     /// Pairing-Zielboard aus PRE_COMM-Antwort (oft 0x04 oder 0x21).
     private var pairingBoard: Nb.Board = .ble
     private var discoveredServiceSummary = ""
@@ -270,6 +273,7 @@ final class BleClient: NSObject, ObservableObject {
         phase = .connecting
         statusMessage = "Verbinde mit \(device.name)…"
         lastError = nil
+        lastConnectDevice = device
         detectedStack = .unknown
         activeStack = .unknown
         enc2PipeIsNordic = false
@@ -372,21 +376,9 @@ final class BleClient: NSObject, ObservableObject {
                 return
             }
 
-            // Passwort behalten — sonst erzwungenes Re-Pairing und Disconnects.
-            phase = .detecting
-            statusMessage = "Max G3: Enc2 über Nordic-UART…"
-            activateEnc2(useNordicUART: true)
-            assembler.reset()
-            do {
-                try await runNinebotHandshakeAndDump(preferGen2: true)
-                return
-            } catch {
-                fail(
-                    "Max G3 Enc2 fehlgeschlagen — Nordic-UART: \(error.localizedDescription)"
-                        + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
-                )
-                return
-            }
+            maxG3Enc2RetryUsed = false
+            await runMaxG3Enc2WithRetry()
+            return
         }
 
         let order = detectionOrder(profileHint: profile, name: name)
@@ -545,8 +537,8 @@ final class BleClient: NSObject, ObservableObject {
 
         var succeeded = false
         var lastError: Error?
-        // Max G3 / SHU: Gen2 (fw_data-Key) zuerst — Gen3-Nullkey scheitert und kann disconnecten.
-        let gens: [ProtocolGen] = preferGen2 ? [.gen2, .gen3] : [.gen3, .gen2]
+        // Max G3: nur Gen2. Gen3-Nullkey scheitert und trennt oft die BLE-Verbindung.
+        let gens: [ProtocolGen] = preferGen2 ? [.gen2] : [.gen3, .gen2]
         for gen in gens {
             guard peripheral != nil else {
                 throw BleError.notConnected
@@ -562,6 +554,7 @@ final class BleClient: NSObject, ObservableObject {
             } catch {
                 lastError = error
                 crypto = nil
+                if case BleError.notConnected = error { throw error }
                 if gen == gens.last { break }
                 statusMessage = "\(gen.rawValue) fehlgeschlagen, versuche Alternative…"
                 phase = .handshake
@@ -576,6 +569,65 @@ final class BleClient: NSObject, ObservableObject {
         if phase == .failed {
             throw BleError.handshakeFailed(statusMessage)
         }
+    }
+
+    /// Max G3 Enc2: Gen2/Non-SN, bei Abbruch einmal Passwort löschen + reconnect.
+    private func runMaxG3Enc2WithRetry() async {
+        phase = .detecting
+        statusMessage = "Max G3: Enc2 über Nordic-UART…"
+        activateEnc2(useNordicUART: true)
+        assembler.reset()
+
+        do {
+            try await runNinebotHandshakeAndDump(preferGen2: true)
+            return
+        } catch {
+            // didDisconnect hat fail() schon gesetzt — nicht mit Enc2-Text überschreiben.
+            if phase == .failed { return }
+
+            let canRetry = !maxG3Enc2RetryUsed && lastConnectDevice != nil
+            if canRetry {
+                maxG3Enc2RetryUsed = true
+                clearPassword()
+                statusMessage = "Verbindung abgebrochen — baue neu auf…"
+                try? await Task.sleep(nanoseconds: 900_000_000)
+                guard let device = lastConnectDevice else {
+                    fail(Self.maxG3Enc2FailMessage(error))
+                    return
+                }
+                do {
+                    try await connect(to: device)
+                    phase = .detecting
+                    statusMessage = "Max G3: Enc2 erneut (Power-Taste bereithalten)…"
+                    activateEnc2(useNordicUART: true)
+                    assembler.reset()
+                    try await runNinebotHandshakeAndDump(preferGen2: true)
+                    return
+                } catch {
+                    if phase == .failed { return }
+                    fail(Self.maxG3Enc2FailMessage(error))
+                    return
+                }
+            }
+
+            fail(Self.maxG3Enc2FailMessage(error))
+        }
+    }
+
+    private static func maxG3Enc2FailMessage(_ error: Error) -> String {
+        if case BleError.notConnected = error {
+            return "Verbindung zum Scooter verloren. Scooter an lassen, nah bleiben und erneut verbinden; bei Pairing Power-Taste drücken."
+        }
+        let detail = error.localizedDescription
+        if detail.localizedCaseInsensitiveContains("handshake failed:") {
+            let trimmed = detail.replacingOccurrences(
+                of: "Handshake failed: ",
+                with: "",
+                options: .caseInsensitive
+            )
+            return "Max G3 Enc2: \(trimmed). Scooter an lassen; bei Pairing Power-Taste drücken."
+        }
+        return "Max G3 Enc2 fehlgeschlagen — \(detail). Scooter an lassen; bei Pairing Power-Taste drücken."
     }
 
     nonisolated private static func nameSuggestsXiaomi(_ name: String) -> Bool {
@@ -854,8 +906,11 @@ final class BleClient: NSObject, ObservableObject {
         var evidence = Data()
         var liveBoards = Set<String>()
 
-        // Probe boards
-        for board in Nb.Board.allCases {
+        // Probe boards — Max G3 nur bekannte Zielboards, sonst BLE-Flut/Disconnects.
+        let boardsToProbe: [Nb.Board] = dumpProfileHint.family == .maxG3
+            ? [.ble, .bleLegacy, .vcuG3, .mcuG3, .bmsG3, .tft]
+            : Array(Nb.Board.allCases)
+        for board in boardsToProbe {
             let probe = Nb.read(board: board, register: Nb.Register.error, length: 2, gen: protocolGen)
             do {
                 let resp = try await sendReceive(plain: probe, crypto: crypto, timeout: 2)
@@ -863,6 +918,7 @@ final class BleClient: NSObject, ObservableObject {
                     liveBoards.insert(boardLabel(board))
                 }
             } catch {
+                if case BleError.notConnected = error { break }
                 continue
             }
         }
@@ -894,6 +950,7 @@ final class BleClient: NSObject, ObservableObject {
 
                 DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
             } catch {
+                if case BleError.notConnected = error { break }
                 continue
             }
 
