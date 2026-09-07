@@ -746,11 +746,13 @@ struct SignalStrengthView: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: style == .shu ? 2.5 : 2) {
             ForEach(1...4, id: \.self) { level in
+                let step: CGFloat = style == .shu ? 3.5 : 3
+                let base: CGFloat = style == .shu ? 7 : 6
                 RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                     .fill(level <= bars ? activeColor : Color.white.opacity(style == .shu ? 0.22 : 0.15))
                     .frame(
                         width: style == .shu ? 4.5 : 4,
-                        height: CGFloat((style == .shu ? 7 : 6) + level * (style == .shu ? 3.5 : 3))
+                        height: base + CGFloat(level) * step
                     )
             }
         }
