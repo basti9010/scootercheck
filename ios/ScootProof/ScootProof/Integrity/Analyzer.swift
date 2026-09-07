@@ -207,42 +207,64 @@ enum IntegrityAnalyzer {
             group: .serial,
             title: "MCU-Seriennummer",
             auslesewert: reading.serialMcu ?? "—",
-            sollwert: reading.serialDisplay ?? sollSN,
-            status: TrackClassifier.mcuSerialMismatch(reading: reading) ? .erheblichAbweichend : .regelkonform,
-            bewertung: TrackClassifier.mcuSerialMismatch(reading: reading)
-                ? "MCU-SN weicht von Fahrzeug-SN ab"
-                : "MCU-SN konsistent",
-            erlaeuterung: "Direkt aus dem Motorsteuergerät (MCU) ausgelesene Seriennummer.",
+            sollwert: TrackClassifier.looksLikeModuleSerial(reading.serialMcu)
+                ? "eigene Board-ID (Max G3)"
+                : (reading.serialDisplay ?? sollSN),
+            status: {
+                if reading.serialMcu == nil { return .nichtFeststellbar }
+                if TrackClassifier.looksLikeModuleSerial(reading.serialMcu) { return .regelkonform }
+                return TrackClassifier.mcuSerialMismatch(reading: reading) ? .erheblichAbweichend : .regelkonform
+            }(),
+            bewertung: {
+                if reading.serialMcu == nil { return "Nicht auslesbar" }
+                if TrackClassifier.looksLikeModuleSerial(reading.serialMcu) {
+                    return "MCU-Hardware-ID (kein Fahrzeug-SN)"
+                }
+                return TrackClassifier.mcuSerialMismatch(reading: reading)
+                    ? "MCU-SN weicht von Fahrzeug-SN ab"
+                    : "MCU-SN konsistent"
+            }(),
+            erlaeuterung: "Direkt aus dem Motorsteuergerät (MCU) ausgelesene Seriennummer. Auf Max G3 ist das oft eine eigene Board-ID (z. B. Z07…).",
             raw: reading.serialMcu
         ))
 
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialMcu)
+        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
         let foreignUS = region == .us
         facts.append(MeasuredFact(
             id: "serial.region",
             group: .serial,
             title: "Seriennummern-Region",
             auslesewert: region.label,
-            sollwert: "EU / DE",
-            status: foreignUS ? .abweichend : (region == .unknown ? .nichtFeststellbar : .regelkonform),
-            bewertung: foreignUS ? "US-Präfix erkannt" : region.label,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes.",
-            raw: reading.serialDisplay
+            sollwert: profile.market == .de20 ? "DE (1CGB…)" : "EU / DE",
+            status: foreignUS && profile.market == .de20
+                ? .erheblichAbweichend
+                : (region == .unknown ? .nichtFeststellbar : .regelkonform),
+            bewertung: foreignUS && profile.market == .de20
+                ? "US-Region (1CGC) — Region-Unlock"
+                : region.label,
+            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGC=US).",
+            raw: reading.serialDisplay ?? reading.serialVcu
         ))
 
         for (field, title, value) in [
             ("serial.ble", "BLE-Seriennummer", reading.serialBle),
             ("serial.bms", "BMS-Seriennummer", reading.serialBms),
             ("serial.vcu", "VCU-Seriennummer", reading.serialVcu)
-        ] {
+        ] as [(String, String, String?)] {
+            let isModule = TrackClassifier.looksLikeModuleSerial(value)
+            let mismatch = !isModule && TrackClassifier.serialsMismatch(value, reading.serialDisplay)
             facts.append(MeasuredFact(
                 id: field,
                 group: .serial,
                 title: title,
                 auslesewert: value ?? "—",
-                sollwert: reading.serialDisplay ?? sollSN,
-                status: TrackClassifier.serialsMismatch(value, reading.serialDisplay) ? .abweichend : .regelkonform,
-                bewertung: TrackClassifier.serialsMismatch(value, reading.serialDisplay) ? "Abweichung" : "Konsistent",
+                sollwert: isModule ? "Modulkennung" : (reading.serialDisplay ?? sollSN),
+                status: value == nil ? .nichtFeststellbar : (isModule ? .regelkonform : (mismatch ? .abweichend : .regelkonform)),
+                bewertung: {
+                    if value == nil { return "Nicht auslesbar" }
+                    if isModule { return "Modulkennung (kein Fahrzeug-SN)" }
+                    return mismatch ? "Abweichung" : "Konsistent"
+                }(),
                 erlaeuterung: "Auslesung des zugehörigen Steuergeräts.",
                 raw: value
             ))
@@ -513,7 +535,37 @@ enum IntegrityAnalyzer {
         [
             flagFact(id: "flag.safelock", title: "SafeLock", value: reading.safeLockActive, soll: true, inverted: true),
             flagFact(id: "flag.panic", title: "Panic-Modus", value: reading.panicModeActive, soll: false, inverted: false),
-            flagFact(id: "flag.hidden", title: "Verstecktes Tuning", value: reading.hiddenTuningDetected, soll: false, inverted: false),
+            MeasuredFact(
+                id: "flag.hidden",
+                group: .flags,
+                title: "Verstecktes / Soft-Unlock",
+                auslesewert: {
+                    if reading.hiddenTuningDetected == true {
+                        let limit = reading.speedLimitKmh ?? reading.speedRatedKmh
+                        if let limit, limit >= 25 {
+                            return "Limit \(Format.kmh.format(Optional(limit)))"
+                        }
+                        return "gesetzt"
+                    }
+                    if reading.hiddenTuningDetected == false { return "inaktiv" }
+                    return "—"
+                }(),
+                sollwert: "inaktiv",
+                status: {
+                    if reading.hiddenTuningDetected == true { return .erheblichAbweichend }
+                    if reading.hiddenTuningDetected == false { return .regelkonform }
+                    return .nichtFeststellbar
+                }(),
+                bewertung: {
+                    if reading.hiddenTuningDetected == true {
+                        return "Soft-Unlock / erhöhtes Limit (z. B. nach Bremshebel-Sequenz)"
+                    }
+                    if reading.hiddenTuningDetected == false { return "Serienzustand" }
+                    return "Nicht feststellbar"
+                }(),
+                erlaeuterung: "Erhöhte Limits oder Unlock-Flags. Die Bremshebel-Geste selbst ist nicht speicherbar — nur ihre Wirkung auf Register.",
+                raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
+            ),
             flagFact(id: "flag.unbound", title: "Unbound Rebound", value: reading.unboundRebound, soll: false, inverted: false)
         ]
     }
@@ -544,8 +596,7 @@ enum IntegrityAnalyzer {
     }
 
     private static func buildGearFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
-        let maxGear = reading.gearMax ?? 1
-        let status: FactStatus = maxGear > 1 ? .abweichend : .regelkonform
+        let maxGear = reading.gearMax
         return [
             MeasuredFact(
                 id: "gear.mode",
@@ -553,8 +604,8 @@ enum IntegrityAnalyzer {
                 title: "Aktueller Fahrmodus",
                 auslesewert: Format.num.format(reading.gearMode),
                 sollwert: "1",
-                status: reading.gearMode == nil ? .nichtFeststellbar : status,
-                bewertung: maxGear > 1 ? "Erweiterter Modus" : "Serienmodus",
+                status: reading.gearMode == nil ? .nichtFeststellbar : ((reading.gearMode ?? 1) > 1 ? .abweichend : .regelkonform),
+                bewertung: reading.gearMode == nil ? "Nicht feststellbar" : ((reading.gearMode ?? 1) > 1 ? "Erweiterter Modus" : "Serienmodus"),
                 erlaeuterung: "Eingestellter Fahrmodus / Gang.",
                 raw: reading.gearMode.map { String($0) }
             ),
@@ -562,27 +613,33 @@ enum IntegrityAnalyzer {
                 id: "gear.max",
                 group: .gear,
                 title: "Maximaler Fahrmodus",
-                auslesewert: Format.num.format(reading.gearMax),
+                auslesewert: Format.num.format(maxGear),
                 sollwert: "1 (\(profile.shortLabel))",
-                status: reading.gearMax == nil ? .nichtFeststellbar : (maxGear > 1 ? .erheblichAbweichend : .regelkonform),
-                bewertung: maxGear > 1 ? "Mehr als Serienmodus" : "Serienmodus",
+                status: maxGear == nil ? .nichtFeststellbar : ((maxGear ?? 1) > 1 ? .erheblichAbweichend : .regelkonform),
+                bewertung: maxGear == nil ? "Nicht feststellbar" : ((maxGear ?? 1) > 1 ? "Mehr als Serienmodus" : "Serienmodus"),
                 erlaeuterung: "Höchster verfügbarer Fahrmodus laut Steuergerät.",
-                raw: reading.gearMax.map { String($0) }
+                raw: maxGear.map { String($0) }
             )
         ]
     }
 
     private static func buildProtocolFacts(reading: IntegrityReading) -> [MeasuredFact] {
-        [
+        let gen = reading.protocolGen ?? 1
+        let enc2Expected = (reading.bleStack == BleStack.ninebotEnc2.rawValue) || gen >= 2
+        return [
             MeasuredFact(
                 id: "protocol.gen",
                 group: .proto,
                 title: "Protokoll-Generation",
                 auslesewert: Format.num.format(reading.protocolGen),
-                sollwert: "1",
-                status: (reading.protocolGen ?? 1) > 1 ? .abweichend : .regelkonform,
-                bewertung: (reading.protocolGen ?? 1) > 1 ? "Erweitertes Protokoll" : "Standard",
-                erlaeuterung: "Version des verwendeten Ausleseprotokolls.",
+                sollwert: enc2Expected ? "2 (Enc2)" : "1",
+                status: enc2Expected
+                    ? (gen >= 2 ? .regelkonform : .abweichend)
+                    : (gen > 1 ? .abweichend : .regelkonform),
+                bewertung: enc2Expected
+                    ? (gen >= 2 ? "Ninebot Enc2" : "Unerwartet")
+                    : (gen > 1 ? "Erweitertes Protokoll" : "Standard"),
+                erlaeuterung: "Version des verwendeten Ausleseprotokolls. Max G3 nutzt Enc2 (Gen 2) werkseitig.",
                 raw: reading.protocolGen.map { String($0) }
             ),
             MeasuredFact(
@@ -590,9 +647,9 @@ enum IntegrityAnalyzer {
                 group: .proto,
                 title: "Rohregister-Anzahl",
                 auslesewert: "\(reading.rawRegisters.count)",
-                sollwert: "0 (Standardauslese)",
-                status: reading.rawRegisters.count > 10 ? .abweichend : .regelkonform,
-                bewertung: reading.rawRegisters.count > 10 ? "Erweiterte Auslese" : "Standard",
+                sollwert: "Diagnoseauslese",
+                status: .regelkonform,
+                bewertung: "\(reading.rawRegisters.count) Register",
                 erlaeuterung: "Anzahl ausgelesener Rohdatenregister.",
                 raw: String(reading.rawRegisters.count)
             )

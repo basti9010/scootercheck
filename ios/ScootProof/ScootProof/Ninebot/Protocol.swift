@@ -15,12 +15,15 @@ enum Nb {
         /// Max G3 / neuere Controller oft unter 0x02 (Flasher: MCU).
         case mcuG3 = 0x02
         case ble = 0x04
+        /// Max G3 BMS (Flasher ADDR_BMS = 7).
+        case bmsG3 = 0x07
         case vcu = 0x09
         /// Max G3 VCU / Versions-Proxy (Flasher: Destination 0x16).
         case vcuG3 = 0x16
         case mcu = 0x20
         /// BLE-Legacy-Adresse (NinebotCrypto/SHU oft 0x21 in Pairing-Antworten).
         case bleLegacy = 0x21
+        /// Ältere Ninebot-BMS-Adresse (G30 o. ä.); auf Max G3 oft tot.
         case bms = 0x22
     }
 

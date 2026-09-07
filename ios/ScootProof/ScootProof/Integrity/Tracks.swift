@@ -51,6 +51,12 @@ enum TrackClassifier {
     static func serialRegion(for serial: String?) -> SerialRegion {
         guard let serial = serial?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
               !serial.isEmpty else { return .unknown }
+        // Max G3 / x3: 1CGB=DE, 1CGE=EU, 1CGC=US, 1CGD=RU (Joey's Wiki / MaxG3Tools).
+        if serial.hasPrefix("1CGB") { return .de }
+        if serial.hasPrefix("1CGE") { return .eu }
+        if serial.hasPrefix("1CGC") { return .us }
+        if serial.hasPrefix("1CGD") { return .us } // RU oft freier — als Nicht-DE behandeln
+        if serial.hasPrefix("1CG") { return .eu }
         if usSerialPrefixes.contains(where: { serial.hasPrefix($0) }) { return .us }
         if euSerialPrefixes.contains(where: { serial.hasPrefix($0) }) { return .de }
         if serial.hasPrefix("N4GS") { return .eu }
@@ -69,14 +75,29 @@ enum TrackClassifier {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// MCU-Hardware-SN (z. B. Z07…) weicht auf Max G3 werkseitig von der Fahrzeug-SN ab.
+    static func looksLikeModuleSerial(_ value: String?) -> Bool {
+        guard let sn = normalizedSerial(value) else { return false }
+        if sn.hasPrefix("1CG") || sn.hasPrefix("N4G") || sn.hasPrefix("N2") { return false }
+        // Hex-/MAC-artig oder eigenes MCU-Muster (Z07XB…)
+        if sn.hasPrefix("Z07") || sn.hasPrefix("Z0") { return true }
+        let hexLike = sn.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "0123456789ABCDEF").contains($0) }
+        return hexLike && sn.count >= 12
+    }
+
     static func mcuSerialMismatch(reading: IntegrityReading) -> Bool {
         guard let mcu = normalizedSerial(reading.serialMcu) else { return false }
+        // Max G3 / x3: MCU-SN ist eine eigene Board-ID, kein Tuning-Marker.
+        if looksLikeModuleSerial(mcu) { return false }
+        if let vcu = normalizedSerial(reading.serialVcu), vcu.hasPrefix("1CG") {
+            return false
+        }
         let references = [
             normalizedSerial(reading.serialDisplay),
             normalizedSerial(reading.serialExpected),
             normalizedSerial(reading.serialBle),
             normalizedSerial(reading.serialVcu)
-        ].compactMap { $0 }
+        ].compactMap { $0 }.filter { !looksLikeModuleSerial($0) }
         guard !references.isEmpty else { return false }
         return !references.contains(where: { mcu.hasPrefix(String($0.prefix(10))) || $0.hasPrefix(String(mcu.prefix(10))) })
     }
@@ -198,7 +219,27 @@ enum TrackClassifier {
             weight: 0.4,
             description: "MCU-Seriennummer weicht von Fahrzeug-SN ab"
         ) { reading, _ in
+            // Max G3: MCU-Board-SN ≠ Fahrzeug-SN ist normal — kein SHU-Marker.
             mcuSerialMismatch(reading: reading)
+        },
+        TrackPattern(
+            id: "shu.region.us.on.de",
+            trackId: .shu,
+            weight: 0.45,
+            description: "US-Region-SN auf DE-Sollprofil (Region-Unlock)"
+        ) { reading, profile in
+            guard profile.family == .maxG3, profile.market == .de20 else { return false }
+            return serialRegion(for: reading.serialDisplay ?? reading.serialVcu) == .us
+        },
+        TrackPattern(
+            id: "shu.soft.unlock.speed",
+            trackId: .shu,
+            weight: 0.5,
+            description: "Geschwindigkeitslimit deutlich über DE-Soll (Soft-Unlock)"
+        ) { reading, profile in
+            guard profile.market == .de20 else { return false }
+            let limit = reading.speedLimitKmh ?? reading.speedRatedKmh ?? reading.speedMaxKmh ?? 0
+            return limit >= profile.tuningClearKmh
         },
         TrackPattern(
             id: "shu.hidden.tuning",
@@ -235,38 +276,46 @@ enum TrackClassifier {
         },
 
         // --- SHU Dump ---
+        // Hinweis: reine Enc2-Auslese (Gen≥2, Hash, viele Register) ist bei Max G3 normal —
+        // shu_dump nur bei echten Tuning-Markern oder sehr großem Dump mit SHU-Hinweisen.
         TrackPattern(
             id: "shu_dump.raw.registers",
             trackId: .shuDump,
-            weight: 0.35,
-            description: "Umfangreiche Rohregister-Auslese"
+            weight: 0.2,
+            description: "Sehr umfangreiche Rohregister-Auslese"
         ) { reading, _ in
-            reading.rawRegisters.count >= 20
+            reading.rawRegisters.count >= 40
+                && (hasHiddenTuningRegister(reading) || mcuSerialMismatch(reading: reading)
+                    || (reading.speedLimitKmh ?? 0) >= 25)
         },
         TrackPattern(
             id: "shu_dump.live.boards",
             trackId: .shuDump,
-            weight: 0.25,
-            description: "Mehrere Live-Boards ausgelesen"
+            weight: 0.15,
+            description: "Viele Live-Boards ausgelesen"
         ) { reading, _ in
-            reading.liveBoards.count >= 3
+            reading.liveBoards.count >= 5
         },
         TrackPattern(
             id: "shu_dump.evidence.hash",
             trackId: .shuDump,
-            weight: 0.2,
+            weight: 0.05,
             description: "Integritäts-Hash vorhanden"
         ) { reading, _ in
-            guard let hash = reading.evidenceSha256 else { return false }
-            return hash.count == 64
+            // Hash allein ist kein Tuning — nur leichte Stütze wenn andere Marker da sind.
+            guard let hash = reading.evidenceSha256, hash.count == 64 else { return false }
+            return hasHiddenTuningRegister(reading)
+                || (reading.speedLimitKmh ?? reading.speedRatedKmh ?? 0) >= 25
         },
         TrackPattern(
             id: "shu_dump.protocol.gen",
             trackId: .shuDump,
-            weight: 0.15,
-            description: "Erweitertes Protokoll (Gen ≥ 2)"
+            weight: 0.05,
+            description: "Erweitertes Protokoll nur mit Tuning-Marker"
         ) { reading, _ in
-            (reading.protocolGen ?? 0) >= 2
+            // Enc2 Gen2 ist auf Max G3 Standard — nicht als Dump-Marker.
+            guard (reading.protocolGen ?? 0) >= 3 else { return false }
+            return hasHiddenTuningRegister(reading)
         }
     ]
 
