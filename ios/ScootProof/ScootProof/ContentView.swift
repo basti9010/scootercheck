@@ -9,41 +9,53 @@ struct ContentView: View {
     @State private var session: CheckSession?
     @State private var showMenu = false
     @State private var showShare = false
-    @State private var showHistory = false
     @State private var historySharePack: ProtocolPack.PackURLs?
     @State private var showHistoryShare = false
     @State private var busy = false
     @State private var powerCyclePhase: PowerCyclePhase = .idle
     @State private var powerCycleScanA: IntegrityReading? = nil
     @State private var powerCycleDevice: ScannedDevice? = nil
-
     @State private var powerCycleHint: String? = nil
+    @State private var screen: AppScreen = .home
+    @State private var pulse = false
+
+    private enum AppScreen: Equatable {
+        case home
+        case result
+        case overview
+    }
 
     private enum PowerCyclePhase: Equatable {
         case idle
         case awaitReboot
         case scanningB
     }
-    @State private var pulse = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    if let err = ble.lastError, ble.phase == .failed {
+                    if let err = ble.lastError, ble.phase == .failed, screen != .overview {
                         errorBanner(err)
                     }
-                    if isBusyPhase {
-                        connectingCard
-                    } else if let result {
-                        resultCard(result)
-                    } else if ble.devices.isEmpty {
-                        emptyState
-                    }
-                    // Geräteliste inkl. Filter auch zeigen, wenn „Nur Scooter“ leer filtert —
-                    // sonst verschwindet der Umschalter und man kommt nicht zurück.
-                    if !ble.devices.isEmpty && !isBusyPhase && result == nil {
-                        deviceSection
+                    switch screen {
+                    case .overview:
+                        controlsOverview
+                    case .result:
+                        if let result {
+                            resultCard(result)
+                        } else {
+                            controlsOverview
+                        }
+                    case .home:
+                        if isBusyPhase {
+                            connectingCard
+                        } else if ble.devices.isEmpty {
+                            emptyState
+                        }
+                        if !ble.devices.isEmpty && !isBusyPhase {
+                            deviceSection
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -54,7 +66,15 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .principal) { Wordmark(size: .headline) }
+                ToolbarItem(placement: .principal) {
+                    if screen == .overview {
+                        Text("Kontrollen")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Wordmark(size: .headline)
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showMenu = true } label: {
                         Image(systemName: "ellipsis.circle")
@@ -65,7 +85,6 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .sheet(isPresented: $showMenu) { menuSheet }
-            .sheet(isPresented: $showHistory) { historySheet }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
@@ -106,6 +125,18 @@ struct ContentView: View {
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
+            if !history.entries.isEmpty {
+                Button("Kontrollen öffnen") {
+                    screen = .overview
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.ink)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Theme.accent)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 36)
@@ -478,7 +509,7 @@ struct ContentView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .disabled(!primaryEnabled)
 
-            if result != nil {
+            if screen == .result, result != nil {
                 if powerCyclePhase == .idle {
                     Button("Power-Cycle-Test") {
                         startPowerCycleTest()
@@ -506,15 +537,18 @@ struct ContentView: View {
                     .foregroundStyle(Theme.muted)
                 }
 
-                Button("Erneut prüfen") {
-                    result = nil
-                    session = nil
-                    powerCyclePhase = .idle
-                    powerCycleScanA = nil
-                    ble.startScan()
+                Button("Teilen / AirDrop") {
+                    showShare = true
                 }
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.accent)
+
+                Button("Zur Übersicht") {
+                    persistCurrentSession()
+                    goToOverview()
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.muted)
             }
         }
         .padding(.horizontal, 20)
@@ -524,43 +558,101 @@ struct ContentView: View {
     }
 
     private var primaryTitle: String {
-        if result != nil { return "Bericht speichern" }
-        if ble.phase == .scanning { return "Suche stoppen" }
-        if ble.phase == .done { return "Manipulation prüfen" }
-        return "Scooter suchen"
+        switch screen {
+        case .overview:
+            return "Neue Prüfung"
+        case .result:
+            return "Bericht speichern"
+        case .home:
+            if ble.phase == .scanning { return "Suche stoppen" }
+            if ble.phase == .done { return "Manipulation prüfen" }
+            return "Scooter suchen"
+        }
     }
 
     private var primaryColor: Color {
-        if let result { return Theme.verdict(result.verdict) }
+        if screen == .result, let result { return Theme.verdict(result.verdict) }
         return Theme.accent
     }
 
     private var primaryInk: Color {
-        if result?.verdict == .eindeutig || result?.verdict == .hinweise { return .white }
+        if screen == .result, result?.verdict == .eindeutig || result?.verdict == .hinweise {
+            return .white
+        }
         return Theme.ink
     }
 
     private var primaryEnabled: Bool {
-        if result != nil { return true }
-        if isBusyPhase || busy { return ble.phase == .scanning }
-        return true
+        switch screen {
+        case .overview: return true
+        case .result: return result != nil
+        case .home:
+            if isBusyPhase || busy { return ble.phase == .scanning }
+            return true
+        }
     }
 
     private func primaryAction() {
-        if result != nil {
-            showShare = true
-            return
+        switch screen {
+        case .overview:
+            startNewCheck()
+        case .result:
+            persistCurrentSession()
+            goToOverview()
+        case .home:
+            if ble.phase == .scanning {
+                ble.stopScan()
+                return
+            }
+            if ble.phase == .done {
+                finalizeAnalysis()
+                return
+            }
+            result = nil
+            session = nil
+            ble.startScan()
         }
-        if ble.phase == .scanning {
-            ble.stopScan()
-            return
+    }
+
+    private func persistCurrentSession() {
+        guard let result else { return }
+        if var current = session {
+            current.result = result
+            current.subject = current.subject.sanitized()
+            session = current
+            try? history.save(current)
+        } else {
+            let newSession = CheckSession(
+                id: result.sessionId,
+                profile: profile,
+                reading: result.reading,
+                result: result
+            )
+            session = newSession
+            try? history.save(newSession)
         }
-        if ble.phase == .done {
-            finalizeAnalysis()
-            return
-        }
+    }
+
+    private func goToOverview() {
+        powerCyclePhase = .idle
+        powerCycleScanA = nil
+        powerCycleDevice = nil
+        powerCycleHint = nil
         result = nil
         session = nil
+        screen = .overview
+        history.reload()
+    }
+
+    private func startNewCheck() {
+        result = nil
+        session = nil
+        powerCyclePhase = .idle
+        powerCycleScanA = nil
+        powerCycleDevice = nil
+        powerCycleHint = nil
+        ble.disconnect()
+        screen = .home
         ble.startScan()
     }
 
@@ -652,6 +744,7 @@ struct ContentView: View {
             powerCyclePhase = .idle
             powerCycleScanA = nil
             powerCycleDevice = nil
+            screen = .result
         } catch {
             powerCyclePhase = .awaitReboot
         }
@@ -676,6 +769,7 @@ struct ContentView: View {
         let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
         session = newSession
         try? history.save(newSession)
+        screen = .result
     }
 
     private var menuSheet: some View {
@@ -724,13 +818,13 @@ struct ContentView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                Section("Protokollverlauf") {
+                Section("Kontrollen") {
                     Button {
                         showMenu = false
-                        showHistory = true
+                        screen = .overview
                     } label: {
                         HStack {
-                            Text("Offline-Verlauf")
+                            Text("Übersicht")
                             Spacer()
                             Text("\(history.entries.count)")
                                 .foregroundStyle(.secondary)
@@ -751,6 +845,7 @@ struct ContentView: View {
                             )
                             session = newSession
                             try? history.save(newSession)
+                            screen = .result
                             showMenu = false
                         }
                     }
@@ -760,6 +855,7 @@ struct ContentView: View {
                         ble.disconnect()
                         result = nil
                         session = nil
+                        screen = .home
                         showMenu = false
                     }
                 }
@@ -774,53 +870,51 @@ struct ContentView: View {
         .presentationDetents([.medium, .large])
     }
 
-    private var historySheet: some View {
-        NavigationStack {
-            Group {
-                if history.entries.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "tray")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                        Text("Keine Protokolle")
-                            .font(.headline)
-                        Text("Abgeschlossene Prüfungen werden offline auf diesem Gerät gespeichert.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(history.entries) { entry in
-                            historyRow(entry)
-                        }
-                        .onDelete { indexSet in
-                            for index in indexSet {
-                                history.delete(id: history.entries[index].id)
-                            }
-                        }
-                    }
+    private var controlsOverview: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Durchgeführte Kontrollen")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+            Text("Bericht speichern führt hierher. Tippe eine Kontrolle an, um sie zu öffnen — oder starte unten eine neue Prüfung.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if history.entries.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Image(systemName: "tray")
+                        .font(.title2)
+                        .foregroundStyle(Theme.muted)
+                    Text("Noch keine Kontrollen")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Gespeicherte Prüfungen erscheinen hier offline auf diesem Gerät.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-            .navigationTitle("Protokollverlauf")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { showHistory = false }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(history.entries.enumerated()), id: \.element.id) { index, entry in
+                        if index > 0 { Divider().overlay(Theme.line) }
+                        controlRow(entry)
+                    }
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .scootCard()
     }
 
     @ViewBuilder
-    private func historyRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+    private func controlRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
                 Text(entry.protocolNumber)
                     .font(.subheadline.weight(.semibold))
-                Spacer()
+                    .foregroundStyle(.white)
+                Spacer(minLength: 8)
                 if let verdict = entry.verdict {
                     Text(verdict.label)
                         .font(.caption.weight(.semibold))
@@ -829,36 +923,49 @@ struct ContentView: View {
             }
             Text(entry.profile.label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.muted)
             if let serial = entry.serialDisplay, !serial.isEmpty {
                 Text(serial)
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.muted)
             }
             if let subject = entry.subjectSummary, !subject.isEmpty {
                 Text(subject)
                     .font(.caption)
                     .foregroundStyle(Theme.accent)
             }
-            Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-
-            HStack(spacing: 12) {
-                Button("Öffnen") {
-                    openHistoryEntry(entry)
-                }
-                .buttonStyle(.bordered)
-
-                Button("AirDrop") {
+            HStack {
+                Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption2)
+                    .foregroundStyle(Theme.muted)
+                Spacer()
+                Text("Tippen zum Öffnen")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.muted)
+                Button {
                     shareHistoryEntry(entry)
+                } label: {
+                    Text("Teilen")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.leading, 8)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
+                .buttonStyle(.borderless)
             }
-            .padding(.top, 2)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            openHistoryEntry(entry)
+        }
+        .contextMenu {
+            Button("Öffnen") { openHistoryEntry(entry) }
+            Button("Teilen") { shareHistoryEntry(entry) }
+            Button("Löschen", role: .destructive) {
+                history.delete(id: entry.id)
+            }
+        }
     }
 
     private func openHistoryEntry(_ entry: ProtocolHistoryStore.Entry) {
@@ -867,7 +974,9 @@ struct ContentView: View {
         profile = stored.profile
         session = stored
         result = storedResult
-        showHistory = false
+        powerCyclePhase = .idle
+        powerCycleHint = nil
+        screen = .result
     }
 
     private func shareHistoryEntry(_ entry: ProtocolHistoryStore.Entry) {
