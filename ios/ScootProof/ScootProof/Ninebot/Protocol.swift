@@ -36,7 +36,8 @@ enum Nb {
         static let mcuVersion: UInt8 = 0x19
         static let mcuVersionFallback: UInt8 = 0x18
         static let bmsVersion: UInt8 = 0x19
-        // Segway-Config Max G3 (Server-ID 10258) — VCU-Telemetrie (nicht DIS 0xB7!).
+        // Segway-Config Max G3 (Server-ID 10258) — VCU-Telemetrie.
+        // Gesamtkilometer: VCU 0x62 in 0.1 km (nicht DIS 0xB7 / nicht Meter).
         static let batteryPercent: UInt8 = 0x55
         static let currentSpeed: UInt8 = 0x57
         static let errorCode: UInt8 = 0x58

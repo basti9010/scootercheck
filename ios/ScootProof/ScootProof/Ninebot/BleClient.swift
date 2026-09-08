@@ -1112,7 +1112,7 @@ final class BleClient: NSObject, ObservableObject {
 
         // Probe boards — Max G3 nur bekannte Zielboards, sonst BLE-Flut/Disconnects.
         let boardsToProbe: [Nb.Board] = dumpProfileHint.usesG3RegisterMap
-            ? [.ble, .bleLegacy, .vcuG3, .mcuG3, .bmsG3, .tft]
+            ? [.ble, .bleLegacy, .vcuG3, .mcuG3, .bmsG3, .tft, .dis]
             : Array(Nb.Board.allCases)
         for board in boardsToProbe {
             let probe = Nb.read(board: board, register: Nb.Register.error, length: 2, gen: protocolGen)

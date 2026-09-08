@@ -41,12 +41,22 @@ enum RegisterScale {
         return g3StoredSpeedKmh(raw)
     }
 
-    /// Millimetre odometer → km.
-    static func km(_ millimetres: UInt32) -> Double {
-        Double(millimetres) / 1000.0
+    /// Millimetre-/Meter-ODO (klassisch DIS 0xB7): Rohwert in Metern → km.
+    static func km(_ metres: UInt32) -> Double {
+        Double(metres) / 1000.0
     }
 
-    /// 10 m trip units → km.
+    /// Max G3 / x3 VCU rMileage @ 0x62: Einheit 0.1 km (wie SHU / segMod x3regs).
+    static func g3TotalMileageKm(_ raw: UInt32) -> Double {
+        Double(raw) / 10.0
+    }
+
+    /// Max G3 VCU SingleMileage @ 0x68: Einheit 0.1 km.
+    static func g3TripMileageKm(_ raw: UInt16) -> Double {
+        Double(raw) / 10.0
+    }
+
+    /// 10 m trip units → km (Legacy DIS).
     static func tripKm(_ raw: UInt16) -> Double {
         Double(raw) / 100.0
     }
@@ -168,7 +178,8 @@ enum DiagnosticMap {
         Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
         Spec(id: "vcu_g3_trip_max", board: .vcuG3, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
         Spec(id: "tft_trip_max", board: .tft, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
-        // SHU/Segway: Gesamtkilometer = VCU rMileage @ 0x62 (4 Byte), nicht DIS 0xB7.
+        // SHU/segMod x3: VCU rMileage @ 0x62 = Gesamtkilometer in 0.1 km (4 Byte).
+        // Klassisches DIS 0xB7 bleibt Meter (0.001 km) — parallel als Fallback.
         Spec(id: "vcu_g3_odo", board: .vcuG3, register: Nb.G3Register.totalMileage, readLen: 4, category: .history),
         Spec(id: "vcu_g3_remain", board: .vcuG3, register: Nb.G3Register.remainingMileage, readLen: 2, category: .history),
         Spec(id: "vcu_g3_precise", board: .vcuG3, register: Nb.G3Register.preciseMileage, readLen: 2, category: .history),
@@ -176,6 +187,7 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_runtime", board: .vcuG3, register: Nb.G3Register.runtime, readLen: 4, category: .history),
         Spec(id: "vcu_g3_ridetime", board: .vcuG3, register: Nb.G3Register.rideTime, readLen: 4, category: .history),
         Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer, readLen: 4, category: .history),
+        Spec(id: "tft_odo", board: .tft, register: Nb.Register.odometer, readLen: 4, category: .history),
         Spec(id: "vcu_legacy_odo", board: .vcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
     ]
 
@@ -309,15 +321,22 @@ enum DiagnosticMap {
             if asTenths > 0, asTenths < 500 { return Format.km.format(Optional(asTenths)) }
             return Format.km.format(Optional(asMetres))
 
-        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo", "vcu_legacy_odo":
+        case "dis_odo", "tft_odo", "mcu_g3_odo", "vcu_legacy_odo":
             return Format.km.format(plausibleOdometerKm(data))
 
-        case "dis_trip_km", "vcu_g3_trip_km", "vcu_g3_trip":
+        case "vcu_g3_odo":
+            return Format.km.format(g3TotalOdometerKm(data))
+
+        case "dis_trip_km", "vcu_g3_trip_km":
             guard let raw = Nb.u16(data) else { return nil }
             let trip = RegisterScale.tripKm(raw)
             let metres = Double(raw) / 1000.0
             if trip < 500 { return Format.km.format(Optional(trip)) }
             return Format.km.format(Optional(metres))
+
+        case "vcu_g3_trip":
+            guard let raw = Nb.u16(data) else { return nil }
+            return Format.km.format(Optional(RegisterScale.g3TripMileageKm(raw)))
 
         case "dis_trip4", "vcu_g3_trip4", "tft_trip4", "vcu_g3_runtime", "vcu_g3_ridetime":
             if spec.id == "vcu_g3_runtime" || spec.id == "vcu_g3_ridetime" {
@@ -475,16 +494,31 @@ enum DiagnosticMap {
                 reading.remainKm = (tenths > 0 && tenths < 500) ? tenths : metres
             }
 
-        case "dis_odo", "vcu_g3_odo", "tft_odo", "mcu_g3_odo", "vcu_legacy_odo":
+        case "dis_odo", "tft_odo", "mcu_g3_odo", "vcu_legacy_odo":
             if let km = plausibleOdometerKm(data) {
+                // Keinen bereits korrekten G3-Gesamtwert mit einem winzigen Legacy-Fehldecode überschreiben.
+                if let existing = reading.odometerKm, existing >= 200, km < existing * 0.2 {
+                    break
+                }
                 reading.odometerKm = max(reading.odometerKm ?? 0, km)
             }
 
-        case "dis_trip_km", "vcu_g3_trip_km", "vcu_g3_trip":
+        case "vcu_g3_odo":
+            // G3-VCU 0x62 (0.1 km) — dieselbe Quelle wie SHU.
+            if let km = g3TotalOdometerKm(data) {
+                reading.odometerKm = km
+            }
+
+        case "dis_trip_km", "vcu_g3_trip_km":
             if let raw = Nb.u16(data) {
                 let trip = RegisterScale.tripKm(raw)
                 let metres = Double(raw) / 1000.0
                 reading.tripKm = trip < 500 ? trip : metres
+            }
+
+        case "vcu_g3_trip":
+            if let raw = Nb.u16(data) {
+                reading.tripKm = RegisterScale.g3TripMileageKm(raw)
             }
 
         case "dis_trip4", "vcu_g3_trip4", "tft_trip4":
@@ -631,6 +665,15 @@ enum DiagnosticMap {
         if asMillimetres > 0, asMillimetres < 50_000 { return asMillimetres }
         if asMetres < 500_000 { return asMetres }
         return nil
+    }
+
+    /// Max G3 / x3: VCU 0x62 in 0.1 km (SHU / segMod).
+    private static func g3TotalOdometerKm(_ data: Data) -> Double? {
+        guard let raw = Nb.u32(data), raw > 0 else { return nil }
+        let km = RegisterScale.g3TotalMileageKm(raw)
+        // Plausibel: 0.1 … 50 000 km
+        guard km >= 0.1, km < 50_000 else { return nil }
+        return km
     }
 
     private static func markSoftUnlockIfNeeded(kmh: Double, into reading: inout IntegrityReading) {

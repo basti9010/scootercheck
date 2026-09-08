@@ -459,7 +459,7 @@ enum IntegrityAnalyzer {
                 sollwert: "—",
                 status: reading.odometerKm == nil ? .nichtFeststellbar : .regelkonform,
                 bewertung: "Auslesewert dokumentiert",
-                erlaeuterung: "Kumulierter Kilometerstand laut Steuergerät.",
+                erlaeuterung: "Kumulierter Kilometerstand laut Steuergerät (Max G3: VCU 0x62 in 0,1 km, wie SHU).",
                 raw: reading.odometerKm.map { String($0) }
             ),
             MeasuredFact(
