@@ -441,7 +441,7 @@ enum EvidenceEngine {
         var results = facts.map { classify($0, profile: profile) }
 
         // Korrelationen + Gewichtsanhebung
-        results = applyCorrelations(results, correlations: &correlations)
+        results = applyCorrelations(results, profile: profile, correlations: &correlations)
 
         // Neutralisierungen (explizit pro Result)
         results = applyNeutralizations(results, reading: reading, profile: profile)
@@ -453,7 +453,16 @@ enum EvidenceEngine {
         let unknown = unknownRegisters(in: reading)
 
         let verdict = ruleBasedVerdict(results: results, correlations: correlations, powerCycle: powerCycle)
-        let score = densifyScore(results)
+        var score = densifyScore(results)
+        // Technisch eindeutiges Getunt-Limit darf keinen „größtenteils seriennahen“ Score erzeugen.
+        if verdict == .eindeutig,
+           results.contains(where: {
+               $0.contributesToVerdict
+                   && $0.fact.markerID == "speed.limit"
+                   && $0.classification == .starkerHinweis
+           }) {
+            score = min(score, 35)
+        }
         let decisive = decisiveEvidence(from: results, verdict: verdict, correlations: correlations)
         // Attribution NACH dem Urteil — beeinflusst es nie.
         let rawAttribution = AttributionEngine.assess(
@@ -538,6 +547,8 @@ enum EvidenceEngine {
         }
 
         if let limit, limit > rated + 1 {
+            let overSuspect = limit > profile.tuningSuspectKmh
+            let overClear = limit >= profile.tuningClearKmh
             facts.append(EvidenceFact(
                 markerID: "speed.limit",
                 title: "Gespeichertes Limit",
@@ -549,9 +560,11 @@ enum EvidenceEngine {
                 expectedValue: "≤ \(Format.kmh.format(Optional(rated)))",
                 persistence: .persistent,
                 resetResistant: true,
-                confidence: 0.88,
+                confidence: overSuspect ? 0.95 : 0.88,
                 knowledgeSource: .referenceVehicle,
-                knownModMatchId: limit >= profile.tuningClearKmh ? "speed.limit.over_clear" : "speed.limit.over_rated",
+                knownModMatchId: overClear
+                    ? "speed.limit.over_clear"
+                    : (overSuspect ? "speed.limit.over_suspect" : "speed.limit.over_rated"),
                 knownStockMatch: false
             ))
         }
@@ -695,14 +708,19 @@ enum EvidenceEngine {
         case "region.sn":
             initial = profile.market == .de20 ? .indiz : .info
         case "speed.limit", "speed.peak":
-            let overClear: Bool = {
-                if fact.markerID == "speed.limit",
-                   let v = readingSpeed(from: fact.interpretedValue), v >= profile.tuningClearKmh { return true }
-                if fact.markerID == "speed.peak",
-                   let v = readingSpeed(from: fact.interpretedValue), v >= profile.tuningClearKmh { return true }
-                return fact.knownModMatchId?.contains("over_clear") == true
-            }()
-            initial = overClear ? .indiz : .abweichung
+            let value = readingSpeed(from: fact.interpretedValue)
+            if fact.markerID == "speed.limit", let v = value, v > profile.tuningSuspectKmh {
+                // Aktives gespeichertes Limit über Verdachtsschwelle (DE: >22 km/h) =
+                // technisch eindeutige Freigabe über Typ — nicht nur „Auffälligkeit“.
+                initial = .starkerHinweis
+            } else if let v = value, v >= profile.tuningClearKmh {
+                initial = .indiz
+            } else if fact.knownModMatchId?.contains("over_clear") == true
+                        || fact.knownModMatchId?.contains("over_suspect") == true {
+                initial = fact.markerID == "speed.limit" ? .starkerHinweis : .indiz
+            } else {
+                initial = .abweichung
+            }
         case "speed.session", "gear.max", "safelock", "fw.unknown", "session.reset":
             initial = fact.markerID == "session.reset" && fact.knownModMatchId != nil ? .indiz : .abweichung
         case let id where id.hasPrefix("serial.cross"):
@@ -740,6 +758,7 @@ enum EvidenceEngine {
 
     private static func applyCorrelations(
         _ results: [EvidenceResult],
+        profile: ScooterProfile,
         correlations: inout [String]
     ) -> [EvidenceResult] {
         let ids = Set(results.map(\.fact.markerID))
@@ -771,14 +790,18 @@ enum EvidenceEngine {
             bump("speed.limit", to: .starkerHinweis, corr: corr)
             bump("speed.peak", to: .starkerHinweis, corr: corr)
         }
+        // Mildes Überschreiten des Serienlimits (≤ Verdachtsschwelle) ohne Begleitmarker
+        // bleibt vorsichtig — klare Limits über der Verdachtsschwelle werden NICHT herabgestuft.
         if ids.contains("speed.limit"),
            !ids.contains("region.sn"),
            !ids.contains("fw.custom"),
-           !ids.contains("speed.peak") {
-            let corr = "Isoliertes Limit — keine Automatik-Eindeutigkeit"
-            correlations.append(corr)
-            if let idx = out.firstIndex(where: { $0.fact.markerID == "speed.limit" }) {
-                let r = out[idx]
+           !ids.contains("speed.peak"),
+           let idx = out.firstIndex(where: { $0.fact.markerID == "speed.limit" }) {
+            let r = out[idx]
+            let limitValue = readingSpeed(from: r.fact.interpretedValue) ?? 0
+            if limitValue <= profile.tuningSuspectKmh, r.classification.rank < EvidenceClass.starkerHinweis.rank {
+                let corr = "Isoliertes Limit nahe Serienbereich — vorsichtige Einordnung"
+                correlations.append(corr)
                 out[idx] = EvidenceResult(
                     fact: r.fact,
                     classification: .abweichung,
@@ -788,6 +811,9 @@ enum EvidenceEngine {
                     neutralizations: r.neutralizations,
                     explanation: r.explanation + " · \(corr)"
                 )
+            } else if limitValue > profile.tuningSuspectKmh {
+                let corr = "Gespeichertes Limit über Verdachtsschwelle (\(Int(profile.tuningSuspectKmh)) km/h)"
+                bump("speed.limit", to: .starkerHinweis, corr: corr)
             }
         }
         return out
@@ -870,7 +896,13 @@ enum EvidenceEngine {
 
         // Technisch nachgewiesene Manipulation — niemals aus Score allein.
         if stark.contains(where: { $0.fact.markerID == "fw.custom" }) { return .eindeutig }
-        if stark.count >= 1, correlations.contains(where: { $0.contains("Custom-FW") || $0.contains("US-Region +") }) {
+        // Gespeichertes Limit klar über Verdachtsschwelle = eindeutige Freigabe über Typ.
+        if stark.contains(where: { $0.fact.markerID == "speed.limit" }) { return .eindeutig }
+        if stark.count >= 1, correlations.contains(where: {
+            $0.contains("Custom-FW")
+                || $0.contains("US-Region +")
+                || $0.contains("über Verdachtsschwelle")
+        }) {
             return .eindeutig
         }
         if persistentIndiz.count >= 3, stark.count + indiz.count >= 3 { return .eindeutig }

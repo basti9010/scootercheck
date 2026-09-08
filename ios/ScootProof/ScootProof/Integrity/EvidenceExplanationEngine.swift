@@ -126,6 +126,9 @@ enum EvidenceExplanationEngine {
             return "Mehr Leistungsstufen freigeschaltet als ab Werk vorgesehen (\(observed))"
         case "speed.limit":
             let soll = fact.expectedValue.map { " statt \($0)" } ?? ""
+            if result.classification == .starkerHinweis {
+                return "Geschwindigkeitslimit klar zu hoch (\(observed)\(soll)) — getunte Freigabe"
+            }
             return "Geschwindigkeitslimit höher als Serienwert (\(observed)\(soll))"
         case "speed.peak":
             return "In einer Fahrt Spitze über dem Serienlimit gemessen (\(observed))"
@@ -215,6 +218,19 @@ enum EvidenceExplanationEngine {
                     fact.expectedValue.map { "Erwartet ab Werk: \($0)" },
                     "Kein Hinweis auf eine Veränderung.",
                     "Kein Beitrag zum Gesamturteil."
+                )
+            }
+            if result.classification == .starkerHinweis {
+                return pack(
+                    "Tempolimit klar über dem erlaubten Serienwert",
+                    """
+                    Im Fahrzeug ist ein Geschwindigkeitslimit von \(fact.interpretedValue ?? fact.rawValue) gespeichert. \
+                    Liegt das aktive Limit über \(fact.expectedValue ?? "dem Serienwert") bzw. klar über der \
+                    Verdachtsschwelle, ist das eine dauerhafte Freigabe — nicht nur Eco/Normal/Sport.
+                    """,
+                    fact.expectedValue.map { "Erwartet ab Werk: \($0)" },
+                    "Das zählt als technisch eindeutiger Hinweis auf eine getunte Konfiguration.",
+                    nil
                 )
             }
             return pack(
