@@ -247,26 +247,46 @@ struct ContentView: View {
                     Text("Katalog v\(report.evidence.catalogVersion)")
                         .font(.caption2)
                         .foregroundStyle(Theme.muted)
-                    Text(report.verdict.laymanText)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !report.evidence.summary.isEmpty {
-                        Text(report.evidence.summary)
-                            .font(.caption.weight(.medium))
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(report.verdict == .stock ? "Ergebnis in Klartext" : "Was ist aufgefallen?")
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.accent)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if report.evidence.problemBullets.isEmpty {
+                            Text(report.evidence.problemOverview)
+                                .font(.footnote)
+                                .foregroundStyle(.white.opacity(0.9))
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            ForEach(Array(report.evidence.problemBullets.enumerated()), id: \.offset) { _, bullet in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text("•")
+                                        .foregroundStyle(Theme.accent)
+                                    Text(bullet)
+                                        .foregroundStyle(.white.opacity(0.92))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .font(.footnote)
+                            }
+                            Text(report.verdict.laymanText)
+                                .font(.caption)
+                                .foregroundStyle(Theme.muted)
+                                .padding(.top, 2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
+                    .padding(.top, 6)
+
                     if let attr = report.evidence.attribution {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Vermutete Manipulationsart")
+                            Text("Vermutete Art der Veränderung")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(Theme.accent)
                             Text(attr.headline)
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(.white)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Text("Konfidenz: \(attr.confidenceLabel) · heuristisch, nicht urteilsbildend")
+                            Text("Nur Einschätzung — kein Nachweis eines bestimmten Werkzeugs")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.muted)
                         }
@@ -294,14 +314,14 @@ struct ContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Text("Ausgelesene Werte")
+            Text("Details zur Prüfung")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("Bewertung ausschließlich durch EvidenceEngine (Katalog v\(report.evidence.catalogVersion)).")
+            Text("Zuerst die Auffälligkeiten in Klartext, darunter die ausgelesenen Werte. Technik hinter „Technische Details“.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
 
-            ForEach(FactGroup.allCases, id: \.self) { group in
+            ForEach(detailFactGroups, id: \.self) { group in
                 if let facts = report.factGroups[group], !facts.isEmpty {
                     Text(group.rawValue)
                         .font(.caption.weight(.semibold))
@@ -317,6 +337,11 @@ struct ContentView: View {
             }
         }
         .scootCard()
+    }
+
+    /// Auffälligkeiten zuerst, dann die übrigen Messgruppen.
+    private var detailFactGroups: [FactGroup] {
+        [.evidence] + FactGroup.allCases.filter { $0 != .evidence }
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -946,19 +971,19 @@ struct FactRow: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                if let evidenceClass = fact.evidenceClass {
-                    Text("Einordnung: \(evidenceClass.label)")
+                if fact.status != .regelkonform && fact.status != .nichtFeststellbar {
+                    Text(statusPhrase)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.fact(fact.status))
+                } else if let evidenceClass = fact.evidenceClass, evidenceClass != .info {
+                    Text(evidenceClass.label)
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.accent)
-                } else {
-                    Text("Einordnung: \(fact.status.rawValue)")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.fact(fact.status))
                 }
-                Text("Festgestellt: \(fact.auslesewert)")
+                Text("Gefunden: \(fact.auslesewert)")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.85))
-                Text("Erwartet: \(fact.sollwert)")
+                Text("Ab Werk erwartet: \(fact.sollwert)")
                     .font(.caption)
                     .foregroundStyle(Theme.muted)
 
@@ -1001,6 +1026,15 @@ struct FactRow: View {
             }
         }
         .padding(.vertical, 12)
+    }
+
+    private var statusPhrase: String {
+        switch fact.status {
+        case .abweichend: return "Auffällig"
+        case .erheblichAbweichend: return "Deutlich abweichend"
+        case .regelkonform: return "Unauffällig"
+        case .nichtFeststellbar: return "Nicht feststellbar"
+        }
     }
 
     private var icon: String {

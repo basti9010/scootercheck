@@ -138,17 +138,17 @@ enum CustomFirmwareDiff {
             ))
         }
 
-        // --- Gänge ---
+        // --- Leistungsstufen ---
         if let gear = reading.gearMax, gear > 1 {
             suspected = true
-            reasons.append("Zusatzgänge freigeschaltet (max \(gear))")
+            reasons.append("Zusätzliche Leistungsstufen freigeschaltet (max \(gear))")
             diffs.append(DiffItem(
                 id: "diff.gear.max",
-                title: "Maximaler Fahrmodus",
+                title: "Maximale Freigabe",
                 stockValue: "1 (Serie \(profile.shortLabel))",
                 observedValue: "\(gear)",
                 severity: .abweichend,
-                explanation: "Zusatzgänge sind ein persistenter Hinweis; allein noch kein Nachweis für Tempo über Typ."
+                explanation: "Zusätzliche Stufen in der Elektronik — nicht dasselbe wie Eco/Normal/Sport."
             ))
         }
 

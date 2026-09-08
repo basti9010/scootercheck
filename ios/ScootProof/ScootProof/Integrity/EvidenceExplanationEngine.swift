@@ -95,10 +95,77 @@ enum EvidenceExplanationEngine {
         }
     }
 
+    /// Kurze Stichpunkte für die Laien-Übersicht („Was ist aufgefallen?“).
+    static func problemBullets(from results: [EvidenceResult], limit: Int = 8) -> [String] {
+        results
+            .filter(\.contributesToVerdict)
+            .sorted { $0.classification.rank > $1.classification.rank }
+            .prefix(limit)
+            .map(problemBullet(for:))
+    }
+
+    /// Gesamte Übersicht in Alltagssprache — ohne Bewertung zu ändern.
+    static func problemOverview(verdict: VerdictLevel, results: [EvidenceResult]) -> String {
+        let bullets = problemBullets(from: results)
+        if bullets.isEmpty {
+            return "Kurz gesagt: Bei den geprüften Punkten wurde nichts Auffälliges gefunden."
+        }
+        var lines: [String] = [
+            "Kurz gesagt — das ist aufgefallen:"
+        ]
+        lines += bullets.map { "• \($0)" }
+        lines.append(verdictOverviewHint(verdict))
+        return lines.joined(separator: "\n")
+    }
+
+    static func problemBullet(for result: EvidenceResult) -> String {
+        let fact = result.fact
+        let observed = fact.interpretedValue ?? fact.rawValue
+        switch fact.markerID {
+        case "gear.max":
+            return "Mehr Leistungsstufen freigeschaltet als ab Werk vorgesehen (\(observed))"
+        case "speed.limit":
+            let soll = fact.expectedValue.map { " statt \($0)" } ?? ""
+            return "Geschwindigkeitslimit höher als Serienwert (\(observed)\(soll))"
+        case "speed.peak":
+            return "In einer Fahrt Spitze über dem Serienlimit gemessen (\(observed))"
+        case "speed.session":
+            return "Vorübergehend erhöhte Freigabe in der laufenden Sitzung"
+        case "session.reset":
+            return "Frühere Freigabe nach dem Ausschalten nicht mehr vorhanden"
+        case "fw.custom":
+            return "Steuergeräte-Software weicht klar vom Serienstand ab"
+        case "fw.unknown":
+            return "Steuergeräte-Software entspricht keinem bekannten Serienstand"
+        case "region.sn":
+            return "Interne Ländereinstellung passt nicht zum erwarteten Serienprofil"
+        case "safelock":
+            return "Serienübliche Sicherheitsbegrenzung ist ausgeschaltet"
+        case let id where id.hasPrefix("serial.cross"):
+            return "Ein Steuergerät passt nicht eindeutig zu den übrigen Kennungen"
+        default:
+            return result.plainLanguage.title
+        }
+    }
+
+    private static func verdictOverviewHint(_ verdict: VerdictLevel) -> String {
+        switch verdict {
+        case .stock:
+            return "Das Gesamturteil sieht keinen relevanten Hinweis auf eine Veränderung."
+        case .auffaellig:
+            return "Das Gesamturteil: einzelne Auffälligkeiten — noch kein starker Nachweis."
+        case .hinweise:
+            return "Das Gesamturteil: mehrere Hinweise sprechen zusammen für eine Veränderung."
+        case .eindeutig:
+            return "Das Gesamturteil: mindestens ein klares technisches Merkmal weicht vom Serienzustand ab."
+        }
+    }
+
     static func explanation(for result: EvidenceResult) -> EvidenceExplanation {
         let fact = result.fact
         let id = fact.markerID
         let neutralized = result.isNeutralized
+        let board = TechnicalGlossary.boardPhrase(fact.source)
 
         let pack: (String, String, String?, String?, String?) -> EvidenceExplanation = { title, summary, expected, relevance, verdict in
             EvidenceExplanation(
@@ -107,121 +174,147 @@ enum EvidenceExplanationEngine {
                 expectedState: expected,
                 relevance: relevance,
                 verdictContribution: verdict ?? verdictContributionText(result),
-                technical: result.chainCitation
+                technical: [
+                    result.chainCitation,
+                    board
+                ].filter { !$0.isEmpty }.joined(separator: " · ")
             )
         }
 
         if neutralized {
-            let rule = result.neutralizations.first?.ruleId ?? "Regel"
             return pack(
-                "Abweichung technisch erklärbar",
+                "Abweichung erklärbar — zählt nicht mit",
                 """
-                Der gelesene Wert weicht zunächst vom Sollprofil ab. Weitere Fahrzeugdaten erklären diese Abweichung jedoch plausibel \
-                (\(rule)). \(TechnicalGlossary.explanation(for: .neutralization)).
+                Ein Wert weicht zuerst vom Serienzustand ab. Weitere Fahrzeugdaten erklären das aber plausibel. \
+                Deshalb fließt dieser Punkt nicht ins Gesamturteil ein.
                 """,
-                fact.expectedValue.map { "Erwartet: \($0)" },
-                "Die Abweichung wird dokumentiert, zählt aber nicht als relevanter Hinweis für das Gesamturteil.",
-                "Kein Beitrag zum Gesamturteil (neutralisiert)."
+                fact.expectedValue.map { "Erwartet ab Werk: \($0)" },
+                "Dokumentiert zur Nachvollziehbarkeit, ohne das Gesamturteil zu belasten.",
+                "Kein Beitrag zum Gesamturteil (technisch erklärt)."
             )
         }
 
         switch id {
         case "region.sn":
             return pack(
-                "Auffällige Regionseinstellung",
-                "Das Fahrzeug meldet intern eine Region, die nicht zum erwarteten Serienprofil dieser Fahrzeugvariante passt. (\(TechnicalGlossary.explanation(for: .region)))",
-                "Erwartet wird die zum Fahrzeugmodell passende Regionseinstellung (\(fact.expectedValue ?? "Serienprofil")).",
-                "Eine abweichende Region kann auf eine geänderte Fahrzeugkonfiguration hinweisen, kann aber auch andere technische Ursachen haben.",
+                "Ländereinstellung weicht ab",
+                """
+                Das Fahrzeug meldet intern eine andere Ländereinstellung als für dieses Modell/diese Variante erwartet. \
+                Das ist eine Einstellung in der Elektronik — nicht das Kennzeichen oder der Verkaufsort.
+                """,
+                "Erwartet: \(fact.expectedValue ?? "passende Serieneinstellung für dieses Profil").",
+                "Kann auf eine geänderte Konfiguration hinweisen, manchmal aber auch andere Ursachen haben.",
                 nil
             )
 
         case "speed.limit":
             if result.classification == .info {
                 return pack(
-                    "Geschwindigkeitslimit entspricht dem Soll",
-                    "Das aktuell gespeicherte Geschwindigkeitslimit entspricht dem erwarteten Serienwert. (\(TechnicalGlossary.explanation(for: .speedLimit)))",
-                    fact.expectedValue,
-                    "Dieser Wert liefert aktuell keinen Hinweis auf eine Abweichung vom Serienzustand.",
+                    "Geschwindigkeitslimit in Ordnung",
+                    "Das gespeicherte Tempolimit entspricht dem erwarteten Serienwert.",
+                    fact.expectedValue.map { "Erwartet ab Werk: \($0)" },
+                    "Kein Hinweis auf eine Veränderung.",
                     "Kein Beitrag zum Gesamturteil."
                 )
             }
             return pack(
-                "Geschwindigkeitslimit weicht vom Soll ab",
-                "Das gespeicherte Geschwindigkeitslimit (\(fact.interpretedValue ?? fact.rawValue)) liegt über dem erwarteten Serienwert.",
-                fact.expectedValue.map { "Erwartet: \($0)" },
-                "Ein erhöhtes Limit kann auf eine dauerhafte Konfigurationsänderung hinweisen (\(TechnicalGlossary.explanation(for: .persistent))).",
+                "Tempolimit höher als ab Werk",
+                """
+                Im Fahrzeug ist ein höheres Geschwindigkeitslimit gespeichert (\(fact.interpretedValue ?? fact.rawValue)) \
+                als für den Serienzustand erwartet. Das bleibt typischerweise dauerhaft gespeichert.
+                """,
+                fact.expectedValue.map { "Erwartet ab Werk: \($0)" },
+                "Spricht für eine dauerhafte Einstellung — nicht nur für das Umschalten von Eco/Normal/Sport.",
                 nil
             )
 
         case "speed.peak":
             return pack(
                 "Fahrspitze über dem Serienlimit",
-                "In der aktuellen Fahrt wurde eine Spitzengeschwindigkeit erfasst, die über dem erwarteten Serienlimit liegt. (\(TechnicalGlossary.explanation(for: .peakSpeed)))",
-                fact.expectedValue.map { "Erwartet: \($0)" },
-                "Die Spitze kann von einer vorübergehenden Freigabe stammen und ist oft nicht dauerhaft gespeichert.",
+                """
+                In der aktuellen Fahrt wurde eine höhere Spitzengeschwindigkeit gemessen \
+                (\(fact.interpretedValue ?? fact.rawValue)) als das Serienlimit erwartet. \
+                Das zeigt, was gefahren wurde — nicht zwingend, was dauerhaft gespeichert ist.
+                """,
+                fact.expectedValue.map { "Erwartetes Serienlimit: \($0)" },
+                "Kann von einer vorübergehenden Freigabe stammen und nach dem Ausschalten verschwinden.",
                 nil
             )
 
         case "speed.session":
             return pack(
-                "Vorübergehend erhöhte Freigabe erkannt",
-                "Es wurden Anzeichen für eine sessiongebundene Freigabe gefunden. (\(TechnicalGlossary.explanation(for: .sessionUnlock)))",
-                "Nach dem Ausschalten sollte dieser Zustand typischerweise nicht mehr vorliegen.",
-                "Das spricht eher für einen temporären Sitzungszustand als für eine dauerhaft gespeicherte Änderung.",
+                "Freigabe nur für diese Sitzung",
+                "Es gibt Anzeichen für eine vorübergehend erhöhte Freigabe — typischerweise nur, solange der Scooter an ist.",
+                "Nach dem Ausschalten sollte dieser Zustand in der Regel weg sein.",
+                "Eher temporär als dauerhaft gespeichert.",
                 nil
             )
 
         case "session.reset":
             return pack(
-                "Frühere Sitzungsfreigabe nach Neustart weg",
-                "Im Vergleich zu einem früheren Protokoll war eine erhöhte Freigabe vorhanden; nach dem Ausschalten ist sie nicht mehr feststellbar.",
-                "Kein anhaltender Unlock-Zustand in der aktuellen Sitzung.",
-                "Das passt zu einem vorübergehenden Sitzungszustand.",
+                "Freigabe nach Ausschalten weg",
+                "In einem früheren Protokoll war eine erhöhte Freigabe sichtbar; nach dem Ausschalten ist sie nicht mehr feststellbar.",
+                "Kein anhaltender Unlock in der aktuellen Sitzung.",
+                "Passt zu einer nur vorübergehenden Freigabe.",
                 nil
             )
 
         case "fw.custom":
             return pack(
-                "Firmware weicht klar vom Serienstand ab",
-                "Die Steuergeräte-Software entspricht einem bekannten, nicht serienmäßigen Muster. (\(TechnicalGlossary.explanation(for: .customFirmware)))",
-                "Erwartet wird ein katalogisierter Serienstand für dieses Modell.",
-                "Das ist ein technisch starkes Merkmal für eine veränderte Firmware — ohne Aussage über ein konkretes Werkzeug.",
+                "Software der Steuergeräte klar verändert",
+                """
+                Die Software auf mindestens einem Steuergerät entspricht einem bekannten, nicht serienmäßigen Muster. \
+                Das ist ein starkes technisches Merkmal — ohne Aussage, mit welchem Tool das gemacht wurde.
+                """,
+                "Erwartet: bekannter Serienstand für dieses Modell.",
+                "Starker Hinweis auf veränderte Firmware.",
                 nil
             )
 
         case "fw.unknown":
             return pack(
-                "Firmware weicht vom bekannten Serienstand ab",
-                "Die Firmware dieses Steuergeräts entspricht keinem bekannten Serienstand für dieses Modell. (\(TechnicalGlossary.explanation(for: .firmware)))",
-                "Erwartet wird ein Eintrag im Serienkatalog.",
-                "Das kann auf eine veränderte, nicht katalogisierte oder nicht originale Firmware hindeuten — ohne dass allein daraus eine Manipulation bewiesen wäre.",
+                "Softwarestand unbekannt / nicht serienmäßig katalogisiert",
+                """
+                Die Software dieses Steuergeräts entspricht keinem bekannten Serienstand für dieses Modell. \
+                Das kann eine veränderte Firmware sein — allein noch kein Beweis für Manipulation.
+                """,
+                "Erwartet: Eintrag im Serienkatalog.",
+                "Auffällig, aber oft nur zusammen mit anderen Punkten belastbar.",
                 nil
             )
 
         case "gear.max":
             return pack(
-                "Gangfreigabe weicht vom Serienzustand ab",
-                "Die maximale Gangfreigabe (\(fact.interpretedValue ?? fact.rawValue)) liegt über dem erwarteten Serienwert.",
-                fact.expectedValue.map { "Erwartet: \($0)" },
-                "Das kann auf eine geänderte Fahrzeugkonfiguration hinweisen.",
+                "Zusätzliche Leistungsstufen freigeschaltet",
+                """
+                Am Scooter sind mehr Leistungsstufen freigeschaltet, als ab Werk für dieses Modell vorgesehen \
+                (\(fact.interpretedValue ?? fact.rawValue)). \
+                Das ist nicht dasselbe wie Eco / Normal / Sport — diese Fahrmodi gehören oft zur Serie. \
+                Hier geht es um eine erweiterte Freigabe in der Elektronik (Steuergerät VCU).
+                """,
+                "Erwartet ab Werk: maximal Serienfreigabe (Wert \(fact.expectedValue ?? "1")).",
+                "Bleibt in der Regel gespeichert und verschwindet nicht durch Umschalten der Fahrmodi.",
                 nil
             )
 
         case "safelock":
             return pack(
-                "Sicherheitsbegrenzung inaktiv",
+                "Sicherheitsbegrenzung ausgeschaltet",
                 "Die serienübliche Sicherheitsbegrenzung (SafeLock) ist derzeit nicht aktiv.",
-                "Erwartet wird ein aktiver SafeLock-Zustand.",
-                "Das kann zusammen mit anderen Merkmalen auf eine Konfigurationsänderung hindeuten.",
+                "Erwartet: aktive Sicherheitsbegrenzung.",
+                "Kann zusammen mit anderen Punkten auf eine geänderte Einstellung hinweisen.",
                 nil
             )
 
         case let cross where cross.hasPrefix("serial.cross"):
             return pack(
                 "Steuergerät passt nicht eindeutig zum Fahrzeug",
-                "Die Kennung dieses Steuergeräts stimmt nicht mit den erwarteten Fahrzeug- oder Modulkennungen überein. (\(TechnicalGlossary.explanation(for: .crossBoard)))",
-                "Erwartet werden zueinander passende Kennungen der Steuergeräte.",
-                "Das kann auf einen Modultausch, eine Reparatur oder eine technische Veränderung hinweisen — nicht automatisch auf eine Manipulation.",
+                """
+                Die Kennung eines Steuergeräts stimmt nicht zu den übrigen Fahrzeug-/Modulkennungen. \
+                Das kann Tausch, Reparatur oder eine technische Veränderung bedeuten — nicht automatisch Manipulation.
+                """,
+                "Erwartet: zueinander passende Kennungen.",
+                "Allein oft mehrdeutig; im Bericht mit den übrigen Punkten lesen.",
                 nil
             )
 
@@ -230,19 +323,19 @@ enum EvidenceExplanationEngine {
                 return pack(
                     fact.title,
                     "\(fact.title): \(fact.interpretedValue ?? fact.rawValue). Kein Hinweis auf eine Abweichung vom Serienzustand.",
-                    fact.expectedValue,
-                    "Dieser Wert wird dokumentiert und trägt derzeit nicht zum Gesamturteil bei.",
+                    fact.expectedValue.map { "Erwartet ab Werk: \($0)" },
+                    "Wird dokumentiert, fließt derzeit nicht ins Gesamturteil ein.",
                     "Kein Beitrag zum Gesamturteil."
                 )
             }
             return pack(
                 fact.title,
                 """
-                Technische Feststellung zu \(fact.title): \(fact.interpretedValue ?? fact.rawValue). \
-                Dieser Rohwert konnte teilweise keinem bekannten Serienmuster sicher zugeordnet werden und wird dokumentiert.
+                Auffälliger Wert bei „\(fact.title)“: \(fact.interpretedValue ?? fact.rawValue). \
+                Der Wert konnte keinem bekannten Serienmuster sicher zugeordnet werden und wird deshalb dokumentiert.
                 """,
                 fact.expectedValue.map { "Erwarteter Zustand: \($0)" },
-                "Abweichungen vom Serienprofil können technisch relevant sein, erfordern aber oft weitere Merkmale zur Einordnung.",
+                "Kann relevant sein, braucht aber oft weitere Merkmale zur Einordnung.",
                 nil
             )
         }
@@ -254,46 +347,46 @@ enum EvidenceExplanationEngine {
         switch row.changeKind {
         case .unchanged:
             return EvidenceExplanation(
-                title: "Änderung bleibt nach dem Ausschalten bestehen",
-                summary: "Der Wert „\(row.title)“ war vor und nach dem Neustart gleich (\(row.scanA)). (\(TechnicalGlossary.explanation(for: .persistent)))",
-                expectedState: row.catalogPersistence.map { "Katalog: \($0.label)" },
-                relevance: "Damit handelt es sich wahrscheinlich nicht nur um einen vorübergehenden Sitzungszustand.",
+                title: "Bleibt nach dem Ausschalten bestehen",
+                summary: "„\(row.title)“ war vor und nach dem Neustart gleich (\(row.scanA)). Das spricht für eine dauerhaft gespeicherte Einstellung.",
+                expectedState: row.catalogPersistence.map { "Erwartetes Verhalten: \($0.label)" },
+                relevance: "Wahrscheinlich nicht nur ein vorübergehender Sitzungszustand.",
                 verdictContribution: nil,
                 technical: row.note
             )
         case .disappeared:
             return EvidenceExplanation(
-                title: "Änderung nur vorübergehend festgestellt",
-                summary: "„\(row.title)“ war vor dem Ausschalten vorhanden (\(row.scanA)) und nach dem Neustart nicht mehr in gleicher Form feststellbar (\(row.scanB)). (\(TechnicalGlossary.explanation(for: .fleeting)))",
-                expectedState: row.catalogPersistence.map { "Katalog: \($0.label)" },
-                relevance: "Das spricht eher für einen temporären Sitzungszustand als für eine dauerhaft gespeicherte Änderung.",
+                title: "Nur vorübergehend sichtbar",
+                summary: "„\(row.title)“ war vor dem Ausschalten vorhanden (\(row.scanA)) und nach dem Neustart nicht mehr in gleicher Form (\(row.scanB)).",
+                expectedState: row.catalogPersistence.map { "Erwartetes Verhalten: \($0.label)" },
+                relevance: "Eher temporär als dauerhaft gespeichert.",
                 verdictContribution: nil,
                 technical: row.note
             )
         case .unavailableAfterRestart:
             return EvidenceExplanation(
-                title: "Wert nach Neustart nicht auslesbar",
-                summary: "„\(row.title)“ konnte nach dem Neustart nicht erneut ausgelesen werden. Das bedeutet nicht automatisch, dass der Wert verschwunden ist.",
+                title: "Nach Neustart nicht auslesbar",
+                summary: "„\(row.title)“ konnte nach dem Neustart nicht erneut ausgelesen werden. Das heißt nicht automatisch, dass der Wert verschwunden ist.",
                 expectedState: nil,
-                relevance: "Keine Aussage über Flüchtigkeit — nur fehlende Auslesbarkeit nach dem Neustart.",
+                relevance: "Keine Aussage, ob der Wert weg ist — nur: diesmal nicht lesbar.",
                 verdictContribution: nil,
                 technical: row.note
             )
         case .appeared:
             return EvidenceExplanation(
-                title: "Wert nach Neustart neu erschienen",
+                title: "Nach Neustart neu erschienen",
                 summary: "„\(row.title)“ war vor dem Neustart nicht bzw. anders vorhanden und danach als \(row.scanB) feststellbar.",
                 expectedState: nil,
-                relevance: "Der Vergleich dokumentiert eine Veränderung zwischen den beiden Auslesungen.",
+                relevance: "Dokumentierte Veränderung zwischen den beiden Auslesungen.",
                 verdictContribution: nil,
                 technical: row.note
             )
         case .changed:
             return EvidenceExplanation(
-                title: "Wert nach Neustart verändert",
+                title: "Nach Neustart verändert",
                 summary: "„\(row.title)“ hat sich von \(row.scanA) auf \(row.scanB) geändert.",
-                expectedState: row.catalogPersistence.map { "Katalog: \($0.label)" },
-                relevance: "Die Änderung wird im Power-Cycle-Vergleich dokumentiert.",
+                expectedState: row.catalogPersistence.map { "Erwartetes Verhalten: \($0.label)" },
+                relevance: "Änderung im Vergleich vor/nach Ausschalten dokumentiert.",
                 verdictContribution: nil,
                 technical: row.note
             )

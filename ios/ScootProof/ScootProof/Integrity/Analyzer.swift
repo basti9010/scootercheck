@@ -827,21 +827,21 @@ enum IntegrityAnalyzer {
                 group: .gear,
                 title: "Aktueller Fahrmodus",
                 auslesewert: Format.num.format(reading.gearMode),
-                sollwert: "1",
+                sollwert: "Serienmodus",
                 status: reading.gearMode == nil ? .nichtFeststellbar : ((reading.gearMode ?? 1) > 1 ? .abweichend : .regelkonform),
-                bewertung: reading.gearMode == nil ? "Nicht feststellbar" : ((reading.gearMode ?? 1) > 1 ? "Erweiterter Modus" : "Serienmodus"),
-                erlaeuterung: "Eingestellter Fahrmodus / Gang.",
+                bewertung: reading.gearMode == nil ? "Nicht feststellbar" : ((reading.gearMode ?? 1) > 1 ? "Erweiterter Modus gewählt" : "Serienmodus"),
+                erlaeuterung: "Gerade gewählter Fahrmodus (z. B. Eco/Normal/Sport). Das ist nicht dasselbe wie freigeschaltete Zusatzstufen.",
                 raw: reading.gearMode.map { String($0) }
             ),
             MeasuredFact(
                 id: "gear.max",
                 group: .gear,
-                title: "Maximaler Fahrmodus",
+                title: "Maximale Freigabe",
                 auslesewert: Format.num.format(maxGear),
                 sollwert: "1 (\(profile.shortLabel))",
                 status: maxGear == nil ? .nichtFeststellbar : ((maxGear ?? 1) > 1 ? .abweichend : .regelkonform),
-                bewertung: maxGear == nil ? "Nicht feststellbar" : ((maxGear ?? 1) > 1 ? "Mehr als Serienmodus" : "Serienmodus"),
-                erlaeuterung: "Höchster verfügbarer Fahrmodus. Zusatzgänge sind ein persistenter Hinweis, aber allein noch kein Nachweis für Tempo > Typ.",
+                bewertung: maxGear == nil ? "Nicht feststellbar" : ((maxGear ?? 1) > 1 ? "Mehr Stufen als Serie" : "Serienfreigabe"),
+                erlaeuterung: "Höchste freigeschaltete Leistungsstufe in der Elektronik. Eco/Normal/Sport allein sind keine Freigabe — erst ein erhöhter Maximalwert gilt als Auffälligkeit.",
                 raw: maxGear.map { String($0) }
             )
         ]
@@ -1063,15 +1063,15 @@ enum IntegrityAnalyzer {
             id: "finding.evidence.verdict",
             severity: evidence.verdict == .stock ? .regelkonform
                 : (evidence.verdict == .auffaellig ? .abweichend : .erheblichAbweichend),
-            title: "Kurzurteil: \(evidence.verdict.label)",
-            detail: "Katalog v\(evidence.catalogVersion). \(evidence.shortVerdictText)",
+            title: "Gesamteindruck: \(evidence.verdict.label)",
+            detail: evidence.problemOverview,
             relatedFactIds: ["evidence.summary"]
         ))
         for line in evidence.decisiveEvidence.prefix(6) {
             findings.append(Finding(
                 id: "finding.evidence.decisive.\(findings.count)",
-                severity: .abweichend,
-                title: "Wesentliche Feststellung",
+                severity: evidence.verdict == .stock ? .regelkonform : .abweichend,
+                title: "Was aufgefallen ist",
                 detail: line,
                 relatedFactIds: ["evidence.summary"]
             ))

@@ -218,6 +218,18 @@ enum ProtocolPDF {
             color: Theme.UI.verdict(result.verdict)
         )
         cursor = drawParagraph(result.evidence.shortVerdictText, at: cursor)
+        cursor += 4
+        cursor = drawSubheading(
+            result.verdict == .stock ? "Ergebnis in Klartext" : "Was ist aufgefallen?",
+            at: cursor
+        )
+        if result.evidence.problemBullets.isEmpty {
+            cursor = drawParagraph(result.evidence.problemOverview, at: cursor)
+        } else {
+            for bullet in result.evidence.problemBullets {
+                cursor = drawParagraph("• \(bullet)", at: cursor)
+            }
+        }
         cursor = drawText(
             "Score \(result.score)/100 verdichtet nur die Feststellungen und erzeugt kein Gesamturteil.",
             at: cursor,
@@ -255,9 +267,9 @@ enum ProtocolPDF {
         y: CGFloat
     ) -> CGFloat {
         var cursor = ensureSpace(context: context, y: y, needed: 80)
-        cursor = drawHeading("II. Wesentliche technische Feststellungen", at: cursor)
+        cursor = drawHeading("II. Was ist aufgefallen?", at: cursor)
         cursor = drawText(
-            "Nur die für das Gesamturteil maßgeblichen Marker in Alltagssprache.",
+            "Die für das Gesamturteil maßgeblichen Punkte in Alltagssprache.",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
@@ -266,7 +278,7 @@ enum ProtocolPDF {
         let markers = result.evidence.justifyingMarkers
         if markers.isEmpty {
             cursor = drawParagraph(
-                "Es wurden keine abweichenden Marker festgestellt, die zum Gesamturteil beitragen.",
+                "Es wurden keine abweichenden Punkte festgestellt, die zum Gesamturteil beitragen.",
                 at: cursor
             )
         }

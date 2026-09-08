@@ -340,6 +340,13 @@ struct EvidenceAssessment: Codable, Hashable, Sendable {
         let a = results.filter { $0.classification == .abweichung && !$0.isNeutralized }.count
         return "Katalog v\(catalogVersion) · \(s)× stark · \(i)× Indiz · \(a)× Abweichung · \(n)× neutralisiert → \(verdict.label)"
     }
+    /// Laien-Übersicht: Was ist aufgefallen? (ändert die Bewertung nicht.)
+    var problemOverview: String {
+        EvidenceExplanationEngine.problemOverview(verdict: verdict, results: results)
+    }
+    var problemBullets: [String] {
+        EvidenceExplanationEngine.problemBullets(from: results)
+    }
     var starkerHinweisCount: Int {
         results.filter { !$0.isNeutralized && $0.classification == .starkerHinweis }.count
     }
@@ -626,11 +633,11 @@ enum EvidenceEngine {
         if let gear = reading.gearMax, gear > 1 {
             facts.append(EvidenceFact(
                 markerID: "gear.max",
-                title: "Gangfreigabe",
+                title: "Zusätzliche Leistungsstufen",
                 source: "VCU",
                 register: "gearMode",
                 rawValue: rawHex(forNames: ["vcu_g3_gear", "vcu_g3_sgear"], in: reading) ?? "\(gear)",
-                interpretedValue: "max. Gang \(gear)",
+                interpretedValue: "max. Stufe \(gear)",
                 expectedValue: "1",
                 persistence: .persistent,
                 resetResistant: true,
@@ -894,14 +901,20 @@ enum EvidenceEngine {
         correlations: [String]
     ) -> [String] {
         var lines: [String] = []
-        for r in results.filter(\.contributesToVerdict).prefix(8) {
-            lines.append("\(r.fact.title): \(r.fact.interpretedValue ?? r.fact.rawValue) [\(r.classification.label)]")
+        let contributing = results.filter(\.contributesToVerdict)
+        if verdict == .stock || contributing.isEmpty {
+            lines.append("Keine Auffälligkeiten, die zum Gesamturteil beitragen")
+        }
+        for r in contributing.prefix(8) {
+            lines.append(EvidenceExplanationEngine.problemBullet(for: r))
         }
         for n in results.flatMap(\.neutralizations).prefix(4) {
-            lines.append("Neutralisiert \(n.ruleId): \(n.classBefore.label) → \(n.classAfter.label)")
+            lines.append("Erklärt / zählt nicht: \(n.reason)")
         }
-        lines.append(contentsOf: correlations.prefix(3))
-        if verdict == .stock { lines.insert("Keine relevanten Evidenzen", at: 0) }
+        // Korrelationen nur als technische Nachzeile — nicht als Laien-Stichpunkt.
+        for c in correlations.prefix(2) {
+            lines.append("Technisch verknüpft: \(c)")
+        }
         return lines
     }
 
@@ -916,7 +929,7 @@ enum EvidenceEngine {
         facts.append(MeasuredFact(
             id: "evidence.summary",
             group: .evidence,
-            title: "Kurzurteil",
+            title: "Gesamteindruck",
             auslesewert: assessment.verdict.label,
             sollwert: VerdictLevel.stock.label,
             status: {
@@ -926,12 +939,9 @@ enum EvidenceEngine {
                 case .hinweise, .eindeutig: return .erheblichAbweichend
                 }
             }(),
-            bewertung: assessment.summary,
-            erlaeuterung: """
-            Katalog v\(assessment.catalogVersion). Urteil regelbasiert; Score \(assessment.score) nur Verdichtung. \
-            \(assessment.shortVerdictText)
-            """,
-            raw: "catalog=\(assessment.catalogVersion);sha=\(assessment.fingerprint.digestSHA256)",
+            bewertung: assessment.problemOverview,
+            erlaeuterung: assessment.problemOverview,
+            raw: "catalog=\(assessment.catalogVersion);sha=\(assessment.fingerprint.digestSHA256);counts=\(assessment.summary)",
             volatility: .persistent,
             evidenceClass: assessment.starkerHinweisCount > 0 ? .starkerHinweis : (assessment.indizCount > 0 ? .indiz : .info),
             sourceBoard: "EvidenceEngine",
@@ -944,11 +954,11 @@ enum EvidenceEngine {
             facts.append(MeasuredFact(
                 id: "evidence.decisive.\(idx)",
                 group: .evidence,
-                title: "Wesentliche Feststellung",
+                title: "Was aufgefallen ist",
                 auslesewert: line,
-                sollwert: "—",
-                status: .abweichend,
-                bewertung: "decisiveEvidence",
+                sollwert: "Serienzustand ohne diesen Hinweis",
+                status: assessment.verdict == .stock ? .regelkonform : .abweichend,
+                bewertung: line,
                 erlaeuterung: line,
                 raw: line
             ))
@@ -984,18 +994,18 @@ enum EvidenceEngine {
             let plain = r.plainLanguage
             let detail = [
                 plain.summary,
-                plain.expectedState.map { "Erwartung: \($0)" },
-                plain.relevance.map { "Bedeutung: \($0)" },
-                plain.verdictContribution.map { "Gesamturteil: \($0)" }
+                plain.expectedState,
+                plain.relevance.map { "Warum relevant: \($0)" },
+                plain.verdictContribution.map { "Fürs Gesamturteil: \($0)" }
             ].compactMap { $0 }.joined(separator: "\n")
             facts.append(MeasuredFact(
                 id: "evidence.\(r.fact.markerID)",
                 group: .evidence,
                 title: plain.title,
                 auslesewert: r.fact.interpretedValue ?? r.fact.rawValue,
-                sollwert: r.fact.expectedValue ?? "—",
+                sollwert: r.fact.expectedValue ?? "Serienzustand",
                 status: r.isNeutralized ? .regelkonform : status(for: r.classification),
-                bewertung: r.classification.label,
+                bewertung: r.isNeutralized ? "erklärt — zählt nicht" : r.classification.label,
                 erlaeuterung: detail,
                 raw: r.chainCitation,
                 volatility: r.fact.persistence,

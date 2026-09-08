@@ -380,24 +380,13 @@ enum VerdictLevel: String, Codable, CaseIterable, Sendable {
     var laymanText: String {
         switch self {
         case .stock:
-            return """
-            Bei den geprüften Daten wurden keine technisch relevanten Abweichungen vom bekannten Serienzustand festgestellt.
-            """
+            return "Kurz: Nichts Auffälliges gefunden — die geprüften Werte passen zum Serienzustand."
         case .auffaellig:
-            return """
-            Es wurden einzelne technische Abweichungen festgestellt. Diese reichen derzeit nicht aus, \
-            um eine eindeutige technische Veränderung anzunehmen.
-            """
+            return "Kurz: Einzelne Auffälligkeiten — noch kein klarer Nachweis für eine Veränderung."
         case .hinweise:
-            return """
-            Mehrere technische Merkmale sprechen in ihrer Kombination für eine Veränderung des Serienzustands. \
-            Die maßgeblichen Feststellungen sind im Analysebericht dokumentiert.
-            """
+            return "Kurz: Mehrere Hinweise sprechen zusammen dafür, dass der Serienzustand verändert wurde."
         case .eindeutig:
-            return """
-            Mindestens ein technisch eindeutiges Merkmal weicht vom bekannten Serienzustand ab. \
-            Die zugrunde liegenden technischen Daten sind im Bericht dokumentiert.
-            """
+            return "Kurz: Mindestens ein klarer technischer Punkt weicht vom Serienzustand ab — Details unten."
         }
     }
 
@@ -748,7 +737,7 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case boards = "Steuergeräte"
     case history = "Fahrhistorie"
     case gear = "Fahrmodus"
-    case evidence = "Evidenzmatrix"
+    case evidence = "Auffälligkeiten"
 }
 
 struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {

@@ -70,8 +70,9 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             fact(id: "region.sn", interpreted: "US-Region", expected: "DE"),
             class: .indiz
         )
-        XCTAssertEqual(r.shortTitle, "Auffällige Regionseinstellung")
-        XCTAssertTrue(r.humanReadableExplanation.contains("Region"))
+        XCTAssertEqual(r.shortTitle, "Ländereinstellung weicht ab")
+        XCTAssertTrue(r.humanReadableExplanation.contains("Ländereinstellung")
+            || r.humanReadableExplanation.contains("Region"))
     }
 
     func testRegionNeutralizedExplanation() {
@@ -86,7 +87,8 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             class: .indiz,
             neutralized: n
         )
-        XCTAssertEqual(r.shortTitle, "Abweichung technisch erklärbar")
+        XCTAssertTrue(r.shortTitle.lowercased().contains("erklärbar")
+            || r.shortTitle.lowercased().contains("zählt nicht"))
         XCTAssertTrue(r.verdictContributionExplanation?.contains("Kein Beitrag") == true)
         XCTAssertFalse(r.contributesToVerdict)
     }
@@ -106,8 +108,9 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             fact(id: "fw.custom", interpreted: "mod fingerprint", modMatch: "fw.custom.confirmed"),
             class: .starkerHinweis
         )
-        XCTAssertTrue(r.plainLanguage.title.lowercased().contains("firmware"))
-        XCTAssertTrue(r.relevanceExplanation?.lowercased().contains("werkzeug") == true
+        XCTAssertTrue(r.plainLanguage.title.lowercased().contains("software")
+            || r.plainLanguage.title.lowercased().contains("firmware"))
+        XCTAssertTrue(r.relevanceExplanation?.lowercased().contains("firmware") == true
             || r.humanReadableExplanation.lowercased().contains("nicht serien"))
     }
 
@@ -218,10 +221,46 @@ final class EvidenceExplanationEngineTests: XCTestCase {
 
     func testEindeutigVerdictPlainLanguage() {
         let text = VerdictLevel.eindeutig.laymanText
-        XCTAssertTrue(text.contains("technisch eindeutiges Merkmal") || text.contains("Serienzustand"))
+        XCTAssertTrue(text.lowercased().contains("klar") || text.contains("Serienzustand"))
         XCTAssertFalse(text.lowercased().contains("illegal"))
         XCTAssertFalse(text.lowercased().contains("straftat"))
         XCTAssertFalse(text.lowercased().contains("behörde"))
+    }
+
+    func testGearMaxLaymanBulletExplainsUnlockNotEcoSport() {
+        let r = result(
+            fact(id: "gear.max", title: "Gang", interpreted: "max. Stufe 3", expected: "1", modMatch: "gear.max.unlocked"),
+            class: .indiz
+        )
+        XCTAssertTrue(r.plainLanguage.title.lowercased().contains("leistungsstufen")
+            || r.plainLanguage.title.lowercased().contains("freigeschaltet"))
+        XCTAssertTrue(r.humanReadableExplanation.lowercased().contains("eco")
+            || r.humanReadableExplanation.lowercased().contains("fahrmodi"))
+        let bullet = EvidenceExplanationEngine.problemBullet(for: r)
+        XCTAssertTrue(bullet.lowercased().contains("leistungsstufen")
+            || bullet.lowercased().contains("freigeschaltet"))
+    }
+
+    func testProblemOverviewStock() {
+        let text = EvidenceExplanationEngine.problemOverview(verdict: .stock, results: [])
+        XCTAssertTrue(text.lowercased().contains("nichts") || text.lowercased().contains("kein"))
+        XCTAssertTrue(EvidenceExplanationEngine.problemBullets(from: []).isEmpty)
+    }
+
+    func testProblemOverviewListsBullets() {
+        let limit = result(
+            fact(id: "speed.limit", interpreted: "32 km/h", expected: "≤ 20 km/h"),
+            class: .indiz
+        )
+        let gear = result(
+            fact(id: "gear.max", interpreted: "max. Stufe 3", expected: "1"),
+            class: .abweichung
+        )
+        let text = EvidenceExplanationEngine.problemOverview(verdict: .hinweise, results: [limit, gear])
+        XCTAssertTrue(text.contains("•"))
+        XCTAssertTrue(text.lowercased().contains("tempolimit")
+            || text.lowercased().contains("geschwindigkeitslimit")
+            || text.lowercased().contains("leistungsstufen"))
     }
 
     func testNeutralizedNoVerdictContribution() {
