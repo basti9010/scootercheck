@@ -34,6 +34,7 @@
 		A10000000000000000000019 /* BleModelHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* BleModelHintTests.swift */; };
 		A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* ProtocolSubjectTests.swift */; };
 		A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */; };
+		A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* G3OdometerScaleTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +67,7 @@
 		B1000000000000000000001A /* BleModelHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleModelHintTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001B /* ProtocolSubjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolSubjectTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevatedLimitVerdictTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000001D /* G3OdometerScaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G3OdometerScaleTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000002 /* ScootProofTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScootProofTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -141,6 +143,7 @@
 				B1000000000000000000001A /* BleModelHintTests.swift */,
 				B1000000000000000000001B /* ProtocolSubjectTests.swift */,
 				B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */,
+				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
 			);
 			path = ScootProofTests;
 			sourceTree = "<group>";
@@ -296,6 +299,7 @@
 				A10000000000000000000019 /* BleModelHintTests.swift in Sources */,
 				A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */,
 				A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */,
+				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
