@@ -16,6 +16,7 @@ enum ProtocolJSON {
             protocolNumber: session.protocolNumber,
             createdAt: ISO8601DateFormatter().string(from: session.createdAt),
             analyzedAt: ISO8601DateFormatter().string(from: result.analyzedAt),
+            subject: session.subject.isEmpty ? nil : session.subject.sanitized(),
             profile: result.profile.rawValue,
             profileLabel: result.profile.label,
             score: result.score,
@@ -52,6 +53,7 @@ enum ProtocolJSON {
         let protocolNumber: String
         let createdAt: String
         let analyzedAt: String
+        let subject: ProtocolSubject?
         let profile: String
         let profileLabel: String
         let score: Int
@@ -177,13 +179,17 @@ enum ProtocolPDF {
         cursor += 10
 
         // Meta card
-        let metaH: CGFloat = 78
+        let subjectLine = session.subject.summaryLine
+        let metaH: CGFloat = subjectLine == nil ? 78 : 94
         drawCard(in: CGRect(x: margin, y: cursor, width: contentWidth, height: metaH))
         var metaY = cursor + 12
         metaY = drawText("Protokoll-Nr.  \(session.protocolNumber)", at: metaY, font: bodyFont(size: 11, weight: .semibold), color: Theme.UI.text, indent: 14)
         metaY = drawText("Erstellt        \(germanDate(session.createdAt))", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
         metaY = drawText("App             \(appVersion)", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
         metaY = drawText("Profil          \(result.profile.label)", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
+        if let subjectLine {
+            metaY = drawText("Zuordnung       \(subjectLine)", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
+        }
         cursor += metaH + 12
 
         // Verdict strip
@@ -247,6 +253,31 @@ enum ProtocolPDF {
         ]
         for (label, value) in rows {
             cursor = drawKeyValue(label, value: value, at: cursor)
+        }
+        if !session.subject.isEmpty {
+            cursor += 4
+            cursor = drawSubheading("Zuordnung (optional)", at: cursor)
+            let subject = session.subject.sanitized()
+            var subjectRows: [(String, String)] = []
+            if let last = subject.lastName { subjectRows.append(("Nachname", last)) }
+            if let first = subject.firstName { subjectRows.append(("Vorname", first)) }
+            if let birth = subject.birthDate {
+                let f = DateFormatter()
+                f.locale = Locale(identifier: "de_DE")
+                f.dateStyle = .medium
+                f.timeStyle = .none
+                subjectRows.append(("Geburtsdatum", f.string(from: birth)))
+            }
+            if let plate = subject.licensePlate { subjectRows.append(("Kennzeichen", plate)) }
+            for (label, value) in subjectRows {
+                cursor = drawKeyValue(label, value: value, at: cursor)
+            }
+            cursor = drawText(
+                "Angaben zur Zuordnung — optional, nicht bewertungsrelevant.",
+                at: cursor,
+                font: bodyFont(size: 9),
+                color: Theme.UI.muted
+            )
         }
         cursor += 4
         cursor = drawParagraph(

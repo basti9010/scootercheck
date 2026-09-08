@@ -68,4 +68,14 @@ extension View {
             .background(Theme.card)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
+
+    func scootField() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .foregroundStyle(.white)
+            .font(.body)
+    }
 }

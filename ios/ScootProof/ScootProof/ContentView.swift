@@ -321,6 +321,8 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
 
+            subjectAssignmentCard
+
             ForEach(detailFactGroups, id: \.self) { group in
                 if let facts = report.factGroups[group], !facts.isEmpty {
                     Text(group.rawValue)
@@ -337,6 +339,108 @@ struct ContentView: View {
             }
         }
         .scootCard()
+    }
+
+    /// Optionale Fahrer-/Kennzeichen-Zuordnung — nicht bewertungsrelevant.
+    private var subjectAssignmentCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Zuordnung (optional)")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+            Text("Nur zur Kontrolle / Zuordnung des Protokolls. Alle Felder freiwillig — fließen nicht in die Bewertung ein.")
+                .font(.caption)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            TextField("Nachname", text: subjectStringBinding(\.lastName))
+                .textContentType(.familyName)
+                .textInputAutocapitalization(.words)
+                .scootField()
+
+            TextField("Vorname", text: subjectStringBinding(\.firstName))
+                .textContentType(.givenName)
+                .textInputAutocapitalization(.words)
+                .scootField()
+
+            HStack {
+                Toggle("Geburtsdatum", isOn: birthDateEnabledBinding)
+                    .font(.footnote)
+                    .foregroundStyle(.white)
+                if session?.subject.birthDate != nil {
+                    DatePicker(
+                        "",
+                        selection: birthDateValueBinding,
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    .labelsHidden()
+                    .colorScheme(.dark)
+                }
+            }
+
+            TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .scootField()
+
+            if let summary = session?.subject.summaryLine {
+                Text(summary)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
+        Binding(
+            get: { session?.subject[keyPath: keyPath] ?? "" },
+            set: { newValue in
+                updateSubject { subject in
+                    let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    subject[keyPath: keyPath] = trimmed.isEmpty ? nil : trimmed
+                }
+            }
+        )
+    }
+
+    private var birthDateEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { session?.subject.birthDate != nil },
+            set: { enabled in
+                updateSubject { subject in
+                    if enabled {
+                        if subject.birthDate == nil {
+                            subject.birthDate = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+                        }
+                    } else {
+                        subject.birthDate = nil
+                    }
+                }
+            }
+        )
+    }
+
+    private var birthDateValueBinding: Binding<Date> {
+        Binding(
+            get: {
+                session?.subject.birthDate
+                    ?? Calendar.current.date(byAdding: .year, value: -25, to: Date())
+                    ?? Date()
+            },
+            set: { date in
+                updateSubject { $0.birthDate = date }
+            }
+        )
+    }
+
+    private func updateSubject(_ mutate: (inout ProtocolSubject) -> Void) {
+        guard var current = session else { return }
+        mutate(&current.subject)
+        current.subject = current.subject.sanitized()
+        session = current
+        try? history.save(current)
     }
 
     /// Auffälligkeiten zuerst, dann die übrigen Messgruppen.
@@ -730,6 +834,11 @@ struct ContentView: View {
                 Text(serial)
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
+            }
+            if let subject = entry.subjectSummary, !subject.isEmpty {
+                Text(subject)
+                    .font(.caption)
+                    .foregroundStyle(Theme.accent)
             }
             Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption2)

@@ -913,6 +913,66 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     """
 }
 
+struct ProtocolSubject: Codable, Hashable, Sendable {
+    var lastName: String?
+    var firstName: String?
+    var birthDate: Date?
+    var licensePlate: String?
+
+    static let empty = ProtocolSubject()
+
+    var isEmpty: Bool {
+        normalized(lastName) == nil
+            && normalized(firstName) == nil
+            && birthDate == nil
+            && normalized(licensePlate) == nil
+    }
+
+    /// „Max Mustermann“ oder nil.
+    var displayName: String? {
+        let parts = [normalized(firstName), normalized(lastName)].compactMap { $0 }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " ")
+    }
+
+    /// Kurze Zeile für Verlauf / PDF-Kopf.
+    var summaryLine: String? {
+        var parts: [String] = []
+        if let name = displayName { parts.append(name) }
+        if let birth = birthDate {
+            parts.append(Self.birthFormatter.string(from: birth))
+        }
+        if let plate = normalized(licensePlate) {
+            parts.append(plate)
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " · ")
+    }
+
+    func sanitized() -> ProtocolSubject {
+        ProtocolSubject(
+            lastName: normalized(lastName),
+            firstName: normalized(firstName),
+            birthDate: birthDate,
+            licensePlate: normalized(licensePlate)?.uppercased()
+        )
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static let birthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "de_DE")
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+}
+
 struct CheckSession: Codable, Hashable, Identifiable, Sendable {
     let id: UUID
     var profile: ScooterProfile
@@ -920,6 +980,8 @@ struct CheckSession: Codable, Hashable, Identifiable, Sendable {
     var result: IntegrityResult?
     let createdAt: Date
     var protocolNumber: String
+    /// Optionale Zuordnung (Fahrer / Kennzeichen) — rein dokumentarisch, nicht bewertungsrelevant.
+    var subject: ProtocolSubject
 
     init(
         id: UUID = UUID(),
@@ -927,7 +989,8 @@ struct CheckSession: Codable, Hashable, Identifiable, Sendable {
         reading: IntegrityReading = IntegrityReading(),
         result: IntegrityResult? = nil,
         createdAt: Date = Date(),
-        protocolNumber: String? = nil
+        protocolNumber: String? = nil,
+        subject: ProtocolSubject = .empty
     ) {
         self.id = id
         self.profile = profile
@@ -935,6 +998,35 @@ struct CheckSession: Codable, Hashable, Identifiable, Sendable {
         self.result = result
         self.createdAt = createdAt
         self.protocolNumber = protocolNumber ?? CheckSession.makeProtocolNumber(from: createdAt, id: id)
+        self.subject = subject.sanitized()
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, profile, reading, result, createdAt, protocolNumber, subject
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        profile = try c.decode(ScooterProfile.self, forKey: .profile)
+        reading = try c.decodeIfPresent(IntegrityReading.self, forKey: .reading) ?? IntegrityReading()
+        result = try c.decodeIfPresent(IntegrityResult.self, forKey: .result)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        protocolNumber = try c.decode(String.self, forKey: .protocolNumber)
+        subject = (try c.decodeIfPresent(ProtocolSubject.self, forKey: .subject) ?? .empty).sanitized()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(profile, forKey: .profile)
+        try c.encode(reading, forKey: .reading)
+        try c.encodeIfPresent(result, forKey: .result)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(protocolNumber, forKey: .protocolNumber)
+        if !subject.isEmpty {
+            try c.encode(subject.sanitized(), forKey: .subject)
+        }
     }
 
     static func makeProtocolNumber(from date: Date, id: UUID) -> String {

@@ -14,6 +14,60 @@ final class ProtocolHistoryStore: ObservableObject {
         var score: Int?
         var serialDisplay: String?
         var trackId: String?
+        /// Optionale Kurzzeile (Name / Geburtsdatum / Kennzeichen).
+        var subjectSummary: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, protocolNumber, createdAt, profile, verdict, score, serialDisplay, trackId, subjectSummary
+        }
+
+        init(
+            id: UUID,
+            protocolNumber: String,
+            createdAt: Date,
+            profile: ScooterProfile,
+            verdict: VerdictLevel? = nil,
+            score: Int? = nil,
+            serialDisplay: String? = nil,
+            trackId: String? = nil,
+            subjectSummary: String? = nil
+        ) {
+            self.id = id
+            self.protocolNumber = protocolNumber
+            self.createdAt = createdAt
+            self.profile = profile
+            self.verdict = verdict
+            self.score = score
+            self.serialDisplay = serialDisplay
+            self.trackId = trackId
+            self.subjectSummary = subjectSummary
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(UUID.self, forKey: .id)
+            protocolNumber = try c.decode(String.self, forKey: .protocolNumber)
+            createdAt = try c.decode(Date.self, forKey: .createdAt)
+            profile = try c.decode(ScooterProfile.self, forKey: .profile)
+            verdict = try c.decodeIfPresent(VerdictLevel.self, forKey: .verdict)
+            score = try c.decodeIfPresent(Int.self, forKey: .score)
+            serialDisplay = try c.decodeIfPresent(String.self, forKey: .serialDisplay)
+            trackId = try c.decodeIfPresent(String.self, forKey: .trackId)
+            subjectSummary = try c.decodeIfPresent(String.self, forKey: .subjectSummary)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            try c.encode(protocolNumber, forKey: .protocolNumber)
+            try c.encode(createdAt, forKey: .createdAt)
+            try c.encode(profile, forKey: .profile)
+            try c.encodeIfPresent(verdict, forKey: .verdict)
+            try c.encodeIfPresent(score, forKey: .score)
+            try c.encodeIfPresent(serialDisplay, forKey: .serialDisplay)
+            try c.encodeIfPresent(trackId, forKey: .trackId)
+            try c.encodeIfPresent(subjectSummary, forKey: .subjectSummary)
+        }
     }
 
     @Published private(set) var entries: [Entry] = []
@@ -80,7 +134,8 @@ final class ProtocolHistoryStore: ObservableObject {
                 verdict: result.verdict,
                 score: result.score,
                 serialDisplay: result.reading.serialDisplay ?? session.reading.serialDisplay,
-                trackId: result.trackMatch.trackId.rawValue
+                trackId: result.trackMatch.trackId.rawValue,
+                subjectSummary: session.subject.summaryLine
             ),
             at: 0
         )
