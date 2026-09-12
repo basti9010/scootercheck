@@ -484,19 +484,42 @@ enum EvidenceExplanationEngine {
             ))
         }
 
-        if !ids.contains("speed.limit") {
-            let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
+        // Nur wenn ein Limit tatsächlich ausgelesen wurde und im Serienrahmen liegt —
+        // fehlende Limit-Register nicht als „entspricht dem Soll“ verkaufen.
+        if !ids.contains("speed.limit"),
+           let limit = reading.speedLimitKmh ?? reading.speedMaxKmh,
+           limit > 0,
+           limit <= profile.ratedMaxKmh + 1 {
             facts.append(MeasuredFact(
                 id: "positive.limit.stock",
                 group: .evidence,
                 title: "Geschwindigkeitslimit entspricht dem Soll",
-                auslesewert: limit.map { Format.kmh.format(Optional($0)) } ?? "im Rahmen",
+                auslesewert: Format.kmh.format(Optional(limit)),
                 sollwert: "≤ \(Format.kmh.format(Optional(profile.ratedMaxKmh)))",
                 status: .regelkonform,
                 bewertung: "unauffällig",
                 erlaeuterung: "Das aktuell gespeicherte Geschwindigkeitslimit entspricht dem erwarteten Serienwert. Dieser Wert liefert aktuell keinen Hinweis auf eine Abweichung vom Serienzustand.",
                 raw: nil,
                 volatility: .persistent,
+                evidenceClass: .info
+            ))
+        }
+
+        if !ids.contains("speed.peak"),
+           let peak = reading.peakSpeedKmh,
+           peak > 0,
+           peak <= profile.ratedMaxKmh + 1 {
+            facts.append(MeasuredFact(
+                id: "positive.peak.stock",
+                group: .evidence,
+                title: "Trip-Spitze im Serienrahmen",
+                auslesewert: Format.kmh.format(Optional(peak)),
+                sollwert: "≤ \(Format.kmh.format(Optional(profile.ratedMaxKmh)))",
+                status: .regelkonform,
+                bewertung: "unauffällig",
+                erlaeuterung: "Die höchste in der aktuellen/letzten Fahrt erfasste Geschwindigkeit (rSigMaxSpeed) liegt im erwarteten Serienrahmen. Das ist nicht das konfigurierte Limit.",
+                raw: nil,
+                volatility: .semiPersistent,
                 evidenceClass: .info
             ))
         }

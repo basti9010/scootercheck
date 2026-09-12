@@ -33,12 +33,28 @@ enum RegisterScale {
         return nil
     }
 
-    /// Trip-Spitze (rSigMaxSpeed): klassisch ×0.1 km/h; Fallback G3-High-Byte.
+    /// Trip-Spitze (rSigMaxSpeed): klassisch ×0.1 km/h; G3 oft High-Byte oder ganze km/h.
+    /// Wichtig: Rohwerte wie `25`/`45` nicht als 2.5/4.5 km/h lesen (Ganzzahl-km/h bzw. G3).
     static func tripPeakKmh(_ raw: UInt16) -> Double? {
         guard raw > 0 else { return nil }
+        let hi = Int((raw >> 8) & 0xFF)
+        // G3 packed: High-Byte = km/h (0x2D00→45, 0x1616→22, 0x140F→20).
+        if hi >= 5, hi <= 80 {
+            return Double(hi)
+        }
         let tenths = Double(raw) / 10.0
-        if tenths >= 1, tenths <= 100 { return tenths }
-        return g3StoredSpeedKmh(raw)
+        // Klassische DIS ×0.1: Rohwert typisch ≥ 50 (= 5.0 km/h).
+        if tenths >= 5, tenths <= 100 {
+            return tenths
+        }
+        // Ganze km/h auf manchen G3-Probes (z. B. raw 20…45).
+        if raw >= 5, raw <= 120 {
+            return Double(raw)
+        }
+        if tenths >= 1, tenths < 5 {
+            return tenths
+        }
+        return nil
     }
 
     /// Millimetre-/Meter-ODO (klassisch DIS 0xB7): Rohwert in Metern → km.

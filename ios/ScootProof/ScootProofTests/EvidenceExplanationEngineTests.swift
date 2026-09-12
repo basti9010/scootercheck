@@ -289,9 +289,25 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             powerCycle: nil
         )
         XCTAssertTrue(positives.contains { $0.id == "positive.limit.stock" })
+        XCTAssertTrue(positives.contains { $0.id == "positive.peak.stock" })
         XCTAssertTrue(positives.contains { $0.id == "positive.region.stock" })
         XCTAssertTrue(positives.contains { $0.id == "positive.fw.stock" })
         XCTAssertTrue(positives.contains { $0.id == "positive.boards.consistent" })
+    }
+
+    func testPositiveLimitSkippedWhenUnread() {
+        let reading = IntegrityReading(
+            serialDisplay: "1CGBTEST0001",
+            fwMcu: "1.0.0"
+        )
+        let positives = EvidenceExplanationEngine.positiveFindings(
+            reading: reading,
+            profile: .maxG3D,
+            results: [],
+            powerCycle: nil
+        )
+        XCTAssertFalse(positives.contains { $0.id == "positive.limit.stock" })
+        XCTAssertFalse(positives.contains { $0.id == "positive.peak.stock" })
     }
 
     func testGlossaryCoversCoreTerms() {

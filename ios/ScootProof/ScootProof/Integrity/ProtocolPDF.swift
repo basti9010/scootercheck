@@ -248,6 +248,9 @@ enum ProtocolPDF {
             ("Fahrzeugtyp", result.profile.label),
             ("Angezeigte Seriennummer", result.reading.serialDisplay ?? "—"),
             ("Kilometerstand", Format.km.format(result.reading.odometerKm)),
+            // Limit ≠ Peak: Limit = konfiguriert, Peak = Trip-Spitze (rSigMaxSpeed).
+            ("Geschwindigkeitslimit", Format.kmh.format(result.reading.speedLimitKmh ?? result.reading.speedMaxKmh)),
+            ("Trip-Spitze (Peak)", Format.kmh.format(result.reading.peakSpeedKmh)),
             ("Protokoll", session.protocolNumber),
             ("Katalogversion", "v\(result.evidence.catalogVersion)")
         ]

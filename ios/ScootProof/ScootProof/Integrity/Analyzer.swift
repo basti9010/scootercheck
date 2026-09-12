@@ -623,15 +623,25 @@ enum IntegrityAnalyzer {
                 title: "Soft-Unlock (Tempo, aktuelle Session)",
                 auslesewert: {
                     if reading.hiddenTuningDetected == true {
+                        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
                         let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
                         let peak = reading.peakSpeedKmh
-                        if let limit, limit > 0 {
+                        let fromLimit = (limit ?? 0) >= threshold
+                        let fromPeak = (peak ?? 0) >= threshold
+                        // Nur den Wert nennen, der die Schwelle wirklich überschreitet —
+                        // sonst wirkt ein serienmäßiges Limit wie der Unlock-Beweis.
+                        switch (fromLimit, fromPeak) {
+                        case (true, true):
+                            return "Limit \(Format.kmh.format(Optional(limit))) / Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                        case (true, false):
                             return "Limit \(Format.kmh.format(Optional(limit)))"
-                        }
-                        if let peak, peak > 0 {
+                        case (false, true):
                             return "Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                        case (false, false):
+                            if let peak, peak > 0 { return "Trip-Peak \(Format.kmh.format(Optional(peak)))" }
+                            if let limit, limit > 0 { return "Limit \(Format.kmh.format(Optional(limit)))" }
+                            return "Tempo über Schwelle"
                         }
-                        return "Tempo über Schwelle"
                     }
                     if reading.hiddenTuningDetected == false { return "inaktiv / zurückgesetzt" }
                     return "—"
