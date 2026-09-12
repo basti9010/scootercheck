@@ -537,9 +537,33 @@ enum ProtocolPDF {
             )
         }
 
-        // IV.g Fingerprint
+        // IV.g Geheimkombination & Höchstgeschwindigkeit
         cursor = ensureSpace(context: context, y: cursor, needed: 50)
-        cursor = drawSubheading("IV.g Fingerprint / Hash / Katalogversion", at: cursor)
+        cursor = drawSubheading("IV.g Geheimkombination & Höchstgeschwindigkeit", at: cursor)
+        if let ur = result.unlockRescan {
+            cursor = drawText(
+                "Geheimkombination vom Nutzer herausgefunden bzw. aus dem Speicher geladen, am Scooter eingegeben, danach erneut ausgelesen.",
+                at: cursor,
+                font: bodyFont(size: 8),
+                color: Theme.UI.muted
+            )
+            cursor = drawKeyValue("Geheimkombination", value: ur.unlockCode, at: cursor)
+            cursor = drawKeyValue("Schwelle", value: Format.kmh.format(ur.thresholdKmh), at: cursor)
+            cursor = drawKeyValue("Vorher Limit / Peak", value: "\(Format.kmh.format(ur.beforeLimitKmh)) / \(Format.kmh.format(ur.beforePeakKmh))", at: cursor)
+            cursor = drawKeyValue("Nachher Limit / Peak", value: "\(Format.kmh.format(ur.afterLimitKmh)) / \(Format.kmh.format(ur.afterPeakKmh))", at: cursor)
+            cursor = drawParagraph(ur.summary, at: cursor)
+        } else {
+            cursor = drawText(
+                "Kein Zweitauslese-Schritt nach Geheimkombination in diesem Bericht.",
+                at: cursor,
+                font: bodyFont(size: 9),
+                color: Theme.UI.muted
+            )
+        }
+
+        // IV.h Fingerprint
+        cursor = ensureSpace(context: context, y: cursor, needed: 50)
+        cursor = drawSubheading("IV.h Fingerprint / Hash / Katalogversion", at: cursor)
         cursor = drawKeyValue("Katalog", value: "v\(result.evidence.catalogVersion)", at: cursor)
         cursor = drawKeyValue("Fingerprint", value: result.evidence.fingerprint.digestSHA256, at: cursor)
         cursor = drawKeyValue("SHA-256 Auslese", value: result.reading.evidenceSha256 ?? "—", at: cursor)

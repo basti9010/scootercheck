@@ -14,7 +14,8 @@ enum IntegrityAnalyzer {
         priorUnlock: PriorUnlockEvidence? = nil,
         priorReading: IntegrityReading? = nil,
         priorProtocolNumber: String? = nil,
-        powerCycle: PowerCycleReport? = nil
+        powerCycle: PowerCycleReport? = nil,
+        unlockRescan: UnlockRescanReport? = nil
     ) -> IntegrityResult {
         var reading = reading
         normalizeSpeedUnlockFlag(&reading)
@@ -40,6 +41,9 @@ enum IntegrityAnalyzer {
         facts += buildTemperatureFacts(reading: reading)
         facts += buildErrorFacts(reading: reading)
         facts += buildFlagFacts(reading: reading, profile: profile, priorUnlock: priorUnlock)
+        if let unlockRescan {
+            facts += buildUnlockRescanFacts(unlockRescan)
+        }
         facts += buildGearFacts(reading: reading, profile: profile)
         facts += buildProtocolFacts(reading: reading)
         facts += buildIntegrityFacts(reading: reading)
@@ -62,7 +66,8 @@ enum IntegrityAnalyzer {
             trackMatch: trackMatch,
             score: evidence.score,
             verdict: evidence.verdict,
-            evidence: evidence
+            evidence: evidence,
+            unlockRescan: unlockRescan
         )
     }
 
@@ -632,14 +637,14 @@ enum IntegrityAnalyzer {
                         // sonst wirkt ein serienmäßiges Limit wie der Unlock-Beweis.
                         switch (fromLimit, fromPeak) {
                         case (true, true):
-                            return "Limit \(Format.kmh.format(Optional(limit))) / Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                            return "Limit \(Format.kmh.format(limit)) / Trip-Peak \(Format.kmh.format(peak))"
                         case (true, false):
-                            return "Limit \(Format.kmh.format(Optional(limit)))"
+                            return "Limit \(Format.kmh.format(limit))"
                         case (false, true):
-                            return "Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                            return "Trip-Peak \(Format.kmh.format(peak))"
                         case (false, false):
-                            if let peak, peak > 0 { return "Trip-Peak \(Format.kmh.format(Optional(peak)))" }
-                            if let limit, limit > 0 { return "Limit \(Format.kmh.format(Optional(limit)))" }
+                            if let peak, peak > 0 { return "Trip-Peak \(Format.kmh.format(peak))" }
+                            if let limit, limit > 0 { return "Limit \(Format.kmh.format(limit))" }
                             return "Tempo über Schwelle"
                         }
                     }
@@ -677,7 +682,7 @@ enum IntegrityAnalyzer {
                     return "Nicht feststellbar"
                 }(),
                 erlaeuterung: SoftUnlockSettings.isEnabledSnapshot()
-                    ? "Session-Unlock (Wirkung Limit/Peak ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h). Nach Ausschalten/Panic oft weg — dann zählen persistente Marker und frühere Protokolle."
+                    ? "Session-Unlock (Wirkung Limit/Peak ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h). Geheimkombination eingeben und erneut auslesen (Höchstgeschwindigkeiten). Nach Ausschalten sonst oft weg."
                     : "Soft-Unlock-Erkennung ist in den Einstellungen ausgeschaltet.",
                 raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
             ),
@@ -713,7 +718,7 @@ enum IntegrityAnalyzer {
                     ? "Aktuelles Session-Unlock sichtbar — Protokoll speichern, bevor ausgeschaltet wird"
                     : "Kein Vergleichsprotokoll mit erhöhtem Tempo für diese SN",
                 erlaeuterung: """
-                Soft-Unlock verschwindet oft nach Ausschalten. Lösung ohne Tastenkombination: \
+                Soft-Unlock verschwindet oft nach Ausschalten. Geheimkombination eingeben und erneut auslesen; \
                 während freigeschaltetem Tempo auslesen und speichern; danach beweisen persistente Marker \
                 (gespeichertes Max-Limit, FW, Region, Gänge) bzw. das gespeicherte Protokoll den Zustand.
                 """,
@@ -962,6 +967,49 @@ enum IntegrityAnalyzer {
                 bewertung: reading.physicalMarks.isEmpty ? "Keine Einträge" : "\(reading.physicalMarks.count) Merkmal(e)",
                 erlaeuterung: "Vom Prüfer dokumentierte äußere Merkmale (nur Beobachtung, keine Auslesung).",
                 raw: reading.physicalMarks.joined(separator: ";")
+            )
+        ]
+    }
+
+    /// Ermittelte Geheimkombination + erneute Höchstgeschwindigkeits-Auslese.
+    private static func buildUnlockRescanFacts(_ report: UnlockRescanReport) -> [MeasuredFact] {
+        let afterTempo = max(report.afterLimitKmh ?? 0, report.afterPeakKmh ?? 0)
+        let unlocked = afterTempo >= report.thresholdKmh
+        return [
+            MeasuredFact(
+                id: "unlock.rescan.code",
+                group: .flags,
+                title: "Geheimkombination (gespeichert / eingegeben)",
+                auslesewert: report.unlockCode,
+                sollwert: "am Fahrzeug eingegeben",
+                status: .regelkonform,
+                bewertung: "Geheimkombination vom Nutzer eingegeben bzw. aus Speicher geladen",
+                erlaeuterung: "Keine festen Katalog-Kombinationen. Der Nutzer findet die Kombination selbst; sie wird pro Seriennummer gespeichert und bei Bedarf wieder ausgelesen. Nach Eingabe am Scooter erneut auslesen und Limit/Peak sichern.",
+                raw: report.unlockCode
+            ),
+            MeasuredFact(
+                id: "unlock.rescan.before",
+                group: .speed,
+                title: "Tempo vor Geheimkombination",
+                auslesewert: "Limit \(Format.kmh.format(report.beforeLimitKmh)) / Peak \(Format.kmh.format(report.beforePeakKmh))",
+                sollwert: "Vergleichswert vor Freischaltung",
+                status: .nichtFeststellbar,
+                bewertung: "Auslese A (vor Geheimkombination)",
+                erlaeuterung: "Registerzustand vor Eingabe der ermittelten Geheimkombination.",
+                raw: nil
+            ),
+            MeasuredFact(
+                id: "unlock.rescan.after",
+                group: .speed,
+                title: "Höchstgeschwindigkeit nach Geheimkombination",
+                auslesewert: "Limit \(Format.kmh.format(report.afterLimitKmh)) / Peak \(Format.kmh.format(report.afterPeakKmh))",
+                sollwert: "≤ Schwelle \(Format.kmh.format(report.thresholdKmh))",
+                status: unlocked ? .erheblichAbweichend : .regelkonform,
+                bewertung: unlocked
+                    ? "Freigeschaltetes Tempo nach Geheimkombination sichtbar"
+                    : "Nach Geheimkombination kein Tempo über Schwelle",
+                erlaeuterung: report.summary,
+                raw: nil
             )
         ]
     }
