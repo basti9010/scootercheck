@@ -430,6 +430,45 @@ struct PriorUnlockEvidence: Sendable, Equatable {
     }
 }
 
+/// Geheimkombination eingeben → erneut auslesen → Höchstgeschwindigkeiten sichern.
+struct UnlockRescanReport: Codable, Hashable, Sendable {
+    let unlockCode: String
+    let thresholdKmh: Double
+    let beforeLimitKmh: Double?
+    let beforePeakKmh: Double?
+    let afterLimitKmh: Double?
+    let afterPeakKmh: Double?
+    let summary: String
+
+    static func make(
+        unlockCode: String,
+        thresholdKmh: Double,
+        before: IntegrityReading,
+        after: IntegrityReading
+    ) -> UnlockRescanReport {
+        let beforeLimit = before.speedLimitKmh ?? before.speedMaxKmh
+        let afterLimit = after.speedLimitKmh ?? after.speedMaxKmh
+        let beforePeak = before.peakSpeedKmh
+        let afterPeak = after.peakSpeedKmh
+        let afterTempo = max(afterLimit ?? 0, afterPeak ?? 0)
+        let summary: String
+        if afterTempo >= thresholdKmh {
+            summary = "Nach Entsperrcode „\(unlockCode)“ erneut ausgelesen: freigeschaltetes Tempo \(Format.kmh.format(afterTempo)) (Limit \(Format.kmh.format(afterLimit)), Peak \(Format.kmh.format(afterPeak)))."
+        } else {
+            summary = "Nach Entsperrcode „\(unlockCode)“ erneut ausgelesen — freigeschaltetes Tempo ≥ \(Int(thresholdKmh)) km/h nicht sichtbar (Limit \(Format.kmh.format(afterLimit)), Peak \(Format.kmh.format(afterPeak)))."
+        }
+        return UnlockRescanReport(
+            unlockCode: unlockCode,
+            thresholdKmh: thresholdKmh,
+            beforeLimitKmh: beforeLimit,
+            beforePeakKmh: beforePeak,
+            afterLimitKmh: afterLimit,
+            afterPeakKmh: afterPeak,
+            summary: summary
+        )
+    }
+}
+
 // MARK: - Display Format
 
 enum Format: String, Codable, Sendable {
@@ -833,6 +872,8 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     let evidence: EvidenceAssessment
     let analyzedAt: Date
     let disclaimer: String
+    /// Geheimkombination → erneute Auslese der Höchstgeschwindigkeiten.
+    let unlockRescan: UnlockRescanReport?
 
     init(
         sessionId: UUID,
@@ -845,7 +886,8 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         verdict: VerdictLevel,
         evidence: EvidenceAssessment = .empty,
         analyzedAt: Date = Date(),
-        disclaimer: String = IntegrityResult.defaultDisclaimer
+        disclaimer: String = IntegrityResult.defaultDisclaimer,
+        unlockRescan: UnlockRescanReport? = nil
     ) {
         self.sessionId = sessionId
         self.profile = profile
@@ -859,11 +901,12 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         self.evidence = evidence
         self.analyzedAt = analyzedAt
         self.disclaimer = disclaimer
+        self.unlockRescan = unlockRescan
     }
 
     enum CodingKeys: String, CodingKey {
         case sessionId, profile, reading, facts, factGroups, findings
-        case trackMatch, score, verdict, evidence, analyzedAt, disclaimer
+        case trackMatch, score, verdict, evidence, analyzedAt, disclaimer, unlockRescan
     }
 
     init(from decoder: Decoder) throws {
@@ -884,6 +927,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         evidence = try c.decodeIfPresent(EvidenceAssessment.self, forKey: .evidence) ?? .empty
         analyzedAt = try c.decodeIfPresent(Date.self, forKey: .analyzedAt) ?? Date()
         disclaimer = try c.decodeIfPresent(String.self, forKey: .disclaimer) ?? IntegrityResult.defaultDisclaimer
+        unlockRescan = try c.decodeIfPresent(UnlockRescanReport.self, forKey: .unlockRescan)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -900,6 +944,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         try c.encode(evidence, forKey: .evidence)
         try c.encode(analyzedAt, forKey: .analyzedAt)
         try c.encode(disclaimer, forKey: .disclaimer)
+        try c.encodeIfPresent(unlockRescan, forKey: .unlockRescan)
     }
 
     static let defaultDisclaimer = """
