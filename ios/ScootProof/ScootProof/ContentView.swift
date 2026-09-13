@@ -24,6 +24,9 @@ struct ContentView: View {
     @State private var softUnlockStoreRevision = 0
     @State private var screen: AppScreen = .home
     @State private var pulse = false
+    /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
+    @State private var showSubjectPrompt = false
+    @State private var pendingUnlockRescanAfterSubject = false
 
     private enum AppScreen: Equatable {
         case home
@@ -116,6 +119,7 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .sheet(isPresented: $showMenu) { menuSheet }
+            .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
@@ -416,16 +420,75 @@ struct ContentView: View {
         .scootCard()
     }
 
-    /// Optionale Fahrer-/Kennzeichen-Zuordnung — nicht bewertungsrelevant.
+    /// Popup direkt nach der Auswertung — vor dem Protokoll.
+    private var subjectPromptSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Zuordnung für dieses Protokoll. Alle Angaben freiwillig und nicht bewertungsrelevant.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .listRowBackground(Color.clear)
+                }
+                Section("Fahrzeug / Person") {
+                    TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                    TextField("Nachname", text: subjectStringBinding(\.lastName))
+                        .textContentType(.familyName)
+                        .textInputAutocapitalization(.words)
+                    TextField("Vorname", text: subjectStringBinding(\.firstName))
+                        .textContentType(.givenName)
+                        .textInputAutocapitalization(.words)
+                    Toggle("Geburtsdatum angeben", isOn: birthDateEnabledBinding)
+                    if session?.subject.birthDate != nil {
+                        DatePicker(
+                            "Geburtsdatum",
+                            selection: birthDateValueBinding,
+                            in: ...Date(),
+                            displayedComponents: .date
+                        )
+                    }
+                }
+                if let summary = session?.subject.summaryLine {
+                    Section {
+                        Text(summary)
+                            .font(.footnote.weight(.medium))
+                    }
+                }
+            }
+            .navigationTitle("Zuordnung")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Überspringen") { finishSubjectPrompt() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Weiter zum Protokoll") { finishSubjectPrompt() }
+                        .fontWeight(.semibold)
+                }
+            }
+            .interactiveDismissDisabled(true)
+        }
+        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+    }
+
+    /// Nachträgliche Bearbeitung im Protokoll — nicht bewertungsrelevant.
     private var subjectAssignmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Zuordnung (optional)")
+            Text("Zuordnung")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
-            Text("Nur zur Kontrolle / Zuordnung des Protokolls. Alle Felder freiwillig — fließen nicht in die Bewertung ein.")
+            Text("Kennzeichen / Nutzer — optional, jederzeit änderbar. Fließt nicht in die Bewertung ein.")
                 .font(.caption)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
+
+            TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .scootField()
 
             TextField("Nachname", text: subjectStringBinding(\.lastName))
                 .textContentType(.familyName)
@@ -453,11 +516,6 @@ struct ContentView: View {
                 }
             }
 
-            TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .scootField()
-
             if let summary = session?.subject.summaryLine {
                 Text(summary)
                     .font(.caption.weight(.medium))
@@ -466,6 +524,31 @@ struct ContentView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    /// Auswertung fertig → zuerst Zuordnungs-Popup, dann Protokoll.
+    private func presentResultWithSubjectPrompt(triggerUnlockRescan: Bool = false, forcePrompt: Bool = true) {
+        pendingUnlockRescanAfterSubject = triggerUnlockRescan
+        let needsPrompt = forcePrompt || (session?.subject.isEmpty ?? true)
+        if needsPrompt {
+            showSubjectPrompt = true
+        } else {
+            screen = .result
+            if triggerUnlockRescan, let analyzed = result {
+                maybeStartUnlockRescanAfterTuning(analyzed)
+            }
+        }
+    }
+
+    private func finishSubjectPrompt() {
+        persistCurrentSession()
+        showSubjectPrompt = false
+        screen = .result
+        let shouldRescan = pendingUnlockRescanAfterSubject
+        pendingUnlockRescanAfterSubject = false
+        if shouldRescan, let analyzed = result {
+            maybeStartUnlockRescanAfterTuning(analyzed)
+        }
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -876,7 +959,7 @@ struct ContentView: View {
             powerCyclePhase = .idle
             powerCycleScanA = nil
             powerCycleDevice = nil
-            screen = .result
+            presentResultWithSubjectPrompt(forcePrompt: false)
         } catch {
             powerCyclePhase = .awaitReboot
         }
@@ -973,7 +1056,7 @@ struct ContentView: View {
             unlockRescanPhase = .idle
             unlockRescanScanA = nil
             unlockRescanDevice = nil
-            screen = .result
+            presentResultWithSubjectPrompt(forcePrompt: false)
         } catch {
             unlockRescanPhase = .awaitUnlock
         }
@@ -999,8 +1082,7 @@ struct ContentView: View {
         let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
         session = newSession
         try? history.save(newSession)
-        screen = .result
-        maybeStartUnlockRescanAfterTuning(analyzed)
+        presentResultWithSubjectPrompt(triggerUnlockRescan: true)
     }
 
     /// Wenn Tuning erkannt wurde: gespeicherte Kombination laden bzw. Nutzer zur Eingabe führen, dann erneut auslesen.
@@ -1127,8 +1209,8 @@ struct ContentView: View {
                             )
                             session = newSession
                             try? history.save(newSession)
-                            screen = .result
                             showMenu = false
+                            presentResultWithSubjectPrompt()
                         }
                     }
                 }
