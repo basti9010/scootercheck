@@ -294,6 +294,10 @@ struct ContentView: View {
                     Text(report.verdict.label)
                         .font(.title2.weight(.bold))
                         .foregroundStyle(Theme.verdict(report.verdict))
+                    Text(scoreCaption(for: report.score))
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                     if report.trackMatch.trackId != .unknown && report.trackMatch.trackId != .stock {
                         Text(report.trackMatch.trackId.label)
                             .font(.subheadline.weight(.medium))
@@ -388,7 +392,7 @@ struct ContentView: View {
             Text("Details zur Prüfung")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("Zuerst die Auffälligkeiten in Klartext, darunter die ausgelesenen Werte. Technik hinter „Technische Details“.")
+            Text("Oben die Kurzfassung. Darunter nur Messwerte und Zusatzinfos — ohne Wiederholung derselben Auffälligkeit.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
 
@@ -514,9 +518,19 @@ struct ContentView: View {
         try? history.save(current)
     }
 
-    /// Auffälligkeiten zuerst, dann die übrigen Messgruppen.
+    /// Auffälligkeiten-Gruppe nur für Meta (Attribution, Historie, Power-Cycle) — Klartext steht oben.
     private var detailFactGroups: [FactGroup] {
         [.evidence] + FactGroup.allCases.filter { $0 != .evidence }
+    }
+
+    private func scoreCaption(for score: Int) -> String {
+        let band: String
+        switch score {
+        case 80...100: band = "eher seriennah"
+        case 50..<80: band = "gemischt / auffällig"
+        default: band = "viele Abweichungen"
+        }
+        return "Seriennähe \(score)/100 — \(band). Hoch = unauffällig, niedrig = eher getunt. Das Urteil folgt festen Regeln, nicht dem Score."
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -1547,12 +1561,13 @@ struct ScoreRing: View {
                 Text("\(score)")
                     .font(.system(.title2, design: .rounded).weight(.bold).monospacedDigit())
                     .foregroundStyle(.white)
-                Text("von 100")
-                    .font(.caption2)
+                Text("Seriennähe")
+                    .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(Theme.muted)
             }
         }
         .frame(width: 84, height: 84)
+        .accessibilityLabel("Seriennähe \(score) von 100")
     }
 }
 

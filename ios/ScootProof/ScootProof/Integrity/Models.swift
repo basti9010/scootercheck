@@ -776,7 +776,7 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case boards = "Steuergeräte"
     case history = "Fahrhistorie"
     case gear = "Fahrmodus"
-    case evidence = "Auffälligkeiten"
+    case evidence = "Bewertung & Verlauf"
 }
 
 struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
@@ -953,7 +953,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung im Sinne der \
     Straßenverkehrs-Zulassungs-Ordnung (StVZO). Die Bewertung gewichtet Marker nach Persistenz \
     und technischer Einordnung (Info / Abweichung / Manipulationsindiz / starker Manipulationshinweis). \
-    Der Score verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln. Flüchtige Session-Marker \
+    Der Score (Seriennähe 0–100: hoch = unauffällig, niedrig = eher getunt) verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln und nicht dem Score. Flüchtige Session-Marker \
     allein begründen keinen Manipulationshinweis.
     """
 }

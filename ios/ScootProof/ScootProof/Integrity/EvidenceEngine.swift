@@ -982,19 +982,8 @@ enum EvidenceEngine {
             resetsOnPowerOff: false
         ))
 
-        for (idx, line) in assessment.decisiveEvidence.enumerated() {
-            facts.append(MeasuredFact(
-                id: "evidence.decisive.\(idx)",
-                group: .evidence,
-                title: "Was aufgefallen ist",
-                auslesewert: line,
-                sollwert: "Serienzustand ohne diesen Hinweis",
-                status: assessment.verdict == .stock ? .regelkonform : .abweichend,
-                bewertung: line,
-                erlaeuterung: line,
-                raw: line
-            ))
-        }
+        // Decisive-Zeilen und Marker-Spiegelungen absichtlich nicht als MeasuredFacts —
+        // sie stehen bereits als Klartext-Bullets oben bzw. als Messwerte (speed.*/fw.*).
 
         if let attr = assessment.attribution {
             facts.append(MeasuredFact(
@@ -1022,32 +1011,8 @@ enum EvidenceEngine {
             ))
         }
 
-        for r in assessment.results {
-            let plain = r.plainLanguage
-            let detail = [
-                plain.summary,
-                plain.expectedState,
-                plain.relevance.map { "Warum relevant: \($0)" },
-                plain.verdictContribution.map { "Fürs Gesamturteil: \($0)" }
-            ].compactMap { $0 }.joined(separator: "\n")
-            facts.append(MeasuredFact(
-                id: "evidence.\(r.fact.markerID)",
-                group: .evidence,
-                title: plain.title,
-                auslesewert: r.fact.interpretedValue ?? r.fact.rawValue,
-                sollwert: r.fact.expectedValue ?? "Serienzustand",
-                status: r.isNeutralized ? .regelkonform : status(for: r.classification),
-                bewertung: r.isNeutralized ? "erklärt — zählt nicht" : r.classification.label,
-                erlaeuterung: detail,
-                raw: r.chainCitation,
-                volatility: r.fact.persistence,
-                evidenceClass: r.classification,
-                sourceBoard: r.fact.source,
-                sourceRegister: r.fact.register,
-                rawHex: r.fact.rawValue,
-                resetsOnPowerOff: r.fact.resetResistant == false
-            ))
-        }
+        // Marker-Ergebnisse nicht nochmals unter „Auffälligkeiten“ listen —
+        // sonst wiederholen sich Limit/Peak/Firmware mit den Messgruppen.
 
         facts += EvidenceExplanationEngine.positiveFindings(
             reading: reading,

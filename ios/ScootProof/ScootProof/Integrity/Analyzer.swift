@@ -1019,7 +1019,14 @@ enum IntegrityAnalyzer {
     private static func buildFindings(facts: [MeasuredFact], trackMatch: TrackMatch) -> [Finding] {
         var findings: [Finding] = []
 
-        let critical = facts.filter { $0.status == .erheblichAbweichend }
+        // Keine Evidence-/Diff-Spiegelungen — die stehen schon als Klartext-Bullets bzw. Custom-FW-Finding.
+        let critical = facts.filter {
+            $0.status == .erheblichAbweichend
+                && $0.group != .evidence
+                && !$0.id.hasPrefix("evidence.")
+                && !$0.id.hasPrefix("diff.")
+                && !$0.id.hasPrefix("positive.")
+        }
         for fact in critical {
             findings.append(Finding(
                 id: "finding.\(fact.id)",
@@ -1115,6 +1122,7 @@ enum IntegrityAnalyzer {
 
     // MARK: - EvidenceEngine findings (Anzeige der Engine-Ausgabe)
 
+    /// Nur Meta-Findings — keine erneute Spiegelung der Klartext-Bullets/Marker.
     private static func evidenceFindings(_ evidence: EvidenceAssessment) -> [Finding] {
         var findings: [Finding] = []
         findings.append(Finding(
@@ -1125,24 +1133,6 @@ enum IntegrityAnalyzer {
             detail: evidence.problemOverview,
             relatedFactIds: ["evidence.summary"]
         ))
-        for line in evidence.decisiveEvidence.prefix(6) {
-            findings.append(Finding(
-                id: "finding.evidence.decisive.\(findings.count)",
-                severity: evidence.verdict == .stock ? .regelkonform : .abweichend,
-                title: "Was aufgefallen ist",
-                detail: line,
-                relatedFactIds: ["evidence.summary"]
-            ))
-        }
-        for r in evidence.justifyingMarkers.prefix(6) {
-            findings.append(Finding(
-                id: "finding.evidence.marker.\(r.fact.markerID)",
-                severity: r.classification == .starkerHinweis ? .erheblichAbweichend : .abweichend,
-                title: r.plainLanguage.title,
-                detail: r.plainLanguage.summary,
-                relatedFactIds: ["evidence.\(r.fact.markerID)"]
-            ))
-        }
         if let attr = evidence.attribution {
             findings.append(Finding(
                 id: "finding.evidence.attribution",

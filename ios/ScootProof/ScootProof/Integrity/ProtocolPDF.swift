@@ -198,7 +198,7 @@ enum ProtocolPDF {
         drawRoundedRect(CGRect(x: margin, y: cursor, width: contentWidth, height: stripH), fill: Theme.UI.card, stroke: verdictColor)
         _ = drawText(result.verdict.label, at: cursor + 10, font: titleFont(size: 16), color: verdictColor, indent: 14)
         _ = drawText(
-            "Score \(result.score)/100  ·  \(result.trackMatch.trackId.label)",
+            "Seriennähe \(result.score)/100 (hoch = unauffällig)  ·  \(result.trackMatch.trackId.label)",
             at: cursor + 30,
             font: bodyFont(size: 11),
             color: Theme.UI.muted,
@@ -237,7 +237,7 @@ enum ProtocolPDF {
             }
         }
         cursor = drawText(
-            "Score \(result.score)/100 verdichtet nur die Feststellungen und erzeugt kein Gesamturteil.",
+            "Seriennähe \(result.score)/100: hoch = eher seriennah, niedrig = viele Abweichungen. Das Gesamturteil folgt festen Regeln — nicht dem Score.",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
