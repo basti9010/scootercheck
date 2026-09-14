@@ -150,15 +150,19 @@ enum Nb {
         frame(target: target, cmd: .auth, index: 0x00, data: serialNumber.prefix(14), gen: gen)
     }
 
+    /// Längenkodierung im Read-Payload (G3-Flasher: u16 LE; klassisch/manche FW: u8).
+    enum ReadLengthMode: String, CaseIterable, Sendable {
+        case u8
+        case u16LE
+    }
+
     static func read(
         board: Board,
         register: UInt8,
         length: Int,
         gen: ProtocolGen = .gen2
     ) -> Data {
-        // Payload: Länge in Bytes. Max-G3-Flasher nutzt oft u16 LE — zusätzlich als Variante.
-        _ = gen
-        return frame(target: board, cmd: .read, index: register, data: Data([UInt8(max(0, min(length, 255)))]), gen: gen)
+        readRequest(board: board, register: register, length: length, mode: .u8, gen: gen)
     }
 
     /// Enc2-Lesevariante mit u16-LE-Länge (Segway-App / Max-G3-Flasher).
@@ -168,9 +172,26 @@ enum Nb {
         length: Int,
         gen: ProtocolGen = .gen2
     ) -> Data {
-        let len = max(0, min(length, 0xFFFF))
-        let lenBytes = Data([UInt8(len & 0xFF), UInt8((len >> 8) & 0xFF)])
-        return frame(target: board, cmd: .read, index: register, data: lenBytes, gen: gen)
+        readRequest(board: board, register: register, length: length, mode: .u16LE, gen: gen)
+    }
+
+    static func readRequest(
+        board: Board,
+        register: UInt8,
+        length: Int,
+        mode: ReadLengthMode,
+        gen: ProtocolGen = .gen2
+    ) -> Data {
+        _ = gen
+        let payload: Data
+        switch mode {
+        case .u8:
+            payload = Data([UInt8(max(0, min(length, 255)))])
+        case .u16LE:
+            let len = max(0, min(length, 0xFFFF))
+            payload = Data([UInt8(len & 0xFF), UInt8((len >> 8) & 0xFF)])
+        }
+        return frame(target: board, cmd: .read, index: register, data: payload, gen: gen)
     }
 
     // MARK: - Parsing
