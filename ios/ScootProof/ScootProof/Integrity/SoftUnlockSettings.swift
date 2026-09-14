@@ -96,16 +96,24 @@ final class SoftUnlockSettings: ObservableObject {
         return "\(control.title) \(repetitions)×"
     }
 
+    /// Ermittelte / konfigurierte Geheimkombination (Anzeige in UI und Protokoll).
+    var unlockCodeSummary: String { gestureSummary }
+
     /// Textbaustein für Bewertungen / Erläuterungen.
     var detectionHint: String {
         guard isEnabled else {
             return "Soft-Unlock-Erkennung ist ausgeschaltet."
         }
         return """
-        Geste „\(gestureSummary)“ ist nur Hinweistext; erkannt wird die Wirkung \
-        (Limit/Peak ≥ \(Int(speedThresholdKmh.rounded())) km/h). Nach Ausschalten oft weg — \
-        vorher auslesen/speichern; danach zählen persistente Marker und der Protokollverlauf.
+        Keine eingebauten Geheimkombinationen. Der Nutzer sucht die Kombination selbst \
+        (z. B. „\(unlockCodeSummary)“), trägt sie hier ein, gibt sie am Scooter ein und liest erneut aus. \
+        Erfolgreiche Kombinationen werden pro Seriennummer gespeichert und später wieder geladen. \
+        Erkannt wird die Wirkung (Limit/Peak ≥ \(Int(speedThresholdKmh.rounded())) km/h).
         """
+    }
+
+    nonisolated static func unlockCodeSnapshot() -> String {
+        gestureSummarySnapshot()
     }
 
     nonisolated static func thresholdKmhSnapshot() -> Double {

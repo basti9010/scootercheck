@@ -16,8 +16,17 @@ struct ContentView: View {
     @State private var powerCycleScanA: IntegrityReading? = nil
     @State private var powerCycleDevice: ScannedDevice? = nil
     @State private var powerCycleHint: String? = nil
+    @State private var unlockRescanPhase: UnlockRescanPhase = .idle
+    @State private var unlockRescanScanA: IntegrityReading? = nil
+    @State private var unlockRescanDevice: ScannedDevice? = nil
+    @State private var unlockRescanHint: String? = nil
+    @State private var discoveredUnlockCombo: SoftUnlockCombo? = nil
+    @State private var softUnlockStoreRevision = 0
     @State private var screen: AppScreen = .home
     @State private var pulse = false
+    /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
+    @State private var showSubjectPrompt = false
+    @State private var pendingUnlockRescanAfterSubject = false
 
     private enum AppScreen: Equatable {
         case home
@@ -29,6 +38,31 @@ struct ContentView: View {
         case idle
         case awaitReboot
         case scanningB
+    }
+
+    private enum UnlockRescanPhase: Equatable {
+        case idle
+        case awaitUnlock
+        case scanningB
+    }
+
+    /// Seriennummer des aktuellen Scooters (Ergebnis oder laufende Auslese).
+    private var currentScooterSerial: String? {
+        let candidates = [
+            result?.reading.serialDisplay,
+            result?.reading.serialVcu,
+            result?.reading.serialBle,
+            session?.reading.serialDisplay,
+            ble.reading.serialDisplay,
+            ble.reading.serialVcu,
+            unlockRescanScanA?.serialDisplay
+        ]
+        for value in candidates {
+            if let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+        return nil
     }
 
     var body: some View {
@@ -85,6 +119,7 @@ struct ContentView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .sheet(isPresented: $showMenu) { menuSheet }
+            .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
@@ -263,6 +298,10 @@ struct ContentView: View {
                     Text(report.verdict.label)
                         .font(.title2.weight(.bold))
                         .foregroundStyle(Theme.verdict(report.verdict))
+                    Text(scoreCaption(for: report.score))
+                        .font(.caption)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                     if report.trackMatch.trackId != .unknown && report.trackMatch.trackId != .stock {
                         Text(report.trackMatch.trackId.label)
                             .font(.subheadline.weight(.medium))
@@ -338,7 +377,16 @@ struct ContentView: View {
             if powerCyclePhase == .awaitReboot {
                 powerCycleBanner
             }
+            if unlockRescanPhase == .awaitUnlock {
+                unlockRescanBanner
+            }
             if let hint = powerCycleHint {
+                Text(hint)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.warn)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let hint = unlockRescanHint {
                 Text(hint)
                     .font(.footnote)
                     .foregroundStyle(Theme.warn)
@@ -348,7 +396,7 @@ struct ContentView: View {
             Text("Details zur Prüfung")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("Zuerst die Auffälligkeiten in Klartext, darunter die ausgelesenen Werte. Technik hinter „Technische Details“.")
+            Text("Oben die Kurzfassung. Darunter nur Messwerte und Zusatzinfos — ohne Wiederholung derselben Auffälligkeit.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
 
@@ -372,16 +420,75 @@ struct ContentView: View {
         .scootCard()
     }
 
-    /// Optionale Fahrer-/Kennzeichen-Zuordnung — nicht bewertungsrelevant.
+    /// Popup direkt nach der Auswertung — vor dem Protokoll.
+    private var subjectPromptSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Zuordnung für dieses Protokoll. Alle Angaben freiwillig und nicht bewertungsrelevant.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .listRowBackground(Color.clear)
+                }
+                Section("Fahrzeug / Person") {
+                    TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                    TextField("Nachname", text: subjectStringBinding(\.lastName))
+                        .textContentType(.familyName)
+                        .textInputAutocapitalization(.words)
+                    TextField("Vorname", text: subjectStringBinding(\.firstName))
+                        .textContentType(.givenName)
+                        .textInputAutocapitalization(.words)
+                    Toggle("Geburtsdatum angeben", isOn: birthDateEnabledBinding)
+                    if session?.subject.birthDate != nil {
+                        DatePicker(
+                            "Geburtsdatum",
+                            selection: birthDateValueBinding,
+                            in: ...Date(),
+                            displayedComponents: .date
+                        )
+                    }
+                }
+                if let summary = session?.subject.summaryLine {
+                    Section {
+                        Text(summary)
+                            .font(.footnote.weight(.medium))
+                    }
+                }
+            }
+            .navigationTitle("Zuordnung")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Überspringen") { finishSubjectPrompt() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Weiter zum Protokoll") { finishSubjectPrompt() }
+                        .fontWeight(.semibold)
+                }
+            }
+            .interactiveDismissDisabled(true)
+        }
+        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+    }
+
+    /// Nachträgliche Bearbeitung im Protokoll — nicht bewertungsrelevant.
     private var subjectAssignmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Zuordnung (optional)")
+            Text("Zuordnung")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
-            Text("Nur zur Kontrolle / Zuordnung des Protokolls. Alle Felder freiwillig — fließen nicht in die Bewertung ein.")
+            Text("Kennzeichen / Nutzer — optional, jederzeit änderbar. Fließt nicht in die Bewertung ein.")
                 .font(.caption)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
+
+            TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .scootField()
 
             TextField("Nachname", text: subjectStringBinding(\.lastName))
                 .textContentType(.familyName)
@@ -409,11 +516,6 @@ struct ContentView: View {
                 }
             }
 
-            TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
-                .scootField()
-
             if let summary = session?.subject.summaryLine {
                 Text(summary)
                     .font(.caption.weight(.medium))
@@ -422,6 +524,31 @@ struct ContentView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    /// Auswertung fertig → zuerst Zuordnungs-Popup, dann Protokoll.
+    private func presentResultWithSubjectPrompt(triggerUnlockRescan: Bool = false, forcePrompt: Bool = true) {
+        pendingUnlockRescanAfterSubject = triggerUnlockRescan
+        let needsPrompt = forcePrompt || (session?.subject.isEmpty ?? true)
+        if needsPrompt {
+            showSubjectPrompt = true
+        } else {
+            screen = .result
+            if triggerUnlockRescan, let analyzed = result {
+                maybeStartUnlockRescanAfterTuning(analyzed)
+            }
+        }
+    }
+
+    private func finishSubjectPrompt() {
+        persistCurrentSession()
+        showSubjectPrompt = false
+        screen = .result
+        let shouldRescan = pendingUnlockRescanAfterSubject
+        pendingUnlockRescanAfterSubject = false
+        if shouldRescan, let analyzed = result {
+            maybeStartUnlockRescanAfterTuning(analyzed)
+        }
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -474,9 +601,19 @@ struct ContentView: View {
         try? history.save(current)
     }
 
-    /// Auffälligkeiten zuerst, dann die übrigen Messgruppen.
+    /// Auffälligkeiten-Gruppe nur für Meta (Attribution, Historie, Power-Cycle) — Klartext steht oben.
     private var detailFactGroups: [FactGroup] {
         [.evidence] + FactGroup.allCases.filter { $0 != .evidence }
+    }
+
+    private func scoreCaption(for score: Int) -> String {
+        let band: String
+        switch score {
+        case 80...100: band = "eher seriennah"
+        case 50..<80: band = "gemischt / auffällig"
+        default: band = "viele Abweichungen"
+        }
+        return "Seriennähe \(score)/100 — \(band). Hoch = unauffällig, niedrig = eher getunt. Das Urteil folgt festen Regeln, nicht dem Score."
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -510,12 +647,42 @@ struct ContentView: View {
             .disabled(!primaryEnabled)
 
             if screen == .result, result != nil {
-                if powerCyclePhase == .idle {
+                if powerCyclePhase == .idle, unlockRescanPhase == .idle {
+                    Button("Geheimkombination eingeben & auslesen") {
+                        startUnlockRescan()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
                     Button("Power-Cycle-Test") {
                         startPowerCycleTest()
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.accent)
+                } else if unlockRescanPhase == .awaitUnlock {
+                    Button("Kombination eingegeben — erneut auslesen") {
+                        Task { await continueUnlockRescanScanB() }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Theme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .disabled(busy)
+
+                    Button("Abbrechen") {
+                        unlockRescanPhase = .idle
+                        unlockRescanScanA = nil
+                        unlockRescanDevice = nil
+                        unlockRescanHint = nil
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
                 } else if powerCyclePhase == .awaitReboot {
                     Button("Scooter ist wieder an — Scan B") {
                         Task { await continuePowerCycleScanB() }
@@ -638,6 +805,11 @@ struct ContentView: View {
         powerCycleScanA = nil
         powerCycleDevice = nil
         powerCycleHint = nil
+        unlockRescanPhase = .idle
+        unlockRescanScanA = nil
+        unlockRescanDevice = nil
+        unlockRescanHint = nil
+        discoveredUnlockCombo = nil
         result = nil
         session = nil
         screen = .overview
@@ -651,6 +823,11 @@ struct ContentView: View {
         powerCycleScanA = nil
         powerCycleDevice = nil
         powerCycleHint = nil
+        unlockRescanPhase = .idle
+        unlockRescanScanA = nil
+        unlockRescanDevice = nil
+        unlockRescanHint = nil
+        discoveredUnlockCombo = nil
         ble.disconnect()
         screen = .home
         ble.startScan()
@@ -679,7 +856,7 @@ struct ContentView: View {
     private var powerCycleBanner: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Power-Cycle-Test").font(.subheadline.weight(.semibold))
-            Text("Scan A ist gespeichert. Scooter regulär ausschalten, wieder einschalten, dann „Scan B“. Kein Unlock — nur Persistenzvergleich.")
+            Text("Scan A ist gespeichert. Scooter regulär ausschalten, wieder einschalten, dann „Scan B“. Nur Persistenzvergleich.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -687,6 +864,44 @@ struct ContentView: View {
         .foregroundStyle(.white)
         .scootCard()
     }
+
+    private var unlockRescanBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(discoveredUnlockCombo == nil
+                  ? "Tuning erkannt — Geheimkombination selbst herausfinden"
+                  : "Gespeicherte Geheimkombination eingeben")
+                .font(.subheadline.weight(.semibold))
+            Text(discoveredUnlockCombo?.displayCode ?? softUnlock.unlockCodeSummary)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Theme.accent)
+            if let note = discoveredUnlockCombo?.note, !note.isEmpty {
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if discoveredUnlockCombo == nil {
+                Text("Keine gespeicherte Kombination für diese Seriennummer. Kombination selbst am Scooter herausfinden, in Soft-Unlock eintragen, dann erneut auslesen.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(discoveredUnlockCombo?.entrySteps
+                 ?? "Kombination am Scooter eingeben. Danach „Kombination eingegeben — erneut auslesen“ tippen. Bei Erfolg wird sie für diese SN gespeichert.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            if discoveredUnlockCombo == nil {
+                Button("Kombination in Soft-Unlock eintragen…") {
+                    showMenu = true
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+            }
+        }
+        .foregroundStyle(.white)
+        .scootCard()
+    }
+
 
     private func startPowerCycleTest() {
         guard let report = result else { return }
@@ -744,13 +959,111 @@ struct ContentView: View {
             powerCyclePhase = .idle
             powerCycleScanA = nil
             powerCycleDevice = nil
-            screen = .result
+            presentResultWithSubjectPrompt(forcePrompt: false)
         } catch {
             powerCyclePhase = .awaitReboot
         }
     }
 
+
+    private func startUnlockRescan() {
+        guard let report = result else { return }
+        let serial = report.reading.serialDisplay
+            ?? report.reading.serialVcu
+            ?? report.reading.serialBle
+        // Gespeicherte Kombination für diese SN auslesen — kein Katalog.
+        if let stored = SoftUnlockComboStore.load(forSerial: serial) {
+            discoveredUnlockCombo = stored
+            softUnlock.apply(stored)
+        } else {
+            discoveredUnlockCombo = nil
+            // Aktuelle Soft-Unlock-Einstellung bleibt Editier-Vorlage für den Nutzer.
+        }
+        unlockRescanScanA = report.reading
+        unlockRescanPhase = .awaitUnlock
+        unlockRescanHint = nil
+        if let last = ble.visibleDevices.first {
+            unlockRescanDevice = last
+        } else if let pc = powerCycleDevice {
+            unlockRescanDevice = pc
+        }
+        ble.disconnect()
+        ble.startScan()
+    }
+
+    private func continueUnlockRescanScanB() async {
+        guard let scanA = unlockRescanScanA else { return }
+        busy = true
+        unlockRescanPhase = .scanningB
+        defer { busy = false }
+        do {
+            let device: ScannedDevice
+            if let chosen = unlockRescanDevice ?? ble.visibleDevices.first {
+                device = chosen
+            } else {
+                unlockRescanHint = "Kein Scooter für die Entsperr-Auslese gefunden — näher heran und erneut versuchen."
+                unlockRescanPhase = .awaitUnlock
+                return
+            }
+            unlockRescanHint = nil
+            try await ble.connect(to: device)
+            await ble.handshakeAndDump(profile: profile)
+            guard ble.phase == .done else {
+                unlockRescanPhase = .awaitUnlock
+                return
+            }
+            var readingB = ble.reading
+            if readingB.serialExpected == nil {
+                readingB.serialExpected = readingB.serialDisplay ?? scanA.serialDisplay
+            }
+            let unlockReport = UnlockRescanReport.make(
+                unlockCode: SoftUnlockSettings.unlockCodeSnapshot(),
+                thresholdKmh: SoftUnlockSettings.thresholdKmhSnapshot(),
+                before: scanA,
+                after: readingB
+            )
+            let serial = readingB.serialDisplay ?? readingB.serialVcu ?? scanA.serialDisplay
+            let snapshot = history.priorSnapshot(forSerial: serial)
+            let priorUnlock = history.priorUnlockEvidence(forSerial: serial)
+            let analyzed = IntegrityAnalyzer.analyze(
+                reading: readingB,
+                profile: profile,
+                priorUnlock: priorUnlock,
+                priorReading: snapshot?.reading,
+                priorProtocolNumber: snapshot?.protocolNumber,
+                unlockRescan: unlockReport
+            )
+            result = analyzed
+            let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
+            session = newSession
+            try? history.save(newSession)
+            // Erfolgreiche Freischaltung → Kombination für diese SN speichern.
+            let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+            let afterTempo = max(
+                readingB.speedLimitKmh ?? 0,
+                readingB.speedMaxKmh ?? 0,
+                readingB.peakSpeedKmh ?? 0
+            )
+            if afterTempo >= threshold || readingB.hiddenTuningDetected == true {
+                let combo = SoftUnlockCombo.fromSettings(
+                    softUnlock,
+                    note: "Bestätigt nach Zweitauslese (Limit/Peak ≥ \(Int(threshold)) km/h)."
+                )
+                SoftUnlockComboStore.save(combo, forSerial: serial)
+                discoveredUnlockCombo = combo
+                softUnlockStoreRevision += 1
+            }
+            unlockRescanPhase = .idle
+            unlockRescanScanA = nil
+            unlockRescanDevice = nil
+            presentResultWithSubjectPrompt(forcePrompt: false)
+        } catch {
+            unlockRescanPhase = .awaitUnlock
+        }
+    }
+
     private func finalizeAnalysis() {
+
         var reading = ble.reading
         if reading.serialExpected == nil, let sn = reading.serialDisplay {
             reading.serialExpected = sn
@@ -769,7 +1082,24 @@ struct ContentView: View {
         let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
         session = newSession
         try? history.save(newSession)
-        screen = .result
+        presentResultWithSubjectPrompt(triggerUnlockRescan: true)
+    }
+
+    /// Wenn Tuning erkannt wurde: gespeicherte Kombination laden bzw. Nutzer zur Eingabe führen, dann erneut auslesen.
+    private func maybeStartUnlockRescanAfterTuning(_ analyzed: IntegrityResult) {
+        guard unlockRescanPhase == .idle, powerCyclePhase == .idle else { return }
+        let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
+        let tempo = max(
+            analyzed.reading.speedLimitKmh ?? 0,
+            analyzed.reading.speedMaxKmh ?? 0,
+            analyzed.reading.peakSpeedKmh ?? 0
+        )
+        let tuned = analyzed.reading.hiddenTuningDetected == true
+            || tempo >= threshold
+            || analyzed.verdict == .eindeutig
+            || analyzed.verdict == .hinweise
+        guard tuned else { return }
+        startUnlockRescan()
     }
 
     private var menuSheet: some View {
@@ -790,7 +1120,7 @@ struct ContentView: View {
                         }
                     }
                 }
-                Section("Soft-Unlock") {
+                Section {
                     Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
                     Picker("Bedienung", selection: $softUnlock.control) {
                         ForEach(SoftUnlockControl.allCases) { kind in
@@ -811,12 +1141,46 @@ struct ContentView: View {
                         in: 21...60,
                         step: 1
                     )
+                    Text("Aktuell: \(softUnlock.unlockCodeSummary)")
+                        .font(.subheadline.weight(.semibold))
+                    if let serial = currentScooterSerial {
+                        let _ = softUnlockStoreRevision
+                        if let stored = SoftUnlockComboStore.load(forSerial: serial) {
+                            Text("Gespeichert für \(serial): \(stored.displayCode)")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            Button("Gespeicherte Kombination laden") {
+                                softUnlock.apply(stored)
+                                discoveredUnlockCombo = stored
+                            }
+                            Button("Gespeicherte Kombination löschen", role: .destructive) {
+                                SoftUnlockComboStore.delete(forSerial: serial)
+                                if discoveredUnlockCombo?.displayCode == stored.displayCode {
+                                    discoveredUnlockCombo = nil
+                                }
+                                softUnlockStoreRevision += 1
+                            }
+                        } else {
+                            Text("Noch keine Kombination für \(serial) gespeichert.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button("Aktuelle Kombination für diese SN speichern") {
+                            let combo = SoftUnlockCombo.fromSettings(softUnlock)
+                            SoftUnlockComboStore.save(combo, forSerial: serial)
+                            discoveredUnlockCombo = combo
+                            softUnlockStoreRevision += 1
+                        }
+                    } else {
+                        Text("Nach einer Auslese erscheint hier die Speicherung pro Seriennummer.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                     Text(softUnlock.detectionHint)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Text("Keine Tastenkombinationen werden gesucht oder ausgeführt. Nachweis nach Ausschalten: gespeichertes Protokoll + persistente Marker.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Soft-Unlock / Geheimkombination")
                 }
                 Section("Kontrollen") {
                     Button {
@@ -845,8 +1209,11 @@ struct ContentView: View {
                             )
                             session = newSession
                             try? history.save(newSession)
-                            screen = .result
                             showMenu = false
+                            // Menü-Sheet zuerst schließen, dann Zuordnungs-Popup.
+                            DispatchQueue.main.async {
+                                presentResultWithSubjectPrompt()
+                            }
                         }
                     }
                 }
@@ -1279,12 +1646,13 @@ struct ScoreRing: View {
                 Text("\(score)")
                     .font(.system(.title2, design: .rounded).weight(.bold).monospacedDigit())
                     .foregroundStyle(.white)
-                Text("von 100")
-                    .font(.caption2)
+                Text("Seriennähe")
+                    .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(Theme.muted)
             }
         }
         .frame(width: 84, height: 84)
+        .accessibilityLabel("Seriennähe \(score) von 100")
     }
 }
 

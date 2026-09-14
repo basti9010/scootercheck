@@ -24,6 +24,7 @@
 		A1000000000000000000000F /* XiaomiProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* XiaomiProtocol.swift */; };
 		A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* XiaomiDiagnosticMap.swift */; };
 		A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* SoftUnlockSettings.swift */; };
+		A1000000000000000000001F /* SoftUnlockComboStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001F /* SoftUnlockComboStore.swift */; };
 		A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* StockFirmwareCatalog.swift */; };
 		A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CustomFirmwareDiff.swift */; };
 		A10000000000000000000014 /* EvidenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* EvidenceEngine.swift */; };
@@ -36,6 +37,7 @@
 		A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */; };
 		A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* G3OdometerScaleTests.swift */; };
 		A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PeakDisReportBugsTests.swift */; };
+		A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +60,7 @@
 		B10000000000000000000010 /* XiaomiProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiProtocol.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiDiagnosticMap.swift; sourceTree = "<group>"; };
 		B10000000000000000000012 /* SoftUnlockSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockSettings.swift; sourceTree = "<group>"; };
+		B1000000000000000000001F /* SoftUnlockComboStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000013 /* StockFirmwareCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalog.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* CustomFirmwareDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFirmwareDiff.swift; sourceTree = "<group>"; };
 		B10000000000000000000015 /* EvidenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceEngine.swift; sourceTree = "<group>"; };
@@ -69,6 +72,7 @@
 		B1000000000000000000001B /* ProtocolSubjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolSubjectTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevatedLimitVerdictTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001D /* G3OdometerScaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G3OdometerScaleTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PeakDisReportBugsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDisReportBugsTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000002 /* ScootProofTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScootProofTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -128,6 +132,7 @@
 				B10000000000000000000007 /* ProtocolPDF.swift */,
 				B1000000000000000000000F /* ProtocolHistoryStore.swift */,
 				B10000000000000000000012 /* SoftUnlockSettings.swift */,
+				B1000000000000000000001F /* SoftUnlockComboStore.swift */,
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
 				B10000000000000000000014 /* CustomFirmwareDiff.swift */,
 				B10000000000000000000015 /* EvidenceEngine.swift */,
@@ -146,6 +151,7 @@
 				B1000000000000000000001B /* ProtocolSubjectTests.swift */,
 				B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */,
 				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
+				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
 			);
 			path = ScootProofTests;
@@ -285,6 +291,7 @@
 				A1000000000000000000000F /* XiaomiProtocol.swift in Sources */,
 				A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */,
 				A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */,
+				A1000000000000000000001F /* SoftUnlockComboStore.swift in Sources */,
 				A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */,
 				A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */,
 				A10000000000000000000014 /* EvidenceEngine.swift in Sources */,
@@ -303,6 +310,7 @@
 				A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */,
 				A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */,
 				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,
+				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

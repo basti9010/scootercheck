@@ -6,10 +6,32 @@ import Foundation
 enum ScooterMarket: String, Codable, Sendable {
     case de20
     case eu25
+    /// US-Max-G3 (SN 1CGC…), typ. bis ~23 mph ≈ 37 km/h.
+    case us37
 
-    var ratedMaxKmh: Double { self == .de20 ? 20 : 25 }
-    var tuningSuspectKmh: Double { self == .de20 ? 22 : 27 }
-    var tuningClearKmh: Double { self == .de20 ? 25 : 32 }
+    var ratedMaxKmh: Double {
+        switch self {
+        case .de20: return 20
+        case .eu25: return 25
+        case .us37: return 37
+        }
+    }
+
+    var tuningSuspectKmh: Double {
+        switch self {
+        case .de20: return 22
+        case .eu25: return 27
+        case .us37: return 40
+        }
+    }
+
+    var tuningClearKmh: Double {
+        switch self {
+        case .de20: return 25
+        case .eu25: return 32
+        case .us37: return 45
+        }
+    }
 }
 
 enum ScooterFamily: String, CaseIterable, Codable, Sendable {
@@ -43,7 +65,7 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
     var supportNote: String {
         switch self {
         case .maxG3:
-            return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog."
+            return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)."
         case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
             return "Ninebot Enc2 — Registerkarte wie G30/Legacy; Firmware-Katalog ggf. eingeschränkt."
         case .xiaomiClassic:
@@ -63,6 +85,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     case maxG30E
     case maxG3D
     case maxG3E
+    case maxG3US
     case ninebotFD
     case ninebotFE
     case ninebotF3D
@@ -83,7 +106,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .zt3ProD, .zt3ProE: return .zt3Pro
         case .maxG2D, .maxG2E: return .maxG2
         case .maxG30D, .maxG30E: return .maxG30
-        case .maxG3D, .maxG3E: return .maxG3
+        case .maxG3D, .maxG3E, .maxG3US: return .maxG3
         case .ninebotFD, .ninebotFE: return .ninebotF
         case .ninebotF3D, .ninebotF3E: return .ninebotF3
         case .ninebotED, .ninebotEE: return .ninebotE
@@ -101,6 +124,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .zt3ProE, .maxG2E, .maxG30E, .maxG3E, .ninebotFE, .ninebotF3E, .ninebotEE, .ninebotDE,
              .xiaomiClassicE, .xiaomiRecentE:
             return .eu25
+        case .maxG3US:
+            return .us37
         }
     }
 
@@ -118,6 +143,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG30E: return "Max G30E"
         case .maxG3D: return "Max G3 / MAX3 D"
         case .maxG3E: return "Max G3 / MAX3 E"
+        case .maxG3US: return "Max G3 / MAX3 US"
         case .ninebotFD: return "F2 / F-Serie D"
         case .ninebotFE: return "F2 / F-Serie E"
         case .ninebotF3D: return "F3 D"
@@ -146,8 +172,9 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG2E: return ["N4GSE", "N4GS", "G2", "MAXG2"]
         case .maxG30D: return ["N4GSD", "N4GS", "N4G"]
         case .maxG30E: return ["N4GSE", "N4GS", "N4G"]
-        case .maxG3D: return ["1CGB", "1CG", "MAX3", "G3"]
-        case .maxG3E: return ["1CGE", "1CG", "MAX3", "G3"]
+        case .maxG3D: return ["1CGB", "MAX3", "G3"]
+        case .maxG3E: return ["1CGE", "MAX3", "G3"]
+        case .maxG3US: return ["1CGC", "MAX3", "G3", "US"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
         case .ninebotF3D, .ninebotF3E: return ["N2FS", "N2F", "F3"]
@@ -175,9 +202,15 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     var usesG3RegisterMap: Bool { family == .maxG3 }
 
     var legalText: String {
-        let speedNote = market == .de20
-            ? "bauartbedingte Höchstgeschwindigkeit 20 km/h (DE / L1e-B)"
-            : "bauartbedingte Höchstgeschwindigkeit 25 km/h (EU)"
+        let speedNote: String
+        switch market {
+        case .de20:
+            speedNote = "bauartbedingte Höchstgeschwindigkeit 20 km/h (DE / L1e-B)"
+        case .eu25:
+            speedNote = "bauartbedingte Höchstgeschwindigkeit 25 km/h (EU)"
+        case .us37:
+            speedNote = "marktübliche Höchstgeschwindigkeit ca. 37 km/h (US / ~23 mph)"
+        }
         return """
         Soll-Profil für \(family.title) mit \(speedNote). \
         Abweichungen von werkseitigen Parametern können Betriebserlaubnis und \
@@ -219,7 +252,11 @@ struct BleModelHint: Equatable, Sendable {
         if compact.hasPrefix("1CGE") {
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3E)
         }
-        if compact.hasPrefix("1CGC") || compact.hasPrefix("1CGD") || compact.hasPrefix("1C") {
+        if compact.hasPrefix("1CGC") {
+            return BleModelHint(title: "Ninebot Max G3 US", shortBadge: "Max G3 US", profile: .maxG3US)
+        }
+        if compact.hasPrefix("1CGD") || compact.hasPrefix("1C") {
+            // 1CGD = RU / sonstige 1C… — G3-Karte, DE-Soll nur als Fallback
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3D)
         }
         if hay.contains("MAX3") || hay.contains("MAX G3") || hay.contains("G3 PLUS")
@@ -427,6 +464,45 @@ struct PriorUnlockEvidence: Sendable, Equatable {
             || hiddenTuningDetected == true
             || verdict == .eindeutig
             || verdict == .hinweise
+    }
+}
+
+/// Geheimkombination eingeben → erneut auslesen → Höchstgeschwindigkeiten sichern.
+struct UnlockRescanReport: Codable, Hashable, Sendable {
+    let unlockCode: String
+    let thresholdKmh: Double
+    let beforeLimitKmh: Double?
+    let beforePeakKmh: Double?
+    let afterLimitKmh: Double?
+    let afterPeakKmh: Double?
+    let summary: String
+
+    static func make(
+        unlockCode: String,
+        thresholdKmh: Double,
+        before: IntegrityReading,
+        after: IntegrityReading
+    ) -> UnlockRescanReport {
+        let beforeLimit = before.speedLimitKmh ?? before.speedMaxKmh
+        let afterLimit = after.speedLimitKmh ?? after.speedMaxKmh
+        let beforePeak = before.peakSpeedKmh
+        let afterPeak = after.peakSpeedKmh
+        let afterTempo = max(afterLimit ?? 0, afterPeak ?? 0)
+        let summary: String
+        if afterTempo >= thresholdKmh {
+            summary = "Nach Entsperrcode „\(unlockCode)“ erneut ausgelesen: freigeschaltetes Tempo \(Format.kmh.format(afterTempo)) (Limit \(Format.kmh.format(afterLimit)), Peak \(Format.kmh.format(afterPeak)))."
+        } else {
+            summary = "Nach Entsperrcode „\(unlockCode)“ erneut ausgelesen — freigeschaltetes Tempo ≥ \(Int(thresholdKmh)) km/h nicht sichtbar (Limit \(Format.kmh.format(afterLimit)), Peak \(Format.kmh.format(afterPeak)))."
+        }
+        return UnlockRescanReport(
+            unlockCode: unlockCode,
+            thresholdKmh: thresholdKmh,
+            beforeLimitKmh: beforeLimit,
+            beforePeakKmh: beforePeak,
+            afterLimitKmh: afterLimit,
+            afterPeakKmh: afterPeak,
+            summary: summary
+        )
     }
 }
 
@@ -737,7 +813,7 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case boards = "Steuergeräte"
     case history = "Fahrhistorie"
     case gear = "Fahrmodus"
-    case evidence = "Auffälligkeiten"
+    case evidence = "Bewertung & Verlauf"
 }
 
 struct MeasuredFact: Identifiable, Codable, Hashable, Sendable {
@@ -833,6 +909,8 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     let evidence: EvidenceAssessment
     let analyzedAt: Date
     let disclaimer: String
+    /// Geheimkombination → erneute Auslese der Höchstgeschwindigkeiten.
+    let unlockRescan: UnlockRescanReport?
 
     init(
         sessionId: UUID,
@@ -845,7 +923,8 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         verdict: VerdictLevel,
         evidence: EvidenceAssessment = .empty,
         analyzedAt: Date = Date(),
-        disclaimer: String = IntegrityResult.defaultDisclaimer
+        disclaimer: String = IntegrityResult.defaultDisclaimer,
+        unlockRescan: UnlockRescanReport? = nil
     ) {
         self.sessionId = sessionId
         self.profile = profile
@@ -859,11 +938,12 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         self.evidence = evidence
         self.analyzedAt = analyzedAt
         self.disclaimer = disclaimer
+        self.unlockRescan = unlockRescan
     }
 
     enum CodingKeys: String, CodingKey {
         case sessionId, profile, reading, facts, factGroups, findings
-        case trackMatch, score, verdict, evidence, analyzedAt, disclaimer
+        case trackMatch, score, verdict, evidence, analyzedAt, disclaimer, unlockRescan
     }
 
     init(from decoder: Decoder) throws {
@@ -884,6 +964,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         evidence = try c.decodeIfPresent(EvidenceAssessment.self, forKey: .evidence) ?? .empty
         analyzedAt = try c.decodeIfPresent(Date.self, forKey: .analyzedAt) ?? Date()
         disclaimer = try c.decodeIfPresent(String.self, forKey: .disclaimer) ?? IntegrityResult.defaultDisclaimer
+        unlockRescan = try c.decodeIfPresent(UnlockRescanReport.self, forKey: .unlockRescan)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -900,6 +981,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         try c.encode(evidence, forKey: .evidence)
         try c.encode(analyzedAt, forKey: .analyzedAt)
         try c.encode(disclaimer, forKey: .disclaimer)
+        try c.encodeIfPresent(unlockRescan, forKey: .unlockRescan)
     }
 
     static let defaultDisclaimer = """
@@ -908,7 +990,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung im Sinne der \
     Straßenverkehrs-Zulassungs-Ordnung (StVZO). Die Bewertung gewichtet Marker nach Persistenz \
     und technischer Einordnung (Info / Abweichung / Manipulationsindiz / starker Manipulationshinweis). \
-    Der Score verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln. Flüchtige Session-Marker \
+    Der Score (Seriennähe 0–100: hoch = unauffällig, niedrig = eher getunt) verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln und nicht dem Score. Flüchtige Session-Marker \
     allein begründen keinen Manipulationshinweis.
     """
 }

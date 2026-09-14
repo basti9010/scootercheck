@@ -1108,13 +1108,128 @@ final class BleClient: NSObject, ObservableObject {
         }
 
         var evidence = Data()
-        var liveBoards = Set<String>()
+        let useG3 = dumpProfileHint.usesG3RegisterMap
 
-        // Probe boards — Max G3 nur bekannte Zielboards, sonst BLE-Flut/Disconnects.
-        let boardsToProbe: [Nb.Board] = dumpProfileHint.usesG3RegisterMap
-            ? [.ble, .bleLegacy, .vcuG3, .mcuG3, .bmsG3, .tft, .dis]
-            : Array(Nb.Board.allCases)
-        for board in boardsToProbe {
+        // Board-Probe: G3 mit passenden Registern + u8/u16, sonst Error@0x01.
+        let liveBoards: Set<String>
+        if useG3 {
+            liveBoards = await probeG3Boards(crypto: crypto)
+        } else {
+            liveBoards = await probeLegacyBoards(crypto: crypto)
+        }
+        reading.liveBoards = liveBoards.sorted()
+
+        // Längenmodus: Flasher = u16 LE; manche FW (US beobachtet) antworten nur auf u8.
+        var lengthMode: Nb.ReadLengthMode = useG3 ? .u16LE : .u8
+        if useG3 {
+            statusMessage = "Ermittle Register-Leseformat…"
+            lengthMode = await detectG3ReadLengthMode(crypto: crypto)
+        }
+
+        var specs = DiagnosticMap.fields(for: dumpProfileHint)
+        if useG3 {
+            specs = prioritizedG3Specs(specs, liveBoardLabels: liveBoards)
+        }
+
+        let total = specs.count
+        var gotAny = false
+        var consecutiveFails = 0
+        var boardFailCounts: [UInt8: Int] = [:]
+        var flippedLengthMode = false
+
+        for (index, spec) in specs.enumerated() {
+            if (boardFailCounts[spec.board.rawValue] ?? 0) >= 3 {
+                continue
+            }
+
+            statusMessage = "Lese \(spec.id) (\(index + 1)/\(total), \(lengthMode.rawValue))…"
+
+            if let parsed = await readDiagnosticRegister(
+                spec: spec,
+                crypto: crypto,
+                mode: lengthMode,
+                timeout: useG3 ? 2.0 : 3.0
+            ) {
+                gotAny = true
+                consecutiveFails = 0
+                boardFailCounts[spec.board.rawValue] = 0
+                evidence.append(spec.key.data(using: .utf8) ?? Data())
+                evidence.append(parsed.data)
+                DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+            } else {
+                consecutiveFails += 1
+                boardFailCounts[spec.board.rawValue, default: 0] += 1
+
+                // Früh u16→u8, wenn noch gar nichts ankam.
+                if useG3, !gotAny, !flippedLengthMode, consecutiveFails >= 2, lengthMode == .u16LE {
+                    lengthMode = .u8
+                    flippedLengthMode = true
+                    consecutiveFails = 0
+                    statusMessage = "Wechsle auf u8-Längenfeld…"
+                    if let parsed = await readDiagnosticRegister(
+                        spec: spec,
+                        crypto: crypto,
+                        mode: lengthMode,
+                        timeout: 2.0
+                    ) {
+                        gotAny = true
+                        boardFailCounts[spec.board.rawValue] = 0
+                        evidence.append(spec.key.data(using: .utf8) ?? Data())
+                        evidence.append(parsed.data)
+                        DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+                    }
+                }
+
+                if phase == .failed { return }
+            }
+
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        // Leerer Dump: einmal SN-Modus für kritische Register versuchen.
+        if useG3, !gotAny, phase != .failed {
+            statusMessage = "Leerer Dump — versuche SN-Modus…"
+            crypto.startSN()
+            lengthMode = await detectG3ReadLengthMode(crypto: crypto)
+            let retrySpecs = Array(prioritizedG3Specs(specs, liveBoardLabels: liveBoards).prefix(12))
+            for spec in retrySpecs {
+                if let parsed = await readDiagnosticRegister(
+                    spec: spec,
+                    crypto: crypto,
+                    mode: lengthMode,
+                    timeout: 2.0
+                ) {
+                    gotAny = true
+                    evidence.append(spec.key.data(using: .utf8) ?? Data())
+                    evidence.append(parsed.data)
+                    DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+                }
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+            crypto.resetSN()
+        }
+
+        reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
+        if reading.serialDisplay == nil,
+           let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {
+            reading.serialDisplay = id
+        }
+
+        if !gotAny {
+            fail(
+                "Enc2 ok, aber keine Registerantwort (0 Register). Scooter an lassen, nah bleiben; ggf. Power-Taste erneut, dann nochmal auslesen."
+            )
+            return
+        }
+
+        phase = .done
+        statusMessage = "Diagnose abgeschlossen (\(BleStack.ninebotEnc2.shortLabel), \(reading.rawRegisters.count) Register)"
+    }
+
+    /// Klassische Board-Probe über Error-Register 0x01 (u8-Länge).
+    private func probeLegacyBoards(crypto: NbCrypto) async -> Set<String> {
+        var liveBoards = Set<String>()
+        for board in Nb.Board.allCases {
             let probe = Nb.read(board: board, register: Nb.Register.error, length: 2, gen: protocolGen)
             do {
                 let resp = try await sendReceive(plain: probe, crypto: crypto, timeout: 2)
@@ -1126,51 +1241,141 @@ final class BleClient: NSObject, ObservableObject {
                 continue
             }
         }
-        reading.liveBoards = liveBoards.sorted()
+        return liveBoards
+    }
 
-        // Read diagnostic fields (G3 nutzt zusätzliche Board-/Versions-Adressen)
-        let specs = DiagnosticMap.fields(for: dumpProfileHint)
-        let total = specs.count
-        for (index, spec) in specs.enumerated() {
-            statusMessage = "Lese \(spec.id) (\(index + 1)/\(total))…"
+    /// G3-Board-Probe mit board-spezifischen Registern und u8/u16-Fallback.
+    private func probeG3Boards(crypto: NbCrypto) async -> Set<String> {
+        let plan: [(Nb.Board, [UInt8])] = [
+            (.ble, [Nb.G3Register.bleVersion, Nb.Register.serialNumber]),
+            (.bleLegacy, [Nb.G3Register.bleVersion, Nb.Register.serialNumber]),
+            (.vcuG3, [Nb.Register.serialNumber, Nb.G3Register.errorCode, Nb.G3Register.vcuVersion, Nb.G3Register.maxSpeed]),
+            (.mcuG3, [Nb.Register.serialNumber, Nb.G3Register.mcuVersion]),
+            (.bmsG3, [Nb.Register.serialNumber]),
+            (.tft, [Nb.Register.serialNumber, Nb.Register.tripMaxSpeed]),
+            (.dis, [Nb.Register.serialNumber, Nb.Register.error, Nb.Register.tripMaxSpeed]),
+        ]
 
-            let request: Data
-            if dumpProfileHint.usesG3RegisterMap {
-                // Segway/G3-Flasher: Längenfeld als u16 LE.
-                request = Nb.readU16Len(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
-            } else {
-                request = Nb.read(board: spec.board, register: spec.register, length: spec.readLen, gen: protocolGen)
+        var liveBoards = Set<String>()
+        for (board, registers) in plan {
+            var alive = false
+            for register in registers where !alive {
+                for mode in [Nb.ReadLengthMode.u8, .u16LE] {
+                    let req = Nb.readRequest(
+                        board: board,
+                        register: register,
+                        length: register == Nb.Register.serialNumber ? 14 : 2,
+                        mode: mode,
+                        gen: protocolGen
+                    )
+                    do {
+                        let resp = try await sendReceive(plain: req, crypto: crypto, timeout: 1.5)
+                        if let parsed = Nb.parse(resp), parsed.cmd == Nb.Cmd.readResp.rawValue {
+                            liveBoards.insert(boardLabel(board))
+                            alive = true
+                            break
+                        }
+                    } catch {
+                        if case BleError.notConnected = error { return liveBoards }
+                        continue
+                    }
+                }
             }
-            do {
-                let resp = try await sendReceive(plain: request, crypto: crypto, timeout: 3)
-                guard let parsed = Nb.parse(resp),
-                      parsed.cmd == Nb.Cmd.readResp.rawValue,
-                      parsed.index == spec.register else {
+        }
+        return liveBoards
+    }
+
+    /// Ermittelt, ob Read-Längen als u16 LE oder u8 erwartet werden.
+    private func detectG3ReadLengthMode(crypto: NbCrypto) async -> Nb.ReadLengthMode {
+        let canaries: [(Nb.Board, UInt8, Int)] = [
+            (.ble, Nb.G3Register.bleVersion, 2),
+            (.ble, Nb.Register.serialNumber, 14),
+            (.vcuG3, Nb.Register.serialNumber, 14),
+            (.vcuG3, Nb.G3Register.vcuVersion, 2),
+        ]
+        for mode in [Nb.ReadLengthMode.u16LE, .u8] {
+            for (board, register, length) in canaries {
+                let req = Nb.readRequest(
+                    board: board,
+                    register: register,
+                    length: length,
+                    mode: mode,
+                    gen: protocolGen
+                )
+                do {
+                    let resp = try await sendReceive(plain: req, crypto: crypto, timeout: 1.8)
+                    if let parsed = Nb.parse(resp),
+                       parsed.cmd == Nb.Cmd.readResp.rawValue,
+                       parsed.index == register,
+                       !parsed.data.isEmpty {
+                        return mode
+                    }
+                } catch {
+                    if case BleError.notConnected = error { return mode }
                     continue
                 }
-
-                evidence.append(spec.key.data(using: .utf8) ?? Data())
-                evidence.append(parsed.data)
-
-                DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
-            } catch {
-                if case BleError.notConnected = error { break }
-                continue
             }
-
-            // Small gap to avoid flooding the BLE module
-            try? await Task.sleep(nanoseconds: 50_000_000)
         }
-
-        reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
-        // If serial still empty but BLE name is a compact ID, keep the scan-time ID.
-        if reading.serialDisplay == nil,
-           let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {
-            reading.serialDisplay = id
-        }
-        phase = .done
-        statusMessage = "Diagnose abgeschlossen (\(BleStack.ninebotEnc2.shortLabel))"
+        return .u16LE
     }
+
+    private func readDiagnosticRegister(
+        spec: DiagnosticMap.Spec,
+        crypto: NbCrypto,
+        mode: Nb.ReadLengthMode,
+        timeout: TimeInterval
+    ) async -> Nb.ParsedFrame? {
+        let request = Nb.readRequest(
+            board: spec.board,
+            register: spec.register,
+            length: spec.readLen,
+            mode: mode,
+            gen: protocolGen
+        )
+        do {
+            let resp = try await sendReceive(plain: request, crypto: crypto, timeout: timeout)
+            guard let parsed = Nb.parse(resp),
+                  parsed.cmd == Nb.Cmd.readResp.rawValue,
+                  parsed.index == spec.register else {
+                return nil
+            }
+            return parsed
+        } catch {
+            if case BleError.notConnected = error {
+                fail("Verbindung während der Registerauslese verloren")
+            }
+            return nil
+        }
+    }
+
+    /// Live-Boards und BLE zuerst, damit bei Timeouts trotzdem Nutzdaten bleiben.
+    private func prioritizedG3Specs(
+        _ specs: [DiagnosticMap.Spec],
+        liveBoardLabels: Set<String>
+    ) -> [DiagnosticMap.Spec] {
+        func rank(_ spec: DiagnosticMap.Spec) -> (Int, Int) {
+            let label = boardLabel(spec.board)
+            let live = liveBoardLabels.contains(label) ? 0 : 1
+            let bleFirst: Int = {
+                switch spec.board {
+                case .ble, .bleLegacy: return 0
+                case .vcuG3: return 1
+                case .mcuG3, .bmsG3: return 2
+                default: return 3
+                }
+            }()
+            return (live, bleFirst)
+        }
+        return specs.enumerated()
+            .sorted { lhs, rhs in
+                let r1 = rank(lhs.element)
+                let r2 = rank(rhs.element)
+                if r1 != r2 { return r1 < r2 }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
+    }
+
 
     private func dumpXiaomi() async {
         phase = .dumping

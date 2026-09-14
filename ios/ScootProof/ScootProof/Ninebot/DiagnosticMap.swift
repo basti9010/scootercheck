@@ -149,8 +149,9 @@ enum DiagnosticMap {
     /// Profilabhängige Registerliste — Max G3 nutzt andere Board-/Versions-Adressen.
     static func fields(for profile: ScooterProfile) -> [Spec] {
         if profile.usesG3RegisterMap {
-            return g3IdentityFields + g3LimitFields + g3HistoryFields
-                + g3FirmwareFields + g3BatteryFields + g3StatusFields
+            // Firmware früh: kurze BLE/VCU-Versionen vor langen Limit-/History-Blöcken.
+            return g3IdentityFields + g3FirmwareFields + g3LimitFields + g3HistoryFields
+                + g3BatteryFields + g3StatusFields
         }
         return fields
     }
@@ -166,11 +167,11 @@ enum DiagnosticMap {
     ]
 
     private static let g3IdentityFields: [Spec] = [
-        // Fahrzeug-SN liegt auf VCU; BLE-Name ist oft schon die ID.
+        // BLE zuerst: auf manchen FW antwortet nur BLE zuverlässig; VCU-Timeouts sonst Disconnect.
+        Spec(id: "ble_sn", board: .ble, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
         Spec(id: "vcu_g3_sn", board: .vcuG3, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
         Spec(id: "dis_sn", board: .dis, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
         Spec(id: "mcu_g3_sn", board: .mcuG3, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
-        Spec(id: "ble_sn", board: .ble, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
         Spec(id: "bms_g3_sn", board: .bmsG3, register: Nb.Register.serialNumber, readLen: 14, category: .identity),
     ]
 

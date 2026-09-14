@@ -14,7 +14,8 @@ enum IntegrityAnalyzer {
         priorUnlock: PriorUnlockEvidence? = nil,
         priorReading: IntegrityReading? = nil,
         priorProtocolNumber: String? = nil,
-        powerCycle: PowerCycleReport? = nil
+        powerCycle: PowerCycleReport? = nil,
+        unlockRescan: UnlockRescanReport? = nil
     ) -> IntegrityResult {
         var reading = reading
         normalizeSpeedUnlockFlag(&reading)
@@ -40,6 +41,9 @@ enum IntegrityAnalyzer {
         facts += buildTemperatureFacts(reading: reading)
         facts += buildErrorFacts(reading: reading)
         facts += buildFlagFacts(reading: reading, profile: profile, priorUnlock: priorUnlock)
+        if let unlockRescan {
+            facts += buildUnlockRescanFacts(unlockRescan)
+        }
         facts += buildGearFacts(reading: reading, profile: profile)
         facts += buildProtocolFacts(reading: reading)
         facts += buildIntegrityFacts(reading: reading)
@@ -62,7 +66,8 @@ enum IntegrityAnalyzer {
             trackMatch: trackMatch,
             score: evidence.score,
             verdict: evidence.verdict,
-            evidence: evidence
+            evidence: evidence,
+            unlockRescan: unlockRescan
         )
     }
 
@@ -263,19 +268,45 @@ enum IntegrityAnalyzer {
 
         let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
         let foreignUS = region == .us
+        let expectedRegion: String = {
+            switch profile.market {
+            case .de20: return "DE (1CGB…)"
+            case .eu25: return "EU (1CGE…)"
+            case .us37: return "US (1CGC…)"
+            }
+        }()
+        let regionStatus: FactStatus = {
+            if region == .unknown { return .nichtFeststellbar }
+            switch profile.market {
+            case .de20:
+                return foreignUS ? .erheblichAbweichend : .regelkonform
+            case .us37:
+                return region == .us ? .regelkonform : .abweichend
+            case .eu25:
+                return foreignUS ? .abweichend : .regelkonform
+            }
+        }()
+        let regionAssessment: String = {
+            switch (profile.market, region) {
+            case (.de20, .us):
+                return "US-Region (1CGC) bei DE-Sollprofil — Region-Unlock prüfen"
+            case (.us37, .us):
+                return "US-Region passend zum Max-G3-US-Profil"
+            case (.us37, _):
+                return "Region \(region.label) weicht vom US-Sollprofil ab"
+            default:
+                return region.label
+            }
+        }()
         facts.append(MeasuredFact(
             id: "serial.region",
             group: .serial,
             title: "Seriennummern-Region",
             auslesewert: region.label,
-            sollwert: profile.market == .de20 ? "DE (1CGB…)" : "EU / DE",
-            status: foreignUS && profile.market == .de20
-                ? .erheblichAbweichend
-                : (region == .unknown ? .nichtFeststellbar : .regelkonform),
-            bewertung: foreignUS && profile.market == .de20
-                ? "US-Region (1CGC) — Region-Unlock"
-                : region.label,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGC=US).",
+            sollwert: expectedRegion,
+            status: regionStatus,
+            bewertung: regionAssessment,
+            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGE=EU, 1CGC=US).",
             raw: reading.serialDisplay ?? reading.serialVcu
         ))
 
@@ -632,14 +663,14 @@ enum IntegrityAnalyzer {
                         // sonst wirkt ein serienmäßiges Limit wie der Unlock-Beweis.
                         switch (fromLimit, fromPeak) {
                         case (true, true):
-                            return "Limit \(Format.kmh.format(Optional(limit))) / Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                            return "Limit \(Format.kmh.format(limit)) / Trip-Peak \(Format.kmh.format(peak))"
                         case (true, false):
-                            return "Limit \(Format.kmh.format(Optional(limit)))"
+                            return "Limit \(Format.kmh.format(limit))"
                         case (false, true):
-                            return "Trip-Peak \(Format.kmh.format(Optional(peak)))"
+                            return "Trip-Peak \(Format.kmh.format(peak))"
                         case (false, false):
-                            if let peak, peak > 0 { return "Trip-Peak \(Format.kmh.format(Optional(peak)))" }
-                            if let limit, limit > 0 { return "Limit \(Format.kmh.format(Optional(limit)))" }
+                            if let peak, peak > 0 { return "Trip-Peak \(Format.kmh.format(peak))" }
+                            if let limit, limit > 0 { return "Limit \(Format.kmh.format(limit))" }
                             return "Tempo über Schwelle"
                         }
                     }
@@ -677,7 +708,7 @@ enum IntegrityAnalyzer {
                     return "Nicht feststellbar"
                 }(),
                 erlaeuterung: SoftUnlockSettings.isEnabledSnapshot()
-                    ? "Session-Unlock (Wirkung Limit/Peak ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h). Nach Ausschalten/Panic oft weg — dann zählen persistente Marker und frühere Protokolle."
+                    ? "Session-Unlock (Wirkung Limit/Peak ≥ \(Int(SoftUnlockSettings.thresholdKmhSnapshot())) km/h). Geheimkombination eingeben und erneut auslesen (Höchstgeschwindigkeiten). Nach Ausschalten sonst oft weg."
                     : "Soft-Unlock-Erkennung ist in den Einstellungen ausgeschaltet.",
                 raw: reading.hiddenTuningDetected.map { $0 ? "1" : "0" }
             ),
@@ -713,7 +744,7 @@ enum IntegrityAnalyzer {
                     ? "Aktuelles Session-Unlock sichtbar — Protokoll speichern, bevor ausgeschaltet wird"
                     : "Kein Vergleichsprotokoll mit erhöhtem Tempo für diese SN",
                 erlaeuterung: """
-                Soft-Unlock verschwindet oft nach Ausschalten. Lösung ohne Tastenkombination: \
+                Soft-Unlock verschwindet oft nach Ausschalten. Geheimkombination eingeben und erneut auslesen; \
                 während freigeschaltetem Tempo auslesen und speichern; danach beweisen persistente Marker \
                 (gespeichertes Max-Limit, FW, Region, Gänge) bzw. das gespeicherte Protokoll den Zustand.
                 """,
@@ -966,12 +997,62 @@ enum IntegrityAnalyzer {
         ]
     }
 
+    /// Ermittelte Geheimkombination + erneute Höchstgeschwindigkeits-Auslese.
+    private static func buildUnlockRescanFacts(_ report: UnlockRescanReport) -> [MeasuredFact] {
+        let afterTempo = max(report.afterLimitKmh ?? 0, report.afterPeakKmh ?? 0)
+        let unlocked = afterTempo >= report.thresholdKmh
+        return [
+            MeasuredFact(
+                id: "unlock.rescan.code",
+                group: .flags,
+                title: "Geheimkombination (gespeichert / eingegeben)",
+                auslesewert: report.unlockCode,
+                sollwert: "am Fahrzeug eingegeben",
+                status: .regelkonform,
+                bewertung: "Geheimkombination vom Nutzer eingegeben bzw. aus Speicher geladen",
+                erlaeuterung: "Keine festen Katalog-Kombinationen. Der Nutzer findet die Kombination selbst; sie wird pro Seriennummer gespeichert und bei Bedarf wieder ausgelesen. Nach Eingabe am Scooter erneut auslesen und Limit/Peak sichern.",
+                raw: report.unlockCode
+            ),
+            MeasuredFact(
+                id: "unlock.rescan.before",
+                group: .speed,
+                title: "Tempo vor Geheimkombination",
+                auslesewert: "Limit \(Format.kmh.format(report.beforeLimitKmh)) / Peak \(Format.kmh.format(report.beforePeakKmh))",
+                sollwert: "Vergleichswert vor Freischaltung",
+                status: .nichtFeststellbar,
+                bewertung: "Auslese A (vor Geheimkombination)",
+                erlaeuterung: "Registerzustand vor Eingabe der ermittelten Geheimkombination.",
+                raw: nil
+            ),
+            MeasuredFact(
+                id: "unlock.rescan.after",
+                group: .speed,
+                title: "Höchstgeschwindigkeit nach Geheimkombination",
+                auslesewert: "Limit \(Format.kmh.format(report.afterLimitKmh)) / Peak \(Format.kmh.format(report.afterPeakKmh))",
+                sollwert: "≤ Schwelle \(Format.kmh.format(report.thresholdKmh))",
+                status: unlocked ? .erheblichAbweichend : .regelkonform,
+                bewertung: unlocked
+                    ? "Freigeschaltetes Tempo nach Geheimkombination sichtbar"
+                    : "Nach Geheimkombination kein Tempo über Schwelle",
+                erlaeuterung: report.summary,
+                raw: nil
+            )
+        ]
+    }
+
     // MARK: - Findings
 
     private static func buildFindings(facts: [MeasuredFact], trackMatch: TrackMatch) -> [Finding] {
         var findings: [Finding] = []
 
-        let critical = facts.filter { $0.status == .erheblichAbweichend }
+        // Keine Evidence-/Diff-Spiegelungen — die stehen schon als Klartext-Bullets bzw. Custom-FW-Finding.
+        let critical = facts.filter {
+            $0.status == .erheblichAbweichend
+                && $0.group != .evidence
+                && !$0.id.hasPrefix("evidence.")
+                && !$0.id.hasPrefix("diff.")
+                && !$0.id.hasPrefix("positive.")
+        }
         for fact in critical {
             findings.append(Finding(
                 id: "finding.\(fact.id)",
@@ -1067,6 +1148,7 @@ enum IntegrityAnalyzer {
 
     // MARK: - EvidenceEngine findings (Anzeige der Engine-Ausgabe)
 
+    /// Nur Meta-Findings — keine erneute Spiegelung der Klartext-Bullets/Marker.
     private static func evidenceFindings(_ evidence: EvidenceAssessment) -> [Finding] {
         var findings: [Finding] = []
         findings.append(Finding(
@@ -1077,24 +1159,6 @@ enum IntegrityAnalyzer {
             detail: evidence.problemOverview,
             relatedFactIds: ["evidence.summary"]
         ))
-        for line in evidence.decisiveEvidence.prefix(6) {
-            findings.append(Finding(
-                id: "finding.evidence.decisive.\(findings.count)",
-                severity: evidence.verdict == .stock ? .regelkonform : .abweichend,
-                title: "Was aufgefallen ist",
-                detail: line,
-                relatedFactIds: ["evidence.summary"]
-            ))
-        }
-        for r in evidence.justifyingMarkers.prefix(6) {
-            findings.append(Finding(
-                id: "finding.evidence.marker.\(r.fact.markerID)",
-                severity: r.classification == .starkerHinweis ? .erheblichAbweichend : .abweichend,
-                title: r.plainLanguage.title,
-                detail: r.plainLanguage.summary,
-                relatedFactIds: ["evidence.\(r.fact.markerID)"]
-            ))
-        }
         if let attr = evidence.attribution {
             findings.append(Finding(
                 id: "finding.evidence.attribution",
@@ -1130,9 +1194,9 @@ enum IntegrityAnalyzer {
                 })
                 let citation: String
                 if let raw {
-                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : "EU")"
+                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : (profile.market == .us37 ? "US 1CGC…" : "EU"))"
                 } else {
-                    citation = "SN-Quelle: \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : "EU")"
+                    citation = "SN-Quelle: \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : (profile.market == .us37 ? "US 1CGC…" : "EU"))"
                 }
                 return MeasuredFact(
                     id: fact.id,
