@@ -268,19 +268,45 @@ enum IntegrityAnalyzer {
 
         let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
         let foreignUS = region == .us
+        let expectedRegion: String = {
+            switch profile.market {
+            case .de20: return "DE (1CGB…)"
+            case .eu25: return "EU (1CGE…)"
+            case .us37: return "US (1CGC…)"
+            }
+        }()
+        let regionStatus: FactStatus = {
+            if region == .unknown { return .nichtFeststellbar }
+            switch profile.market {
+            case .de20:
+                return foreignUS ? .erheblichAbweichend : .regelkonform
+            case .us37:
+                return region == .us ? .regelkonform : .abweichend
+            case .eu25:
+                return foreignUS ? .abweichend : .regelkonform
+            }
+        }()
+        let regionAssessment: String = {
+            switch (profile.market, region) {
+            case (.de20, .us):
+                return "US-Region (1CGC) bei DE-Sollprofil — Region-Unlock prüfen"
+            case (.us37, .us):
+                return "US-Region passend zum Max-G3-US-Profil"
+            case (.us37, _):
+                return "Region \(region.label) weicht vom US-Sollprofil ab"
+            default:
+                return region.label
+            }
+        }()
         facts.append(MeasuredFact(
             id: "serial.region",
             group: .serial,
             title: "Seriennummern-Region",
             auslesewert: region.label,
-            sollwert: profile.market == .de20 ? "DE (1CGB…)" : "EU / DE",
-            status: foreignUS && profile.market == .de20
-                ? .erheblichAbweichend
-                : (region == .unknown ? .nichtFeststellbar : .regelkonform),
-            bewertung: foreignUS && profile.market == .de20
-                ? "US-Region (1CGC) — Region-Unlock"
-                : region.label,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGC=US).",
+            sollwert: expectedRegion,
+            status: regionStatus,
+            bewertung: regionAssessment,
+            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGE=EU, 1CGC=US).",
             raw: reading.serialDisplay ?? reading.serialVcu
         ))
 
@@ -1168,9 +1194,9 @@ enum IntegrityAnalyzer {
                 })
                 let citation: String
                 if let raw {
-                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : "EU")"
+                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : (profile.market == .us37 ? "US 1CGC…" : "EU"))"
                 } else {
-                    citation = "SN-Quelle: \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : "EU")"
+                    citation = "SN-Quelle: \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : (profile.market == .us37 ? "US 1CGC…" : "EU"))"
                 }
                 return MeasuredFact(
                     id: fact.id,

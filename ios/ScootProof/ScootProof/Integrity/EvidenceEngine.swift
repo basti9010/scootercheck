@@ -536,12 +536,19 @@ enum EvidenceEngine {
                 register: "SN 0x10",
                 rawValue: rawHex(forNames: ["vcu_g3_sn", "dis_sn", "vcu_sn"], in: reading) ?? sn,
                 interpretedValue: "US-Region (\(sn))",
-                expectedValue: profile.market == .de20 ? "DE (1CGB…)" : "EU / marktüblich",
+                expectedValue: {
+                    switch profile.market {
+                    case .de20: return "DE (1CGB…)"
+                    case .eu25: return "EU (1CGE…) / marktüblich"
+                    case .us37: return "US (1CGC…)"
+                    }
+                }(),
                 persistence: .persistent,
                 resetResistant: true,
                 confidence: 0.92,
                 knowledgeSource: .referenceVehicle,
                 knownModMatchId: profile.market == .de20 ? "region.us.1CGC.on_de_profile" : nil,
+                // US-Profil + 1CGC ist kein Mod-Match.
                 knownStockMatch: profile.market != .de20
             ))
         }

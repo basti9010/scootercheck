@@ -474,7 +474,13 @@ enum EvidenceExplanationEngine {
                 group: .evidence,
                 title: "Region entspricht dem Serienprofil",
                 auslesewert: region.label,
-                sollwert: profile.market == .de20 ? "DE-Profil" : "EU-Profil",
+                sollwert: {
+                    switch profile.market {
+                    case .de20: return "DE-Profil"
+                    case .eu25: return "EU-Profil"
+                    case .us37: return "US-Profil"
+                    }
+                }(),
                 status: .regelkonform,
                 bewertung: "unauffällig",
                 erlaeuterung: "Die interne Regionseinstellung passt zum erwarteten Serienprofil. (\(TechnicalGlossary.explanation(for: .region)))",

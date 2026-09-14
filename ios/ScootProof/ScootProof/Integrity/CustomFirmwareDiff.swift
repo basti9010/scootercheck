@@ -163,7 +163,18 @@ enum CustomFirmwareDiff {
                 stockValue: "DE (1CGB…)",
                 observedValue: "US (\(reading.serialDisplay ?? reading.serialVcu ?? "—"))",
                 severity: .erheblichAbweichend,
-                explanation: "Region-SN weicht vom DE-Marktprofil ab — typisch für Region-Unlock."
+                explanation: "Region-SN weicht vom DE-Marktprofil ab — typisch für Region-Unlock. Bei US-Max-G3 (1CGC) bitte Profil „Max G3 US“ wählen."
+            ))
+        } else if profile.market == .us37, region != .us, region != .unknown {
+            suspected = true
+            reasons.append("Nicht-US-Region-SN auf US-Sollprofil")
+            diffs.append(DiffItem(
+                id: "diff.region",
+                title: "SN-Region",
+                stockValue: "US (1CGC…)",
+                observedValue: "\(region.label) (\(reading.serialDisplay ?? reading.serialVcu ?? "—"))",
+                severity: .abweichend,
+                explanation: "US-Max-G3-Profil erwartet SN-Präfix 1CGC."
             ))
         }
 

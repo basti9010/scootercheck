@@ -9,6 +9,14 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertEqual(hint?.shortBadge, "Max G3")
     }
 
+    func testMaxG3USFrom1CGC() {
+        let hint = BleModelHint.recognize(bleName: "1CGCF2551C3388")
+        XCTAssertEqual(hint?.profile, .maxG3US)
+        XCTAssertEqual(hint?.shortBadge, "Max G3 US")
+        XCTAssertEqual(hint?.profile.market, .us37)
+        XCTAssertEqual(hint?.profile.ratedMaxKmh, 37, accuracy: 0.1)
+    }
+
     func testMaxG3From1CGE() {
         let hint = BleModelHint.recognize(bleName: "1CGEF2531C0230")
         XCTAssertEqual(hint?.profile, .maxG3E)
@@ -82,4 +90,23 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertTrue(BleClient.isLikelyScooterName("F3 Pro"))
         XCTAssertFalse(BleClient.isLikelyScooterName("Nuki Smart Lock"))
     }
+
+    func testMaxG3USStockRegionNotFlaggedOnUSProfile() {
+        let reading = IntegrityReading(serialDisplay: "1CGCF2551C3388")
+        let result = IntegrityAnalyzer.analyze(reading: reading, profile: .maxG3US)
+        let region = result.facts.first { $0.id == "serial.region" }
+        XCTAssertNotNil(region)
+        XCTAssertEqual(region?.status, .regelkonform, region?.bewertung ?? "")
+        XCTAssertFalse((region?.bewertung ?? "").localizedCaseInsensitiveContains("unlock"))
+        XCTAssertTrue((region?.bewertung ?? "").localizedCaseInsensitiveContains("passend")
+            || (region?.bewertung ?? "").localizedCaseInsensitiveContains("US"))
+    }
+
+    func testMaxG3USCatalogAndG3Map() {
+        XCTAssertTrue(ScooterProfile.maxG3US.usesG3RegisterMap)
+        XCTAssertEqual(ScooterProfile.maxG3US.market, .us37)
+        XCTAssertNotNil(StockFirmwareCatalog.entry(for: .maxG3US))
+        XCTAssertEqual(ScooterProfile.profiles(in: .maxG3).count, 3)
+    }
+
 }

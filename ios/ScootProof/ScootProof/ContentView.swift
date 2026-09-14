@@ -1210,7 +1210,10 @@ struct ContentView: View {
                             session = newSession
                             try? history.save(newSession)
                             showMenu = false
-                            presentResultWithSubjectPrompt()
+                            // Menü-Sheet zuerst schließen, dann Zuordnungs-Popup.
+                            DispatchQueue.main.async {
+                                presentResultWithSubjectPrompt()
+                            }
                         }
                     }
                 }
