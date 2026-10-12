@@ -119,8 +119,8 @@ enum IntegrityAnalyzer {
                 status: .abweichend,
                 bewertung: "\(sighting.reason) · RSSI \(sighting.rssi) dBm",
                 erlaeuterung: "Gefilterter Hinweis — Alltaggeräte (TV, Audio, Phone) werden nicht gewertet.",
-                evidenceClass: .abweichung,
-                raw: "rssi=\(sighting.rssi)"
+                raw: "rssi=\(sighting.rssi)",
+                evidenceClass: .abweichung
             ))
         }
         return facts
