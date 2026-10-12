@@ -20,6 +20,14 @@ enum Theme {
         }
     }
 
+    static func control(_ level: ControlAssessment) -> Color {
+        switch level {
+        case .typkonform: return accent
+        case .auffaellig: return danger
+        case .unvollstaendig: return warn
+        }
+    }
+
     static func fact(_ status: FactStatus) -> Color {
         switch status {
         case .regelkonform: return accent
@@ -46,6 +54,14 @@ enum Theme {
             case .auffaellig: return warn
             case .hinweise: return UIColor(red: 0.98, green: 0.55, blue: 0.22, alpha: 1)
             case .eindeutig: return danger
+            }
+        }
+
+        static func control(_ level: ControlAssessment) -> UIColor {
+            switch level {
+            case .typkonform: return accent
+            case .auffaellig: return danger
+            case .unvollstaendig: return warn
             }
         }
 

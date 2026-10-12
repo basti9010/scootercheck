@@ -57,6 +57,14 @@ enum IntegrityAnalyzer {
         var findings = buildFindings(facts: facts, trackMatch: trackMatch)
         findings += evidenceFindings(evidence)
 
+        let control = ControlAssessmentEngine.assess(
+            reading: reading,
+            profile: profile,
+            technicalVerdict: evidence.verdict
+        )
+        facts += buildControlFacts(reading: reading, profile: profile, control: control)
+        findings += buildControlFindings(reading: reading, control: control)
+
         return IntegrityResult(
             sessionId: sessionId,
             profile: profile,
@@ -66,9 +74,88 @@ enum IntegrityAnalyzer {
             trackMatch: trackMatch,
             score: evidence.score,
             verdict: evidence.verdict,
+            controlAssessment: control,
             evidence: evidence,
             unlockRescan: unlockRescan
         )
+    }
+
+    private static func buildControlFacts(
+        reading: IntegrityReading,
+        profile: ScooterProfile,
+        control: ControlAssessment
+    ) -> [MeasuredFact] {
+        var facts: [MeasuredFact] = []
+        let summary = ControlAssessmentEngine.summaryLine(
+            assessment: control,
+            reading: reading,
+            profile: profile
+        )
+        let status: FactStatus = {
+            switch control {
+            case .typkonform: return .regelkonform
+            case .auffaellig: return .erheblichAbweichend
+            case .unvollstaendig: return .nichtFeststellbar
+            }
+        }()
+        facts.append(MeasuredFact(
+            id: "control.assessment",
+            group: .evidence,
+            title: "Kontrollergebnis",
+            auslesewert: control.label,
+            sollwert: ControlAssessment.typkonform.label,
+            status: status,
+            bewertung: summary,
+            erlaeuterung: control.shortHint,
+            evidenceClass: control == .typkonform ? .info : .abweichung
+        ))
+        for (idx, sighting) in (reading.foreignBleCandidates ?? []).prefix(3).enumerated() {
+            facts.append(MeasuredFact(
+                id: "control.foreignBle.\(idx)",
+                group: .evidence,
+                title: "Zusatz-BLE (Hinweis)",
+                auslesewert: sighting.name,
+                sollwert: "kein Aftermarket-Antriebs-BLE",
+                status: .abweichend,
+                bewertung: "\(sighting.reason) · RSSI \(sighting.rssi) dBm",
+                erlaeuterung: "Gefilterter Hinweis — Alltaggeräte (TV, Audio, Phone) werden nicht gewertet.",
+                evidenceClass: .abweichung,
+                raw: "rssi=\(sighting.rssi)"
+            ))
+        }
+        return facts
+    }
+
+    private static func buildControlFindings(
+        reading: IntegrityReading,
+        control: ControlAssessment
+    ) -> [Finding] {
+        var findings: [Finding] = [
+            Finding(
+                id: "finding.control.assessment",
+                severity: {
+                    switch control {
+                    case .typkonform: return .regelkonform
+                    case .auffaellig: return .erheblichAbweichend
+                    case .unvollstaendig: return .nichtFeststellbar
+                    }
+                }(),
+                title: "Kontrollergebnis: \(control.label)",
+                detail: control.shortHint,
+                relatedFactIds: ["control.assessment"]
+            )
+        ]
+        if !(reading.foreignBleCandidates ?? []).isEmpty {
+            let names = (reading.foreignBleCandidates ?? []).map(\.name).joined(separator: ", ")
+            findings.append(Finding(
+                id: "finding.control.foreignBle",
+                severity: .abweichend,
+                title: "Zusätzliches Antriebs-Bluetooth erkannt",
+                detail: "Hinweis auf mögliches Fremdmodul (\(names)). Kein Automatik-Nachweis.",
+                relatedFactIds: ["control.assessment"]
+            ))
+        }
+        return findings
     }
 
     // MARK: - Demo Data

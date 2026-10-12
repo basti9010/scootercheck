@@ -22,6 +22,8 @@ enum ProtocolJSON {
             score: result.score,
             verdict: result.verdict.rawValue,
             verdictLabel: result.verdict.label,
+            controlAssessment: result.controlAssessment.rawValue,
+            controlLabel: result.controlAssessment.label,
             shortVerdict: result.evidence.shortVerdictText,
             justifyingMarkers: result.evidence.justifyingMarkers,
             decisiveEvidence: result.evidence.decisiveEvidence,
@@ -59,6 +61,8 @@ enum ProtocolJSON {
         let score: Int
         let verdict: String
         let verdictLabel: String
+        let controlAssessment: String
+        let controlLabel: String
         let shortVerdict: String
         let justifyingMarkers: [EvidenceResult]
         let decisiveEvidence: [String]
@@ -171,7 +175,7 @@ enum ProtocolPDF {
         )
         cursor += 6
         cursor = drawText(
-            "Integritätsprotokoll · schreibgeschützte Auslese",
+            "Technische Vorprüfung · schreibgeschützte Auslese",
             at: cursor,
             font: bodyFont(size: 11),
             color: Theme.UI.muted
@@ -192,15 +196,24 @@ enum ProtocolPDF {
         }
         cursor += metaH + 12
 
-        // Verdict strip
-        let verdictColor = Theme.UI.verdict(result.verdict)
-        let stripH: CGFloat = 52
-        drawRoundedRect(CGRect(x: margin, y: cursor, width: contentWidth, height: stripH), fill: Theme.UI.card, stroke: verdictColor)
-        _ = drawText(result.verdict.label, at: cursor + 10, font: titleFont(size: 16), color: verdictColor, indent: 14)
+        // Kontroll-Ampel (primär) — technisches Urteil sekundär
+        let controlColor = Theme.UI.control(result.controlAssessment)
+        let stripH: CGFloat = 64
+        drawRoundedRect(CGRect(x: margin, y: cursor, width: contentWidth, height: stripH), fill: Theme.UI.card, stroke: controlColor)
+        _ = drawText(result.controlAssessment.label, at: cursor + 8, font: titleFont(size: 16), color: controlColor, indent: 14)
+        let limit = Format.kmh.format(result.reading.speedLimitKmh ?? result.reading.speedMaxKmh)
+        let peak = Format.kmh.format(result.reading.peakSpeedKmh)
         _ = drawText(
-            "Seriennähe \(result.score)/100 (hoch = unauffällig)  ·  \(result.trackMatch.trackId.label)",
-            at: cursor + 30,
-            font: bodyFont(size: 11),
+            "Limit \(limit) · Peak \(peak) · Soll ≤ \(Format.kmh.format(Optional(result.profile.ratedMaxKmh)))",
+            at: cursor + 28,
+            font: bodyFont(size: 11, weight: .semibold),
+            color: Theme.UI.text,
+            indent: 14
+        )
+        _ = drawText(
+            "Technisch: \(result.verdict.label) · Seriennähe \(result.score)/100 (nicht das Kontrollergebnis)",
+            at: cursor + 44,
+            font: bodyFont(size: 10),
             color: Theme.UI.muted,
             indent: 14
         )
@@ -218,26 +231,43 @@ enum ProtocolPDF {
         var cursor = ensureSpace(context: context, y: y, needed: 140)
         cursor = drawHeading("I. Zusammenfassung", at: cursor)
         cursor = drawText(
-            result.verdict.label,
+            "Kontrollergebnis: \(result.controlAssessment.label)",
             at: cursor,
             font: bodyFont(size: 13, weight: .semibold),
-            color: Theme.UI.verdict(result.verdict)
+            color: Theme.UI.control(result.controlAssessment)
         )
-        cursor = drawParagraph(result.evidence.shortVerdictText, at: cursor)
-        cursor += 4
-        cursor = drawSubheading(
-            result.verdict == .stock ? "Ergebnis in Klartext" : "Was ist aufgefallen?",
+        cursor = drawParagraph(result.controlAssessment.shortHint, at: cursor)
+        cursor = drawParagraph(
+            ControlAssessmentEngine.summaryLine(
+                assessment: result.controlAssessment,
+                reading: result.reading,
+                profile: result.profile
+            ),
             at: cursor
         )
-        if result.evidence.problemBullets.isEmpty {
-            cursor = drawParagraph(result.evidence.problemOverview, at: cursor)
-        } else {
-            for bullet in result.evidence.problemBullets {
+        cursor += 4
+        cursor = drawSubheading("Technische Einordnung", at: cursor)
+        cursor = drawParagraph(
+            "\(result.verdict.label) — \(result.evidence.shortVerdictText)",
+            at: cursor
+        )
+        if !result.evidence.problemBullets.isEmpty {
+            cursor = drawSubheading("Was ist aufgefallen?", at: cursor)
+            for bullet in result.evidence.problemBullets.prefix(6) {
                 cursor = drawParagraph("• \(bullet)", at: cursor)
             }
         }
+        if let foreign = result.reading.foreignBleCandidates, !foreign.isEmpty {
+            cursor = drawSubheading("Zusatz-BLE (gefiltert)", at: cursor)
+            for sighting in foreign.prefix(3) {
+                cursor = drawParagraph(
+                    "• \(sighting.name) · RSSI \(sighting.rssi) dBm — \(sighting.reason)",
+                    at: cursor
+                )
+            }
+        }
         cursor = drawText(
-            "Seriennähe \(result.score)/100: hoch = eher seriennah, niedrig = viele Abweichungen. Das Gesamturteil folgt festen Regeln — nicht dem Score.",
+            "Technische Vorprüfung: Seriennähe \(result.score)/100 verdichtet nur Feststellungen. Das Kontrollergebnis folgt Limit-Auslese und Ampelregeln — nicht dem Score.",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
@@ -595,12 +625,12 @@ enum ProtocolPDF {
         cursor += 4
         cursor = drawParagraph(result.disclaimer, at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
         cursor = ensureSpace(context: context, y: cursor, needed: 70)
-        cursor = drawHeading("Protokollvermerk", at: cursor)
+        cursor = drawHeading("Vermerk", at: cursor)
         cursor = drawParagraph(
             """
-            Das vorliegende Protokoll wurde maschinell erstellt und ohne Eingriff in die \
-            Fahrzeugelektronik ausgewertet. Die Auslese war schreibgeschützt. \
-            Ort, Datum: _________________________    Unterschrift: _________________________
+            Technische Vorprüfung, maschinell erstellt, schreibgeschützte Auslese — kein Eingriff \
+            in die Fahrzeugelektronik. Kein Ersatz für amtliche Begutachtung. \
+            Ort, Datum: _________________________    Vermerk: _________________________
             """,
             at: cursor
         )

@@ -664,6 +664,8 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var evidenceSha256: String?
     var rawRegisters: [RawRegister]
     var liveBoards: [String]
+    /// Eng gefilterte Fremd-Antriebs-BLE-Hinweise (optional für alte Protokolle).
+    var foreignBleCandidates: [ForeignBleSighting]?
 
     init(
         serialDisplay: String? = nil,
@@ -711,7 +713,8 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         bleStack: String? = nil,
         evidenceSha256: String? = nil,
         rawRegisters: [RawRegister] = [],
-        liveBoards: [String] = []
+        liveBoards: [String] = [],
+        foreignBleCandidates: [ForeignBleSighting]? = nil
     ) {
         self.serialDisplay = serialDisplay
         self.serialExpected = serialExpected
@@ -759,6 +762,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.evidenceSha256 = evidenceSha256
         self.rawRegisters = rawRegisters
         self.liveBoards = liveBoards
+        self.foreignBleCandidates = foreignBleCandidates
     }
 }
 
@@ -906,6 +910,8 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     let trackMatch: TrackMatch
     let score: Int
     let verdict: VerdictLevel
+    /// Ampel für die Kontrolle (getrennt vom technischen Verdict).
+    let controlAssessment: ControlAssessment
     let evidence: EvidenceAssessment
     let analyzedAt: Date
     let disclaimer: String
@@ -921,6 +927,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         trackMatch: TrackMatch,
         score: Int,
         verdict: VerdictLevel,
+        controlAssessment: ControlAssessment? = nil,
         evidence: EvidenceAssessment = .empty,
         analyzedAt: Date = Date(),
         disclaimer: String = IntegrityResult.defaultDisclaimer,
@@ -935,6 +942,11 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         self.trackMatch = trackMatch
         self.score = min(100, max(0, score))
         self.verdict = verdict
+        self.controlAssessment = controlAssessment ?? ControlAssessmentEngine.assess(
+            reading: reading,
+            profile: profile,
+            technicalVerdict: verdict
+        )
         self.evidence = evidence
         self.analyzedAt = analyzedAt
         self.disclaimer = disclaimer
@@ -943,7 +955,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case sessionId, profile, reading, facts, factGroups, findings
-        case trackMatch, score, verdict, evidence, analyzedAt, disclaimer, unlockRescan
+        case trackMatch, score, verdict, controlAssessment, evidence, analyzedAt, disclaimer, unlockRescan
     }
 
     init(from decoder: Decoder) throws {
@@ -961,6 +973,15 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         trackMatch = try c.decode(TrackMatch.self, forKey: .trackMatch)
         score = try c.decode(Int.self, forKey: .score)
         verdict = try c.decode(VerdictLevel.self, forKey: .verdict)
+        if let decoded = try c.decodeIfPresent(ControlAssessment.self, forKey: .controlAssessment) {
+            controlAssessment = decoded
+        } else {
+            controlAssessment = ControlAssessmentEngine.assess(
+                reading: reading,
+                profile: profile,
+                technicalVerdict: verdict
+            )
+        }
         evidence = try c.decodeIfPresent(EvidenceAssessment.self, forKey: .evidence) ?? .empty
         analyzedAt = try c.decodeIfPresent(Date.self, forKey: .analyzedAt) ?? Date()
         disclaimer = try c.decodeIfPresent(String.self, forKey: .disclaimer) ?? IntegrityResult.defaultDisclaimer
@@ -978,6 +999,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
         try c.encode(trackMatch, forKey: .trackMatch)
         try c.encode(score, forKey: .score)
         try c.encode(verdict, forKey: .verdict)
+        try c.encode(controlAssessment, forKey: .controlAssessment)
         try c.encode(evidence, forKey: .evidence)
         try c.encode(analyzedAt, forKey: .analyzedAt)
         try c.encode(disclaimer, forKey: .disclaimer)
@@ -985,13 +1007,7 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     }
 
     static let defaultDisclaimer = """
-    Dieses Protokoll wurde ausschließlich auf Basis einer schreibgeschützten Auslesung erstellt. \
-    Es erfolgt keine Veränderung von Fahrzeugparametern. Die Bewertung ersetzt keine amtliche \
-    Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung im Sinne der \
-    Straßenverkehrs-Zulassungs-Ordnung (StVZO). Die Bewertung gewichtet Marker nach Persistenz \
-    und technischer Einordnung (Info / Abweichung / Manipulationsindiz / starker Manipulationshinweis). \
-    Der Score (Seriennähe 0–100: hoch = unauffällig, niedrig = eher getunt) verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln und nicht dem Score. Flüchtige Session-Marker \
-    allein begründen keinen Manipulationshinweis.
+    Technische Vorprüfung auf Basis einer schreibgeschützten BLE-Auslese — keine Veränderung von Fahrzeugparametern.     Das Kontrollergebnis (Typkonform / Auffällig / Auslese unvollständig) und das technische Urteil ersetzen keine     amtliche Begutachtung, Typgenehmigungsprüfung oder Sachverständigenbegutachtung (StVZO).     Ohne ausgelesenes Geschwindigkeitslimit gibt es kein Typkonform-Ergebnis.     Der Score (Seriennähe 0–100) verdichtet Feststellungen nur und ist nicht das Kontrollergebnis.     Flüchtige Session-Marker allein begründen keinen Manipulationshinweis. Fremd-BLE-Hinweise sind gefilterte Heuristik.
     """
 }
 
