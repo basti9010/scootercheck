@@ -1209,6 +1209,13 @@ final class BleClient: NSObject, ObservableObject {
             crypto.resetSN()
         }
 
+        // Fremd-BLE nur eng gefiltert (VESC-artige Namen + starkes RSSI) — kein TV/Kopfhörer.
+        let exclude = Set([btName, cryptoName].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+        reading.foreignBleCandidates = ForeignBleDetector.sightings(
+            from: devices.map { (name: $0.name, rssi: $0.rssi, looksLikeScooter: $0.looksLikeScooter) },
+            excludingNames: exclude
+        )
+
         reading.evidenceSha256 = NbCrypto.sha256(evidence).map { String(format: "%02x", $0) }.joined()
         if reading.serialDisplay == nil,
            let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {

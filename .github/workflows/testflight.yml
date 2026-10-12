@@ -6,7 +6,7 @@ on:
       changelog:
         description: "TestFlight-Changelog"
         required: false
-        default: "ScooterCheck Diagnose-Build"
+        default: "ScooterCheck Kontroll-Ampel Build"
   push:
     branches:
       - main
@@ -14,6 +14,7 @@ on:
       - cursor/testflight-ci-133a
       - cursor/dual-tuning-detection-133a
       - cursor/unlock-rescan-prosecutor-b100
+      - cursor/control-ampel-fremdble-b100
     paths:
       - "ios/ScootProof/**"
       - ".github/workflows/testflight.yml"

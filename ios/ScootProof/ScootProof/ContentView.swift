@@ -292,86 +292,115 @@ struct ContentView: View {
 
     private func resultCard(_ report: IntegrityResult) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 18) {
+            // Kontroll-Ampel zuerst — Limit/Peak groß, Score/Track zurückgenommen.
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Kontrollergebnis")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.muted)
+                Text(report.controlAssessment.label)
+                    .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(Theme.control(report.controlAssessment))
+                Text(ControlAssessmentEngine.summaryLine(
+                    assessment: report.controlAssessment,
+                    reading: report.reading,
+                    profile: report.profile
+                ))
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.92))
+                .fixedSize(horizontal: false, vertical: true)
+                Text(report.controlAssessment.shortHint)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Limit")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted)
+                        Text(Format.kmh.format(report.reading.speedLimitKmh ?? report.reading.speedMaxKmh))
+                            .font(.title2.weight(.bold))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Peak")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted)
+                        Text(Format.kmh.format(report.reading.peakSpeedKmh))
+                            .font(.title2.weight(.bold))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Soll")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted)
+                        Text("≤ \(Format.kmh.format(Optional(report.profile.ratedMaxKmh)))")
+                            .font(.title2.weight(.bold))
+                    }
+                }
+                .padding(.top, 4)
+            }
+
+            HStack(alignment: .center, spacing: 14) {
                 ScoreRing(score: report.score, color: Theme.verdict(report.verdict))
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(report.verdict.label)
-                        .font(.title2.weight(.bold))
+                    .scaleEffect(0.85)
+                    .frame(width: 72, height: 72)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Technisch: \(report.verdict.label)")
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.verdict(report.verdict))
                     Text(scoreCaption(for: report.score))
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    if report.trackMatch.trackId != .unknown && report.trackMatch.trackId != .stock {
-                        Text(report.trackMatch.trackId.label)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Theme.accent)
-                    }
                     if let stackRaw = report.reading.bleStack,
                        let stack = BleStack(rawValue: stackRaw),
                        stack != .unknown {
-                        Text("BLE: \(stack.label)")
-                            .font(.caption.weight(.medium))
+                        Text("BLE: \(stack.shortLabel)")
+                            .font(.caption2)
                             .foregroundStyle(Theme.muted)
                     }
-                    Text("Katalog v\(report.evidence.catalogVersion)")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
+                }
+            }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(report.verdict == .stock ? "Ergebnis in Klartext" : "Was ist aufgefallen?")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                        if report.evidence.problemBullets.isEmpty {
-                            Text(report.evidence.problemOverview)
-                                .font(.footnote)
-                                .foregroundStyle(.white.opacity(0.9))
-                                .fixedSize(horizontal: false, vertical: true)
-                        } else {
-                            ForEach(Array(report.evidence.problemBullets.enumerated()), id: \.offset) { _, bullet in
-                                HStack(alignment: .top, spacing: 8) {
-                                    Text("•")
-                                        .foregroundStyle(Theme.accent)
-                                    Text(bullet)
-                                        .foregroundStyle(.white.opacity(0.92))
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                .font(.footnote)
-                            }
-                            Text(report.verdict.laymanText)
-                                .font(.caption)
-                                .foregroundStyle(Theme.muted)
-                                .padding(.top, 2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .padding(.top, 6)
-
-                    if let attr = report.evidence.attribution {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Vermutete Art der Veränderung")
-                                .font(.caption.weight(.semibold))
+            if !report.evidence.problemBullets.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Was ist aufgefallen?")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                    ForEach(Array(report.evidence.problemBullets.prefix(5).enumerated()), id: \.offset) { _, bullet in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("•")
                                 .foregroundStyle(Theme.accent)
-                            Text(attr.headline)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.white)
+                            Text(bullet)
+                                .foregroundStyle(.white.opacity(0.92))
                                 .fixedSize(horizontal: false, vertical: true)
-                            Text("Nur Einschätzung — kein Nachweis eines bestimmten Werkzeugs")
-                                .font(.caption2)
-                                .foregroundStyle(Theme.muted)
                         }
-                        .padding(.top, 4)
-                    }
-                    if let reset = report.facts.first(where: {
-                        $0.id == "flag.session.reset"
-                            && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
-                    }) {
-                        Text(reset.bewertung)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                            .fixedSize(horizontal: false, vertical: true)
+                        .font(.footnote)
                     }
                 }
+            }
+
+            if let attr = report.evidence.attribution, report.controlAssessment == .auffaellig {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Vermutete Art (Einschätzung)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                    Text(attr.headline)
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Kein Nachweis eines bestimmten Werkzeugs")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            if let reset = report.facts.first(where: {
+                $0.id == "flag.session.reset"
+                    && ($0.status == .abweichend || $0.status == .erheblichAbweichend)
+            }) {
+                Text(reset.bewertung)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if powerCyclePhase == .awaitReboot {
@@ -738,7 +767,7 @@ struct ContentView: View {
     }
 
     private var primaryColor: Color {
-        if screen == .result, let result { return Theme.verdict(result.verdict) }
+        if screen == .result, let result { return Theme.control(result.controlAssessment) }
         return Theme.accent
     }
 
