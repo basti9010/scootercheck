@@ -6,7 +6,7 @@ on:
       changelog:
         description: "TestFlight-Changelog"
         required: false
-        default: "ScooterCheck Diagnose-Build"
+        default: "ScooterCheck Kontroll-Ampel Build"
   push:
     branches:
       - main
