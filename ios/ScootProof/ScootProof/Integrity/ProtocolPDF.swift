@@ -419,25 +419,58 @@ enum ProtocolPDF {
             color: Theme.UI.muted
         )
 
-        // IV.a Rohdaten
+        // IV.a Rohdaten-Quelltext (gesamte Auslese, entscheidende Stellen farblich markiert)
         cursor = ensureSpace(context: context, y: cursor, needed: 40)
-        cursor = drawSubheading("IV.a Rohdatenregister", at: cursor)
+        cursor = drawSubheading("IV.a Rohdaten-Quelltext", at: cursor)
+        let dumpLines = RawDumpHighlighter.lines(reading: result.reading, evidence: result.evidence)
+        let markedCount = dumpLines.filter { $0.annotation != nil }.count
         cursor = drawText(
-            "\(result.reading.rawRegisters.count) Register ausgelesen.",
+            "\(dumpLines.count) Register als Quelltext. \(markedCount) Stelle(n) farblich markiert (Klammern = Kurz-Erklärung).",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
         )
-        for reg in result.reading.rawRegisters {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+        for severity in RawDumpHighlightSeverity.allCases {
             cursor = drawText(
-                "\(reg.address)  \(reg.name)  \(reg.valueHex)",
+                "• \(severity.legendLabel)",
                 at: cursor,
-                font: monoFont(size: 8),
-                color: Theme.UI.text
+                font: bodyFont(size: 8),
+                color: severity.pdfColor
             )
-            if let decoded = reg.valueDecoded {
-                cursor = drawText("    → \(decoded)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+        }
+        cursor = drawText(
+            "Beispiel: vcu_g3_maxspd = 35 … [!! Limit erhöht — Freigabe, nicht Tacho].",
+            at: cursor,
+            font: bodyFont(size: 8),
+            color: Theme.UI.muted
+        )
+        for line in dumpLines {
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * (line.annotation == nil ? 1.5 : 3))
+            if let ann = line.annotation {
+                // Leichte Hintergrundmarkierung für urteilswirksame Zeilen
+                let bandHeight = lineHeight + 2
+                let band = CGRect(x: margin - 2, y: cursor - 1, width: contentWidth + 4, height: bandHeight)
+                ann.severity.pdfColor.withAlphaComponent(0.14).setFill()
+                UIBezierPath(roundedRect: band, cornerRadius: 3).fill()
+                cursor = drawText(
+                    line.sourceLine,
+                    at: cursor,
+                    font: monoFont(size: 8, weight: .semibold),
+                    color: ann.severity.pdfColor
+                )
+                cursor = drawText(
+                    "    [\(ann.severity.bracketPrefix) \(ann.bracketLabel) — \(ann.explanation)]",
+                    at: cursor,
+                    font: bodyFont(size: 8),
+                    color: ann.severity.pdfColor
+                )
+            } else {
+                cursor = drawText(
+                    line.sourceLine,
+                    at: cursor,
+                    font: monoFont(size: 8),
+                    color: Theme.UI.text
+                )
             }
         }
 

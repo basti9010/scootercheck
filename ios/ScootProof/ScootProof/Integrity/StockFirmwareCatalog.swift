@@ -39,12 +39,25 @@ enum StockFirmwareCatalog {
         bms: ["1.0.0", "1.1.0", "1.2.0"]
     )
 
+    /// F3 / F3 Pro — beobachtete Serienstände (Enc2/x3-Karte, SN 1EFH… / 1EFC…).
+    static let ninebotF3 = Entry(
+        mcu: ["2.4.0", "2.3.0", "2.2.0"],
+        vcu: [
+            "1.6.1", "1.5.7", "1.5.0",
+            // 4-Nibble-Decodierung aus BLE-Rohwerten (z. B. 61015701 → 97.1.87.1)
+            "97.1.87.1"
+        ],
+        ble: ["0.4.5", "0.4.0", "0.3.14"],
+        bms: ["4.1.6.8", "4.1.4.8", "4.1.3.0"]
+    )
+
     static func entry(for profile: ScooterProfile) -> Entry? {
         switch profile.family {
         case .maxG3: return maxG3
         case .maxG30, .maxG2: return maxG30Family
         case .zt3Pro: return zt3Pro
-        case .ninebotF, .ninebotF3, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
+        case .ninebotF3: return ninebotF3
+        case .ninebotF, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
             return nil
         }
     }

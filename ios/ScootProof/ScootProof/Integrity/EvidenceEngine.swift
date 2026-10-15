@@ -537,10 +537,13 @@ enum EvidenceEngine {
                 rawValue: rawHex(forNames: ["vcu_g3_sn", "dis_sn", "vcu_sn"], in: reading) ?? sn,
                 interpretedValue: "US-Region (\(sn))",
                 expectedValue: {
-                    switch profile.market {
-                    case .de20: return "DE (1CGB…)"
-                    case .eu25: return "EU (1CGE…) / marktüblich"
-                    case .us37: return "US (1CGC…)"
+                    switch (profile.family, profile.market) {
+                    case (.ninebotF3, .de20): return "DE (1EFH… / 1EFC…)"
+                    case (.ninebotF3, .eu25): return "EU (1EF…)"
+                    case (.ninebotF3, .us37): return "US"
+                    case (_, .de20): return "DE (1CGB…)"
+                    case (_, .eu25): return "EU (1CGE…) / marktüblich"
+                    case (_, .us37): return "US (1CGC…)"
                     }
                 }(),
                 persistence: .persistent,
@@ -650,7 +653,7 @@ enum EvidenceEngine {
             break
         }
 
-        if let gear = reading.gearMax, gear > 1 {
+        if let gear = reading.gearMax, gear > profile.stockMaxGear {
             facts.append(EvidenceFact(
                 markerID: "gear.max",
                 title: "Zusätzliche Leistungsstufen",
@@ -658,7 +661,7 @@ enum EvidenceEngine {
                 register: "gearMode",
                 rawValue: rawHex(forNames: ["vcu_g3_gear", "vcu_g3_sgear"], in: reading) ?? "\(gear)",
                 interpretedValue: "max. Stufe \(gear)",
-                expectedValue: "1",
+                expectedValue: "\(profile.stockMaxGear)",
                 persistence: .persistent,
                 resetResistant: true,
                 confidence: 0.8,

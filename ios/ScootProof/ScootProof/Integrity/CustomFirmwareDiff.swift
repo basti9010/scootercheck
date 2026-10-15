@@ -139,13 +139,13 @@ enum CustomFirmwareDiff {
         }
 
         // --- Leistungsstufen ---
-        if let gear = reading.gearMax, gear > 1 {
+        if let gear = reading.gearMax, gear > profile.stockMaxGear {
             suspected = true
             reasons.append("Zusätzliche Leistungsstufen freigeschaltet (max \(gear))")
             diffs.append(DiffItem(
                 id: "diff.gear.max",
                 title: "Maximale Freigabe",
-                stockValue: "1 (Serie \(profile.shortLabel))",
+                stockValue: "\(profile.stockMaxGear) (Serie \(profile.shortLabel))",
                 observedValue: "\(gear)",
                 severity: .abweichend,
                 explanation: "Zusätzliche Stufen in der Elektronik — nicht dasselbe wie Eco/Normal/Sport."
