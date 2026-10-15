@@ -51,6 +51,10 @@ enum TrackClassifier {
     static func serialRegion(for serial: String?) -> SerialRegion {
         guard let serial = serial?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
               !serial.isEmpty else { return .unknown }
+        // F3 Pro: 1EFH… (DIS/Fahrzeug), 1EFC… (VCU) — DE/EU nicht am Präfix getrennt; DE-Default.
+        if serial.hasPrefix("1EFH") || serial.hasPrefix("1EFC") || serial.hasPrefix("1EF") {
+            return .de
+        }
         // Max G3 / x3: 1CGB=DE, 1CGE=EU, 1CGC=US, 1CGD=RU (Joey's Wiki / MaxG3Tools).
         if serial.hasPrefix("1CGB") { return .de }
         if serial.hasPrefix("1CGE") { return .eu }
@@ -66,7 +70,19 @@ enum TrackClassifier {
 
     static func serialsMismatch(_ a: String?, _ b: String?) -> Bool {
         guard let a = normalizedSerial(a), let b = normalizedSerial(b) else { return false }
-        return a != b
+        if a == b { return false }
+        // F3 Pro: DIS 1EFH… und VCU 1EFC… teilen denselben Fahrzeug-Suffix.
+        if sameEnc2VehicleBody(a, b) { return false }
+        return true
+    }
+
+    /// Enc2-Board-Präfixe derselben Fahrzeug-SN (z. B. 1EFH… ↔ 1EFC…).
+    static func sameEnc2VehicleBody(_ a: String, _ b: String) -> Bool {
+        guard a.count >= 10, b.count >= 10 else { return false }
+        if a.hasPrefix("1EF"), b.hasPrefix("1EF"), a.dropFirst(4) == b.dropFirst(4) {
+            return true
+        }
+        return false
     }
 
     static func normalizedSerial(_ value: String?) -> String? {
@@ -78,7 +94,9 @@ enum TrackClassifier {
     /// MCU-Hardware-SN (z. B. Z07…) weicht auf Max G3 werkseitig von der Fahrzeug-SN ab.
     static func looksLikeModuleSerial(_ value: String?) -> Bool {
         guard let sn = normalizedSerial(value) else { return false }
-        if sn.hasPrefix("1CG") || sn.hasPrefix("N4G") || sn.hasPrefix("N2") { return false }
+        if sn.hasPrefix("1CG") || sn.hasPrefix("1EF") || sn.hasPrefix("N4G") || sn.hasPrefix("N2") {
+            return false
+        }
         // Hex-/MAC-artig oder eigenes MCU-Muster (Z07XB…)
         if sn.hasPrefix("Z07") || sn.hasPrefix("Z0") { return true }
         let hexLike = sn.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "0123456789ABCDEF").contains($0) }
@@ -89,7 +107,8 @@ enum TrackClassifier {
         guard let mcu = normalizedSerial(reading.serialMcu) else { return false }
         // Max G3 / x3: MCU-SN ist eine eigene Board-ID, kein Tuning-Marker.
         if looksLikeModuleSerial(mcu) { return false }
-        if let vcu = normalizedSerial(reading.serialVcu), vcu.hasPrefix("1CG") {
+        if let vcu = normalizedSerial(reading.serialVcu),
+           vcu.hasPrefix("1CG") || vcu.hasPrefix("1EF") {
             return false
         }
         let references = [
@@ -278,8 +297,8 @@ enum TrackClassifier {
             trackId: .shu,
             weight: 0.35,
             description: "Zusatzgänge freigeschaltet (oft panic-resistent)"
-        ) { reading, _ in
-            (reading.gearMax ?? 0) > 1
+        ) { reading, profile in
+            (reading.gearMax ?? 0) > profile.stockMaxGear
         },
         TrackPattern(
             id: "shu.fw.catalog.miss",
