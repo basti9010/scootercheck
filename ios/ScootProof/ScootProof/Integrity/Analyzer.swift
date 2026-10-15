@@ -269,10 +269,13 @@ enum IntegrityAnalyzer {
         let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
         let foreignUS = region == .us
         let expectedRegion: String = {
-            switch profile.market {
-            case .de20: return "DE (1CGB…)"
-            case .eu25: return "EU (1CGE…)"
-            case .us37: return "US (1CGC…)"
+            switch (profile.family, profile.market) {
+            case (.ninebotF3, .de20): return "DE (1EFH… / 1EFC…)"
+            case (.ninebotF3, .eu25): return "EU (1EF… / F3E)"
+            case (.ninebotF3, .us37): return "US"
+            case (_, .de20): return "DE (1CGB…)"
+            case (_, .eu25): return "EU (1CGE…)"
+            case (_, .us37): return "US (1CGC…)"
             }
         }()
         let regionStatus: FactStatus = {
@@ -306,7 +309,7 @@ enum IntegrityAnalyzer {
             sollwert: expectedRegion,
             status: regionStatus,
             bewertung: regionAssessment,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGE=EU, 1CGC=US).",
+            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGE=EU, 1CGC=US; F3 Pro: 1EFH…/1EFC…).",
             raw: reading.serialDisplay ?? reading.serialVcu
         ))
 
@@ -862,15 +865,20 @@ enum IntegrityAnalyzer {
 
     private static func buildGearFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
         let maxGear = reading.gearMax
+        let stockMax = profile.stockMaxGear
+        let modeOverStock = (reading.gearMode ?? 0) > stockMax
+        let maxOverStock = (maxGear ?? 0) > stockMax
         return [
             MeasuredFact(
                 id: "gear.mode",
                 group: .gear,
                 title: "Aktueller Fahrmodus",
                 auslesewert: Format.num.format(reading.gearMode),
-                sollwert: "Serienmodus",
-                status: reading.gearMode == nil ? .nichtFeststellbar : ((reading.gearMode ?? 1) > 1 ? .abweichend : .regelkonform),
-                bewertung: reading.gearMode == nil ? "Nicht feststellbar" : ((reading.gearMode ?? 1) > 1 ? "Erweiterter Modus gewählt" : "Serienmodus"),
+                sollwert: "≤ \(stockMax) (Serie)",
+                status: reading.gearMode == nil ? .nichtFeststellbar : (modeOverStock ? .abweichend : .regelkonform),
+                bewertung: reading.gearMode == nil
+                    ? "Nicht feststellbar"
+                    : (modeOverStock ? "Über Serienfreigabe" : "Serienmodus"),
                 erlaeuterung: "Gerade gewählter Fahrmodus (z. B. Eco/Normal/Sport). Das ist nicht dasselbe wie freigeschaltete Zusatzstufen.",
                 raw: reading.gearMode.map { String($0) }
             ),
@@ -879,9 +887,11 @@ enum IntegrityAnalyzer {
                 group: .gear,
                 title: "Maximale Freigabe",
                 auslesewert: Format.num.format(maxGear),
-                sollwert: "1 (\(profile.shortLabel))",
-                status: maxGear == nil ? .nichtFeststellbar : ((maxGear ?? 1) > 1 ? .abweichend : .regelkonform),
-                bewertung: maxGear == nil ? "Nicht feststellbar" : ((maxGear ?? 1) > 1 ? "Mehr Stufen als Serie" : "Serienfreigabe"),
+                sollwert: "\(stockMax) (\(profile.shortLabel))",
+                status: maxGear == nil ? .nichtFeststellbar : (maxOverStock ? .abweichend : .regelkonform),
+                bewertung: maxGear == nil
+                    ? "Nicht feststellbar"
+                    : (maxOverStock ? "Mehr Stufen als Serie" : "Serienfreigabe"),
                 erlaeuterung: "Höchste freigeschaltete Leistungsstufe in der Elektronik. Eco/Normal/Sport allein sind keine Freigabe — erst ein erhöhter Maximalwert gilt als Auffälligkeit.",
                 raw: maxGear.map { String($0) }
             )
