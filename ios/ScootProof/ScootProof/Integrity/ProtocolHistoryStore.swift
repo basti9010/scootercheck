@@ -16,9 +16,16 @@ final class ProtocolHistoryStore: ObservableObject {
         var trackId: String?
         /// Optionale Kurzzeile (Name / Geburtsdatum / Kennzeichen).
         var subjectSummary: String?
+        /// Kurzer Anzeigename für die Scan-Liste (Kennzeichen / Name).
+        var knownLabel: String?
+        /// BLE-Peripheral-UUID dieses iPhones — Wiedererkennung auch ohne SN im Advertisement.
+        var blePeripheralId: UUID?
+        /// Roher Advertisement-Name beim letzten Check (oft = SN).
+        var bleAdvertisementName: String?
 
         enum CodingKeys: String, CodingKey {
-            case id, protocolNumber, createdAt, profile, verdict, score, serialDisplay, trackId, subjectSummary
+            case id, protocolNumber, createdAt, profile, verdict, score, serialDisplay, trackId
+            case subjectSummary, knownLabel, blePeripheralId, bleAdvertisementName
         }
 
         init(
@@ -30,7 +37,10 @@ final class ProtocolHistoryStore: ObservableObject {
             score: Int? = nil,
             serialDisplay: String? = nil,
             trackId: String? = nil,
-            subjectSummary: String? = nil
+            subjectSummary: String? = nil,
+            knownLabel: String? = nil,
+            blePeripheralId: UUID? = nil,
+            bleAdvertisementName: String? = nil
         ) {
             self.id = id
             self.protocolNumber = protocolNumber
@@ -41,6 +51,9 @@ final class ProtocolHistoryStore: ObservableObject {
             self.serialDisplay = serialDisplay
             self.trackId = trackId
             self.subjectSummary = subjectSummary
+            self.knownLabel = knownLabel
+            self.blePeripheralId = blePeripheralId
+            self.bleAdvertisementName = bleAdvertisementName
         }
 
         init(from decoder: Decoder) throws {
@@ -54,6 +67,9 @@ final class ProtocolHistoryStore: ObservableObject {
             serialDisplay = try c.decodeIfPresent(String.self, forKey: .serialDisplay)
             trackId = try c.decodeIfPresent(String.self, forKey: .trackId)
             subjectSummary = try c.decodeIfPresent(String.self, forKey: .subjectSummary)
+            knownLabel = try c.decodeIfPresent(String.self, forKey: .knownLabel)
+            blePeripheralId = try c.decodeIfPresent(UUID.self, forKey: .blePeripheralId)
+            bleAdvertisementName = try c.decodeIfPresent(String.self, forKey: .bleAdvertisementName)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -67,6 +83,17 @@ final class ProtocolHistoryStore: ObservableObject {
             try c.encodeIfPresent(serialDisplay, forKey: .serialDisplay)
             try c.encodeIfPresent(trackId, forKey: .trackId)
             try c.encodeIfPresent(subjectSummary, forKey: .subjectSummary)
+            try c.encodeIfPresent(knownLabel, forKey: .knownLabel)
+            try c.encodeIfPresent(blePeripheralId, forKey: .blePeripheralId)
+            try c.encodeIfPresent(bleAdvertisementName, forKey: .bleAdvertisementName)
+        }
+
+        /// Label für die Geräteliste: gespeicherter Name, sonst „bereits geprüft“.
+        var scanListAlias: String? {
+            if let knownLabel, !knownLabel.isEmpty { return knownLabel }
+            if let subjectSummary, !subjectSummary.isEmpty { return subjectSummary }
+            if serialDisplay != nil || blePeripheralId != nil { return "bereits geprüft" }
+            return nil
         }
     }
 
@@ -110,8 +137,9 @@ final class ProtocolHistoryStore: ObservableObject {
     }
 
     /// Saves session + regenerates durable PDF/JSON pack. Returns pack URLs.
+    /// `scannedDevice` merkt BLE-UUID/Advertisement für Wiedererkennung in der Scan-Liste.
     @discardableResult
-    func save(_ session: CheckSession) throws -> ProtocolPack.PackURLs {
+    func save(_ session: CheckSession, scannedDevice: ScannedDevice? = nil) throws -> ProtocolPack.PackURLs {
         guard let result = session.result else {
             throw HistoryError.missingResult
         }
@@ -124,6 +152,20 @@ final class ProtocolHistoryStore: ObservableObject {
 
         let pack = try ProtocolPack.makePack(session: session, result: result, directory: dir)
 
+        let serial = result.reading.serialDisplay ?? session.reading.serialDisplay
+        let previous = entries.first(where: { $0.id == session.id })
+            ?? entries.first(where: { entry in
+                guard let serial else { return false }
+                return entry.serialDisplay.map { Self.serialsMatch(serial, $0) } ?? false
+            })
+
+        let advName: String? = {
+            guard let scannedDevice else { return previous?.bleAdvertisementName }
+            let raw = scannedDevice.cryptoName.isEmpty ? scannedDevice.name : scannedDevice.cryptoName
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty || trimmed.hasPrefix("Ohne Namen") ? previous?.bleAdvertisementName : trimmed
+        }()
+
         var next = entries.filter { $0.id != session.id }
         next.insert(
             Entry(
@@ -133,9 +175,12 @@ final class ProtocolHistoryStore: ObservableObject {
                 profile: session.profile,
                 verdict: result.verdict,
                 score: result.score,
-                serialDisplay: result.reading.serialDisplay ?? session.reading.serialDisplay,
+                serialDisplay: serial,
                 trackId: result.trackMatch.trackId.rawValue,
-                subjectSummary: session.subject.summaryLine
+                subjectSummary: session.subject.summaryLine,
+                knownLabel: Self.makeKnownLabel(from: session.subject) ?? previous?.knownLabel,
+                blePeripheralId: scannedDevice?.id ?? previous?.blePeripheralId,
+                bleAdvertisementName: advName
             ),
             at: 0
         )
@@ -271,6 +316,79 @@ final class ProtocolHistoryStore: ObservableObject {
         try? fileManager.removeItem(at: packDirectory(for: entry.protocolNumber))
         entries.removeAll { $0.id == id }
         try? encoder.encode(entries).write(to: indexURL, options: .atomic)
+    }
+
+    // MARK: - Scan-Listen-Wiedererkennung
+
+    /// Gespeicherter Name / Kennzeichen für ein Gerät in der BLE-Suche.
+    func knownAlias(for device: ScannedDevice) -> String? {
+        knownEntry(for: device)?.scanListAlias
+    }
+
+    func knownEntry(for device: ScannedDevice) -> Entry? {
+        let keys = Self.scanIdentityKeys(for: device)
+        for entry in entries {
+            if let pid = entry.blePeripheralId, pid == device.id {
+                return entry
+            }
+            if let sn = entry.serialDisplay, Self.identityMatches(sn, keys: keys) {
+                return entry
+            }
+            if let adv = entry.bleAdvertisementName, Self.identityMatches(adv, keys: keys) {
+                return entry
+            }
+        }
+        return nil
+    }
+
+    /// Geräte mit bekanntem Alias zuerst, danach stärkeres Signal.
+    func sortForScanList(_ devices: [ScannedDevice]) -> [ScannedDevice] {
+        devices.sorted { a, b in
+            let aKnown = knownAlias(for: a) != nil
+            let bKnown = knownAlias(for: b) != nil
+            if aKnown != bKnown { return aKnown && !bKnown }
+            return a.rssi > b.rssi
+        }
+    }
+
+    static func makeKnownLabel(from subject: ProtocolSubject) -> String? {
+        let s = subject.sanitized()
+        switch (s.displayName, s.licensePlate) {
+        case let (name?, plate?):
+            return "\(name) · \(plate)"
+        case let (name?, nil):
+            return name
+        case let (nil, plate?):
+            return plate
+        default:
+            return s.summaryLine
+        }
+    }
+
+    private static func scanIdentityKeys(for device: ScannedDevice) -> [String] {
+        var keys: [String] = []
+        let raw = device.cryptoName.isEmpty ? device.name : device.cryptoName
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, !trimmed.hasPrefix("Ohne Namen") {
+            keys.append(normalizeSerial(trimmed))
+        }
+        if let compact = BleModelHint.compactScooterId(from: raw) {
+            keys.append(normalizeSerial(compact))
+        }
+        // Auch UI-Name, falls Advertisement und Anzeige auseinanderlaufen
+        let ui = device.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !ui.isEmpty, !ui.hasPrefix("Ohne Namen") {
+            keys.append(normalizeSerial(ui))
+        }
+        return Array(Set(keys.filter { $0.count >= 6 }))
+    }
+
+    private static func identityMatches(_ stored: String, keys: [String]) -> Bool {
+        let needle = normalizeSerial(stored)
+        guard needle.count >= 6 else { return false }
+        return keys.contains { key in
+            serialsMatch(needle, key) || key.contains(needle) || needle.contains(key)
+        }
     }
 
     private func packDirectory(for protocolNumber: String) -> URL {

@@ -210,6 +210,8 @@ final class BleClient: NSObject, ObservableObject {
     private var dumpProfileHint: ScooterProfile = .maxG3D
     /// Letztes Scan-Gerät für einen Reconnect-Versuch nach Abbruch.
     private var lastConnectDevice: ScannedDevice?
+    /// Öffentlich für Verlauf/Wiedererkennung (SN + BLE-UUID merken).
+    var lastConnectedDevice: ScannedDevice? { lastConnectDevice }
     private var maxG3Enc2RetryUsed = false
     /// Erwarteter Disconnect (z. B. vor „Erneut prüfen“) — kein Fehlerstatus.
     private var expectDisconnect = false

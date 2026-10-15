@@ -38,6 +38,7 @@
 		A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* G3OdometerScaleTests.swift */; };
 		A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PeakDisReportBugsTests.swift */; };
 		A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */; };
+		A10000000000000000000023 /* KnownScooterAliasTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000023 /* KnownScooterAliasTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +75,7 @@
 		B1000000000000000000001D /* G3OdometerScaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G3OdometerScaleTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PeakDisReportBugsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDisReportBugsTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000023 /* KnownScooterAliasTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnownScooterAliasTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000002 /* ScootProofTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScootProofTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -153,6 +155,7 @@
 				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
+				B10000000000000000000023 /* KnownScooterAliasTests.swift */,
 			);
 			path = ScootProofTests;
 			sourceTree = "<group>";
@@ -312,6 +315,7 @@
 				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
+				A10000000000000000000023 /* KnownScooterAliasTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
