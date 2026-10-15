@@ -416,8 +416,65 @@ struct ContentView: View {
                     }
                 }
             }
+
+            rawDumpSourceSection(report)
         }
         .scootCard()
+    }
+
+    @ViewBuilder
+    private func rawDumpSourceSection(_ report: IntegrityResult) -> some View {
+        let lines = RawDumpHighlighter.lines(reading: report.reading, evidence: report.evidence)
+        if !lines.isEmpty {
+            let marked = lines.filter { $0.annotation != nil }.count
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Gesamte Auslese als Quelltext. Markierte Zeilen mit Klammern erklären, warum sie auffällig sind (z. B. Limit ≠ Tacho).")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(RawDumpHighlightSeverity.allCases, id: \.self) { severity in
+                        Text(severity.legendLabel)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(severity.uiColor)
+                    }
+                    ForEach(lines) { line in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(line.sourceLine)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(line.annotation?.severity.uiColor ?? .white.opacity(0.85))
+                                .textSelection(.enabled)
+                            if let ann = line.annotation {
+                                Text("[\(ann.severity.bracketPrefix) \(ann.bracketLabel) — \(ann.explanation)]")
+                                    .font(.caption2)
+                                    .foregroundStyle(ann.severity.uiColor)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            (line.annotation?.severity.uiColor ?? Color.clear)
+                                .opacity(line.annotation == nil ? 0 : 0.12)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    }
+                }
+                .padding(.top, 4)
+            } label: {
+                HStack {
+                    Text("Rohdaten-Quelltext")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                    Spacer()
+                    Text("\(lines.count) Reg. · \(marked) markiert")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            .padding(.top, 10)
+        }
     }
 
     /// Popup direkt nach der Auswertung — vor dem Protokoll.
