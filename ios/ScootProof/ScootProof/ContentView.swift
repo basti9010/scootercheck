@@ -101,62 +101,31 @@ struct ContentView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    if screen == .result {
-                        Button {
-                            persistCurrentSession()
-                            goToOverview()
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
-                        }
-                        .accessibilityLabel("Zurück zur Kontrollübersicht")
-                    } else if screen == .home {
-                        Button {
-                            screen = .overview
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "list.bullet.rectangle")
-                                    .font(.body.weight(.semibold))
-                                Text("Kontrollen")
-                                    .font(.subheadline.weight(.semibold))
-                            }
+                    Button {
+                        withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.accent)
-                        }
-                        .accessibilityLabel("Zur Kontrollübersicht")
-                    } else if screen == .overview {
-                        Button {
-                            screen = .home
-                            if ble.phase != .scanning, !isBusyPhase {
-                                ble.startScan()
-                            }
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
-                        }
-                        .accessibilityLabel("Zurück zur Scooter-Suche")
                     }
+                    .accessibilityLabel("Menü öffnen")
                 }
                 ToolbarItem(placement: .principal) {
                     if screen == .overview {
                         Text("Kontrollen")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
+                    } else if screen == .result {
+                        Text("Protokoll")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
                     } else {
                         Wordmark(size: .headline)
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showMenu = true } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.title3)
-                            .foregroundStyle(Theme.accent)
-                    }
-                }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
-            .sheet(isPresented: $showMenu) { menuSheet }
+            .overlay { sideMenuOverlay }
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
@@ -1167,148 +1136,237 @@ struct ContentView: View {
         startUnlockRescan()
     }
 
-    private var menuSheet: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach(ScooterFamily.allCases, id: \.self) { family in
-                        VStack(alignment: .leading, spacing: 4) {
+    // MARK: - Side menu (über dem aktuellen Bildschirm)
+
+    private var sideMenuOverlay: some View {
+        ZStack(alignment: .leading) {
+            if showMenu {
+                Color.black.opacity(0.55)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+                    }
+                    .transition(.opacity)
+
+                sideMenuPanel
+                    .frame(maxWidth: 320)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .background(Theme.card.ignoresSafeArea())
+                    .transition(.move(edge: .leading))
+                    .zIndex(1)
+            }
+        }
+        .animation(.easeOut(duration: 0.22), value: showMenu)
+        .allowsHitTesting(showMenu)
+    }
+
+    private var sideMenuPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Wordmark(size: .headline)
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.muted)
+                        .padding(8)
+                }
+                .accessibilityLabel("Menü schließen")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            Text("Navigation")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.muted)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+
+            VStack(spacing: 4) {
+                sideNavRow(
+                    title: "Scooter-Suche",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    selected: screen == .home
+                ) {
+                    navigateFromMenu(to: .home)
+                }
+                sideNavRow(
+                    title: history.entries.isEmpty
+                        ? "Kontrollen"
+                        : "Kontrollen (\(history.entries.count))",
+                    systemImage: "list.bullet.rectangle",
+                    selected: screen == .overview
+                ) {
+                    navigateFromMenu(to: .overview)
+                }
+                if result != nil {
+                    sideNavRow(
+                        title: "Aktuelles Protokoll",
+                        systemImage: "doc.text",
+                        selected: screen == .result
+                    ) {
+                        navigateFromMenu(to: .result)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+
+            Divider().overlay(Theme.line).padding(.vertical, 14)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Vergleichsprofil")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.muted)
+                        Text("Nur nötig, wenn die Auto-Erkennung danebenliegt.")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.muted.opacity(0.85))
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(ScooterFamily.allCases, id: \.self) { family in
                             Picker(family.title, selection: $profile) {
                                 ForEach(ScooterProfile.profiles(in: family)) { p in
                                     Text(p.shortLabel).tag(p)
                                 }
                             }
-                            Text(family.supportNote)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            .pickerStyle(.menu)
+                            .tint(Theme.accent)
                         }
                     }
-                } header: {
-                    Text("Vergleichsprofil")
-                } footer: {
-                    Text("Nur nötig, wenn die Auto-Erkennung danebenliegt. Daraus kommen Soll-Tempo (z. B. DE 20 km/h), Registerkarte und Serienkatalog — die App wählt das Profil sonst anhand von BLE-Name/SN.")
-                }
-                Section {
-                    Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
-                    Picker("Bedienung", selection: $softUnlock.control) {
-                        ForEach(SoftUnlockControl.allCases) { kind in
-                            Text(kind.title).tag(kind)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Soft-Unlock")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.muted)
+                        Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
+                            .tint(Theme.accent)
+                            .foregroundStyle(.white)
+                        Picker("Bedienung", selection: $softUnlock.control) {
+                            ForEach(SoftUnlockControl.allCases) { kind in
+                                Text(kind.title).tag(kind)
+                            }
                         }
-                    }
-                    if softUnlock.control == .custom {
-                        TextField("Eigene Beschreibung", text: $softUnlock.customLabel)
-                    } else {
-                        Stepper("Wiederholungen: \(softUnlock.repetitions)×", value: $softUnlock.repetitions, in: 1...20)
-                    }
-                    Stepper(
-                        "Schwelle: \(Int(softUnlock.speedThresholdKmh.rounded())) km/h",
-                        value: Binding(
-                            get: { softUnlock.speedThresholdKmh },
-                            set: { softUnlock.speedThresholdKmh = $0 }
-                        ),
-                        in: 21...60,
-                        step: 1
-                    )
-                    Text("Aktuell: \(softUnlock.unlockCodeSummary)")
-                        .font(.subheadline.weight(.semibold))
-                    if let serial = currentScooterSerial {
-                        let _ = softUnlockStoreRevision
-                        if let stored = SoftUnlockComboStore.load(forSerial: serial) {
-                            Text("Gespeichert für \(serial): \(stored.displayCode)")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            Button("Gespeicherte Kombination laden") {
-                                softUnlock.apply(stored)
-                                discoveredUnlockCombo = stored
-                            }
-                            Button("Gespeicherte Kombination löschen", role: .destructive) {
-                                SoftUnlockComboStore.delete(forSerial: serial)
-                                if discoveredUnlockCombo?.displayCode == stored.displayCode {
-                                    discoveredUnlockCombo = nil
-                                }
-                                softUnlockStoreRevision += 1
-                            }
+                        .tint(Theme.accent)
+                        if softUnlock.control == .custom {
+                            TextField("Eigene Beschreibung", text: $softUnlock.customLabel)
+                                .scootField()
                         } else {
-                            Text("Noch keine Kombination für \(serial) gespeichert.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                            Stepper("Wiederholungen: \(softUnlock.repetitions)×", value: $softUnlock.repetitions, in: 1...20)
+                                .foregroundStyle(.white)
                         }
-                        Button("Aktuelle Kombination für diese SN speichern") {
-                            let combo = SoftUnlockCombo.fromSettings(softUnlock)
-                            SoftUnlockComboStore.save(combo, forSerial: serial)
-                            discoveredUnlockCombo = combo
-                            softUnlockStoreRevision += 1
-                        }
-                    } else {
-                        Text("Nach einer Auslese erscheint hier die Speicherung pro Seriennummer.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        Stepper(
+                            "Schwelle: \(Int(softUnlock.speedThresholdKmh.rounded())) km/h",
+                            value: Binding(
+                                get: { softUnlock.speedThresholdKmh },
+                                set: { softUnlock.speedThresholdKmh = $0 }
+                            ),
+                            in: 21...60,
+                            step: 1
+                        )
+                        .foregroundStyle(.white)
+                        Text(softUnlock.unlockCodeSummary)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(softUnlock.detectionHint)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } header: {
-                    Text("Soft-Unlock / Geheimkombination")
-                }
-                Section("Kontrollen") {
-                    Button {
-                        showMenu = false
-                        screen = .overview
-                    } label: {
-                        HStack {
-                            Text("Übersicht")
-                            Spacer()
-                            Text("\(history.entries.count)")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                Section("Beispiele") {
-                    ForEach(IntegrityAnalyzer.DemoKind.allCases, id: \.rawValue) { kind in
-                        Button(demoTitle(kind)) {
-                            let reading = IntegrityAnalyzer.fillDemo(kind, profile: profile)
-                            let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
-                            result = analyzed
-                            let newSession = CheckSession(
-                                id: analyzed.sessionId,
-                                profile: profile,
-                                reading: reading,
-                                result: analyzed
-                            )
-                            session = newSession
-                            try? history.save(newSession)
-                            showMenu = false
-                            // Menü-Sheet zuerst schließen, dann Zuordnungs-Popup.
-                            DispatchQueue.main.async {
-                                presentResultWithSubjectPrompt()
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Beispiele")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.muted)
+                        ForEach(IntegrityAnalyzer.DemoKind.allCases, id: \.rawValue) { kind in
+                            Button(demoTitle(kind)) {
+                                let reading = IntegrityAnalyzer.fillDemo(kind, profile: profile)
+                                let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
+                                result = analyzed
+                                let newSession = CheckSession(
+                                    id: analyzed.sessionId,
+                                    profile: profile,
+                                    reading: reading,
+                                    result: analyzed
+                                )
+                                session = newSession
+                                try? history.save(newSession)
+                                withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+                                DispatchQueue.main.async {
+                                    presentResultWithSubjectPrompt()
+                                }
                             }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.accent)
                         }
                     }
-                }
-                Section {
-                    Button("Trennen", role: .destructive) {
+
+                    Button(role: .destructive) {
                         ble.disconnect()
                         result = nil
                         session = nil
-                        screen = .home
-                        showMenu = false
+                        navigateFromMenu(to: .home)
+                    } label: {
+                        Label("Trennen", systemImage: "xmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                }
-                Section {
+                    .foregroundStyle(Theme.danger)
+
                     AppCopyrightFooter()
                         .frame(maxWidth: .infinity)
-                        .listRowBackground(Color.clear)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
                 }
-            }
-            .navigationTitle("Menü")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { showMenu = false }
-                }
+                .padding(.horizontal, 20)
             }
         }
-        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+    }
+
+    private func sideNavRow(
+        title: String,
+        systemImage: String,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22)
+                Text(verbatim: title)
+                    .font(.body.weight(selected ? .semibold : .regular))
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                }
+            }
+            .foregroundStyle(selected ? Theme.ink : .white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(selected ? Theme.accent : Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func navigateFromMenu(to target: AppScreen) {
+        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        switch target {
+        case .home:
+            if screen == .result { persistCurrentSession() }
+            screen = .home
+            if ble.phase != .scanning, !isBusyPhase {
+                ble.startScan()
+            }
+        case .overview:
+            if screen == .result { persistCurrentSession() }
+            goToOverview()
+        case .result:
+            guard result != nil else { return }
+            screen = .result
+        }
     }
 
     private var controlsOverview: some View {
