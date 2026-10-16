@@ -258,8 +258,8 @@ struct RotatingSonarIcon: View {
     }
 }
 
-/// Vektor-Radar: feine Ringe, weicher Einzel-Sweep, Blip-Nachglühen,
-/// elegante weiße Scooter-Line-Art — kein Bitmap-Look.
+/// Sonar hinter dem bereitgestellten `radar_scooter`-Asset.
+/// Ebenen: Disk → Achsen → Ringe → Sweep → Blips → Image("radar_scooter") → Check.
 struct SonarRadarView: View {
     enum Style {
         case compact
@@ -277,8 +277,8 @@ struct SonarRadarView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let revolutionSeconds: Double = 2.0
-    /// Nach dem Überstreichen: so viele Grad braucht der Fade bis zur Ruhehelligkeit.
-    private let blipFadeDegrees: Double = 110
+    /// ~0.6 s Fade bei 2 s/Umdrehung → ~108°.
+    private let blipFadeDegrees: Double = 108
 
     private var blips: [SonarBlip] {
         let fallback = (style == .hero) ? 4 : (isScanning ? 5 : 4)
@@ -289,7 +289,7 @@ struct SonarRadarView: View {
         ZStack {
             radarCanvas
             if style != .compact {
-                scooterOverlay
+                scooterForeground
             }
         }
         .frame(width: size, height: size)
@@ -320,35 +320,27 @@ struct SonarRadarView: View {
         return (t.truncatingRemainder(dividingBy: revolutionSeconds) / revolutionSeconds) * 360.0
     }
 
-    private var scooterOverlay: some View {
-        let scooterW = size * 0.48
-        let scooterH = size * 0.36
-        return ZStack {
-            // Soft under-glow (wie Icon-Referenz, aber weiß)
-            ScooterLineArt()
-                .stroke(Color.white.opacity(0.22), style: StrokeStyle(lineWidth: max(5, size * 0.038), lineCap: .round, lineJoin: .round))
-                .blur(radius: size * 0.018)
-                .frame(width: scooterW, height: scooterH)
-                .offset(y: size * 0.012)
+    /// Ausschließlich das bereitgestellte Asset — kein gezeichneter Scooter.
+    private var scooterForeground: some View {
+        ZStack {
+            Image("radar_scooter")
+                .resizable()
+                .scaledToFit()
+                .frame(width: size * 0.62)
+                .offset(y: size * 0.01)
 
-            ScooterLineArt()
-                .stroke(Color.white.opacity(0.96), style: StrokeStyle(lineWidth: max(2.4, size * 0.018), lineCap: .round, lineJoin: .round))
-                .frame(width: scooterW, height: scooterH)
-                .offset(y: size * 0.012)
-
-            // Check badge — mittig hinter der Deck-/Rahmenzone
+            // Separates Check-Symbol (nicht Teil des Assets)
             ZStack {
                 Circle()
-                    .fill(Theme.bg.opacity(0.88))
+                    .fill(Theme.bg.opacity(0.82))
                 Circle()
-                    .stroke(Theme.accent.opacity(0.95), lineWidth: max(1.2, size * 0.008))
+                    .stroke(Theme.accent.opacity(0.9), lineWidth: max(1.1, size * 0.007))
                 Image(systemName: "checkmark")
-                    .font(.system(size: size * 0.058, weight: .bold))
+                    .font(.system(size: size * 0.052, weight: .bold))
                     .foregroundStyle(Theme.accent)
             }
-            .frame(width: size * 0.135, height: size * 0.135)
-            .shadow(color: Theme.accent.opacity(0.35), radius: size * 0.02)
-            .offset(y: size * 0.018)
+            .frame(width: size * 0.12, height: size * 0.12)
+            .offset(y: size * 0.02)
         }
         .allowsHitTesting(false)
     }
@@ -365,7 +357,7 @@ struct SonarRadarView: View {
             let mid = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
             let radius = min(canvasSize.width, canvasSize.height) / 2
 
-            // Soft mint disk
+            // 1. Dunkler / transparenter Radarbereich
             let disk = Path(ellipseIn: CGRect(
                 x: mid.x - radius, y: mid.y - radius,
                 width: radius * 2, height: radius * 2
@@ -374,8 +366,8 @@ struct SonarRadarView: View {
                 disk,
                 with: .radialGradient(
                     Gradient(colors: [
-                        Theme.accent.opacity(0.06 * flashBoost),
-                        Theme.accent.opacity(0.015),
+                        Theme.accent.opacity(0.05 * flashBoost),
+                        Theme.accent.opacity(0.012),
                         .clear
                     ]),
                     center: mid,
@@ -384,20 +376,7 @@ struct SonarRadarView: View {
                 )
             )
 
-            // Concentric rings
-            for i in 1...rings {
-                let frac = CGFloat(i) / CGFloat(rings)
-                let r = radius * (0.24 + frac * 0.72)
-                var ring = Path()
-                ring.addEllipse(in: CGRect(x: mid.x - r, y: mid.y - r, width: r * 2, height: r * 2))
-                context.stroke(
-                    ring,
-                    with: .color(Theme.accent.opacity(0.11 + Double(i) * 0.028)),
-                    lineWidth: strokeW
-                )
-            }
-
-            // Crosshair
+            // 2. Achsen
             if style != .compact {
                 var h = Path(); h.move(to: CGPoint(x: mid.x - radius * 0.9, y: mid.y)); h.addLine(to: CGPoint(x: mid.x + radius * 0.9, y: mid.y))
                 var v = Path(); v.move(to: CGPoint(x: mid.x, y: mid.y - radius * 0.9)); v.addLine(to: CGPoint(x: mid.x, y: mid.y + radius * 0.9))
@@ -405,16 +384,30 @@ struct SonarRadarView: View {
                 context.stroke(v, with: .color(Theme.accent.opacity(0.09)), lineWidth: 0.55)
             }
 
-            // Single soft light-cone — kein separater Lead-Stroke (der wirkte wie zweiter Strich).
+            // 3. Konzentrische Ringe
+            for i in 1...rings {
+                let frac = CGFloat(i) / CGFloat(rings)
+                let r = radius * (0.24 + frac * 0.72)
+                var ring = Path()
+                ring.addEllipse(in: CGRect(x: mid.x - r, y: mid.y - r, width: r * 2, height: r * 2))
+                context.stroke(
+                    ring,
+                    with: .color(Theme.accent.opacity(0.10 + Double(i) * 0.028)),
+                    lineWidth: strokeW
+                )
+            }
+
+            // 4. Einzelner weicher Sweep (hellere Vorderkante, transparenter Schweif)
             if drawSweep {
-                let steps = style == .compact ? 36 : 64
+                let steps = style == .compact ? 40 : 72
                 for i in 0..<steps {
                     let t = Double(i) / Double(max(steps - 1, 1))
                     let a0 = angle - span * t
                     let a1 = angle - span * min(1, t + 1.0 / Double(steps))
-                    // Smoothstep-ähnlicher Falloff: hell an der Vorderkante, unsichtbar am Schweifende
-                    let fall = (1.0 - t)
-                    let alpha = fall * fall * fall * (style == .compact ? 0.42 : 0.36) * flashBoost
+                    let fall = 1.0 - t
+                    // Vorderkante etwas heller, Schweif cubic aus
+                    let peak: Double = style == .compact ? 0.48 : 0.40
+                    let alpha = fall * fall * fall * peak * flashBoost
                     guard alpha > 0.003 else { continue }
                     var wedge = Path()
                     wedge.move(to: mid)
@@ -428,38 +421,48 @@ struct SonarRadarView: View {
                     wedge.closeSubpath()
                     context.fill(wedge, with: .color(Theme.accent.opacity(alpha)))
                 }
+                // Klare, weiche Vorderkante — Teil des Kegels, kein zweiter Strich dahinter
+                var lead = Path()
+                let leadLen = radius * 0.985
+                let lx = mid.x + leadLen * CGFloat(cos((angle - 90) * .pi / 180))
+                let ly = mid.y + leadLen * CGFloat(sin((angle - 90) * .pi / 180))
+                lead.move(to: mid)
+                lead.addLine(to: CGPoint(x: lx, y: ly))
+                context.stroke(
+                    lead,
+                    with: .color(Theme.accent.opacity(0.55 * flashBoost)),
+                    style: StrokeStyle(lineWidth: style == .compact ? 1.0 : 1.25, lineCap: .round)
+                )
             }
 
-            // Blips: nach Sweep-Überfahrt aufleuchten, dann weich ausfaden
+            // 5. Erkennungspunkte: unsichtbar → Treffer → Fade auf 0
             for (index, blip) in blips.enumerated() {
-                let pulse = animateBlips ? blipPulse(blipAngle: blip.angle, sweep: angle) : 0.15
-                let highlighted = highlightIndex == index
-                let intensity = highlighted ? max(pulse, 0.85) : pulse
+                let pulse = animateBlips ? blipPulse(blipAngle: blip.angle, sweep: angle) : 0
+                let highlighted = highlightIndex == index && animateBlips
+                let intensity = highlighted ? max(pulse, 0.9) : pulse
+                guard intensity > 0.01 else { continue }
+
                 let br = radius * blip.radius
                 let bx = mid.x + br * CGFloat(cos((blip.angle - 90) * .pi / 180))
                 let by = mid.y + br * CGFloat(sin((blip.angle - 90) * .pi / 180))
                 let baseDot: CGFloat = style == .compact
                     ? max(1.5, size * 0.05)
                     : max(2.2, size * blip.dot)
-                let d = baseDot * (0.9 + 0.45 * intensity)
-                // Soft glow first (under)
-                if intensity > 0.08 {
-                    let glow = d * (1.8 + intensity * 1.4)
-                    let glowRect = CGRect(x: bx - glow / 2, y: by - glow / 2, width: glow, height: glow)
-                    context.fill(
-                        Path(ellipseIn: glowRect),
-                        with: .color(Theme.accent.opacity(0.12 + 0.28 * intensity))
-                    )
-                }
-                let opacity = 0.28 + 0.67 * intensity
+                let d = baseDot * (0.85 + 0.55 * intensity)
+
+                let glow = d * (1.6 + intensity * 1.6)
+                let glowRect = CGRect(x: bx - glow / 2, y: by - glow / 2, width: glow, height: glow)
+                context.fill(
+                    Path(ellipseIn: glowRect),
+                    with: .color(Theme.accent.opacity(0.18 * intensity))
+                )
                 let dotRect = CGRect(x: bx - d / 2, y: by - d / 2, width: d, height: d)
                 context.fill(
                     Path(ellipseIn: dotRect),
-                    with: .color(Color.white.opacity(opacity))
+                    with: .color(Color.white.opacity(intensity))
                 )
             }
 
-            // Compact hub
             if style == .compact {
                 let hub = max(2.2, size * 0.12)
                 context.fill(
@@ -470,21 +473,15 @@ struct SonarRadarView: View {
         }
     }
 
-    /// 0…1: Peak direkt nach dem Überstreichen, danach weicher Abfall.
+    /// 0…1: Peak beim Treffer, danach weich auf 0 (nicht auf Resthelligkeit).
     private func blipPulse(blipAngle: Double, sweep: Double) -> Double {
-        // Positive Werte = Sweep ist bereits über den Punkt hinaus (im Uhrzeigersinn).
         let behind = normalizedDelta(sweep - blipAngle)
-        if behind < 0 {
-            // Noch nicht erreicht — Ruhehelligkeit
-            return 0.18
-        }
-        if behind > blipFadeDegrees {
-            return 0.18
+        if behind < 0 || behind > blipFadeDegrees {
+            return 0
         }
         let t = behind / blipFadeDegrees
-        // Ease-out: sofort hell, dann weich abfallend
-        let fade = (1.0 - t)
-        return 0.18 + 0.82 * (fade * fade)
+        let fade = 1.0 - t
+        return fade * fade
     }
 
     private func normalizedDelta(_ degrees: Double) -> Double {
@@ -494,64 +491,6 @@ struct SonarRadarView: View {
         return d
     }
 }
-
-/// Elegante E-Scooter-Seitenansicht — dicke Line-Art wie App-Icon-Referenz.
-struct ScooterLineArt: Shape {
-    func path(in rect: CGRect) -> Path {
-        let w = rect.width
-        let h = rect.height
-        let x0 = rect.minX
-        let y0 = rect.minY
-
-        func pt(_ nx: CGFloat, _ ny: CGFloat) -> CGPoint {
-            CGPoint(x: x0 + nx * w, y: y0 + ny * h)
-        }
-
-        var p = Path()
-
-        // Proportionen angelehnt an das Mint-Radar-Icon (Seitenansicht links→rechts).
-        let wheelR: CGFloat = 0.115
-        let rearCX: CGFloat = 0.20
-        let frontCX: CGFloat = 0.80
-        let wheelCY: CGFloat = 0.74
-        let deckY: CGFloat = 0.60
-
-        // Räder
-        p.addEllipse(in: CGRect(
-            x: x0 + (rearCX - wheelR) * w, y: y0 + (wheelCY - wheelR) * h,
-            width: wheelR * 2 * w, height: wheelR * 2 * h
-        ))
-        p.addEllipse(in: CGRect(
-            x: x0 + (frontCX - wheelR) * w, y: y0 + (wheelCY - wheelR) * h,
-            width: wheelR * 2 * w, height: wheelR * 2 * h
-        ))
-
-        // Deck
-        p.move(to: pt(rearCX + wheelR * 0.7, deckY))
-        p.addLine(to: pt(frontCX - wheelR * 0.35, deckY))
-
-        // Heck-Kotflügel
-        p.move(to: pt(rearCX - wheelR * 0.35, deckY + 0.01))
-        p.addQuadCurve(to: pt(rearCX + wheelR * 0.55, deckY - 0.02), control: pt(rearCX, deckY - 0.13))
-
-        // Lenksäule: Deck → oben
-        p.move(to: pt(frontCX - wheelR * 0.25, deckY))
-        p.addLine(to: pt(0.74, 0.18))
-
-        // Lenker
-        p.move(to: pt(0.60, 0.16))
-        p.addLine(to: pt(0.88, 0.16))
-
-        // Front-Kotflügel
-        p.move(to: pt(frontCX - wheelR * 0.55, deckY + 0.02))
-        p.addQuadCurve(to: pt(frontCX + wheelR * 0.55, wheelCY - 0.04), control: pt(frontCX + 0.04, deckY - 0.14))
-
-        return p
-    }
-}
-
-/// Alias für bestehende Aufrufe / Preview.
-typealias ScooterSilhouette = ScooterLineArt
 
 private struct SonarBlip {
     let angle: Double
