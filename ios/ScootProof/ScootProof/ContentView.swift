@@ -70,38 +70,68 @@ struct ContentView: View {
         return nil
     }
 
+    /// Idle-Start ohne Scan; Geräte-UI sobald gesucht wird oder Geräte da sind.
+    private var showsStartLanding: Bool {
+        screen == .home
+            && !isBusyPhase
+            && ble.phase != .scanning
+            && ble.phase != .done
+            && ble.visibleDevices.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if let err = ble.lastError, ble.phase == .failed, screen != .overview {
-                        errorBanner(err)
-                    }
-                    switch screen {
-                    case .overview:
-                        controlsOverview
-                    case .result:
-                        if let result {
-                            resultCard(result)
-                        } else {
+            ZStack(alignment: .bottom) {
+                Theme.bg.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        if let err = ble.lastError, ble.phase == .failed, screen != .overview {
+                            errorBanner(err)
+                        }
+                        switch screen {
+                        case .overview:
                             controlsOverview
-                        }
-                    case .home:
-                        if isBusyPhase {
-                            connectingCard
-                        } else if ble.devices.isEmpty {
-                            emptyState
-                        }
-                        if !ble.devices.isEmpty && !isBusyPhase {
-                            deviceSection
+                        case .result:
+                            if let result {
+                                resultCard(result)
+                            } else {
+                                controlsOverview
+                            }
+                        case .home:
+                            if isBusyPhase {
+                                connectingCard
+                            } else if showsStartLanding {
+                                startLanding
+                            } else {
+                                devicesSearchHeader
+                                if ble.visibleDevices.isEmpty {
+                                    searchEmptyState
+                                } else {
+                                    deviceSection
+                                }
+                            }
                         }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, showsStartLanding ? 120 : 28)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 28)
+
+                if showsStartLanding {
+                    AnimatedSignalWaves()
+                        .frame(height: 110)
+                        .mask(
+                            LinearGradient(
+                                colors: [.clear, .white, .white],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .allowsHitTesting(false)
+                        .padding(.bottom, 8)
+                }
             }
-            .background(Theme.bg.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -115,26 +145,27 @@ struct ContentView: View {
                                 .font(.body.weight(.semibold))
                                 .foregroundStyle(Theme.accent)
                         }
-                        .accessibilityLabel("Protokoll schließen")
+                        .accessibilityLabel("Prüfbericht schließen")
                     } else if !showMenu {
-                        Button {
+                        MenuGlyphButton {
                             withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
-                        } label: {
-                            Image(systemName: "line.3.horizontal")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
                         }
-                        .accessibilityLabel("Menü öffnen")
                         .transition(.opacity)
                     }
                 }
                 ToolbarItem(placement: .principal) {
                     if screen == .overview {
-                        Text("Kontrollen")
+                        Text("Prüfungen")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
                     } else if screen == .result {
-                        Text("Protokoll")
+                        Text("Prüfbericht")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                    } else if showsStartLanding {
+                        Wordmark(size: .headline)
+                    } else if screen == .home {
+                        Text("Geräte")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
                     } else {
@@ -159,8 +190,8 @@ struct ContentView: View {
             .sharePackURLs(
                 $historySharePack,
                 subject: historySharePack.map {
-                    "ScooterCheck Protokoll \($0.pdfURL.deletingPathExtension().lastPathComponent)"
-                } ?? "ScooterCheck Protokoll",
+                    "ScooterCheck Prüfbericht \($0.pdfURL.deletingPathExtension().lastPathComponent)"
+                } ?? "ScooterCheck Prüfbericht",
                 isPresented: $showHistoryShare
             )
         }
@@ -175,39 +206,101 @@ struct ContentView: View {
         }
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 16) {
-            Image("Logo")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 88, height: 88)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            Wordmark(size: .title)
-            Text("Kein Scooter verbunden")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
-            Text(ble.statusMessage)
-                .font(.subheadline)
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 280)
-            if !history.entries.isEmpty {
-                Button("Kontrollen öffnen") {
+    /// Startscreen laut Mockup: Hero, Statuskarte, Primär/Sekundär-Aktion.
+    private var startLanding: some View {
+        VStack(spacing: 22) {
+            StartHeroGraphic()
+                .padding(.top, 12)
+
+            VStack(spacing: 14) {
+                VStack(spacing: 6) {
+                    Text("Kein Scooter verbunden")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text(ble.statusMessage.isEmpty ? "Bereit zum Scan" : ble.statusMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.secondaryText)
+                        .multilineTextAlignment(.center)
+                }
+
+                ScootPrimaryButton(
+                    title: "Scooter suchen",
+                    systemImage: "magnifyingglass",
+                    enabled: primaryEnabled,
+                    busy: busy
+                ) {
+                    primaryAction()
+                }
+
+                ScootSecondaryButton(
+                    title: "Prüfungen",
+                    systemImage: "doc.text",
+                    showsChevron: true
+                ) {
                     screen = .overview
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.ink)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Theme.accent)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .padding(.top, 4)
             }
+            .scootCard()
+
             AppCopyrightFooter()
-                .padding(.top, 20)
+                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
+        .padding(.vertical, 12)
+    }
+
+    private var devicesSearchHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Geräte")
+                    .font(Theme.pageTitle)
+                    .foregroundStyle(.white)
+                Spacer(minLength: 8)
+                if ble.phase == .scanning {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Theme.accent)
+                            .frame(width: 7, height: 7)
+                            .shadow(color: Theme.accent.opacity(0.7), radius: 4)
+                        Text("Suche aktiv")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                        RotatingSonarIcon(size: 20)
+                    }
+                }
+            }
+
+            Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
+                Text("Nur Scooter").tag(true)
+                Text("Alle BLE").tag(false)
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var searchEmptyState: some View {
+        VStack(spacing: 16) {
+            PulsingSearchGraphic()
+            Text(ble.showOnlyLikelyScooters
+                 ? "Kein kompatibler Scooter gefunden"
+                 : "Keine Geräte gefunden")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+            Text("Stelle sicher, dass dein Scooter eingeschaltet und in der Nähe ist.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.secondaryText)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            if ble.showOnlyLikelyScooters {
+                ScootPrimaryButton(title: "Alle BLE anzeigen", systemImage: "list.bullet") {
+                    ble.showOnlyLikelyScooters = false
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .scootCard()
+        .padding(.top, 8)
     }
 
     private var connectingCard: some View {
@@ -267,61 +360,22 @@ struct ContentView: View {
 
     private var deviceSection: some View {
         let listed = history.sortForScanList(ble.visibleDevices)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Geräte").font(.headline).foregroundStyle(.white)
-                Spacer()
-                Text(ble.phase == .scanning ? "sucht…" : "in der Nähe")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(Theme.muted)
-            }
-
-            Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
-                Text("Nur Scooter").tag(true)
-                Text("Alle BLE").tag(false)
-            }
-            .pickerStyle(.segmented)
-
-            if listed.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(ble.showOnlyLikelyScooters
-                         ? "Kein Scooter gefunden."
-                         : "Keine Geräte.")
-                        .font(.subheadline)
-                        .foregroundStyle(.white)
-                    if ble.showOnlyLikelyScooters {
-                        Button("Alle BLE anzeigen") {
-                            ble.showOnlyLikelyScooters = false
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Theme.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
+        return VStack(spacing: 10) {
+            ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
+                Button {
+                    prepareProfileConfirm(for: item)
+                } label: {
+                    ScooterDeviceCard(
+                        device: item,
+                        knownAlias: history.knownAlias(for: item),
+                        isNearest: index == 0 && listed.count > 1
+                    )
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .scootCard()
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
-                        Button {
-                            prepareProfileConfirm(for: item)
-                        } label: {
-                            ScooterDeviceCard(
-                                device: item,
-                                knownAlias: history.knownAlias(for: item),
-                                isNearest: index == 0 && listed.count > 1
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(busy || isBusyPhase)
-                    }
-                }
+                .buttonStyle(.plain)
+                .disabled(busy || isBusyPhase)
             }
         }
+        .padding(.top, 4)
     }
 
     private func resultCard(_ report: IntegrityResult) -> some View {
@@ -497,7 +551,7 @@ struct ContentView: View {
                         Image(systemName: "chevron.left")
                             .font(.body.weight(.semibold))
                     }
-                    .accessibilityLabel("Zurück zur Kontrollübersicht")
+                    .accessibilityLabel("Zurück zur Prüfungsübersicht")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Weiter zum Protokoll") { finishSubjectPrompt() }
@@ -598,7 +652,7 @@ struct ContentView: View {
         }
     }
 
-    /// Zurück zur Kontrollübersicht — vor dem Protokoll, Auslese bleibt gespeichert.
+    /// Zurück zur Prüfungsübersicht — vor dem Prüfbericht, Auslese bleibt gespeichert.
     private func abortSubjectPromptToOverview() {
         pendingUnlockRescanAfterSubject = false
         persistCurrentSession()
@@ -710,98 +764,110 @@ struct ContentView: View {
     }
 
     private var bottomBar: some View {
-        VStack(spacing: 10) {
-            Button(action: primaryAction) {
-                HStack(spacing: 8) {
-                    if busy || isBusyPhase {
-                        ProgressView().tint(primaryInk)
+        Group {
+            if showsStartLanding {
+                EmptyView()
+            } else {
+                VStack(spacing: 10) {
+                    if screen == .home, ble.phase == .scanning {
+                        ScootOutlineButton(title: "Suche stoppen", systemImage: "stop.fill") {
+                            primaryAction()
+                        }
+                    } else if screen == .home, ble.phase == .done {
+                        ScootPrimaryButton(
+                            title: "Manipulation prüfen",
+                            systemImage: "checkmark.shield",
+                            enabled: primaryEnabled,
+                            busy: busy || isBusyPhase
+                        ) {
+                            primaryAction()
+                        }
+                    } else if screen == .overview {
+                        ScootPrimaryButton(title: "Neue Prüfung", systemImage: "plus") {
+                            primaryAction()
+                        }
+                    } else if screen == .result {
+                        ScootPrimaryButton(
+                            title: "Bericht speichern",
+                            enabled: primaryEnabled,
+                            busy: busy
+                        ) {
+                            primaryAction()
+                        }
+                    } else if screen == .home {
+                        ScootPrimaryButton(
+                            title: "Scooter suchen",
+                            systemImage: "magnifyingglass",
+                            enabled: primaryEnabled,
+                            busy: busy || isBusyPhase
+                        ) {
+                            primaryAction()
+                        }
                     }
-                    Text(primaryTitle).font(.body.weight(.semibold))
+
+                    if screen == .result, result != nil {
+                        if powerCyclePhase == .idle, unlockRescanPhase == .idle {
+                            ScootPrimaryButton(title: "Geheimkombination eingeben & auslesen") {
+                                startUnlockRescan()
+                            }
+                            Button("Power-Cycle-Test") {
+                                startPowerCycleTest()
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.accent)
+                        } else if unlockRescanPhase == .awaitUnlock {
+                            ScootPrimaryButton(
+                                title: "Kombination eingegeben — erneut auslesen",
+                                enabled: !busy,
+                                busy: busy
+                            ) {
+                                Task { await continueUnlockRescanScanB() }
+                            }
+                            Button("Abbrechen") {
+                                unlockRescanPhase = .idle
+                                unlockRescanScanA = nil
+                                unlockRescanDevice = nil
+                                unlockRescanHint = nil
+                            }
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                        } else if powerCyclePhase == .awaitReboot {
+                            ScootPrimaryButton(
+                                title: "Scooter ist wieder an — Scan B",
+                                enabled: !busy,
+                                busy: busy
+                            ) {
+                                Task { await continuePowerCycleScanB() }
+                            }
+                            Button("Power-Cycle abbrechen") {
+                                powerCyclePhase = .idle
+                                powerCycleScanA = nil
+                                powerCycleDevice = nil
+                            }
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                        }
+
+                        Button("Teilen / AirDrop") {
+                            showShare = true
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.accent)
+
+                        Button("Zur Übersicht") {
+                            persistCurrentSession()
+                            goToOverview()
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.muted)
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-            }
-            .background(primaryColor.opacity(primaryEnabled ? 1 : 0.35))
-            .foregroundStyle(primaryInk)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .disabled(!primaryEnabled)
-
-            if screen == .result, result != nil {
-                if powerCyclePhase == .idle, unlockRescanPhase == .idle {
-                    Button("Geheimkombination eingeben & auslesen") {
-                        startUnlockRescan()
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                    Button("Power-Cycle-Test") {
-                        startPowerCycleTest()
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.accent)
-                } else if unlockRescanPhase == .awaitUnlock {
-                    Button("Kombination eingegeben — erneut auslesen") {
-                        Task { await continueUnlockRescanScanB() }
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .disabled(busy)
-
-                    Button("Abbrechen") {
-                        unlockRescanPhase = .idle
-                        unlockRescanScanA = nil
-                        unlockRescanDevice = nil
-                        unlockRescanHint = nil
-                    }
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-                } else if powerCyclePhase == .awaitReboot {
-                    Button("Scooter ist wieder an — Scan B") {
-                        Task { await continuePowerCycleScanB() }
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .disabled(busy)
-
-                    Button("Power-Cycle abbrechen") {
-                        powerCyclePhase = .idle
-                        powerCycleScanA = nil
-                        powerCycleDevice = nil
-                    }
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-                }
-
-                Button("Teilen / AirDrop") {
-                    showShare = true
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.accent)
-
-                Button("Zur Übersicht") {
-                    persistCurrentSession()
-                    goToOverview()
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.muted)
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 16)
+                .background(.ultraThinMaterial)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 16)
-        .background(.ultraThinMaterial)
     }
 
     private var primaryTitle: String {
@@ -1379,7 +1445,7 @@ struct ContentView: View {
 
             VStack(spacing: 4) {
                 sideNavRow(
-                    title: "Scooter-Suche",
+                    title: "Geräte",
                     systemImage: "antenna.radiowaves.left.and.right",
                     selected: screen == .home
                 ) {
@@ -1387,8 +1453,8 @@ struct ContentView: View {
                 }
                 sideNavRow(
                     title: history.entries.isEmpty
-                        ? "Kontrollen"
-                        : "Kontrollen (\(history.entries.count))",
+                        ? "Prüfungen"
+                        : "Prüfungen (\(history.entries.count))",
                     systemImage: "list.bullet.rectangle",
                     selected: screen == .overview
                 ) {
@@ -1396,7 +1462,7 @@ struct ContentView: View {
                 }
                 if result != nil {
                     sideNavRow(
-                        title: "Aktuelles Protokoll",
+                        title: "Aktueller Prüfbericht",
                         systemImage: "doc.text",
                         selected: screen == .result
                     ) {
@@ -1515,97 +1581,116 @@ struct ContentView: View {
     }
 
     private var controlsOverview: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Durchgeführte Kontrollen")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
-            Text("Bericht speichern führt hierher. Tippe eine Kontrolle an, um sie zu öffnen — oder starte unten eine neue Prüfung.")
-                .font(.footnote)
-                .foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            AppCopyrightFooter()
-                .frame(maxWidth: .infinity)
-                .padding(.top, 2)
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Prüfungen")
+                    .font(Theme.pageTitle)
+                    .foregroundStyle(.white)
+                Text(
+                    history.entries.isEmpty
+                        ? "Noch keine gespeicherten Prüfungen"
+                        : "\(history.entries.count) gespeicherte Prüfung\(history.entries.count == 1 ? "" : "en")"
+                )
+                .font(.subheadline)
+                .foregroundStyle(Theme.secondaryText)
+            }
 
             if history.entries.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Image(systemName: "tray")
                         .font(.title2)
                         .foregroundStyle(Theme.muted)
-                    Text("Noch keine Kontrollen")
+                    Text("Noch keine Prüfungen")
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text("Gespeicherte Prüfungen erscheinen hier offline auf diesem Gerät.")
+                    Text("Gespeicherte Prüfberichte erscheinen hier offline auf diesem Gerät.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 20)
+                .scootCard()
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(history.entries.enumerated()), id: \.element.id) { index, entry in
-                        if index > 0 { Divider().overlay(Theme.line) }
+                VStack(spacing: 10) {
+                    ForEach(history.entries) { entry in
                         controlRow(entry)
                     }
                 }
             }
+
+            AppCopyrightFooter()
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
         }
-        .scootCard()
     }
 
     @ViewBuilder
     private func controlRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(entry.protocolNumber)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                Spacer(minLength: 8)
-                if let verdict = entry.verdict {
-                    Text(verdict.label)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.verdict(verdict))
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Theme.accent.opacity(0.12))
+                    .frame(width: 48, height: 48)
+                Image("ScooterGeneric")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 34, height: 24)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(entry.protocolNumber)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Spacer(minLength: 4)
+                    if let verdict = entry.verdict {
+                        VerdictBadge(verdict: verdict)
+                    }
                 }
-            }
-            Text(entry.profile.label)
-                .font(.caption)
-                .foregroundStyle(Theme.muted)
-            if let serial = entry.serialDisplay, !serial.isEmpty {
-                Text(serial)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(Theme.muted)
-            }
-            if let subject = entry.subjectSummary, !subject.isEmpty {
-                Text(subject)
-                    .font(.caption)
-                    .foregroundStyle(Theme.accent)
-            }
-            HStack {
-                Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2)
-                    .foregroundStyle(Theme.muted)
-                Spacer()
-                Text("Tippen zum Öffnen")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.muted)
-                Button {
-                    shareHistoryEntry(entry)
-                } label: {
-                    Text("Teilen")
-                        .font(.caption.weight(.semibold))
+                Text("\(entry.profile.family.title) · \(Int(entry.profile.ratedMaxKmh)) km/h")
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+                if let serial = entry.serialDisplay, !serial.isEmpty {
+                    Text(serial)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Theme.muted)
+                        .lineLimit(1)
+                }
+                if let subject = entry.subjectSummary ?? entry.knownLabel, !subject.isEmpty {
+                    Text(subject)
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(Theme.accent)
-                        .padding(.leading, 8)
+                        .lineLimit(1)
                 }
-                .buttonStyle(.borderless)
+                HStack {
+                    Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                    Spacer()
+                    Button {
+                        shareHistoryEntry(entry)
+                    } label: {
+                        Label("Teilen", systemImage: "square.and.arrow.up")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.borderless)
+                }
             }
         }
-        .padding(.vertical, 12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Theme.line, lineWidth: 1)
+        )
         .contentShape(Rectangle())
-        .onTapGesture {
-            openHistoryEntry(entry)
-        }
+        .onTapGesture { openHistoryEntry(entry) }
         .contextMenu {
             Button("Öffnen") { openHistoryEntry(entry) }
             Button("Teilen") { shareHistoryEntry(entry) }
@@ -1635,39 +1720,6 @@ struct ContentView: View {
         }
     }
 
-}
-
-struct Wordmark: View {
-    var size: Font = .title
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "checkmark.shield.fill")
-                .foregroundStyle(Theme.accent)
-            HStack(spacing: 0) {
-                Text("Scooter").foregroundStyle(Theme.accent)
-                Text("Check").foregroundStyle(.white)
-            }
-        }
-        .font(size.weight(.bold))
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-    }
-}
-
-/// Schlichtes Copyright in der App-UI.
-struct AppCopyrightFooter: View {
-    private var line: String {
-        let year = Calendar.current.component(.year, from: Date())
-        // verbatim: sonst formatiert SwiftUI die Jahreszahl lokal als „2.026“.
-        return "© \(year) Bastian Ellinghausen"
-    }
-
-    var body: some View {
-        Text(verbatim: line)
-            .font(.caption2)
-            .foregroundStyle(Theme.muted)
-            .accessibilityLabel(line)
-    }
 }
 
 /// SHU-ähnliche Gerätezeile: Bild · ID · Modell · Signalbalken.
