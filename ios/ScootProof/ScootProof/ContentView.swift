@@ -114,7 +114,7 @@ struct ContentView: View {
                                 .foregroundStyle(Theme.accent)
                         }
                         .accessibilityLabel("Protokoll schließen")
-                    } else {
+                    } else if !showMenu {
                         Button {
                             withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
                         } label: {
@@ -123,6 +123,7 @@ struct ContentView: View {
                                 .foregroundStyle(Theme.accent)
                         }
                         .accessibilityLabel("Menü öffnen")
+                        .transition(.opacity)
                     }
                 }
                 ToolbarItem(placement: .principal) {
