@@ -1552,14 +1552,6 @@ struct ContentView: View {
         }
     }
 
-    private func demoTitle(_ kind: IntegrityAnalyzer.DemoKind) -> String {
-        switch kind {
-        case .stock: return "Serie"
-        case .webapp: return "WebApp + Panic"
-        case .shu: return "SHU / SN-Wechsel"
-        case .shuDump: return "SHU + Dump"
-        }
-    }
 }
 
 struct Wordmark: View {
