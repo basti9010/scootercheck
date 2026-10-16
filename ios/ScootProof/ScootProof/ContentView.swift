@@ -32,6 +32,9 @@ struct ContentView: View {
     @State private var pendingDevice: ScannedDevice? = nil
     @State private var identifyBusy = false
     @State private var identifyNote: String? = nil
+    /// Kurzer Glow-Boost im Sonar, wenn ein neues BLE-Gerät auftaucht.
+    @State private var sonarDiscoveryFlash = false
+    @State private var lastSonarDeviceCount = 0
 
     private enum AppScreen: Equatable {
         case home
@@ -105,8 +108,9 @@ struct ContentView: View {
                                 startLanding
                             } else {
                                 devicesSearchHeader
+                                devicesSonarStage
                                 if ble.visibleDevices.isEmpty {
-                                    searchEmptyState
+                                    searchEmptyCopy
                                 } else {
                                     deviceSection
                                 }
@@ -251,22 +255,20 @@ struct ContentView: View {
 
     private var devicesSearchHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center) {
                 Text("Geräte")
                     .font(Theme.pageTitle)
                     .foregroundStyle(.white)
                 Spacer(minLength: 8)
                 if ble.phase == .scanning {
                     HStack(spacing: 8) {
-                        Circle()
-                            .fill(Theme.accent)
-                            .frame(width: 7, height: 7)
-                            .shadow(color: Theme.accent.opacity(0.7), radius: 4)
                         Text("Suche aktiv")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.accent)
-                        RotatingSonarIcon(size: 20)
+                        RotatingSonarIcon(size: 22, isScanning: true)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Suche aktiv")
                 }
             }
 
@@ -278,9 +280,50 @@ struct ContentView: View {
         }
     }
 
-    private var searchEmptyState: some View {
-        VStack(spacing: 16) {
-            PulsingSearchGraphic()
+    /// Zentrales Radar: dreht nur während des BLE-Scans.
+    private var devicesSonarStage: some View {
+        let scanning = ble.phase == .scanning
+        let count = ble.visibleDevices.count
+        return VStack(spacing: 12) {
+            PulsingSearchGraphic(
+                isScanning: scanning,
+                deviceCount: max(count, scanning ? 4 : 0),
+                discoveryFlash: sonarDiscoveryFlash,
+                size: count == 0 ? 220 : 168
+            )
+            if scanning {
+                Text(count == 0
+                     ? "ScooterCheck sucht aktiv nach Geräten"
+                     : "\(count) Gerät\(count == 1 ? "" : "e\") in Reichweite")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Theme.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .onChange(of: ble.visibleDevices.count) { newCount in
+            guard ble.phase == .scanning, newCount > lastSonarDeviceCount else {
+                lastSonarDeviceCount = newCount
+                return
+            }
+            lastSonarDeviceCount = newCount
+            sonarDiscoveryFlash = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                sonarDiscoveryFlash = false
+            }
+        }
+        .onChange(of: ble.phase) { phase in
+            if phase != .scanning {
+                sonarDiscoveryFlash = false
+            } else {
+                lastSonarDeviceCount = ble.visibleDevices.count
+            }
+        }
+    }
+
+    private var searchEmptyCopy: some View {
+        VStack(spacing: 14) {
             Text(ble.showOnlyLikelyScooters
                  ? "Kein kompatibler Scooter gefunden"
                  : "Keine Geräte gefunden")
@@ -300,21 +343,29 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity)
         .scootCard()
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 
     private var connectingCard: some View {
         VStack(spacing: 18) {
             ZStack {
-                Circle()
-                    .stroke(Theme.accent.opacity(0.22), lineWidth: 8)
-                    .frame(width: 128, height: 128)
-                    .scaleEffect(pulse ? 1.12 : 0.92)
-                Image("Logo")
+                SonarRadarView(
+                    isScanning: false,
+                    blipCount: 3,
+                    size: 148,
+                    style: .search,
+                    discoveryFlash: pulse
+                )
+                Image("BrandMark")
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 72, height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Theme.accent.opacity(0.35), lineWidth: 1)
+                    )
+                    .shadow(color: Theme.accent.opacity(0.35), radius: 8)
             }
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {

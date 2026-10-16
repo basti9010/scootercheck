@@ -4,10 +4,21 @@ import SwiftUI
 
 struct Wordmark: View {
     var size: Font = .title
+    var showsMark: Bool = true
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "checkmark.shield.fill")
-                .foregroundStyle(Theme.accent)
+            if showsMark {
+                Image("BrandMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .stroke(Theme.accent.opacity(0.25), lineWidth: 0.5)
+                    )
+                    .accessibilityHidden(true)
+            }
             HStack(spacing: 0) {
                 Text("Scooter").foregroundStyle(Theme.accent)
                 Text("Check").foregroundStyle(.white)
@@ -170,123 +181,351 @@ struct VerdictBadge: View {
 struct StartHeroGraphic: View {
     var body: some View {
         ZStack {
+            // Soft mint bloom behind the icon (matches reference atmosphere).
             Circle()
-                .stroke(Theme.accent.opacity(0.18), lineWidth: 2)
-                .frame(width: 168, height: 168)
-            Circle()
-                .fill(Theme.accent.opacity(0.06))
-                .frame(width: 148, height: 148)
-            Image("ScooterGeneric")
+                .fill(Theme.accent.opacity(0.10))
+                .frame(width: 210, height: 210)
+                .blur(radius: 24)
+            Image("BrandMark")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 112, height: 76)
-            Image(systemName: "checkmark.shield.fill")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-                .offset(x: 46, y: 42)
-                .shadow(color: Theme.accent.opacity(0.45), radius: 8)
+                .frame(width: 168, height: 168)
+                .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 38, style: .continuous)
+                        .stroke(Theme.accent.opacity(0.28), lineWidth: 1)
+                )
+                .shadow(color: Theme.accent.opacity(0.28), radius: 18)
         }
-        .frame(height: 180)
+        .frame(height: 210)
         .accessibilityHidden(true)
     }
 }
 
 /// Langsame mintfarbene Punkt-/Signalwellen am unteren Startscreen.
 struct AnimatedSignalWaves: View {
-    @State private var phase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            Canvas { context, size in
-                let layers: [(amp: CGFloat, speed: CGFloat, y: CGFloat, alpha: Double, spacing: CGFloat)] = [
-                    (10, 0.55, size.height * 0.32, 0.55, 7),
-                    (14, 0.38, size.height * 0.52, 0.38, 8),
-                    (8, 0.72, size.height * 0.72, 0.28, 6)
-                ]
-                for layer in layers {
-                    var x: CGFloat = -20
-                    while x < size.width + 20 {
-                        let wobble = sin((x / 28) + t * layer.speed) * layer.amp
-                        let y = layer.y + wobble
-                        let rect = CGRect(x: x, y: y, width: 2.2, height: 2.2)
-                        context.fill(
-                            Path(ellipseIn: rect),
-                            with: .color(Theme.accent.opacity(layer.alpha))
-                        )
-                        x += layer.spacing
-                    }
+        Group {
+            if reduceMotion {
+                waveCanvas(time: 0)
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 24)) { timeline in
+                    waveCanvas(time: timeline.date.timeIntervalSinceReferenceDate)
                 }
             }
-            .blur(radius: 0.4)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func waveCanvas(time t: TimeInterval) -> some View {
+        Canvas { context, size in
+            // Mehrere Ebenen: leicht unterschiedliche Horizontaldrift + Amplitude.
+            let layers: [(amp: CGFloat, speed: CGFloat, drift: CGFloat, y: CGFloat, alpha: Double, spacing: CGFloat)] = [
+                (9, 0.42, 6.0, size.height * 0.30, 0.52, 7.5),
+                (13, 0.28, 4.2, size.height * 0.50, 0.36, 8.5),
+                (7, 0.55, 7.5, size.height * 0.70, 0.26, 6.5),
+                (5, 0.35, 3.0, size.height * 0.86, 0.18, 9.0)
+            ]
+            for layer in layers {
+                let offsetX = CGFloat(t * layer.drift).truncatingRemainder(dividingBy: layer.spacing * 4)
+                var x: CGFloat = -24 - offsetX
+                while x < size.width + 24 {
+                    let wobble = sin((x / 30) + t * layer.speed) * layer.amp
+                    let y = layer.y + wobble
+                    let rect = CGRect(x: x, y: y, width: 2.1, height: 2.1)
+                    context.fill(
+                        Path(ellipseIn: rect),
+                        with: .color(Theme.accent.opacity(layer.alpha))
+                    )
+                    x += layer.spacing
+                }
+            }
+        }
+        .blur(radius: 0.35)
     }
 }
 
 // MARK: - Sonar / search atmosphere
 
+/// Kompaktes Status-Sonar (Header „Suche aktiv“).
 struct RotatingSonarIcon: View {
     var size: CGFloat = 22
-    @State private var spinning = false
+    var isScanning: Bool = true
 
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Theme.accent.opacity(0.25), lineWidth: 1)
-            Circle()
-                .trim(from: 0, to: 0.28)
-                .stroke(
-                    AngularGradient(
-                        colors: [Theme.accent.opacity(0.05), Theme.accent],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                )
-                .rotationEffect(.degrees(spinning ? 360 : 0))
-            Circle()
-                .fill(Theme.accent)
-                .frame(width: 4, height: 4)
-        }
-        .frame(width: size, height: size)
-        .shadow(color: Theme.accent.opacity(0.35), radius: 4)
-        .onAppear {
-            withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: false)) {
-                spinning = true
-            }
-        }
+        SonarRadarView(
+            isScanning: isScanning,
+            blipCount: 3,
+            size: size,
+            style: .compact
+        )
         .accessibilityHidden(true)
     }
 }
 
-struct PulsingSearchGraphic: View {
-    @State private var pulse = false
+/// Großes Radar wie im App-Icon: Ringe, Strahl, Blips, Scooter + Check.
+struct SonarRadarView: View {
+    enum Style {
+        case compact
+        case hero
+        case search
+    }
+
+    var isScanning: Bool
+    var blipCount: Int = 0
+    var highlightIndex: Int? = nil
+    var size: CGFloat = 220
+    var style: Style = .search
+    /// Kurzer Glow-Boost wenn ein Gerät neu erkannt wurde.
+    var discoveryFlash: Bool = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// ~2 s pro Umdrehung.
+    private let revolutionSeconds: Double = 2.0
+
+    private var ringCount: Int {
+        switch style {
+        case .compact: return 2
+        case .hero, .search: return 4
+        }
+    }
+
+    private var showsScooter: Bool { style != .compact }
+    private var showsCrosshair: Bool { style != .compact }
+
+    private var blips: [SonarBlip] {
+        SonarBlip.seeded(count: max(blipCount, style == .hero ? 5 : 0), style: style)
+    }
 
     var body: some View {
+        Group {
+            if isScanning && !reduceMotion {
+                TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
+                    radarContent(angle: sweepAngle(at: timeline.date))
+                }
+            } else {
+                radarContent(angle: isScanning && reduceMotion ? 42 : (style == .hero ? 38 : 0))
+            }
+        }
+        .frame(width: size, height: size)
+        .scaleEffect(discoveryFlash ? 1.04 : 1.0)
+        .shadow(color: Theme.accent.opacity(discoveryFlash ? 0.55 : (isScanning ? 0.22 : 0.12)),
+                radius: discoveryFlash ? 18 : (style == .compact ? 3 : 10))
+        .animation(.easeOut(duration: 0.45), value: discoveryFlash)
+        .accessibilityHidden(true)
+    }
+
+    private func sweepAngle(at date: Date) -> Double {
+        let t = date.timeIntervalSinceReferenceDate
+        return (t.truncatingRemainder(dividingBy: revolutionSeconds) / revolutionSeconds) * 360.0
+    }
+
+    @ViewBuilder
+    private func radarContent(angle: Double) -> some View {
         ZStack {
-            ForEach(0..<3, id: \.self) { i in
+            // Soft fill disk
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Theme.accent.opacity(style == .compact ? 0.10 : 0.08),
+                            Theme.accent.opacity(0.02),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 4,
+                        endRadius: size * 0.5
+                    )
+                )
+
+            // Concentric rings (static)
+            ForEach(1...ringCount, id: \.self) { i in
+                let frac = CGFloat(i) / CGFloat(ringCount)
                 Circle()
-                    .stroke(Theme.accent.opacity(0.22 - Double(i) * 0.05), lineWidth: 1.5)
-                    .frame(width: 90 + CGFloat(i) * 36, height: 90 + CGFloat(i) * 36)
-                    .scaleEffect(pulse ? 1.08 : 0.92)
-                    .opacity(pulse ? 0.35 : 0.85)
-                    .animation(
-                        .easeInOut(duration: 1.6)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(i) * 0.22),
-                        value: pulse
+                    .stroke(Theme.accent.opacity(0.14 + Double(i) * 0.04), lineWidth: style == .compact ? 0.8 : 1.15)
+                    .frame(width: size * (0.28 + frac * 0.68), height: size * (0.28 + frac * 0.68))
+            }
+
+            if showsCrosshair {
+                Rectangle()
+                    .fill(Theme.accent.opacity(0.12))
+                    .frame(width: size * 0.92, height: 0.75)
+                Rectangle()
+                    .fill(Theme.accent.opacity(0.12))
+                    .frame(width: 0.75, height: size * 0.92)
+            }
+
+            // Sweep wedge (only while scanning, or static wedge on hero)
+            if isScanning || style == .hero {
+                SonarSweepWedge(spanDegrees: style == .compact ? 48 : 56)
+                    .fill(
+                        AngularGradient(
+                            colors: [
+                                Theme.accent.opacity(0.0),
+                                Theme.accent.opacity(style == .compact ? 0.18 : 0.22),
+                                Theme.accent.opacity(style == .compact ? 0.42 : 0.48)
+                            ],
+                            center: .center,
+                            startAngle: .degrees(-56),
+                            endAngle: .degrees(0)
+                        )
+                    )
+                    .frame(width: size * 0.96, height: size * 0.96)
+                    .rotationEffect(.degrees(angle))
+                    .opacity(isScanning || style == .hero ? 1 : 0)
+            }
+
+            // Leading edge line of the beam
+            if isScanning || style == .hero {
+                Capsule()
+                    .fill(Theme.accent.opacity(0.75))
+                    .frame(width: 1.4, height: size * 0.46)
+                    .offset(y: -size * 0.23)
+                    .rotationEffect(.degrees(angle))
+                    .shadow(color: Theme.accent.opacity(0.45), radius: 3)
+            }
+
+            // Device blips
+            ForEach(Array(blips.enumerated()), id: \.offset) { index, blip in
+                let lit = isScanning && !reduceMotion && isSwept(blipAngle: blip.angle, sweep: angle)
+                let highlighted = highlightIndex == index
+                Circle()
+                    .fill(Color.white.opacity(highlighted || lit ? 0.95 : 0.75))
+                    .frame(width: blipDiameter(blip, lit: lit || highlighted),
+                           height: blipDiameter(blip, lit: lit || highlighted))
+                    .shadow(color: Theme.accent.opacity(lit || highlighted ? 0.9 : 0.35),
+                            radius: lit || highlighted ? 6 : 2)
+                    .offset(
+                        x: cos((blip.angle - 90) * .pi / 180) * size * blip.radius,
+                        y: sin((blip.angle - 90) * .pi / 180) * size * blip.radius
                     )
             }
+
+            if showsScooter {
+                scooterCore
+            } else {
+                Circle()
+                    .fill(Theme.accent)
+                    .frame(width: max(3, size * 0.14), height: max(3, size * 0.14))
+            }
+        }
+    }
+
+    private var scooterCore: some View {
+        ZStack {
             Image("ScooterGeneric")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 78, height: 52)
-                .shadow(color: Theme.accent.opacity(0.35), radius: 10)
+                .frame(width: size * 0.42, height: size * 0.28)
+                .shadow(color: Theme.accent.opacity(0.45), radius: 10)
+
+            // Checkmark badge at center (icon language)
+            ZStack {
+                Circle()
+                    .fill(Theme.bg.opacity(0.88))
+                    .frame(width: size * 0.16, height: size * 0.16)
+                Circle()
+                    .stroke(Theme.accent.opacity(0.85), lineWidth: 1.4)
+                    .frame(width: size * 0.16, height: size * 0.16)
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.07, weight: .bold))
+                    .foregroundStyle(Theme.accent)
+            }
+            .shadow(color: Theme.accent.opacity(0.4), radius: 6)
+            .offset(y: size * 0.01)
         }
-        .frame(height: 160)
-        .onAppear { pulse = true }
-        .accessibilityHidden(true)
+    }
+
+    private func blipDiameter(_ blip: SonarBlip, lit: Bool) -> CGFloat {
+        let base = style == .compact ? size * 0.10 : size * blip.dot
+        return lit ? base * 1.45 : base
+    }
+
+    /// Blip leuchtet kurz auf, wenn der Strahl ihn überstreicht (±14°).
+    private func isSwept(blipAngle: Double, sweep: Double) -> Bool {
+        let delta = abs(normalizedDelta(blipAngle - sweep))
+        return delta < 14
+    }
+
+    private func normalizedDelta(_ degrees: Double) -> Double {
+        var d = degrees.truncatingRemainder(dividingBy: 360)
+        if d > 180 { d -= 360 }
+        if d < -180 { d += 360 }
+        return d
+    }
+}
+
+private struct SonarBlip {
+    let angle: Double
+    let radius: CGFloat
+    let dot: CGFloat
+
+    static func seeded(count: Int, style: SonarRadarView.Style) -> [SonarBlip] {
+        guard count > 0 else { return [] }
+        // Feste, ruhige Positionen (wie im Icon) — keine Zufalls-Jitter pro Frame.
+        let catalog: [SonarBlip] = [
+            .init(angle: 28, radius: 0.28, dot: 0.028),
+            .init(angle: 78, radius: 0.36, dot: 0.022),
+            .init(angle: 142, radius: 0.31, dot: 0.026),
+            .init(angle: 198, radius: 0.38, dot: 0.020),
+            .init(angle: 248, radius: 0.27, dot: 0.024),
+            .init(angle: 302, radius: 0.34, dot: 0.022),
+            .init(angle: 338, radius: 0.22, dot: 0.018),
+            .init(angle: 55, radius: 0.42, dot: 0.020),
+            .init(angle: 170, radius: 0.20, dot: 0.024),
+            .init(angle: 265, radius: 0.40, dot: 0.018)
+        ]
+        let n = min(count, catalog.count)
+        if style == .compact {
+            return Array(catalog.prefix(min(n, 3))).map {
+                SonarBlip(angle: $0.angle, radius: min($0.radius, 0.32), dot: 0.12)
+            }
+        }
+        return Array(catalog.prefix(n))
+    }
+}
+
+private struct SonarSweepWedge: Shape {
+    var spanDegrees: Double
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .degrees(-spanDegrees),
+            endAngle: .degrees(0),
+            clockwise: false
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Such-Grafik im Geräte-Screen (großes Sonar).
+struct PulsingSearchGraphic: View {
+    var isScanning: Bool = true
+    var deviceCount: Int = 0
+    var discoveryFlash: Bool = false
+    var size: CGFloat = 210
+
+    var body: some View {
+        SonarRadarView(
+            isScanning: isScanning,
+            blipCount: max(deviceCount, isScanning ? 4 : 3),
+            highlightIndex: deviceCount > 0 ? 0 : nil,
+            size: size,
+            style: .search,
+            discoveryFlash: discoveryFlash
+        )
+        .frame(height: size)
     }
 }
 
