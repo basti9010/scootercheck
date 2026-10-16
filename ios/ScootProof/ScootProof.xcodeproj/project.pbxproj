@@ -71,6 +71,7 @@
 		B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalogRemoteTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000023 /* CompactReportFactsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactReportFactsTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000024 /* KnownScooterAliasTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnownScooterAliasTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000025 /* IdentifyCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifyCommandTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* CustomFirmwareDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFirmwareDiff.swift; sourceTree = "<group>"; };
 		B10000000000000000000015 /* EvidenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000016 /* AttributionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngine.swift; sourceTree = "<group>"; };
@@ -166,6 +167,7 @@
 				B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */,
 				B10000000000000000000023 /* CompactReportFactsTests.swift */,
 				B10000000000000000000024 /* KnownScooterAliasTests.swift */,
+				B10000000000000000000025 /* IdentifyCommandTests.swift */,
 			);
 			path = ScootProofTests;
 			sourceTree = "<group>";
@@ -329,6 +331,7 @@
 				A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */,
 				A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */,
 				A10000000000000000000024 /* KnownScooterAliasTests.swift in Sources */,
+				A10000000000000000000025 /* IdentifyCommandTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
