@@ -1387,17 +1387,19 @@ struct ContentView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Button(role: .destructive) {
-                        ble.disconnect()
-                        result = nil
-                        session = nil
-                        navigateFromMenu(to: .home)
-                    } label: {
-                        Label("Trennen", systemImage: "xmark.circle")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    if ble.isConnectedToScooter {
+                        Button(role: .destructive) {
+                            ble.disconnect()
+                            result = nil
+                            session = nil
+                            navigateFromMenu(to: .home)
+                        } label: {
+                            Label("Trennen", systemImage: "xmark.circle")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .foregroundStyle(Theme.danger)
                     }
-                    .foregroundStyle(Theme.danger)
 
                     AppCopyrightFooter()
                         .frame(maxWidth: .infinity)

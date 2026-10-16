@@ -212,6 +212,19 @@ final class BleClient: NSObject, ObservableObject {
     private var lastConnectDevice: ScannedDevice?
     /// Öffentlich für Verlauf/Wiedererkennung (SN + BLE-UUID merken).
     var lastConnectedDevice: ScannedDevice? { lastConnectDevice }
+
+    /// Aktiv verbunden (oder gerade im Verbindungs-/Ausleseablauf) — für UI wie „Trennen“.
+    var isConnectedToScooter: Bool {
+        if let peripheral, peripheral.state == .connected || peripheral.state == .connecting {
+            return true
+        }
+        switch phase {
+        case .connecting, .detecting, .handshake, .waitingButton, .dumping, .done:
+            return true
+        case .idle, .scanning, .failed:
+            return false
+        }
+    }
     private var maxG3Enc2RetryUsed = false
     /// Erwarteter Disconnect (z. B. vor „Erneut prüfen“) — kein Fehlerstatus.
     private var expectDisconnect = false
