@@ -278,19 +278,7 @@ struct ContentView: View {
             HStack {
                 Text("Geräte").font(.headline).foregroundStyle(.white)
                 Spacer()
-                Button {
-                    screen = .overview
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "list.bullet.rectangle")
-                            .font(.caption.weight(.semibold))
-                        Text(history.entries.isEmpty ? "Kontrollen" : "Kontrollen (\(history.entries.count))")
-                            .font(.caption.weight(.semibold))
-                    }
-                    .foregroundStyle(Theme.accent)
-                }
-                .buttonStyle(.plain)
-                Text(ble.phase == .scanning ? "sucht · Signal live" : "in der Nähe")
+                Text(ble.phase == .scanning ? "sucht…" : "in der Nähe")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.muted)
             }
