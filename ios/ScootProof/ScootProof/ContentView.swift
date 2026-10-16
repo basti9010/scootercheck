@@ -1358,9 +1358,6 @@ struct ContentView: View {
                         Text("Soft-Unlock")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.muted)
-                        Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
-                            .tint(Theme.accent)
-                            .foregroundStyle(.white)
                         Picker("Bedienung", selection: $softUnlock.control) {
                             ForEach(SoftUnlockControl.allCases) { kind in
                                 Text(kind.title).tag(kind)

@@ -69,11 +69,9 @@ final class SoftUnlockSettings: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        if defaults.object(forKey: Keys.enabled) == nil {
-            isEnabled = true
-        } else {
-            isEnabled = defaults.bool(forKey: Keys.enabled)
-        }
+        // Soft-Unlock-Erkennung ist fest an — kein UI-Schalter mehr.
+        isEnabled = true
+        defaults.set(true, forKey: Keys.enabled)
         if let raw = defaults.string(forKey: Keys.control),
            let kind = SoftUnlockControl(rawValue: raw) {
             control = kind
@@ -123,9 +121,7 @@ final class SoftUnlockSettings: ObservableObject {
     }
 
     nonisolated static func isEnabledSnapshot() -> Bool {
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: "soft_unlock_enabled") == nil { return true }
-        return defaults.bool(forKey: "soft_unlock_enabled")
+        true
     }
 
     nonisolated static func gestureSummarySnapshot() -> String {
