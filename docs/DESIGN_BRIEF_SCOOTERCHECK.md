@@ -302,11 +302,9 @@ Neue Designs sollten diese Hierarchie behalten: **1) Urteil + Bullets → 2) Akt
 
 ---
 
-## 11. Geplante / diskutierte, aber noch nicht (stabil) gebaute Features
+## 11. Geplante / diskutierte Features
 
-Für Redesigns als optionale Zukunft markieren:
-
-- **Identifizieren / Piepton** vor dem Auslesen (kurz verbinden, Scooter piept/blinkt) — fachlich möglich, UX noch offen
+- **Identifizieren / Piepton** — in Maske „Profil bestätigen“: Button „Identifizieren“ verbindet kurz, sendet Find/Piep (Ninebot), Session bleibt für „Auslesen starten“. Xiaomi: oft kein Piep, nur Verbindungshinweis.
 - Vollständige F3-Pro-G3-Karte auf allen Builds (teilweise eigener Branch)
 - Stärkerer Online-Katalog für Modelle ohne Bundled-Eintrag
 

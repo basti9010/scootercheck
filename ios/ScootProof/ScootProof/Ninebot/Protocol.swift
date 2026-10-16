@@ -97,10 +97,21 @@ enum Nb {
 
     enum Cmd: UInt8 {
         case read = 0x01
+        case write = 0x02
+        /// Write without response — typisch für Find/Piep.
+        case writeNR = 0x03
         case readResp = 0x04
         case preComm = 0x5B
         case setPwd = 0x5C
         case auth = 0x5D
+    }
+
+    /// Einmalige Identifikation (Piep/Blinken) — kein Limit-/Unlock-Schreibzugriff.
+    enum Identify {
+        /// Klassisch „Looking for scooter“ (Licht + Piep, einmalig).
+        static let lookingForScooter: UInt8 = 0x7E
+        /// Max G3 / F3-Familie: VCU `playSound`.
+        static let playSound: UInt8 = 0x77
     }
 
     struct ParsedFrame {
@@ -163,6 +174,42 @@ enum Nb {
         gen: ProtocolGen = .gen2
     ) -> Data {
         readRequest(board: board, register: register, length: length, mode: .u8, gen: gen)
+    }
+
+    /// Register schreiben (u16 LE Payload) — nur für harmlose Identify/Find-Befehle.
+    static func writeU16(
+        board: Board,
+        register: UInt8,
+        value: UInt16,
+        noResponse: Bool = true,
+        gen: ProtocolGen = .gen2
+    ) -> Data {
+        var payload = Data()
+        payload.append(UInt8(value & 0xFF))
+        payload.append(UInt8((value >> 8) & 0xFF))
+        return frame(
+            target: board,
+            cmd: noResponse ? .writeNR : .write,
+            index: register,
+            data: payload,
+            gen: gen
+        )
+    }
+
+    static func writeBytes(
+        board: Board,
+        register: UInt8,
+        data: Data,
+        noResponse: Bool = true,
+        gen: ProtocolGen = .gen2
+    ) -> Data {
+        frame(
+            target: board,
+            cmd: noResponse ? .writeNR : .write,
+            index: register,
+            data: data,
+            gen: gen
+        )
     }
 
     /// Enc2-Lesevariante mit u16-LE-Länge (Segway-App / Max-G3-Flasher).

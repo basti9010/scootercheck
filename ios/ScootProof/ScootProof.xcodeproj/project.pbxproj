@@ -30,6 +30,7 @@
 		A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */; };
 		A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000023 /* CompactReportFactsTests.swift */; };
 		A10000000000000000000024 /* KnownScooterAliasTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000024 /* KnownScooterAliasTests.swift */; };
+		A10000000000000000000025 /* IdentifyCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000025 /* IdentifyCommandTests.swift */; };
 		A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CustomFirmwareDiff.swift */; };
 		A10000000000000000000014 /* EvidenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* EvidenceEngine.swift */; };
 		A10000000000000000000015 /* AttributionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* AttributionEngine.swift */; };

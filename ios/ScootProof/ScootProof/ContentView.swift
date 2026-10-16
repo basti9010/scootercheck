@@ -30,6 +30,8 @@ struct ContentView: View {
     /// Scooter gewählt → Profil bestätigen, dann auslesen.
     @State private var showProfileConfirm = false
     @State private var pendingDevice: ScannedDevice? = nil
+    @State private var identifyBusy = false
+    @State private var identifyNote: String? = nil
 
     private enum AppScreen: Equatable {
         case home
@@ -919,6 +921,8 @@ struct ContentView: View {
             ?? profile
         profile = suggested
         pendingDevice = device
+        identifyNote = nil
+        identifyBusy = false
         showProfileConfirm = true
     }
 
@@ -970,6 +974,30 @@ struct ContentView: View {
 
                 Section {
                     Button {
+                        Task { await identifyPendingDevice() }
+                    } label: {
+                        HStack {
+                            if identifyBusy {
+                                ProgressView()
+                            }
+                            Text("Identifizieren")
+                                .fontWeight(.semibold)
+                            Spacer(minLength: 0)
+                            Text("Piepton")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .disabled(pendingDevice == nil || busy || identifyBusy || isBusyPhase)
+
+                    if let identifyNote, !identifyNote.isEmpty {
+                        Text(identifyNote)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Button {
                         guard let device = pendingDevice else { return }
                         showProfileConfirm = false
                         Task { await connectAndCheck(device) }
@@ -978,7 +1006,9 @@ struct ContentView: View {
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
                     }
-                    .disabled(pendingDevice == nil || busy || isBusyPhase)
+                    .disabled(pendingDevice == nil || busy || identifyBusy || isBusyPhase)
+                } footer: {
+                    Text("Identifizieren verbindet kurz und löst Piep/Blinken aus (falls das Modell das unterstützt). Die Verbindung bleibt für „Auslesen starten“.")
                 }
             }
             .navigationTitle("Profil bestätigen")
@@ -986,14 +1016,33 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") {
+                        if identifyBusy || ble.isConnectedToScooter {
+                            ble.disconnect()
+                        }
                         showProfileConfirm = false
                         pendingDevice = nil
+                        identifyNote = nil
+                        identifyBusy = false
                     }
                 }
             }
         }
         .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
+        .interactiveDismissDisabled(identifyBusy || busy)
+    }
+
+    private func identifyPendingDevice() async {
+        guard let device = pendingDevice else { return }
+        identifyBusy = true
+        identifyNote = nil
+        defer { identifyBusy = false }
+        await ble.connectAndIdentify(to: device, profile: profile)
+        if ble.phase == .failed {
+            identifyNote = ble.lastError ?? ble.statusMessage
+        } else {
+            identifyNote = ble.statusMessage
+        }
     }
 
     private func deviceDisplayTitle(_ device: ScannedDevice) -> String {
@@ -1007,14 +1056,19 @@ struct ContentView: View {
 
     private func connectAndCheck(_ device: ScannedDevice) async {
         // Profil kommt aus der Bestätigungs-Maske (oder bleibt der letzte Vorschlag).
+        // Nach Identifizieren kann die Enc2-Session schon stehen — kein zweites Pairing.
         busy = true
         result = nil
         defer {
             busy = false
             pendingDevice = nil
+            identifyNote = nil
         }
         do {
-            try await ble.connect(to: device)
+            let reuse = ble.lastConnectedDevice?.id == device.id && ble.isAuthenticatedForDump
+            if !reuse {
+                try await ble.connect(to: device)
+            }
             await ble.handshakeAndDump(profile: profile)
             if ble.phase == .done {
                 powerCycleDevice = device
