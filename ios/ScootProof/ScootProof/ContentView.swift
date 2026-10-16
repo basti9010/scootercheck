@@ -140,6 +140,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .animation(.easeOut(duration: 0.22), value: showMenu)
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .overlay { sideMenuOverlay }
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
