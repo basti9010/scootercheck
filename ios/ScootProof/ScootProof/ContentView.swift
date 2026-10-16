@@ -111,6 +111,31 @@ struct ContentView: View {
                                 .foregroundStyle(Theme.accent)
                         }
                         .accessibilityLabel("Zurück zur Kontrollübersicht")
+                    } else if screen == .home {
+                        Button {
+                            screen = .overview
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "list.bullet.rectangle")
+                                    .font(.body.weight(.semibold))
+                                Text("Kontrollen")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityLabel("Zur Kontrollübersicht")
+                    } else if screen == .overview {
+                        Button {
+                            screen = .home
+                            if ble.phase != .scanning, !isBusyPhase {
+                                ble.startScan()
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityLabel("Zurück zur Scooter-Suche")
                     }
                 }
                 ToolbarItem(placement: .principal) {
