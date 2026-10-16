@@ -278,6 +278,18 @@ struct ContentView: View {
             HStack {
                 Text("Geräte").font(.headline).foregroundStyle(.white)
                 Spacer()
+                Button {
+                    screen = .overview
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "list.bullet.rectangle")
+                            .font(.caption.weight(.semibold))
+                        Text(history.entries.isEmpty ? "Kontrollen" : "Kontrollen (\(history.entries.count))")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(Theme.accent)
+                }
+                .buttonStyle(.plain)
                 Text(ble.phase == .scanning ? "sucht · Signal live" : "in der Nähe")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.muted)
@@ -1457,15 +1469,17 @@ struct Wordmark: View {
 
 /// Schlichtes Copyright in der App-UI.
 struct AppCopyrightFooter: View {
-    private var year: Int {
-        Calendar.current.component(.year, from: Date())
+    private var line: String {
+        let year = Calendar.current.component(.year, from: Date())
+        // verbatim: sonst formatiert SwiftUI die Jahreszahl lokal als „2.026“.
+        return "© \(year) Bastian Ellinghausen"
     }
 
     var body: some View {
-        Text("© \(year) Bastian Ellinghausen")
+        Text(verbatim: line)
             .font(.caption2)
             .foregroundStyle(Theme.muted)
-            .accessibilityLabel("Copyright \(year) Bastian Ellinghausen")
+            .accessibilityLabel(line)
     }
 }
 
