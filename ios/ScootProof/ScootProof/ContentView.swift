@@ -1170,7 +1170,7 @@ struct ContentView: View {
     private var menuSheet: some View {
         NavigationStack {
             List {
-                Section("Soll-Profil") {
+                Section {
                     ForEach(ScooterFamily.allCases, id: \.self) { family in
                         VStack(alignment: .leading, spacing: 4) {
                             Picker(family.title, selection: $profile) {
@@ -1184,6 +1184,10 @@ struct ContentView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                } header: {
+                    Text("Vergleichsprofil")
+                } footer: {
+                    Text("Nur nötig, wenn die Auto-Erkennung danebenliegt. Daraus kommen Soll-Tempo (z. B. DE 20 km/h), Registerkarte und Serienkatalog — die App wählt das Profil sonst anhand von BLE-Name/SN.")
                 }
                 Section {
                     Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
