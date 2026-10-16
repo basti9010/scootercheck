@@ -100,6 +100,19 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if screen == .result {
+                        Button {
+                            persistCurrentSession()
+                            goToOverview()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityLabel("Zurück zur Kontrollübersicht")
+                    }
+                }
                 ToolbarItem(placement: .principal) {
                     if screen == .overview {
                         Text("Kontrollen")
@@ -172,6 +185,8 @@ struct ContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.top, 4)
             }
+            AppCopyrightFooter()
+                .padding(.top, 20)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 36)
@@ -461,12 +476,29 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Überspringen") { finishSubjectPrompt() }
+                    Button {
+                        abortSubjectPromptToOverview()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.body.weight(.semibold))
+                    }
+                    .accessibilityLabel("Zurück zur Kontrollübersicht")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Weiter zum Protokoll") { finishSubjectPrompt() }
                         .fontWeight(.semibold)
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    Button("Überspringen") { finishSubjectPrompt() }
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
+                    Spacer()
+                    AppCopyrightFooter()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
             }
             .interactiveDismissDisabled(true)
         }
@@ -549,6 +581,14 @@ struct ContentView: View {
         if shouldRescan, let analyzed = result {
             maybeStartUnlockRescanAfterTuning(analyzed)
         }
+    }
+
+    /// Zurück zur Kontrollübersicht — vor dem Protokoll, Auslese bleibt gespeichert.
+    private func abortSubjectPromptToOverview() {
+        pendingUnlockRescanAfterSubject = false
+        persistCurrentSession()
+        showSubjectPrompt = false
+        goToOverview()
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -1226,6 +1266,11 @@ struct ContentView: View {
                         showMenu = false
                     }
                 }
+                Section {
+                    AppCopyrightFooter()
+                        .frame(maxWidth: .infinity)
+                        .listRowBackground(Color.clear)
+                }
             }
             .navigationTitle("Menü")
             .toolbar {
@@ -1246,6 +1291,9 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
+            AppCopyrightFooter()
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
 
             if history.entries.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
@@ -1379,6 +1427,20 @@ struct Wordmark: View {
         .font(size.weight(.bold))
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+    }
+}
+
+/// Schlichtes Copyright in der App-UI.
+struct AppCopyrightFooter: View {
+    private var year: Int {
+        Calendar.current.component(.year, from: Date())
+    }
+
+    var body: some View {
+        Text("© \(year) Bastian Ellinghausen")
+            .font(.caption2)
+            .foregroundStyle(Theme.muted)
+            .accessibilityLabel("Copyright \(year) Bastian Ellinghausen")
     }
 }
 
