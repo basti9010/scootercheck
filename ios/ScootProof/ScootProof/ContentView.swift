@@ -27,6 +27,9 @@ struct ContentView: View {
     /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
     @State private var showSubjectPrompt = false
     @State private var pendingUnlockRescanAfterSubject = false
+    /// Scooter gewählt → Profil bestätigen, dann auslesen.
+    @State private var showProfileConfirm = false
+    @State private var pendingDevice: ScannedDevice? = nil
 
     private enum AppScreen: Equatable {
         case home
@@ -127,6 +130,11 @@ struct ContentView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .overlay { sideMenuOverlay }
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
+            .sheet(isPresented: $showProfileConfirm, onDismiss: {
+                if !busy { pendingDevice = nil }
+            }) {
+                profileConfirmSheet
+            }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
@@ -284,7 +292,7 @@ struct ContentView: View {
                 VStack(spacing: 10) {
                     ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
                         Button {
-                            Task { await connectAndCheck(item) }
+                            prepareProfileConfirm(for: item)
                         } label: {
                             ScooterDeviceCard(
                                 device: item,
@@ -867,14 +875,107 @@ struct ContentView: View {
         ble.startScan()
     }
 
-    private func connectAndCheck(_ device: ScannedDevice) async {
-        if let suggested = device.suggestedProfile
-            ?? ScooterProfile.suggested(fromBluetoothName: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
-            profile = suggested
+    private func prepareProfileConfirm(for device: ScannedDevice) {
+        let suggested = device.suggestedProfile
+            ?? ScooterProfile.suggested(
+                fromBluetoothName: device.cryptoName.isEmpty ? device.name : device.cryptoName
+            )
+            ?? profile
+        profile = suggested
+        pendingDevice = device
+        showProfileConfirm = true
+    }
+
+    /// Bestätigung: erkanntes Modell + Profil, dann Auslese starten.
+    private var profileConfirmSheet: some View {
+        NavigationStack {
+            Form {
+                if let device = pendingDevice {
+                    Section("Gerät") {
+                        Text(deviceDisplayTitle(device))
+                            .font(.headline)
+                        if let model = device.modelLabel ?? device.modelBadge {
+                            LabeledContent("Erkannt") {
+                                Text(model)
+                            }
+                        } else {
+                            Text("Modell nicht eindeutig aus dem Bluetooth-Namen erkannt — bitte Profil prüfen.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let badge = device.modelBadge {
+                            LabeledContent("Kurz") { Text(badge) }
+                        }
+                    }
+                }
+
+                Section {
+                    Picker("Profil", selection: $profile) {
+                        ForEach(ScooterFamily.allCases, id: \.self) { family in
+                            Section(family.title) {
+                                ForEach(ScooterProfile.profiles(in: family)) { p in
+                                    Text("\(p.shortLabel) · \(Int(p.ratedMaxKmh)) km/h").tag(p)
+                                }
+                            }
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+
+                    Text(profile.family.supportNote)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } header: {
+                    Text("Vergleichsprofil")
+                } footer: {
+                    Text("Vorschlag aus Bluetooth-Name/SN. Nur ändern, wenn die Erkennung nicht stimmt — davon hängen Soll-Tempo und Auswertung ab.")
+                }
+
+                Section {
+                    Button {
+                        guard let device = pendingDevice else { return }
+                        showProfileConfirm = false
+                        Task { await connectAndCheck(device) }
+                    } label: {
+                        Text("Auslesen starten")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .disabled(pendingDevice == nil || busy || isBusyPhase)
+                }
+            }
+            .navigationTitle("Profil bestätigen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") {
+                        showProfileConfirm = false
+                        pendingDevice = nil
+                    }
+                }
+            }
         }
+        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+    }
+
+    private func deviceDisplayTitle(_ device: ScannedDevice) -> String {
+        if let compact = BleModelHint.compactScooterId(
+            from: device.cryptoName.isEmpty ? device.name : device.cryptoName
+        ) {
+            return compact
+        }
+        return device.name
+    }
+
+    private func connectAndCheck(_ device: ScannedDevice) async {
+        // Profil kommt aus der Bestätigungs-Maske (oder bleibt der letzte Vorschlag).
         busy = true
         result = nil
-        defer { busy = false }
+        defer {
+            busy = false
+            pendingDevice = nil
+        }
         do {
             try await ble.connect(to: device)
             await ble.handshakeAndDump(profile: profile)
@@ -1218,24 +1319,11 @@ struct ContentView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Vergleichsprofil")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.muted)
-                        Text("Nur nötig, wenn die Auto-Erkennung danebenliegt.")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.muted.opacity(0.85))
-                            .fixedSize(horizontal: false, vertical: true)
-                        ForEach(ScooterFamily.allCases, id: \.self) { family in
-                            Picker(family.title, selection: $profile) {
-                                ForEach(ScooterProfile.profiles(in: family)) { p in
-                                    Text(p.shortLabel).tag(p)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .tint(Theme.accent)
-                        }
-                    }
+                    Text("Profil wird beim Auswählen eines Scooters vorgeschlagen und kann dort geändert werden.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 0)
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Soft-Unlock")
