@@ -104,14 +104,26 @@ struct ContentView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
+                    if screen == .result {
+                        Button {
+                            persistCurrentSession()
+                            goToOverview()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityLabel("Protokoll schließen")
+                    } else {
+                        Button {
+                            withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
+                        } label: {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityLabel("Menü öffnen")
                     }
-                    .accessibilityLabel("Menü öffnen")
                 }
                 ToolbarItem(placement: .principal) {
                     if screen == .overview {
@@ -250,7 +262,7 @@ struct ContentView: View {
     }
 
     private var deviceSection: some View {
-        let listed = ble.visibleDevices
+        let listed = history.sortForScanList(ble.visibleDevices)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Geräte").font(.headline).foregroundStyle(.white)
@@ -296,6 +308,7 @@ struct ContentView: View {
                         } label: {
                             ScooterDeviceCard(
                                 device: item,
+                                knownAlias: history.knownAlias(for: item),
                                 isNearest: index == 0 && listed.count > 1
                             )
                         }
@@ -636,7 +649,13 @@ struct ContentView: View {
         mutate(&current.subject)
         current.subject = current.subject.sanitized()
         session = current
-        try? history.save(current)
+        persistSession(current)
+    }
+
+    /// Speichert Protokoll inkl. BLE-UUID/Advertisement für spätere Scan-Wiedererkennung.
+    private func persistSession(_ current: CheckSession) {
+        let device = ble.lastConnectedDevice ?? unlockRescanDevice ?? powerCycleDevice
+        try? history.save(current, scannedDevice: device)
     }
 
     /// Auffälligkeiten-Gruppe nur für Meta (Historie, Power-Cycle) — Klartext steht oben.
@@ -844,7 +863,7 @@ struct ContentView: View {
             current.result = result
             current.subject = current.subject.sanitized()
             session = current
-            try? history.save(current)
+            persistSession(current)
         } else {
             let newSession = CheckSession(
                 id: result.sessionId,
@@ -853,7 +872,7 @@ struct ContentView: View {
                 result: result
             )
             session = newSession
-            try? history.save(newSession)
+            persistSession(newSession)
         }
     }
 
@@ -1106,7 +1125,7 @@ struct ContentView: View {
             result = analyzed
             let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
             session = newSession
-            try? history.save(newSession)
+            persistSession(newSession)
             powerCyclePhase = .idle
             powerCycleScanA = nil
             powerCycleDevice = nil
@@ -1187,7 +1206,7 @@ struct ContentView: View {
             result = analyzed
             let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
             session = newSession
-            try? history.save(newSession)
+            persistSession(newSession)
             // Erfolgreiche Freischaltung → Kombination für diese SN speichern.
             let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
             let afterTempo = max(
@@ -1232,7 +1251,7 @@ struct ContentView: View {
         result = analyzed
         let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
         session = newSession
-        try? history.save(newSession)
+        persistSession(newSession)
         presentResultWithSubjectPrompt(triggerUnlockRescan: true)
     }
 
@@ -1335,12 +1354,6 @@ struct ContentView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Profil wird beim Auswählen eines Scooters vorgeschlagen und kann dort geändert werden.")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 0)
-
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Soft-Unlock")
                             .font(.caption.weight(.semibold))
@@ -1605,6 +1618,8 @@ struct AppCopyrightFooter: View {
 /// SHU-ähnliche Gerätezeile: Bild · ID · Modell · Signalbalken.
 struct ScooterDeviceCard: View {
     let device: ScannedDevice
+    /// Gespeicherter Zuordnungsname / Kennzeichen aus früherem Protokoll.
+    var knownAlias: String? = nil
     var isNearest: Bool = false
 
     private var displayId: String {
@@ -1650,11 +1665,20 @@ struct ScooterDeviceCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(displayId)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(displayId)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    if let knownAlias, !knownAlias.isEmpty {
+                        Text("· \(knownAlias)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                }
 
                 Text(modelTitle)
                     .font(.body.weight(.semibold))
@@ -1662,6 +1686,15 @@ struct ScooterDeviceCard: View {
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
+                    if knownAlias != nil {
+                        Text("bekannt")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Theme.warn.opacity(0.9))
+                            .clipShape(Capsule())
+                    }
                     if device.looksLikeScooter || device.modelLabel != nil {
                         Label("Erkannt", systemImage: "bolt.fill")
                             .font(.caption2.weight(.bold))
@@ -1701,11 +1734,14 @@ struct ScooterDeviceCard: View {
         .background(Theme.card)
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
+                .stroke(knownAlias == nil ? Theme.line : Theme.accent.opacity(0.45), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(modelTitle), \(displayId), \(device.signalLabel)")
+        .accessibilityLabel(
+            knownAlias.map { "\(modelTitle), \(displayId), \($0), \(device.signalLabel)" }
+                ?? "\(modelTitle), \(displayId), \(device.signalLabel)"
+        )
     }
 }
 
