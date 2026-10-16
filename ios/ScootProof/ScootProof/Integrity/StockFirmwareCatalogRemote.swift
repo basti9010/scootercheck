@@ -58,7 +58,7 @@ enum StockFirmwareCatalogRemote {
     /// Kurzlabel für Protokoll / UI.
     static var provenanceLabel: String {
         guard let snap = current else { return "Bundled" }
-        return "Online \(snap.payload.updatedAt) (Stand Abruf \(Format.shortDate(snap.fetchedAt)))"
+        return "Online \(snap.payload.updatedAt) (Stand Abruf \(catalogShortDate(snap.fetchedAt)))"
     }
 
     /// Einstieg beim App-Start — Netzwerkfehler werden still ignoriert.
@@ -127,12 +127,11 @@ enum StockFirmwareCatalogRemote {
     }
 }
 
-private enum Format {
-    static func shortDate(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "de_DE")
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f.string(from: date)
-    }
+/// Lokal, damit kein Konflikt mit `Models.Format` entsteht.
+private func catalogShortDate(_ date: Date) -> String {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "de_DE")
+    f.dateStyle = .medium
+    f.timeStyle = .none
+    return f.string(from: date)
 }
