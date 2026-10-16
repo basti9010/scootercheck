@@ -27,6 +27,9 @@ struct ContentView: View {
     /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
     @State private var showSubjectPrompt = false
     @State private var pendingUnlockRescanAfterSubject = false
+    /// Scooter gewählt → Profil bestätigen, dann auslesen.
+    @State private var showProfileConfirm = false
+    @State private var pendingDevice: ScannedDevice? = nil
 
     private enum AppScreen: Equatable {
         case home
@@ -100,26 +103,38 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
+                    } label: {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .accessibilityLabel("Menü öffnen")
+                }
                 ToolbarItem(placement: .principal) {
                     if screen == .overview {
                         Text("Kontrollen")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                    } else if screen == .result {
+                        Text("Protokoll")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
                     } else {
                         Wordmark(size: .headline)
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showMenu = true } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.title3)
-                            .foregroundStyle(Theme.accent)
-                    }
-                }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
-            .sheet(isPresented: $showMenu) { menuSheet }
+            .overlay { sideMenuOverlay }
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
+            .sheet(isPresented: $showProfileConfirm, onDismiss: {
+                if !busy { pendingDevice = nil }
+            }) {
+                profileConfirmSheet
+            }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
@@ -172,6 +187,8 @@ struct ContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.top, 4)
             }
+            AppCopyrightFooter()
+                .padding(.top, 20)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 36)
@@ -238,7 +255,7 @@ struct ContentView: View {
             HStack {
                 Text("Geräte").font(.headline).foregroundStyle(.white)
                 Spacer()
-                Text(ble.phase == .scanning ? "sucht · Signal live" : "in der Nähe")
+                Text(ble.phase == .scanning ? "sucht…" : "in der Nähe")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.muted)
             }
@@ -275,7 +292,7 @@ struct ContentView: View {
                 VStack(spacing: 10) {
                     ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
                         Button {
-                            Task { await connectAndCheck(item) }
+                            prepareProfileConfirm(for: item)
                         } label: {
                             ScooterDeviceCard(
                                 device: item,
@@ -461,12 +478,29 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Überspringen") { finishSubjectPrompt() }
+                    Button {
+                        abortSubjectPromptToOverview()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.body.weight(.semibold))
+                    }
+                    .accessibilityLabel("Zurück zur Kontrollübersicht")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Weiter zum Protokoll") { finishSubjectPrompt() }
                         .fontWeight(.semibold)
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    Button("Überspringen") { finishSubjectPrompt() }
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
+                    Spacer()
+                    AppCopyrightFooter()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
             }
             .interactiveDismissDisabled(true)
         }
@@ -549,6 +583,14 @@ struct ContentView: View {
         if shouldRescan, let analyzed = result {
             maybeStartUnlockRescanAfterTuning(analyzed)
         }
+    }
+
+    /// Zurück zur Kontrollübersicht — vor dem Protokoll, Auslese bleibt gespeichert.
+    private func abortSubjectPromptToOverview() {
+        pendingUnlockRescanAfterSubject = false
+        persistCurrentSession()
+        showSubjectPrompt = false
+        goToOverview()
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -833,14 +875,108 @@ struct ContentView: View {
         ble.startScan()
     }
 
-    private func connectAndCheck(_ device: ScannedDevice) async {
-        if let suggested = device.suggestedProfile
-            ?? ScooterProfile.suggested(fromBluetoothName: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
-            profile = suggested
+    private func prepareProfileConfirm(for device: ScannedDevice) {
+        let suggested = device.suggestedProfile
+            ?? ScooterProfile.suggested(
+                fromBluetoothName: device.cryptoName.isEmpty ? device.name : device.cryptoName
+            )
+            ?? profile
+        profile = suggested
+        pendingDevice = device
+        showProfileConfirm = true
+    }
+
+    /// Bestätigung: erkanntes Modell + Profil, dann Auslese starten.
+    private var profileConfirmSheet: some View {
+        NavigationStack {
+            Form {
+                if let device = pendingDevice {
+                    Section("Gerät") {
+                        Text(deviceDisplayTitle(device))
+                            .font(.headline)
+                        if let model = device.modelLabel ?? device.modelBadge {
+                            LabeledContent("Erkannt") {
+                                Text(model)
+                            }
+                        } else {
+                            Text("Modell nicht eindeutig aus dem Bluetooth-Namen erkannt — bitte Profil prüfen.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let badge = device.modelBadge {
+                            LabeledContent("Kurz") { Text(badge) }
+                        }
+                    }
+                }
+
+                Section {
+                    Picker("Profil", selection: $profile) {
+                        ForEach(ScooterProfile.allCases) { p in
+                            Text(verbatim: "\(p.family.title) · \(p.shortLabel) · \(Int(p.ratedMaxKmh)) km/h")
+                                .tag(p)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+
+                    LabeledContent("Aktuell") {
+                        Text(verbatim: "\(profile.label)")
+                    }
+
+                    Text(profile.family.supportNote)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } header: {
+                    Text("Vergleichsprofil")
+                } footer: {
+                    Text("Vorschlag aus Bluetooth-Name/SN. Nur ändern, wenn die Erkennung nicht stimmt — davon hängen Soll-Tempo und Auswertung ab.")
+                }
+
+                Section {
+                    Button {
+                        guard let device = pendingDevice else { return }
+                        showProfileConfirm = false
+                        Task { await connectAndCheck(device) }
+                    } label: {
+                        Text("Auslesen starten")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .disabled(pendingDevice == nil || busy || isBusyPhase)
+                }
+            }
+            .navigationTitle("Profil bestätigen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") {
+                        showProfileConfirm = false
+                        pendingDevice = nil
+                    }
+                }
+            }
         }
+        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+    }
+
+    private func deviceDisplayTitle(_ device: ScannedDevice) -> String {
+        if let compact = BleModelHint.compactScooterId(
+            from: device.cryptoName.isEmpty ? device.name : device.cryptoName
+        ) {
+            return compact
+        }
+        return device.name
+    }
+
+    private func connectAndCheck(_ device: ScannedDevice) async {
+        // Profil kommt aus der Bestätigungs-Maske (oder bleibt der letzte Vorschlag).
         busy = true
         result = nil
-        defer { busy = false }
+        defer {
+            busy = false
+            pendingDevice = nil
+        }
         do {
             try await ble.connect(to: device)
             await ble.handshakeAndDump(profile: profile)
@@ -1102,139 +1238,197 @@ struct ContentView: View {
         startUnlockRescan()
     }
 
-    private var menuSheet: some View {
-        NavigationStack {
-            List {
-                Section("Soll-Profil") {
-                    ForEach(ScooterFamily.allCases, id: \.self) { family in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Picker(family.title, selection: $profile) {
-                                ForEach(ScooterProfile.profiles(in: family)) { p in
-                                    Text(p.shortLabel).tag(p)
-                                }
-                            }
-                            Text(family.supportNote)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+    // MARK: - Side menu (über dem aktuellen Bildschirm)
+
+    private var sideMenuOverlay: some View {
+        ZStack(alignment: .leading) {
+            if showMenu {
+                Color.black.opacity(0.55)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+                    }
+                    .transition(.opacity)
+
+                sideMenuPanel
+                    .frame(maxWidth: 320)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .background(Theme.card.ignoresSafeArea())
+                    .transition(.move(edge: .leading))
+                    .zIndex(1)
+            }
+        }
+        .animation(.easeOut(duration: 0.22), value: showMenu)
+        .allowsHitTesting(showMenu)
+    }
+
+    private var sideMenuPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Wordmark(size: .headline)
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.muted)
+                        .padding(8)
+                }
+                .accessibilityLabel("Menü schließen")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            Text("Navigation")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.muted)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+
+            VStack(spacing: 4) {
+                sideNavRow(
+                    title: "Scooter-Suche",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    selected: screen == .home
+                ) {
+                    navigateFromMenu(to: .home)
+                }
+                sideNavRow(
+                    title: history.entries.isEmpty
+                        ? "Kontrollen"
+                        : "Kontrollen (\(history.entries.count))",
+                    systemImage: "list.bullet.rectangle",
+                    selected: screen == .overview
+                ) {
+                    navigateFromMenu(to: .overview)
+                }
+                if result != nil {
+                    sideNavRow(
+                        title: "Aktuelles Protokoll",
+                        systemImage: "doc.text",
+                        selected: screen == .result
+                    ) {
+                        navigateFromMenu(to: .result)
                     }
                 }
-                Section {
-                    Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
-                    Picker("Bedienung", selection: $softUnlock.control) {
-                        ForEach(SoftUnlockControl.allCases) { kind in
-                            Text(kind.title).tag(kind)
+            }
+            .padding(.horizontal, 12)
+
+            Divider().overlay(Theme.line).padding(.vertical, 14)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Profil wird beim Auswählen eines Scooters vorgeschlagen und kann dort geändert werden.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 0)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Soft-Unlock")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.muted)
+                        Toggle("Erkennung aktiv", isOn: $softUnlock.isEnabled)
+                            .tint(Theme.accent)
+                            .foregroundStyle(.white)
+                        Picker("Bedienung", selection: $softUnlock.control) {
+                            ForEach(SoftUnlockControl.allCases) { kind in
+                                Text(kind.title).tag(kind)
+                            }
                         }
-                    }
-                    if softUnlock.control == .custom {
-                        TextField("Eigene Beschreibung", text: $softUnlock.customLabel)
-                    } else {
-                        Stepper("Wiederholungen: \(softUnlock.repetitions)×", value: $softUnlock.repetitions, in: 1...20)
-                    }
-                    Stepper(
-                        "Schwelle: \(Int(softUnlock.speedThresholdKmh.rounded())) km/h",
-                        value: Binding(
-                            get: { softUnlock.speedThresholdKmh },
-                            set: { softUnlock.speedThresholdKmh = $0 }
-                        ),
-                        in: 21...60,
-                        step: 1
-                    )
-                    Text("Aktuell: \(softUnlock.unlockCodeSummary)")
-                        .font(.subheadline.weight(.semibold))
-                    if let serial = currentScooterSerial {
-                        let _ = softUnlockStoreRevision
-                        if let stored = SoftUnlockComboStore.load(forSerial: serial) {
-                            Text("Gespeichert für \(serial): \(stored.displayCode)")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            Button("Gespeicherte Kombination laden") {
-                                softUnlock.apply(stored)
-                                discoveredUnlockCombo = stored
-                            }
-                            Button("Gespeicherte Kombination löschen", role: .destructive) {
-                                SoftUnlockComboStore.delete(forSerial: serial)
-                                if discoveredUnlockCombo?.displayCode == stored.displayCode {
-                                    discoveredUnlockCombo = nil
-                                }
-                                softUnlockStoreRevision += 1
-                            }
+                        .tint(Theme.accent)
+                        if softUnlock.control == .custom {
+                            TextField("Eigene Beschreibung", text: $softUnlock.customLabel)
+                                .scootField()
                         } else {
-                            Text("Noch keine Kombination für \(serial) gespeichert.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                            Stepper("Wiederholungen: \(softUnlock.repetitions)×", value: $softUnlock.repetitions, in: 1...20)
+                                .foregroundStyle(.white)
                         }
-                        Button("Aktuelle Kombination für diese SN speichern") {
-                            let combo = SoftUnlockCombo.fromSettings(softUnlock)
-                            SoftUnlockComboStore.save(combo, forSerial: serial)
-                            discoveredUnlockCombo = combo
-                            softUnlockStoreRevision += 1
-                        }
-                    } else {
-                        Text("Nach einer Auslese erscheint hier die Speicherung pro Seriennummer.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        Stepper(
+                            "Schwelle: \(Int(softUnlock.speedThresholdKmh.rounded())) km/h",
+                            value: Binding(
+                                get: { softUnlock.speedThresholdKmh },
+                                set: { softUnlock.speedThresholdKmh = $0 }
+                            ),
+                            in: 21...60,
+                            step: 1
+                        )
+                        .foregroundStyle(.white)
+                        Text(softUnlock.unlockCodeSummary)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(softUnlock.detectionHint)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } header: {
-                    Text("Soft-Unlock / Geheimkombination")
-                }
-                Section("Kontrollen") {
-                    Button {
-                        showMenu = false
-                        screen = .overview
-                    } label: {
-                        HStack {
-                            Text("Übersicht")
-                            Spacer()
-                            Text("\(history.entries.count)")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                Section("Beispiele") {
-                    ForEach(IntegrityAnalyzer.DemoKind.allCases, id: \.rawValue) { kind in
-                        Button(demoTitle(kind)) {
-                            let reading = IntegrityAnalyzer.fillDemo(kind, profile: profile)
-                            let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
-                            result = analyzed
-                            let newSession = CheckSession(
-                                id: analyzed.sessionId,
-                                profile: profile,
-                                reading: reading,
-                                result: analyzed
-                            )
-                            session = newSession
-                            try? history.save(newSession)
-                            showMenu = false
-                            // Menü-Sheet zuerst schließen, dann Zuordnungs-Popup.
-                            DispatchQueue.main.async {
-                                presentResultWithSubjectPrompt()
-                            }
-                        }
-                    }
-                }
-                Section {
-                    Button("Trennen", role: .destructive) {
+
+                    Button(role: .destructive) {
                         ble.disconnect()
                         result = nil
                         session = nil
-                        screen = .home
-                        showMenu = false
+                        navigateFromMenu(to: .home)
+                    } label: {
+                        Label("Trennen", systemImage: "xmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .foregroundStyle(Theme.danger)
+
+                    AppCopyrightFooter()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
                 }
-            }
-            .navigationTitle("Menü")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { showMenu = false }
-                }
+                .padding(.horizontal, 20)
             }
         }
-        .presentationDetents([.medium, .large])
+        .preferredColorScheme(.dark)
+    }
+
+    private func sideNavRow(
+        title: String,
+        systemImage: String,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 22)
+                Text(verbatim: title)
+                    .font(.body.weight(selected ? .semibold : .regular))
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                }
+            }
+            .foregroundStyle(selected ? Theme.ink : .white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(selected ? Theme.accent : Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func navigateFromMenu(to target: AppScreen) {
+        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        switch target {
+        case .home:
+            if screen == .result { persistCurrentSession() }
+            screen = .home
+            if ble.phase != .scanning, !isBusyPhase {
+                ble.startScan()
+            }
+        case .overview:
+            if screen == .result { persistCurrentSession() }
+            goToOverview()
+        case .result:
+            guard result != nil else { return }
+            screen = .result
+        }
     }
 
     private var controlsOverview: some View {
@@ -1246,6 +1440,9 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
+            AppCopyrightFooter()
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
 
             if history.entries.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
@@ -1355,14 +1552,6 @@ struct ContentView: View {
         }
     }
 
-    private func demoTitle(_ kind: IntegrityAnalyzer.DemoKind) -> String {
-        switch kind {
-        case .stock: return "Serie"
-        case .webapp: return "WebApp + Panic"
-        case .shu: return "SHU / SN-Wechsel"
-        case .shuDump: return "SHU + Dump"
-        }
-    }
 }
 
 struct Wordmark: View {
@@ -1379,6 +1568,22 @@ struct Wordmark: View {
         .font(size.weight(.bold))
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+    }
+}
+
+/// Schlichtes Copyright in der App-UI.
+struct AppCopyrightFooter: View {
+    private var line: String {
+        let year = Calendar.current.component(.year, from: Date())
+        // verbatim: sonst formatiert SwiftUI die Jahreszahl lokal als „2.026“.
+        return "© \(year) Bastian Ellinghausen"
+    }
+
+    var body: some View {
+        Text(verbatim: line)
+            .font(.caption2)
+            .foregroundStyle(Theme.muted)
+            .accessibilityLabel(line)
     }
 }
 

@@ -605,10 +605,17 @@ enum ProtocolPDF {
             at: cursor
         )
         cursor += 8
-        _ = drawText(
+        cursor = drawText(
             "— Ende des Analyseberichts \(session.protocolNumber) —",
             at: cursor,
             font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        let year = Calendar.current.component(.year, from: Date())
+        _ = drawText(
+            "© \(year) Bastian Ellinghausen",
+            at: cursor,
+            font: bodyFont(size: 8),
             color: Theme.UI.muted
         )
         return cursor

@@ -14,6 +14,7 @@ on:
       - cursor/testflight-ci-133a
       - cursor/dual-tuning-detection-133a
       - cursor/unlock-rescan-prosecutor-b100
+      - cursor/back-copyright-b100
     paths:
       - "ios/ScootProof/**"
       - ".github/workflows/testflight.yml"

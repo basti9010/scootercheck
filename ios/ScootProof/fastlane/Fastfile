@@ -22,8 +22,16 @@ platform :ios do
     revoke_orphan_distribution_certs!(ids: ["5SVF2MGK7Z", "A6Y3NTX39P"])
     ensure_scootercheck_app!(api_key: api_key)
 
-    git_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
-    git_auth ||= Base64.strict_encode64("basti9010:#{ENV.fetch('MATCH_GITHUB_TOKEN')}")
+    # Prefer MATCH_GITHUB_TOKEN (can rotate) over a possibly stale Base64 secret.
+    match_token = ENV["MATCH_GITHUB_TOKEN"].to_s.strip
+    match_basic = ENV["MATCH_GIT_BASIC_AUTHORIZATION"].to_s.strip
+    git_auth = if !match_token.empty?
+      Base64.strict_encode64("basti9010:#{match_token}")
+    elsif !match_basic.empty?
+      match_basic
+    else
+      UI.user_error!("MATCH_GITHUB_TOKEN oder MATCH_GIT_BASIC_AUTHORIZATION fehlt")
+    end
 
     match(
       type: "appstore",
