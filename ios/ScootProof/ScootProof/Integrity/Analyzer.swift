@@ -1148,33 +1148,16 @@ enum IntegrityAnalyzer {
 
     // MARK: - EvidenceEngine findings (Anzeige der Engine-Ausgabe)
 
-    /// Nur Meta-Findings — keine erneute Spiegelung der Klartext-Bullets/Marker.
+    /// Nur Meta-Findings — keine erneute Spiegelung der Klartext-Bullets/Marker/Attribution.
     private static func evidenceFindings(_ evidence: EvidenceAssessment) -> [Finding] {
         var findings: [Finding] = []
-        findings.append(Finding(
-            id: "finding.evidence.verdict",
-            severity: evidence.verdict == .stock ? .regelkonform
-                : (evidence.verdict == .auffaellig ? .abweichend : .erheblichAbweichend),
-            title: "Gesamteindruck: \(evidence.verdict.label)",
-            detail: evidence.problemOverview,
-            relatedFactIds: ["evidence.summary"]
-        ))
-        if let attr = evidence.attribution {
-            findings.append(Finding(
-                id: "finding.evidence.attribution",
-                severity: attr.isDeterminate ? .abweichend : .nichtFeststellbar,
-                title: "Vermutete Manipulationsart",
-                detail: EvidenceExplanationEngine.attributionPlain(attr),
-                relatedFactIds: ["evidence.attribution"]
-            ))
-        }
         for n in evidence.results.flatMap(\.neutralizations).prefix(4) {
             findings.append(Finding(
                 id: "finding.evidence.neutral.\(n.ruleId)",
                 severity: .regelkonform,
                 title: "Neutralisierung \(n.ruleId)",
                 detail: "\(n.classBefore.label) → \(n.classAfter.label): \(n.reason)",
-                relatedFactIds: ["evidence.summary"]
+                relatedFactIds: []
             ))
         }
         return findings

@@ -26,6 +26,9 @@
 		A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* SoftUnlockSettings.swift */; };
 		A1000000000000000000001F /* SoftUnlockComboStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001F /* SoftUnlockComboStore.swift */; };
 		A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* StockFirmwareCatalog.swift */; };
+		A10000000000000000000021 /* StockFirmwareCatalogRemote.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000021 /* StockFirmwareCatalogRemote.swift */; };
+		A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */; };
+		A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000023 /* CompactReportFactsTests.swift */; };
 		A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CustomFirmwareDiff.swift */; };
 		A10000000000000000000014 /* EvidenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* EvidenceEngine.swift */; };
 		A10000000000000000000015 /* AttributionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* AttributionEngine.swift */; };
@@ -62,6 +65,9 @@
 		B10000000000000000000012 /* SoftUnlockSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockSettings.swift; sourceTree = "<group>"; };
 		B1000000000000000000001F /* SoftUnlockComboStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000013 /* StockFirmwareCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalog.swift; sourceTree = "<group>"; };
+		B10000000000000000000021 /* StockFirmwareCatalogRemote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalogRemote.swift; sourceTree = "<group>"; };
+		B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockFirmwareCatalogRemoteTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000023 /* CompactReportFactsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactReportFactsTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* CustomFirmwareDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFirmwareDiff.swift; sourceTree = "<group>"; };
 		B10000000000000000000015 /* EvidenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000016 /* AttributionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngine.swift; sourceTree = "<group>"; };
@@ -134,6 +140,7 @@
 				B10000000000000000000012 /* SoftUnlockSettings.swift */,
 				B1000000000000000000001F /* SoftUnlockComboStore.swift */,
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
+				B10000000000000000000021 /* StockFirmwareCatalogRemote.swift */,
 				B10000000000000000000014 /* CustomFirmwareDiff.swift */,
 				B10000000000000000000015 /* EvidenceEngine.swift */,
 				B10000000000000000000016 /* AttributionEngine.swift */,
@@ -153,6 +160,8 @@
 				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
+				B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */,
+				B10000000000000000000023 /* CompactReportFactsTests.swift */,
 			);
 			path = ScootProofTests;
 			sourceTree = "<group>";
@@ -293,6 +302,7 @@
 				A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */,
 				A1000000000000000000001F /* SoftUnlockComboStore.swift in Sources */,
 				A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */,
+				A10000000000000000000021 /* StockFirmwareCatalogRemote.swift in Sources */,
 				A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */,
 				A10000000000000000000014 /* EvidenceEngine.swift in Sources */,
 				A10000000000000000000015 /* AttributionEngine.swift in Sources */,
@@ -312,6 +322,8 @@
 				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
+				A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */,
+				A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

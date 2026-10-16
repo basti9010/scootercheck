@@ -965,61 +965,12 @@ enum EvidenceEngine {
         profile: ScooterProfile = .maxG3D
     ) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
-        facts.append(MeasuredFact(
-            id: "evidence.summary",
-            group: .evidence,
-            title: "Gesamteindruck",
-            auslesewert: assessment.verdict.label,
-            sollwert: VerdictLevel.stock.label,
-            status: {
-                switch assessment.verdict {
-                case .stock: return .regelkonform
-                case .auffaellig: return .abweichend
-                case .hinweise, .eindeutig: return .erheblichAbweichend
-                }
-            }(),
-            bewertung: assessment.problemOverview,
-            erlaeuterung: assessment.problemOverview,
-            raw: "catalog=\(assessment.catalogVersion);sha=\(assessment.fingerprint.digestSHA256);counts=\(assessment.summary)",
-            volatility: .persistent,
-            evidenceClass: assessment.starkerHinweisCount > 0 ? .starkerHinweis : (assessment.indizCount > 0 ? .indiz : .info),
-            sourceBoard: "EvidenceEngine",
-            sourceRegister: "verdict",
-            rawHex: nil,
-            resetsOnPowerOff: false
-        ))
+
+        // Gesamteindruck + Attribution stehen bereits in der Klartext-Kurzfassung oben —
+        // hier nur Meta (Power-Cycle, Historie, Warnungen, Fingerprint).
 
         // Decisive-Zeilen und Marker-Spiegelungen absichtlich nicht als MeasuredFacts —
         // sie stehen bereits als Klartext-Bullets oben bzw. als Messwerte (speed.*/fw.*).
-
-        if let attr = assessment.attribution {
-            facts.append(MeasuredFact(
-                id: "evidence.attribution",
-                group: .evidence,
-                title: "Vermutete Manipulationsart",
-                auslesewert: attr.headline,
-                sollwert: "heuristisch, nicht urteilsbildend",
-                status: attr.isDeterminate ? .abweichend : .nichtFeststellbar,
-                bewertung: "Konfidenz \(attr.confidenceLabel) (\(String(format: "%.2f", attr.confidence)))",
-                erlaeuterung: EvidenceExplanationEngine.attributionPlain(attr),
-                raw: [
-                    "method=\(attr.suspectedMethod?.rawValue ?? "nil")",
-                    "pattern=\(attr.knownPatternId ?? "—")",
-                    "catalog=\(attr.catalogVersion)",
-                    "support=\(attr.supportingMarkerIds.joined(separator: ","))",
-                    "contra=\(attr.contradictingMarkerIds.joined(separator: ","))"
-                ].joined(separator: ";"),
-                volatility: .persistent,
-                evidenceClass: .info,
-                sourceBoard: "AttributionEngine",
-                sourceRegister: attr.knownPatternId ?? "heuristic",
-                rawHex: nil,
-                resetsOnPowerOff: false
-            ))
-        }
-
-        // Marker-Ergebnisse nicht nochmals unter „Auffälligkeiten“ listen —
-        // sonst wiederholen sich Limit/Peak/Firmware mit den Messgruppen.
 
         facts += EvidenceExplanationEngine.positiveFindings(
             reading: reading,

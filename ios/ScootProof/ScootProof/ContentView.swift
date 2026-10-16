@@ -331,7 +331,7 @@ struct ContentView: View {
                             .font(.caption.weight(.medium))
                             .foregroundStyle(Theme.muted)
                     }
-                    Text("Katalog v\(report.evidence.catalogVersion)")
+                    Text("Evidenz v\(report.evidence.catalogVersion) · FW \(StockFirmwareCatalog.provenanceLabel)")
                         .font(.caption2)
                         .foregroundStyle(Theme.muted)
 
@@ -355,11 +355,6 @@ struct ContentView: View {
                                 }
                                 .font(.footnote)
                             }
-                            Text(report.verdict.laymanText)
-                                .font(.caption)
-                                .foregroundStyle(Theme.muted)
-                                .padding(.top, 2)
-                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(.top, 6)
@@ -420,7 +415,8 @@ struct ContentView: View {
             subjectAssignmentCard
 
             ForEach(detailFactGroups, id: \.self) { group in
-                if let facts = report.factGroups[group], !facts.isEmpty {
+                let facts = compactDetailFacts(report.factGroups[group] ?? [])
+                if !facts.isEmpty {
                     Text(group.rawValue)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.accent)
@@ -643,9 +639,28 @@ struct ContentView: View {
         try? history.save(current)
     }
 
-    /// Auffälligkeiten-Gruppe nur für Meta (Attribution, Historie, Power-Cycle) — Klartext steht oben.
+    /// Auffälligkeiten-Gruppe nur für Meta (Historie, Power-Cycle) — Klartext steht oben.
     private var detailFactGroups: [FactGroup] {
         [.evidence] + FactGroup.allCases.filter { $0 != .evidence }
+    }
+
+    /// Keine erneute Spiegelung von Kurzfassung / Attribution / redundanten Diffs.
+    private func compactDetailFacts(_ facts: [MeasuredFact]) -> [MeasuredFact] {
+        facts.filter { fact in
+            switch fact.id {
+            case "evidence.summary", "evidence.attribution":
+                return false
+            default:
+                if fact.id.hasPrefix("diff.speed.") || fact.id.hasPrefix("diff.gear.") {
+                    return false
+                }
+                // Positive Einzeiler nur in der Übersicht/PDF — Details bleiben Messwerte.
+                if fact.id.hasPrefix("positive.") {
+                    return false
+                }
+                return true
+            }
+        }
     }
 
     private func scoreCaption(for score: Int) -> String {
@@ -1747,6 +1762,17 @@ struct FactRow: View {
     let fact: MeasuredFact
     @State private var showTechnical = false
 
+    private var showsExplanation: Bool {
+        let e = fact.erlaeuterung.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !e.isEmpty else { return false }
+        if e == fact.bewertung || e == fact.auslesewert || e == fact.title { return false }
+        // Lange Analyse-Texte nur aufklappen, Messzeilen kurz halten.
+        if fact.group == .speed || fact.group == .serial || fact.group == .odometer {
+            return false
+        }
+        return e.count < 160
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
@@ -1757,10 +1783,12 @@ struct FactRow: View {
                 Text(fact.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
-                Text(fact.erlaeuterung)
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                if showsExplanation {
+                    Text(fact.erlaeuterung)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if fact.status != .regelkonform && fact.status != .nichtFeststellbar {
                     Text(statusPhrase)
                         .font(.footnote.weight(.semibold))
@@ -1796,8 +1824,10 @@ struct FactRow: View {
                         if let hex = fact.rawHex {
                             Text("Rohwert: \(hex)")
                         }
-                        Text("Interpretation: \(fact.auslesewert)")
-                        Text("Soll: \(fact.sollwert)")
+                        if !fact.erlaeuterung.isEmpty, !showsExplanation {
+                            Text(fact.erlaeuterung)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         if let volatility = fact.volatility {
                             Text("Persistenz: \(volatility.label) · \(volatility.resetsOnPowerOffHint)")
                         }

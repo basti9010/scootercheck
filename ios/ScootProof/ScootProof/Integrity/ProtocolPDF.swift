@@ -252,7 +252,8 @@ enum ProtocolPDF {
             ("Geschwindigkeitslimit", Format.kmh.format(result.reading.speedLimitKmh ?? result.reading.speedMaxKmh)),
             ("Trip-Spitze (Peak)", Format.kmh.format(result.reading.peakSpeedKmh)),
             ("Protokoll", session.protocolNumber),
-            ("Katalogversion", "v\(result.evidence.catalogVersion)")
+            ("Evidenzkatalog", "v\(result.evidence.catalogVersion)"),
+            ("Firmware-Katalog", StockFirmwareCatalog.provenanceLabel)
         ]
         for (label, value) in rows {
             cursor = drawKeyValue(label, value: value, at: cursor)
@@ -301,9 +302,9 @@ enum ProtocolPDF {
         y: CGFloat
     ) -> CGFloat {
         var cursor = ensureSpace(context: context, y: y, needed: 80)
-        cursor = drawHeading("II. Was ist aufgefallen?", at: cursor)
+        cursor = drawHeading("II. Messwerte zu den Auffälligkeiten", at: cursor)
         cursor = drawText(
-            "Die für das Gesamturteil maßgeblichen Punkte in Alltagssprache.",
+            "Nur Zahlen zu den Punkten aus Abschnitt I — ohne erneute Alltagsbeschreibung.",
             at: cursor,
             font: bodyFont(size: 9),
             color: Theme.UI.muted
@@ -312,45 +313,39 @@ enum ProtocolPDF {
         let markers = result.evidence.justifyingMarkers
         if markers.isEmpty {
             cursor = drawParagraph(
-                "Es wurden keine abweichenden Punkte festgestellt, die zum Gesamturteil beitragen.",
+                "Keine abweichenden Punkte mit Messwert für das Gesamturteil.",
                 at: cursor
             )
         }
         for r in markers.prefix(12) {
-            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 5)
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
             cursor = drawText(
                 r.plainLanguage.title,
                 at: cursor,
-                font: bodyFont(size: 11, weight: .semibold),
+                font: bodyFont(size: 10, weight: .semibold),
                 color: Theme.UI.text
             )
-            cursor = drawParagraph(r.plainLanguage.summary, at: cursor)
             cursor = drawText(
-                "Festgestellt: \(r.fact.interpretedValue ?? r.fact.rawValue)  ·  Erwartet: \(r.fact.expectedValue ?? "—")",
+                "Festgestellt: \(r.fact.interpretedValue ?? r.fact.rawValue)  ·  Erwartet: \(r.fact.expectedValue ?? "—")  ·  \(r.classification.label)",
                 at: cursor,
                 font: bodyFont(size: 9),
                 color: Theme.UI.muted
             )
-            cursor = drawText(
-                "Einordnung: \(r.classification.label)",
-                at: cursor,
-                font: bodyFont(size: 9, weight: .medium),
-                color: Theme.UI.text
-            )
-            if let contrib = r.plainLanguage.verdictContribution {
-                cursor = drawText("Bedeutung: \(contrib)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
-            }
-            cursor += 4
+            cursor += 3
         }
 
         let positives = result.facts.filter { $0.id.hasPrefix("positive.") }
         if !positives.isEmpty {
-            cursor = ensureSpace(context: context, y: cursor, needed: 40)
+            cursor = ensureSpace(context: context, y: cursor, needed: 36)
             cursor = drawSubheading("Unauffällige Befunde", at: cursor)
             for fact in positives.prefix(8) {
-                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
-                cursor = drawText("• \(fact.title)", at: cursor, font: bodyFont(size: 9, weight: .semibold), color: Theme.UI.text)
-                cursor = drawText("  \(fact.erlaeuterung)", at: cursor, font: bodyFont(size: 8), color: Theme.UI.muted)
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight)
+                cursor = drawText(
+                    "• \(fact.title): \(fact.auslesewert)",
+                    at: cursor,
+                    font: bodyFont(size: 9),
+                    color: Theme.UI.text
+                )
             }
         }
         return cursor + sectionGap
@@ -382,7 +377,7 @@ enum ProtocolPDF {
             font: bodyFont(size: 9),
             color: Theme.UI.muted
         )
-        cursor = drawParagraph(EvidenceExplanationEngine.attributionPlain(attr), at: cursor)
+        cursor = drawParagraph(EvidenceExplanationEngine.attributionDetail(attr), at: cursor)
         if let pattern = attr.knownPatternId {
             cursor = drawText("Pattern: \(pattern)", at: cursor, font: monoFont(size: 8), color: Theme.UI.muted)
         }
