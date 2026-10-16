@@ -294,7 +294,9 @@ struct ContentView: View {
             if scanning {
                 Text(count == 0
                      ? "ScooterCheck sucht aktiv nach Geräten"
-                     : "\(count) Gerät\(count == 1 ? "" : "e\") in Reichweite")
+                     : (count == 1
+                        ? "1 Gerät in Reichweite"
+                        : "\(count) Geräte in Reichweite"))
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
