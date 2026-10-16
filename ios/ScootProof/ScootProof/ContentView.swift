@@ -1362,33 +1362,6 @@ struct ContentView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Beispiele")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.muted)
-                        ForEach(IntegrityAnalyzer.DemoKind.allCases, id: \.rawValue) { kind in
-                            Button(demoTitle(kind)) {
-                                let reading = IntegrityAnalyzer.fillDemo(kind, profile: profile)
-                                let analyzed = IntegrityAnalyzer.analyze(reading: reading, profile: profile)
-                                result = analyzed
-                                let newSession = CheckSession(
-                                    id: analyzed.sessionId,
-                                    profile: profile,
-                                    reading: reading,
-                                    result: analyzed
-                                )
-                                session = newSession
-                                try? history.save(newSession)
-                                withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
-                                DispatchQueue.main.async {
-                                    presentResultWithSubjectPrompt()
-                                }
-                            }
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Theme.accent)
-                        }
-                    }
-
                     Button(role: .destructive) {
                         ble.disconnect()
                         result = nil
