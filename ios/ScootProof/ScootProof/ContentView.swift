@@ -911,15 +911,16 @@ struct ContentView: View {
 
                 Section {
                     Picker("Profil", selection: $profile) {
-                        ForEach(ScooterFamily.allCases, id: \.self) { family in
-                            Section(family.title) {
-                                ForEach(ScooterProfile.profiles(in: family)) { p in
-                                    Text("\(p.shortLabel) · \(Int(p.ratedMaxKmh)) km/h").tag(p)
-                                }
-                            }
+                        ForEach(ScooterProfile.allCases) { p in
+                            Text(verbatim: "\(p.family.title) · \(p.shortLabel) · \(Int(p.ratedMaxKmh)) km/h")
+                                .tag(p)
                         }
                     }
                     .pickerStyle(.navigationLink)
+
+                    LabeledContent("Aktuell") {
+                        Text(verbatim: "\(profile.label)")
+                    }
 
                     Text(profile.family.supportNote)
                         .font(.footnote)
