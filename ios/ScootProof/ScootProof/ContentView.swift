@@ -870,31 +870,6 @@ struct ContentView: View {
         }
     }
 
-    private var primaryTitle: String {
-        switch screen {
-        case .overview:
-            return "Neue Prüfung"
-        case .result:
-            return "Bericht speichern"
-        case .home:
-            if ble.phase == .scanning { return "Suche stoppen" }
-            if ble.phase == .done { return "Manipulation prüfen" }
-            return "Scooter suchen"
-        }
-    }
-
-    private var primaryColor: Color {
-        if screen == .result, let result { return Theme.verdict(result.verdict) }
-        return Theme.accent
-    }
-
-    private var primaryInk: Color {
-        if screen == .result, result?.verdict == .eindeutig || result?.verdict == .hinweise {
-            return .white
-        }
-        return Theme.ink
-    }
-
     private var primaryEnabled: Bool {
         switch screen {
         case .overview: return true
