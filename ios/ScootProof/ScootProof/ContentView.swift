@@ -350,25 +350,13 @@ struct ContentView: View {
 
     private var connectingCard: some View {
         VStack(spacing: 18) {
-            ZStack {
-                SonarRadarView(
-                    isScanning: false,
-                    blipCount: 3,
-                    size: 148,
-                    style: .search,
-                    discoveryFlash: pulse
-                )
-                Image("BrandMark")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Theme.accent.opacity(0.35), lineWidth: 1)
-                    )
-                    .shadow(color: Theme.accent.opacity(0.35), radius: 8)
-            }
+            SonarRadarView(
+                isScanning: false,
+                blipCount: 3,
+                size: 148,
+                style: .search,
+                discoveryFlash: pulse
+            )
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
                     pulse = true

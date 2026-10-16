@@ -181,21 +181,17 @@ struct VerdictBadge: View {
 struct StartHeroGraphic: View {
     var body: some View {
         ZStack {
-            // Soft mint bloom behind the icon (matches reference atmosphere).
             Circle()
-                .fill(Theme.accent.opacity(0.10))
-                .frame(width: 210, height: 210)
-                .blur(radius: 24)
-            Image("BrandMark")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 168, height: 168)
-                .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 38, style: .continuous)
-                        .stroke(Theme.accent.opacity(0.28), lineWidth: 1)
-                )
-                .shadow(color: Theme.accent.opacity(0.28), radius: 18)
+                .fill(Theme.accent.opacity(0.07))
+                .frame(width: 200, height: 200)
+                .blur(radius: 28)
+            // Vektor-Radar als Hero — kein skaliertes Bitmap im Zentrum.
+            SonarRadarView(
+                isScanning: false,
+                blipCount: 4,
+                size: 196,
+                style: .hero
+            )
         }
         .frame(height: 210)
         .accessibilityHidden(true)
@@ -222,35 +218,31 @@ struct AnimatedSignalWaves: View {
 
     private func waveCanvas(time t: TimeInterval) -> some View {
         Canvas { context, size in
-            // Mehrere Ebenen: leicht unterschiedliche Horizontaldrift + Amplitude.
-            let layers: [(amp: CGFloat, speed: CGFloat, drift: CGFloat, y: CGFloat, alpha: Double, spacing: CGFloat)] = [
-                (9, 0.42, 6.0, size.height * 0.30, 0.52, 7.5),
-                (13, 0.28, 4.2, size.height * 0.50, 0.36, 8.5),
-                (7, 0.55, 7.5, size.height * 0.70, 0.26, 6.5),
-                (5, 0.35, 3.0, size.height * 0.86, 0.18, 9.0)
+            let layers: [(amp: CGFloat, speed: CGFloat, drift: CGFloat, y: CGFloat, alpha: Double, spacing: CGFloat, dot: CGFloat)] = [
+                (7, 0.36, 4.5, size.height * 0.30, 0.42, 9.0, 1.4),
+                (10, 0.24, 3.2, size.height * 0.50, 0.28, 10.0, 1.3),
+                (6, 0.48, 5.5, size.height * 0.70, 0.20, 8.0, 1.2),
+                (4, 0.30, 2.4, size.height * 0.86, 0.14, 11.0, 1.1)
             ]
             for layer in layers {
                 let offsetX = CGFloat(t * layer.drift).truncatingRemainder(dividingBy: layer.spacing * 4)
                 var x: CGFloat = -24 - offsetX
                 while x < size.width + 24 {
-                    let wobble = sin((x / 30) + t * layer.speed) * layer.amp
+                    let wobble = sin((x / 32) + t * layer.speed) * layer.amp
                     let y = layer.y + wobble
-                    let rect = CGRect(x: x, y: y, width: 2.1, height: 2.1)
-                    context.fill(
-                        Path(ellipseIn: rect),
-                        with: .color(Theme.accent.opacity(layer.alpha))
-                    )
+                    let d = layer.dot
+                    let rect = CGRect(x: x, y: y, width: d, height: d)
+                    context.fill(Path(ellipseIn: rect), with: .color(Theme.accent.opacity(layer.alpha)))
                     x += layer.spacing
                 }
             }
         }
-        .blur(radius: 0.35)
     }
 }
 
 // MARK: - Sonar / search atmosphere
 
-/// Kompaktes Status-Sonar (Header „Suche aktiv“).
+/// Kompaktes Status-Sonar (Header „Suche aktiv“) — rein vektorbasiert.
 struct RotatingSonarIcon: View {
     var size: CGFloat = 22
     var isScanning: Bool = true
@@ -258,7 +250,7 @@ struct RotatingSonarIcon: View {
     var body: some View {
         SonarRadarView(
             isScanning: isScanning,
-            blipCount: 3,
+            blipCount: 2,
             size: size,
             style: .compact
         )
@@ -266,7 +258,8 @@ struct RotatingSonarIcon: View {
     }
 }
 
-/// Großes Radar wie im App-Icon: Ringe, Strahl, Blips, Scooter + Check.
+/// Vektor-Radar: feine Ringe, Crosshair, weicher Sweep (eine Vorderkante),
+/// Blips und weiße Scooter-Silhouette — kein Bitmap-Look.
 struct SonarRadarView: View {
     enum Style {
         case compact
@@ -279,44 +272,37 @@ struct SonarRadarView: View {
     var highlightIndex: Int? = nil
     var size: CGFloat = 220
     var style: Style = .search
-    /// Kurzer Glow-Boost wenn ein Gerät neu erkannt wurde.
     var discoveryFlash: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// ~2 s pro Umdrehung.
     private let revolutionSeconds: Double = 2.0
 
-    private var ringCount: Int {
-        switch style {
-        case .compact: return 2
-        case .hero, .search: return 4
-        }
-    }
-
-    private var showsScooter: Bool { style != .compact }
-    private var showsCrosshair: Bool { style != .compact }
-
     private var blips: [SonarBlip] {
-        SonarBlip.seeded(count: max(blipCount, style == .hero ? 5 : 0), style: style)
+        let fallback = (style == .hero) ? 4 : (isScanning ? 4 : 3)
+        return SonarBlip.seeded(count: max(blipCount, fallback), style: style)
     }
 
     var body: some View {
         Group {
             if isScanning && !reduceMotion {
-                TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
-                    radarContent(angle: sweepAngle(at: timeline.date))
+                TimelineView(.animation(minimumInterval: 1 / 45)) { timeline in
+                    canvas(angle: sweepAngle(at: timeline.date))
                 }
             } else {
-                radarContent(angle: isScanning && reduceMotion ? 42 : (style == .hero ? 38 : 0))
+                canvas(angle: idleAngle)
             }
         }
         .frame(width: size, height: size)
-        .scaleEffect(discoveryFlash ? 1.04 : 1.0)
-        .shadow(color: Theme.accent.opacity(discoveryFlash ? 0.55 : (isScanning ? 0.22 : 0.12)),
-                radius: discoveryFlash ? 18 : (style == .compact ? 3 : 10))
-        .animation(.easeOut(duration: 0.45), value: discoveryFlash)
+        .scaleEffect(discoveryFlash ? 1.025 : 1.0)
+        .animation(.easeOut(duration: 0.4), value: discoveryFlash)
         .accessibilityHidden(true)
+    }
+
+    private var idleAngle: Double {
+        if isScanning && reduceMotion { return 48 }
+        if style == .hero { return 36 }
+        return 0
     }
 
     private func sweepAngle(at date: Date) -> Double {
@@ -324,131 +310,172 @@ struct SonarRadarView: View {
         return (t.truncatingRemainder(dividingBy: revolutionSeconds) / revolutionSeconds) * 360.0
     }
 
-    @ViewBuilder
-    private func radarContent(angle: Double) -> some View {
-        ZStack {
-            // Soft fill disk
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Theme.accent.opacity(style == .compact ? 0.10 : 0.08),
-                            Theme.accent.opacity(0.02),
-                            .clear
-                        ],
-                        center: .center,
-                        startRadius: 4,
-                        endRadius: size * 0.5
-                    )
+    private func canvas(angle: Double) -> some View {
+        let drawSweep = isScanning || style == .hero
+        let showScooter = style != .compact
+        let rings = style == .compact ? 2 : 5
+        let strokeW: CGFloat = style == .compact ? 0.7 : 0.9
+        let span: Double = style == .compact ? 42 : 52
+        let flashBoost = discoveryFlash ? 1.35 : 1.0
+
+        return Canvas { context, canvasSize in
+            let mid = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
+            let radius = min(canvasSize.width, canvasSize.height) / 2
+
+            // Soft mint disk
+            let disk = Path(ellipseIn: CGRect(
+                x: mid.x - radius, y: mid.y - radius,
+                width: radius * 2, height: radius * 2
+            ))
+            context.fill(
+                disk,
+                with: .radialGradient(
+                    Gradient(colors: [
+                        Theme.accent.opacity(0.07 * flashBoost),
+                        Theme.accent.opacity(0.02),
+                        .clear
+                    ]),
+                    center: mid,
+                    startRadius: 2,
+                    endRadius: radius
                 )
+            )
 
-            // Concentric rings (static)
-            ForEach(1...ringCount, id: \.self) { i in
-                let frac = CGFloat(i) / CGFloat(ringCount)
-                Circle()
-                    .stroke(Theme.accent.opacity(0.14 + Double(i) * 0.04), lineWidth: style == .compact ? 0.8 : 1.15)
-                    .frame(width: size * (0.28 + frac * 0.68), height: size * (0.28 + frac * 0.68))
+            // Concentric rings — hairline
+            for i in 1...rings {
+                let frac = CGFloat(i) / CGFloat(rings)
+                let r = radius * (0.22 + frac * 0.74)
+                var ring = Path()
+                ring.addEllipse(in: CGRect(x: mid.x - r, y: mid.y - r, width: r * 2, height: r * 2))
+                context.stroke(
+                    ring,
+                    with: .color(Theme.accent.opacity(0.12 + Double(i) * 0.03)),
+                    lineWidth: strokeW
+                )
             }
 
-            if showsCrosshair {
-                Rectangle()
-                    .fill(Theme.accent.opacity(0.12))
-                    .frame(width: size * 0.92, height: 0.75)
-                Rectangle()
-                    .fill(Theme.accent.opacity(0.12))
-                    .frame(width: 0.75, height: size * 0.92)
+            // Crosshair
+            if style != .compact {
+                var h = Path(); h.move(to: CGPoint(x: mid.x - radius * 0.92, y: mid.y)); h.addLine(to: CGPoint(x: mid.x + radius * 0.92, y: mid.y))
+                var v = Path(); v.move(to: CGPoint(x: mid.x, y: mid.y - radius * 0.92)); v.addLine(to: CGPoint(x: mid.x, y: mid.y + radius * 0.92))
+                context.stroke(h, with: .color(Theme.accent.opacity(0.10)), lineWidth: 0.6)
+                context.stroke(v, with: .color(Theme.accent.opacity(0.10)), lineWidth: 0.6)
             }
 
-            // Sweep wedge (only while scanning, or static wedge on hero)
-            if isScanning || style == .hero {
-                SonarSweepWedge(spanDegrees: style == .compact ? 48 : 56)
-                    .fill(
-                        AngularGradient(
-                            colors: [
-                                Theme.accent.opacity(0.0),
-                                Theme.accent.opacity(style == .compact ? 0.18 : 0.22),
-                                Theme.accent.opacity(style == .compact ? 0.42 : 0.48)
-                            ],
-                            center: .center,
-                            startAngle: .degrees(-56),
-                            endAngle: .degrees(0)
-                        )
+            // Soft sweep: many thin slices fading to zero — no trailing hard edge,
+            // no separate capsule (that caused the double-line look).
+            if drawSweep {
+                let steps = style == .compact ? 28 : 48
+                let leadingWidth: Double = style == .compact ? 1.1 : 1.35
+                for i in 0..<steps {
+                    let t = Double(i) / Double(steps - 1)
+                    // t=0 at leading edge (bright), t=1 at trailing (invisible)
+                    let a0 = angle - span * t
+                    let a1 = angle - span * min(1, t + 1.0 / Double(steps))
+                    // Quadratic fade → no hard trailing contour
+                    let alpha = (1.0 - t) * (1.0 - t) * (style == .compact ? 0.38 : 0.32) * flashBoost
+                    guard alpha > 0.004 else { continue }
+                    var wedge = Path()
+                    wedge.move(to: mid)
+                    wedge.addArc(
+                        center: mid,
+                        radius: radius * 0.98,
+                        startAngle: .degrees(a1 - 90),
+                        endAngle: .degrees(a0 - 90),
+                        clockwise: false
                     )
-                    .frame(width: size * 0.96, height: size * 0.96)
-                    .rotationEffect(.degrees(angle))
-                    .opacity(isScanning || style == .hero ? 1 : 0)
+                    wedge.closeSubpath()
+                    context.fill(wedge, with: .color(Theme.accent.opacity(alpha)))
+                }
+                // Single soft leading edge (not a second stroke behind the sweep)
+                var lead = Path()
+                let leadRad = radius * 0.98
+                let lx = mid.x + leadRad * CGFloat(cos((angle - 90) * .pi / 180))
+                let ly = mid.y + leadRad * CGFloat(sin((angle - 90) * .pi / 180))
+                lead.move(to: mid)
+                lead.addLine(to: CGPoint(x: lx, y: ly))
+                context.stroke(
+                    lead,
+                    with: .color(Theme.accent.opacity(0.55 * flashBoost)),
+                    style: StrokeStyle(lineWidth: leadingWidth, lineCap: .round)
+                )
             }
 
-            // Leading edge line of the beam
-            if isScanning || style == .hero {
-                Capsule()
-                    .fill(Theme.accent.opacity(0.75))
-                    .frame(width: 1.4, height: size * 0.46)
-                    .offset(y: -size * 0.23)
-                    .rotationEffect(.degrees(angle))
-                    .shadow(color: Theme.accent.opacity(0.45), radius: 3)
-            }
-
-            // Device blips
-            ForEach(Array(blips.enumerated()), id: \.offset) { index, blip in
-                let lit = isScanning && !reduceMotion && isSwept(blipAngle: blip.angle, sweep: angle)
+            // Blips
+            for (index, blip) in blips.enumerated() {
+                let lit = drawSweep && isScanning && !reduceMotion && isSwept(blipAngle: blip.angle, sweep: angle)
                 let highlighted = highlightIndex == index
-                Circle()
-                    .fill(Color.white.opacity(highlighted || lit ? 0.95 : 0.75))
-                    .frame(width: blipDiameter(blip, lit: lit || highlighted),
-                           height: blipDiameter(blip, lit: lit || highlighted))
-                    .shadow(color: Theme.accent.opacity(lit || highlighted ? 0.9 : 0.35),
-                            radius: lit || highlighted ? 6 : 2)
-                    .offset(
-                        x: cos((blip.angle - 90) * .pi / 180) * size * blip.radius,
-                        y: sin((blip.angle - 90) * .pi / 180) * size * blip.radius
+                let bright = lit || highlighted
+                let br = radius * blip.radius
+                let bx = mid.x + br * CGFloat(cos((blip.angle - 90) * .pi / 180))
+                let by = mid.y + br * CGFloat(sin((blip.angle - 90) * .pi / 180))
+                let baseDot: CGFloat = style == .compact
+                    ? max(1.6, size * 0.055)
+                    : max(2.0, size * blip.dot)
+                let d = bright ? baseDot * 1.35 : baseDot
+                let dotRect = CGRect(x: bx - d / 2, y: by - d / 2, width: d, height: d)
+                context.fill(
+                    Path(ellipseIn: dotRect),
+                    with: .color(Color.white.opacity(bright ? 0.95 : 0.55))
+                )
+                if bright {
+                    let glow = d * 2.2
+                    let glowRect = CGRect(x: bx - glow / 2, y: by - glow / 2, width: glow, height: glow)
+                    context.fill(
+                        Path(ellipseIn: glowRect),
+                        with: .color(Theme.accent.opacity(0.22))
                     )
+                }
             }
 
-            if showsScooter {
-                scooterCore
+            // Center: white vector scooter + check, or mint hub for compact
+            if showScooter {
+                drawScooterCore(context: &context, mid: mid, size: size)
             } else {
-                Circle()
-                    .fill(Theme.accent)
-                    .frame(width: max(3, size * 0.14), height: max(3, size * 0.14))
+                let hub = max(2.2, size * 0.12)
+                context.fill(
+                    Path(ellipseIn: CGRect(x: mid.x - hub / 2, y: mid.y - hub / 2, width: hub, height: hub)),
+                    with: .color(Theme.accent.opacity(0.9))
+                )
             }
         }
     }
 
-    private var scooterCore: some View {
-        ZStack {
-            Image("ScooterGeneric")
-                .resizable()
-                .scaledToFit()
-                .frame(width: size * 0.42, height: size * 0.28)
-                .shadow(color: Theme.accent.opacity(0.45), radius: 10)
+    private func drawScooterCore(context: inout GraphicsContext, mid: CGPoint, size: CGFloat) {
+        let w = size * 0.46
+        let h = size * 0.30
+        let box = CGRect(x: mid.x - w / 2, y: mid.y - h / 2 + size * 0.008, width: w, height: h)
+        let line = max(1.2, size * 0.011)
+        let scooter = ScooterSilhouette().path(in: box)
+        context.stroke(
+            scooter,
+            with: .color(Color.white.opacity(0.94)),
+            style: StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round)
+        )
 
-            // Checkmark badge at center (icon language)
-            ZStack {
-                Circle()
-                    .fill(Theme.bg.opacity(0.88))
-                    .frame(width: size * 0.16, height: size * 0.16)
-                Circle()
-                    .stroke(Theme.accent.opacity(0.85), lineWidth: 1.4)
-                    .frame(width: size * 0.16, height: size * 0.16)
-                Image(systemName: "checkmark")
-                    .font(.system(size: size * 0.07, weight: .bold))
-                    .foregroundStyle(Theme.accent)
-            }
-            .shadow(color: Theme.accent.opacity(0.4), radius: 6)
-            .offset(y: size * 0.01)
-        }
+        // Check badge — sits in the open frame area, no bitmap tile
+        let badge = size * 0.15
+        let badgeRect = CGRect(x: mid.x - badge / 2, y: mid.y - badge / 2 + size * 0.01, width: badge, height: badge)
+        context.fill(Path(ellipseIn: badgeRect), with: .color(Theme.bg.opacity(0.94)))
+        context.stroke(
+            Path(ellipseIn: badgeRect.insetBy(dx: 0.3, dy: 0.3)),
+            with: .color(Theme.accent.opacity(0.92)),
+            lineWidth: max(1.0, size * 0.007)
+        )
+        let ck = badgeRect.insetBy(dx: badge * 0.28, dy: badge * 0.28)
+        var check = Path()
+        check.move(to: CGPoint(x: ck.minX, y: ck.midY))
+        check.addLine(to: CGPoint(x: ck.minX + ck.width * 0.32, y: ck.maxY - ck.height * 0.08))
+        check.addLine(to: CGPoint(x: ck.maxX, y: ck.minY + ck.height * 0.12))
+        context.stroke(
+            check,
+            with: .color(Theme.accent),
+            style: StrokeStyle(lineWidth: max(1.5, size * 0.013), lineCap: .round, lineJoin: .round)
+        )
     }
 
-    private func blipDiameter(_ blip: SonarBlip, lit: Bool) -> CGFloat {
-        let base = style == .compact ? size * 0.10 : size * blip.dot
-        return lit ? base * 1.45 : base
-    }
-
-    /// Blip leuchtet kurz auf, wenn der Strahl ihn überstreicht (±14°).
     private func isSwept(blipAngle: Double, sweep: Double) -> Bool {
-        let delta = abs(normalizedDelta(blipAngle - sweep))
-        return delta < 14
+        abs(normalizedDelta(blipAngle - sweep)) < 12
     }
 
     private func normalizedDelta(_ degrees: Double) -> Double {
@@ -459,6 +486,49 @@ struct SonarRadarView: View {
     }
 }
 
+/// Seitenansicht E-Scooter — Stroke-Silhouette (vektor, keine Bitmap-Kachel).
+struct ScooterSilhouette: Shape {
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        let x0 = rect.minX
+        let y0 = rect.minY
+
+        func pt(_ nx: CGFloat, _ ny: CGFloat) -> CGPoint {
+            CGPoint(x: x0 + nx * w, y: y0 + ny * h)
+        }
+
+        var p = Path()
+
+        // Rear wheel
+        p.addEllipse(in: CGRect(x: x0 + 0.08 * w, y: y0 + 0.58 * h, width: 0.22 * w, height: 0.34 * h))
+        // Front wheel
+        p.addEllipse(in: CGRect(x: x0 + 0.68 * w, y: y0 + 0.58 * h, width: 0.22 * w, height: 0.34 * h))
+
+        // Deck (open stroke line)
+        p.move(to: pt(0.20, 0.68))
+        p.addLine(to: pt(0.72, 0.68))
+
+        // Stem up to bar
+        p.move(to: pt(0.78, 0.68))
+        p.addLine(to: pt(0.76, 0.20))
+
+        // Handlebar
+        p.move(to: pt(0.62, 0.18))
+        p.addLine(to: pt(0.90, 0.18))
+
+        // Front fender arc
+        p.move(to: pt(0.72, 0.58))
+        p.addQuadCurve(to: pt(0.90, 0.58), control: pt(0.81, 0.48))
+
+        // Kickstand hint
+        p.move(to: pt(0.34, 0.70))
+        p.addLine(to: pt(0.30, 0.88))
+
+        return p
+    }
+}
+
 private struct SonarBlip {
     let angle: Double
     let radius: CGFloat
@@ -466,46 +536,21 @@ private struct SonarBlip {
 
     static func seeded(count: Int, style: SonarRadarView.Style) -> [SonarBlip] {
         guard count > 0 else { return [] }
-        // Feste, ruhige Positionen (wie im Icon) — keine Zufalls-Jitter pro Frame.
         let catalog: [SonarBlip] = [
-            .init(angle: 28, radius: 0.28, dot: 0.028),
-            .init(angle: 78, radius: 0.36, dot: 0.022),
-            .init(angle: 142, radius: 0.31, dot: 0.026),
-            .init(angle: 198, radius: 0.38, dot: 0.020),
-            .init(angle: 248, radius: 0.27, dot: 0.024),
-            .init(angle: 302, radius: 0.34, dot: 0.022),
-            .init(angle: 338, radius: 0.22, dot: 0.018),
-            .init(angle: 55, radius: 0.42, dot: 0.020),
-            .init(angle: 170, radius: 0.20, dot: 0.024),
-            .init(angle: 265, radius: 0.40, dot: 0.018)
+            .init(angle: 28, radius: 0.30, dot: 0.018),
+            .init(angle: 95, radius: 0.38, dot: 0.015),
+            .init(angle: 155, radius: 0.26, dot: 0.017),
+            .init(angle: 220, radius: 0.36, dot: 0.014),
+            .init(angle: 290, radius: 0.32, dot: 0.016),
+            .init(angle: 335, radius: 0.22, dot: 0.013)
         ]
         let n = min(count, catalog.count)
         if style == .compact {
-            return Array(catalog.prefix(min(n, 3))).map {
-                SonarBlip(angle: $0.angle, radius: min($0.radius, 0.32), dot: 0.12)
+            return Array(catalog.prefix(min(n, 2))).map {
+                SonarBlip(angle: $0.angle, radius: min($0.radius, 0.34), dot: 0.08)
             }
         }
         return Array(catalog.prefix(n))
-    }
-}
-
-private struct SonarSweepWedge: Shape {
-    var spanDegrees: Double
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) / 2
-        path.move(to: center)
-        path.addArc(
-            center: center,
-            radius: radius,
-            startAngle: .degrees(-spanDegrees),
-            endAngle: .degrees(0),
-            clockwise: false
-        )
-        path.closeSubpath()
-        return path
     }
 }
 
@@ -519,7 +564,7 @@ struct PulsingSearchGraphic: View {
     var body: some View {
         SonarRadarView(
             isScanning: isScanning,
-            blipCount: max(deviceCount, isScanning ? 4 : 3),
+            blipCount: max(min(deviceCount, 5), isScanning ? 4 : 3),
             highlightIndex: deviceCount > 0 ? 0 : nil,
             size: size,
             style: .search,
