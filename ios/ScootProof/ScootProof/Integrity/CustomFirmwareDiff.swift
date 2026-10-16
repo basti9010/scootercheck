@@ -335,7 +335,9 @@ enum CustomFirmwareDiff {
             raw: result.summaryLine
         ))
 
-        for item in result.diffs {
+        // Speed-/Gang-Diffs weglassen — stehen schon als speed.*/gear.* Messwerte.
+        // Hier nur Firmware-/Region-/Custom-Kennungen, die Analyzer nicht doppelt führt.
+        for item in result.diffs where !isRedundantWithAnalyzerFacts(item.id) {
             facts.append(MeasuredFact(
                 id: item.id,
                 group: .firmware,
@@ -350,5 +352,9 @@ enum CustomFirmwareDiff {
         }
 
         return facts
+    }
+
+    private static func isRedundantWithAnalyzerFacts(_ id: String) -> Bool {
+        id.hasPrefix("diff.speed.") || id.hasPrefix("diff.gear.")
     }
 }

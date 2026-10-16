@@ -210,6 +210,26 @@ final class BleClient: NSObject, ObservableObject {
     private var dumpProfileHint: ScooterProfile = .maxG3D
     /// Letztes Scan-Gerät für einen Reconnect-Versuch nach Abbruch.
     private var lastConnectDevice: ScannedDevice?
+    /// Öffentlich für Verlauf/Wiedererkennung (SN + BLE-UUID merken).
+    var lastConnectedDevice: ScannedDevice? { lastConnectDevice }
+
+    /// Aktiv verbunden (oder gerade im Verbindungs-/Ausleseablauf) — für UI wie „Trennen“.
+    var isConnectedToScooter: Bool {
+        if let peripheral, peripheral.state == .connected || peripheral.state == .connecting {
+            return true
+        }
+        switch phase {
+        case .connecting, .detecting, .handshake, .waitingButton, .dumping, .done:
+            return true
+        case .idle, .scanning, .failed:
+            return false
+        }
+    }
+
+    /// Enc2-Session steht — Auslese kann ohne erneutes Pairing folgen (nach Identifizieren).
+    var isAuthenticatedForDump: Bool {
+        crypto != nil && peripheral?.state == .connected
+    }
     private var maxG3Enc2RetryUsed = false
     /// Erwarteter Disconnect (z. B. vor „Erneut prüfen“) — kein Fehlerstatus.
     private var expectDisconnect = false
@@ -451,28 +471,75 @@ final class BleClient: NSObject, ObservableObject {
         }
     }
 
+    /// Kurze Verbindung: Enc2-Handshake + Find/Piep, Session bleibt für anschließendes Auslesen.
+    func connectAndIdentify(to device: ScannedDevice, profile: ScooterProfile) async {
+        do {
+            if lastConnectedDevice?.id == device.id, isAuthenticatedForDump {
+                dumpProfileHint = profile
+                await sendIdentifySignals()
+                return
+            }
+            try await connect(to: device)
+            await handshakeThen(profile: profile, afterAuth: .identify)
+        } catch {
+            if phase != .failed {
+                fail(error.localizedDescription)
+            }
+        }
+    }
+
     /// Erkennt den BLE-Stack automatisch und startet die passende Read-only-Auslese.
     /// `profile` steuert nur die Reihenfolge der Versuche (Hint), nicht das Ergebnis.
+    /// Nach erfolgreichem Identifizieren kann die bestehende Enc2-Session wiederverwendet werden.
     func handshakeAndDump(profile: ScooterProfile) async {
         guard peripheral != nil else {
             fail("Kein Gerät verbunden")
             return
         }
 
+        dumpProfileHint = profile
+        if isAuthenticatedForDump, detectedStack == .ninebotEnc2 || crypto != nil {
+            await dump()
+            return
+        }
+        if detectedStack == .xiaomiPlain, peripheral?.state == .connected {
+            await dumpXiaomi()
+            return
+        }
+
+        await handshakeThen(profile: profile, afterAuth: .dump)
+    }
+
+    private enum AfterAuth {
+        case dump
+        case identify
+    }
+
+    private func handshakeThen(profile: ScooterProfile, afterAuth: AfterAuth) async {
+        guard peripheral != nil else {
+            fail("Kein Gerät verbunden")
+            return
+        }
+
         phase = .detecting
-        statusMessage = "Erkenne BLE-Protokoll…"
+        statusMessage = afterAuth == .identify
+            ? "Identifizieren: Protokoll erkennen…"
+            : "Erkenne BLE-Protokoll…"
         detectedStack = .unknown
         dumpProfileHint = profile
 
         let name = cryptoName.isEmpty ? btName : cryptoName
-        let isMaxG3 = profile.family == .maxG3 || name.uppercased().hasPrefix("1C")
+        let isMaxG3Family = profile.family == .maxG3
+            || profile.family == .ninebotF3
+            || name.uppercased().hasPrefix("1C")
+            || name.uppercased().hasPrefix("1EF")
 
         // Max G3 (SHU/Flasher): ausschließlich Nordic-UART — Ninebot-Custom-UART
         // timed out bisher und verdeckte den eigentlichen Nordic-Fehler.
-        if isMaxG3 {
+        if isMaxG3Family {
             guard hasXiaomiPipe else {
                 fail(
-                    "Max G3: Nordic-UART fehlt"
+                    "Nordic-UART fehlt"
                         + (discoveredServiceSummary.isEmpty ? "" : " (gefunden: \(discoveredServiceSummary))")
                         + ". Scooter neu starten und erneut scannen."
                 )
@@ -480,7 +547,7 @@ final class BleClient: NSObject, ObservableObject {
             }
 
             maxG3Enc2RetryUsed = false
-            await runMaxG3Enc2WithRetry()
+            await runMaxG3Enc2WithRetry(afterAuth: afterAuth)
             return
         }
 
@@ -499,7 +566,15 @@ final class BleClient: NSObject, ObservableObject {
                 if await probeXiaomiPlain() {
                     detectedStack = .xiaomiPlain
                     statusMessage = "Stack: \(BleStack.xiaomiPlain.label)"
-                    await dumpXiaomi()
+                    switch afterAuth {
+                    case .dump:
+                        await dumpXiaomi()
+                    case .identify:
+                        // Xiaomi Klartext: kein dokumentierter Find-Befehl in dieser App —
+                        // Verbindung allein hilft oft schon; Nutzer sieht Status am Display.
+                        phase = .done
+                        statusMessage = "Verbunden (Xiaomi) — Piepton nicht verfügbar; Display prüfen und Auslesen starten."
+                    }
                     return
                 }
                 if xiaomiAssembler.sawEncryptedHint {
@@ -523,7 +598,8 @@ final class BleClient: NSObject, ObservableObject {
                     activateEnc2(useNordicUART: useNordic)
                     assembler.reset()
                     do {
-                        try await runNinebotHandshakeAndDump(preferGen2: false)
+                        try await runNinebotHandshake(preferGen2: false)
+                        try await finishAfterAuth(afterAuth)
                         return
                     } catch {
                         lastFailure = "\(label): \(error.localizedDescription)"
@@ -553,6 +629,18 @@ final class BleClient: NSObject, ObservableObject {
                 + (lastFailure.map { " — \($0)" } ?? "")
                 + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
         )
+    }
+
+    private func finishAfterAuth(_ afterAuth: AfterAuth) async throws {
+        switch afterAuth {
+        case .dump:
+            await dump()
+            if phase == .failed {
+                throw BleError.handshakeFailed(statusMessage)
+            }
+        case .identify:
+            await sendIdentifySignals()
+        }
     }
 
     /// Backwards-compatible entry for Ninebot Enc2 callers.
@@ -634,7 +722,7 @@ final class BleClient: NSObject, ObservableObject {
         return false
     }
 
-    private func runNinebotHandshakeAndDump(preferGen2: Bool = false) async throws {
+    private func runNinebotHandshake(preferGen2: Bool = false) async throws {
         phase = .handshake
         statusMessage = "Ninebot Enc2: Handshake…"
 
@@ -667,22 +755,20 @@ final class BleClient: NSObject, ObservableObject {
         guard succeeded else {
             throw lastError ?? BleError.handshakeFailed("Enc2 nicht erkannt")
         }
-
-        await dump()
-        if phase == .failed {
-            throw BleError.handshakeFailed(statusMessage)
-        }
     }
 
     /// Max G3 Enc2: Gen2/Non-SN, bei Abbruch einmal Passwort löschen + reconnect.
-    private func runMaxG3Enc2WithRetry() async {
+    private func runMaxG3Enc2WithRetry(afterAuth: AfterAuth) async {
         phase = .detecting
-        statusMessage = "Max G3: Enc2 über Nordic-UART…"
+        statusMessage = afterAuth == .identify
+            ? "Identifizieren: Enc2…"
+            : "Max G3: Enc2 über Nordic-UART…"
         activateEnc2(useNordicUART: true)
         assembler.reset()
 
         do {
-            try await runNinebotHandshakeAndDump(preferGen2: true)
+            try await runNinebotHandshake(preferGen2: true)
+            try await finishAfterAuth(afterAuth)
             return
         } catch {
             // didDisconnect hat fail() schon gesetzt — nicht mit Enc2-Text überschreiben.
@@ -704,7 +790,8 @@ final class BleClient: NSObject, ObservableObject {
                     statusMessage = "Max G3: Enc2 erneut (Power-Taste bereithalten)…"
                     activateEnc2(useNordicUART: true)
                     assembler.reset()
-                    try await runNinebotHandshakeAndDump(preferGen2: true)
+                    try await runNinebotHandshake(preferGen2: true)
+                    try await finishAfterAuth(afterAuth)
                     return
                 } catch {
                     if phase == .failed { return }
@@ -715,6 +802,46 @@ final class BleClient: NSObject, ObservableObject {
 
             fail(Self.maxG3Enc2FailMessage(error))
         }
+    }
+
+    /// Find/Piep — nur Identifikation, keine Limit-/Unlock-Änderung.
+    private func sendIdentifySignals() async {
+        guard let crypto else {
+            fail("Identifizieren: nicht authentifiziert")
+            return
+        }
+        phase = .dumping
+        statusMessage = "Sende Identifikationssignal…"
+
+        let gen = protocolGen
+        // Mehrere Kandidaten: G3 playSound + klassisches „Looking for scooter“.
+        let shots: [(Nb.Board, UInt8, Data)] = [
+            (.vcuG3, Nb.Identify.playSound, Data([0x01, 0x00])),
+            (.vcuG3, Nb.Identify.playSound, Data([0x01])),
+            (.mcuG3, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+            (.mcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+            (.dis, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+            (.vcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00]))
+        ]
+
+        for (board, register, payload) in shots {
+            guard peripheral?.state == .connected else { break }
+            let plain = Nb.writeBytes(board: board, register: register, data: payload, noResponse: true, gen: gen)
+            do {
+                try await sendFireAndForget(plain: plain, crypto: crypto)
+            } catch {
+                // Nächsten Kandidaten versuchen
+            }
+            try? await Task.sleep(nanoseconds: 180_000_000)
+        }
+
+        phase = .done
+        statusMessage = "Identifiziert — auf Piepton oder Blinken achten. Danach „Auslesen starten“."
+    }
+
+    private func sendFireAndForget(plain: Data, crypto: NbCrypto) async throws {
+        let encrypted = try crypto.encrypt(plain)
+        try await write(encrypted)
     }
 
     private static func maxG3Enc2FailMessage(_ error: Error) -> String {

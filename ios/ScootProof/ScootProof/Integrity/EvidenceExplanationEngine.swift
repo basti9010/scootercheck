@@ -411,6 +411,13 @@ enum EvidenceExplanationEngine {
 
     static func attributionPlain(_ attr: AttributionAssessment) -> String {
         var lines = [attr.headline]
+        lines.append(attributionDetail(attr))
+        return lines.joined(separator: "\n")
+    }
+
+    /// Detailtext ohne Headline — wenn Headline schon darüber steht (UI/PDF).
+    static func attributionDetail(_ attr: AttributionAssessment) -> String {
+        var lines: [String] = []
         if let method = attr.suspectedMethod {
             lines.append(method.compatiblePhrase)
         }

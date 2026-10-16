@@ -40,14 +40,48 @@ enum StockFirmwareCatalog {
     )
 
     static func entry(for profile: ScooterProfile) -> Entry? {
+        let bundled: Entry?
+        let remoteKey: String?
         switch profile.family {
-        case .maxG3: return maxG3
-        case .maxG30, .maxG2: return maxG30Family
-        case .zt3Pro: return zt3Pro
-        case .ninebotF, .ninebotF3, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
-            return nil
+        case .maxG3:
+            bundled = maxG3
+            remoteKey = "maxG3"
+        case .maxG30, .maxG2:
+            bundled = maxG30Family
+            remoteKey = "maxG30Family"
+        case .zt3Pro:
+            bundled = zt3Pro
+            remoteKey = "zt3Pro"
+        case .ninebotF3:
+            // Bundled noch ohne Katalog; Online kann F3-Versionen nachliefern.
+            bundled = nil
+            remoteKey = "ninebotF3"
+        case .ninebotF, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
+            bundled = nil
+            remoteKey = nil
+        }
+        let remote = remoteKey.flatMap { StockFirmwareCatalogRemote.current?.payload.families[$0]?.asEntry() }
+        return merge(bundled: bundled, remote: remote)
+    }
+
+    /// Bundled ∪ Online — Remote erweitert nur, ersetzt nie die Offline-Basis.
+    static func merge(bundled: Entry?, remote: Entry?) -> Entry? {
+        switch (bundled, remote) {
+        case (nil, nil): return nil
+        case (let b?, nil): return b
+        case (nil, let r?): return r
+        case (let b?, let r?):
+            return Entry(
+                mcu: b.mcu.union(r.mcu),
+                vcu: b.vcu.union(r.vcu),
+                ble: b.ble.union(r.ble),
+                bms: b.bms.union(r.bms)
+            )
         }
     }
+
+    /// Herkunftshinweis für Protokoll (Bundled / Online-Stand).
+    static var provenanceLabel: String { StockFirmwareCatalogRemote.provenanceLabel }
 
     static func normalize(_ version: String?) -> String? {
         guard var v = version?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty else {
