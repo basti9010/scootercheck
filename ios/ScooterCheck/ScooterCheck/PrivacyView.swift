@@ -28,17 +28,9 @@ struct PrivacyView: View {
                     .padding(.top, Theme.Space.sm)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Wordmark()
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
-                        .font(Theme.buttonSecondary)
-                        .foregroundStyle(Theme.accent)
-                }
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                AppChromeSheetHeader { dismiss() }
             }
             .preferredColorScheme(.dark)
         }

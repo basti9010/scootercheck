@@ -165,35 +165,8 @@ struct ContentView: View {
                         .padding(.bottom, 8)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if screen == .result {
-                        Button {
-                            persistCurrentSession()
-                            goToOverview()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
-                        }
-                        .accessibilityLabel("Prüfbericht schließen")
-                    } else if menuProgress < 0.5 {
-                        MenuGlyphButton {
-                            setMenuOpen(true)
-                        }
-                        .opacity(1 - Double(menuProgress) * 2)
-                        .allowsHitTesting(menuProgress < 0.2)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    // Wordmark liegt in FloatingAppBrandWordmark über dem NavigationStack.
-                    Color.clear.frame(width: 1, height: 1)
-                }
-            }
-            .toolbarBackground(Theme.bg, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) { appChromeHeader }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .overlay { sideMenuOverlay }
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
@@ -1582,9 +1555,34 @@ struct ContentView: View {
         }
     }
 
+    /// Fester Header unter der Safe Area; Wordmark kommt als Overlay (gleiche Y überall).
+    private var appChromeHeader: some View {
+        AppChromeHeaderBar {
+            if screen == .result {
+                Button {
+                    persistCurrentSession()
+                    goToOverview()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Prüfbericht schließen")
+            } else {
+                MenuGlyphButton {
+                    setMenuOpen(true)
+                }
+                .opacity(1 - Double(menuProgress) * 2)
+                .allowsHitTesting(menuProgress < 0.2)
+            }
+        }
+    }
+
     private var sideMenuOverlay: some View {
         GeometryReader { geo in
-            let panelWidth = min(Theme.Chrome.drawerWidth, geo.size.width)
+            let panelWidth = Theme.Chrome.drawerPanelWidth(screenWidth: geo.size.width)
+            let safeTop = geo.safeAreaInsets.top
             ZStack(alignment: .leading) {
                 Color.black.opacity(0.55 * Double(menuProgress))
                     .ignoresSafeArea()
@@ -1592,21 +1590,23 @@ struct ContentView: View {
                     .allowsHitTesting(menuProgress > 0.05)
 
                 sideMenuPanel
+                    .padding(.top, safeTop)
                     .frame(width: panelWidth)
                     .frame(maxHeight: .infinity, alignment: .top)
                     .background(Theme.card.ignoresSafeArea())
-                    // Gleicher Progress wie die Wordmark — kein separates Transition-Timing.
+                    // Gleicher Progress wie die Wordmark — nur X, gleiche Y.
                     .offset(x: -panelWidth * (1 - menuProgress))
                     .allowsHitTesting(menuProgress > 0.5)
             }
         }
+        .ignoresSafeArea(edges: .top)
         .allowsHitTesting(menuProgress > 0.05)
     }
 
     private var sideMenuPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                // Wordmark kommt als schwebendes Overlay mittig in der Drawer-Breite — hier nur Höhe.
+                // Wordmark-Overlay sitzt mittig in der Drawer-Breite auf derselben Header-Y.
                 Color.clear.frame(width: 44, height: 44)
                 Spacer(minLength: 0)
                 Button {
@@ -1619,6 +1619,7 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Menü schließen")
             }
+            .frame(height: Theme.Chrome.headerHeight)
             .padding(.horizontal, Theme.Space.lg)
             .padding(.bottom, Theme.Space.md)
 

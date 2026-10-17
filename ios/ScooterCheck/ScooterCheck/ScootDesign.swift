@@ -18,25 +18,77 @@ struct Wordmark: View {
     }
 }
 
-/// Einzige animierte App-Wordmark-Instanz: Nav-Mitte ↔ Drawer-Mitte.
-/// Liegt als Full-Screen-Overlay über dem NavigationStack (nicht im Seiteninhalt).
+/// Einzige animierte App-Wordmark-Instanz: Display-Mitte ↔ Drawer-Mitte.
+/// Nur X wird animiert; Y bleibt in der festen Header-Mitte unter der Safe Area.
 struct FloatingAppBrandWordmark: View {
     /// 0 = horizontal mittig im App-Header, 1 = mittig in der Drawer-Breite.
     var menuProgress: CGFloat
-    var drawerWidth: CGFloat = Theme.Chrome.drawerWidth
 
     var body: some View {
         GeometryReader { geo in
-            let panelWidth = min(drawerWidth, geo.size.width)
+            let panelWidth = Theme.Chrome.drawerPanelWidth(screenWidth: geo.size.width)
             let closedX = geo.size.width * 0.5
             let openX = panelWidth * 0.5
             let x = closedX + (openX - closedX) * menuProgress
-            let y = geo.safeAreaInsets.top + Theme.Chrome.brandCenterYBelowSafeTop
+            let y = Theme.Chrome.brandCenterY(safeAreaTop: geo.safeAreaInsets.top)
             Wordmark()
                 .position(x: x, y: y)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
+    }
+}
+
+/// Fester App-Header unter der Safe Area (68 pt). Wordmark kommt separat als Overlay.
+struct AppChromeHeaderBar<Leading: View, Trailing: View>: View {
+    @ViewBuilder var leading: () -> Leading
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(
+        @ViewBuilder leading: @escaping () -> Leading,
+        @ViewBuilder trailing: @escaping () -> Trailing = { Color.clear.frame(width: 44, height: 44) }
+    ) {
+        self.leading = leading
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            leading()
+                .frame(width: 44, height: 44)
+            Spacer(minLength: 0)
+            // Platz für die schwebende Wordmark — keine zweite Instanz hier.
+            Color.clear.frame(width: 1, height: 1)
+            Spacer(minLength: 0)
+            trailing()
+                .frame(width: 44, height: 44)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: Theme.Chrome.headerHeight)
+        .padding(.horizontal, Theme.Space.lg)
+        .background(Theme.bg)
+    }
+}
+
+/// Sheet-Header mit derselben Headerhöhe und zentrierter Wordmark.
+struct AppChromeSheetHeader: View {
+    var closeTitle: String = "Schließen"
+    var onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            Wordmark()
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                Button(closeTitle, action: onClose)
+                    .font(Theme.buttonSecondary)
+                    .foregroundStyle(Theme.accent)
+            }
+            .padding(.horizontal, Theme.Space.lg)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: Theme.Chrome.headerHeight)
+        .background(Theme.bg)
     }
 }
 

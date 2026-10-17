@@ -97,10 +97,19 @@ enum Theme {
 
     /// Gemeinsames App-Chrome (Header / Side-Drawer).
     enum Chrome {
-        /// Breite des Seitenmenüs (Wordmark zentriert relativ dazu).
-        static let drawerWidth: CGFloat = 320
-        /// Vertikale Mitte der Nav-Bar unter der Safe-Area (~44 pt Bar → 22).
-        static let brandCenterYBelowSafeTop: CGFloat = 22
+        /// Feste Headerhöhe unterhalb der oberen Safe Area (Logo vertikal mittig darin).
+        static let headerHeight: CGFloat = 68
+        /// Side-Menü ~76 % der Bildschirmbreite; Wordmark zentriert relativ dazu.
+        static let drawerWidthFraction: CGFloat = 0.76
+
+        static func drawerPanelWidth(screenWidth: CGFloat) -> CGFloat {
+            max(0, screenWidth * drawerWidthFraction)
+        }
+
+        /// Absolute Y-Mitte der Wordmark: safeAreaTop + headerHeight/2.
+        static func brandCenterY(safeAreaTop: CGFloat) -> CGFloat {
+            safeAreaTop + headerHeight * 0.5
+        }
     }
 
     // MARK: - Verdict / Fact
