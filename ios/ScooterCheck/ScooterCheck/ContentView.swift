@@ -23,6 +23,8 @@ struct ContentView: View {
     @State private var unlockRescanHint: String? = nil
     @State private var discoveredUnlockCombo: SoftUnlockCombo? = nil
     @State private var softUnlockStoreRevision = 0
+    /// Nach Aktivierungs-Scan automatisch Persistenz-Phase (Power-Cycle) anschließen.
+    @State private var comparisonChainsPersistenz = false
     @State private var screen: AppScreen = .home
     @State private var pulse = false
     /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
@@ -53,6 +55,11 @@ struct ContentView: View {
         case idle
         case awaitUnlock
         case scanningB
+    }
+
+    /// Vergleichstest aktiv (Aktivierung und/oder Persistenz-Phase).
+    private var isComparisonFlowActive: Bool {
+        unlockRescanPhase != .idle || powerCyclePhase != .idle
     }
 
     /// Seriennummer des aktuellen Scooters (Ergebnis oder laufende Auslese).
@@ -812,6 +819,8 @@ struct ContentView: View {
         Group {
             if showsStartLanding {
                 EmptyView()
+            } else if screen == .result, result != nil {
+                resultActionPanel
             } else {
                 VStack(spacing: 10) {
                     if screen == .home, ble.phase == .scanning {
@@ -831,14 +840,6 @@ struct ContentView: View {
                         ScootPrimaryButton(title: "Neue Prüfung", systemImage: "plus") {
                             primaryAction()
                         }
-                    } else if screen == .result {
-                        ScootPrimaryButton(
-                            title: "Bericht speichern",
-                            enabled: primaryEnabled,
-                            busy: busy
-                        ) {
-                            primaryAction()
-                        }
                     } else if screen == .home {
                         ScootPrimaryButton(
                             title: "Scooter suchen",
@@ -849,63 +850,6 @@ struct ContentView: View {
                             primaryAction()
                         }
                     }
-
-                    if screen == .result, result != nil {
-                        if powerCyclePhase == .idle, unlockRescanPhase == .idle {
-                            ScootPrimaryButton(title: "Geheimkombination eingeben & auslesen") {
-                                startUnlockRescan()
-                            }
-                            Button("Power-Cycle-Test") {
-                                startPowerCycleTest()
-                            }
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Theme.accent)
-                        } else if unlockRescanPhase == .awaitUnlock {
-                            ScootPrimaryButton(
-                                title: "Kombination eingegeben — erneut auslesen",
-                                enabled: !busy,
-                                busy: busy
-                            ) {
-                                Task { await continueUnlockRescanScanB() }
-                            }
-                            Button("Abbrechen") {
-                                unlockRescanPhase = .idle
-                                unlockRescanScanA = nil
-                                unlockRescanDevice = nil
-                                unlockRescanHint = nil
-                            }
-                            .font(.caption)
-                            .foregroundStyle(Theme.muted)
-                        } else if powerCyclePhase == .awaitReboot {
-                            ScootPrimaryButton(
-                                title: "Scooter ist wieder an — Scan B",
-                                enabled: !busy,
-                                busy: busy
-                            ) {
-                                Task { await continuePowerCycleScanB() }
-                            }
-                            Button("Power-Cycle abbrechen") {
-                                powerCyclePhase = .idle
-                                powerCycleScanA = nil
-                                powerCycleDevice = nil
-                            }
-                            .font(.caption)
-                            .foregroundStyle(Theme.muted)
-                        }
-
-                        Button("Teilen / AirDrop") {
-                            showShare = true
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.accent)
-
-                        Button("Zur Übersicht") {
-                            persistCurrentSession()
-                            goToOverview()
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.muted)
-                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
@@ -913,6 +857,96 @@ struct ContentView: View {
                 .background(.ultraThinMaterial)
             }
         }
+    }
+
+    /// Unterer Aktionsbereich des Prüfberichts (Referenzlayout).
+    private var resultActionPanel: some View {
+        VStack(spacing: 10) {
+            ScootActionPrimaryButton(
+                title: "Bericht speichern",
+                systemImage: "square.and.arrow.down",
+                enabled: primaryEnabled,
+                busy: busy && !isComparisonFlowActive
+            ) {
+                persistCurrentSession()
+            }
+
+            if unlockRescanPhase == .awaitUnlock || unlockRescanPhase == .scanningB {
+                ScootActionPrimaryButton(
+                    title: "Kombination eingegeben — erneut auslesen",
+                    systemImage: "arrow.triangle.2.circlepath",
+                    enabled: !busy,
+                    busy: busy || unlockRescanPhase == .scanningB
+                ) {
+                    Task { await continueUnlockRescanScanB() }
+                }
+                Button("Vergleichstest abbrechen") {
+                    cancelComparisonTest()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
+            } else if powerCyclePhase == .awaitReboot || powerCyclePhase == .scanningB {
+                ScootActionPrimaryButton(
+                    title: "Scooter ist wieder an — weiter",
+                    systemImage: "bolt.horizontal.circle",
+                    enabled: !busy,
+                    busy: busy || powerCyclePhase == .scanningB
+                ) {
+                    Task { await continuePowerCycleScanB() }
+                }
+                Button("Persistenzprüfung überspringen") {
+                    cancelPersistenzPhaseOnly()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.muted)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 2)
+            } else {
+                ScootActionFeatureCard(
+                    title: "Vergleichstest starten",
+                    subtitle: "Ohne und mit Geheimkombination",
+                    systemImage: "testtube.2",
+                    enabled: !busy
+                ) {
+                    startComparisonTest()
+                }
+            }
+
+            HStack(spacing: 10) {
+                ScootActionChipButton(
+                    title: "Teilen / AirDrop",
+                    systemImage: "square.and.arrow.up"
+                ) {
+                    persistCurrentSession()
+                    showShare = true
+                }
+                ScootActionChipButton(
+                    title: "Zur Übersicht",
+                    systemImage: "list.bullet.rectangle"
+                ) {
+                    persistCurrentSession()
+                    goToOverview()
+                }
+            }
+        }
+        .padding(14)
+        .background {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Theme.card.opacity(0.92))
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Theme.line, lineWidth: 1)
+        )
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private var primaryEnabled: Bool {
@@ -931,7 +965,6 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-            goToOverview()
         case .home:
             if ble.phase == .scanning {
                 ble.stopScan()
@@ -967,14 +1000,7 @@ struct ContentView: View {
     }
 
     private func goToOverview() {
-        powerCyclePhase = .idle
-        powerCycleScanA = nil
-        powerCycleDevice = nil
-        powerCycleHint = nil
-        unlockRescanPhase = .idle
-        unlockRescanScanA = nil
-        unlockRescanDevice = nil
-        unlockRescanHint = nil
+        cancelComparisonTest()
         discoveredUnlockCombo = nil
         result = nil
         session = nil
@@ -985,14 +1011,7 @@ struct ContentView: View {
     private func startNewCheck() {
         result = nil
         session = nil
-        powerCyclePhase = .idle
-        powerCycleScanA = nil
-        powerCycleDevice = nil
-        powerCycleHint = nil
-        unlockRescanPhase = .idle
-        unlockRescanScanA = nil
-        unlockRescanDevice = nil
-        unlockRescanHint = nil
+        cancelComparisonTest()
         discoveredUnlockCombo = nil
         ble.disconnect()
         screen = .home
@@ -1167,8 +1186,12 @@ struct ContentView: View {
 
     private var powerCycleBanner: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Power-Cycle-Test").font(.subheadline.weight(.semibold))
-            Text("Scan A ist gespeichert. Scooter regulär ausschalten, wieder einschalten, dann „Scan B“. Nur Persistenzvergleich.")
+            Text("Vergleichstest · Schritt 3 von 3")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Theme.accent)
+            Text("Neustart / Persistenzprüfung")
+                .font(.subheadline.weight(.semibold))
+            Text("Ausgangszustand und aktivierte Messung sind erfasst. Scooter regulär ausschalten, wieder einschalten, dann unten „weiter“. So prüft ScooterCheck, ob Änderungen nur temporär oder dauerhaft sind.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1179,10 +1202,17 @@ struct ContentView: View {
 
     private var unlockRescanBanner: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Text("Vergleichstest · Schritt 2 von 3")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Theme.accent)
             Text(discoveredUnlockCombo == nil
-                  ? "Tuning erkannt — Geheimkombination selbst herausfinden"
+                  ? "Aktivierung — Geheimkombination eingeben"
                   : "Gespeicherte Geheimkombination eingeben")
                 .font(.subheadline.weight(.semibold))
+            Text("Schritt 1 (Ausgangszustand) ist der aktuelle Prüfbericht. Jetzt den Scooter mit Geheimkombination aktivieren und erneut auslesen.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
             Text(discoveredUnlockCombo?.displayCode ?? softUnlock.unlockCodeSummary)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(Theme.accent)
@@ -1198,7 +1228,7 @@ struct ContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Text(discoveredUnlockCombo?.entrySteps
-                 ?? "Kombination am Scooter eingeben. Danach „Kombination eingegeben — erneut auslesen“ tippen. Bei Erfolg wird sie für diese SN gespeichert.")
+                 ?? "Kombination am Scooter eingeben. Danach unten „erneut auslesen“ tippen. Anschließend folgt die Persistenzprüfung nach Neustart.")
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1207,6 +1237,32 @@ struct ContentView: View {
         .scootCard()
     }
 
+    /// Einstieg in den geführten Vergleichstest (Aktivierung → Persistenz).
+    private func startComparisonTest() {
+        comparisonChainsPersistenz = true
+        startUnlockRescan()
+    }
+
+    private func cancelComparisonTest() {
+        comparisonChainsPersistenz = false
+        unlockRescanPhase = .idle
+        unlockRescanScanA = nil
+        unlockRescanDevice = nil
+        unlockRescanHint = nil
+        powerCyclePhase = .idle
+        powerCycleScanA = nil
+        powerCycleDevice = nil
+        powerCycleHint = nil
+    }
+
+    /// Persistenz-Phase überspringen, Aktivierungs-Ergebnis behalten.
+    private func cancelPersistenzPhaseOnly() {
+        comparisonChainsPersistenz = false
+        powerCyclePhase = .idle
+        powerCycleScanA = nil
+        powerCycleDevice = nil
+        powerCycleHint = nil
+    }
 
     private func startPowerCycleTest() {
         guard let report = result else { return }
@@ -1215,6 +1271,8 @@ struct ContentView: View {
         // Gerät für Reconnect merken (falls noch in Scan-Liste / last connect).
         if let last = ble.visibleDevices.first {
             powerCycleDevice = last
+        } else if let unlockDevice = unlockRescanDevice {
+            powerCycleDevice = unlockDevice
         }
         ble.disconnect()
         ble.startScan()
@@ -1264,6 +1322,7 @@ struct ContentView: View {
             powerCyclePhase = .idle
             powerCycleScanA = nil
             powerCycleDevice = nil
+            comparisonChainsPersistenz = false
             presentResultWithSubjectPrompt(forcePrompt: false)
         } catch {
             powerCyclePhase = .awaitReboot
@@ -1357,10 +1416,19 @@ struct ContentView: View {
                 discoveredUnlockCombo = combo
                 softUnlockStoreRevision += 1
             }
+            let shouldChainPersistenz = comparisonChainsPersistenz
+            let deviceForPersistenz = device
             unlockRescanPhase = .idle
             unlockRescanScanA = nil
             unlockRescanDevice = nil
-            presentResultWithSubjectPrompt(forcePrompt: false)
+            if shouldChainPersistenz {
+                // Schritt 3: Persistenz nach Neustart — bestehende Power-Cycle-Logik.
+                unlockRescanDevice = deviceForPersistenz
+                screen = .result
+                startPowerCycleTest()
+            } else {
+                presentResultWithSubjectPrompt(forcePrompt: false)
+            }
         } catch {
             unlockRescanPhase = .awaitUnlock
         }
@@ -1389,7 +1457,7 @@ struct ContentView: View {
         presentResultWithSubjectPrompt(triggerUnlockRescan: true)
     }
 
-    /// Wenn Tuning erkannt wurde: gespeicherte Kombination laden bzw. Nutzer zur Eingabe führen, dann erneut auslesen.
+    /// Wenn Tuning erkannt wurde: geführten Vergleichstest (Aktivierung + Persistenz) starten.
     private func maybeStartUnlockRescanAfterTuning(_ analyzed: IntegrityResult) {
         guard unlockRescanPhase == .idle, powerCyclePhase == .idle else { return }
         let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
@@ -1403,7 +1471,7 @@ struct ContentView: View {
             || analyzed.verdict == .eindeutig
             || analyzed.verdict == .hinweise
         guard tuned else { return }
-        startUnlockRescan()
+        startComparisonTest()
     }
 
     // MARK: - Side menu (über dem aktuellen Bildschirm)
@@ -1693,8 +1761,8 @@ struct ContentView: View {
         profile = stored.profile
         session = stored
         result = storedResult
-        powerCyclePhase = .idle
-        powerCycleHint = nil
+        cancelComparisonTest()
+        discoveredUnlockCombo = nil
         screen = .result
     }
 

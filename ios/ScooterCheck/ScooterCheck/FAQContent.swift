@@ -116,7 +116,7 @@ private extension FAQCatalog {
                         "Soll-Profil bestätigen (Familie und Markt, z. B. Max G3 DE)",
                         "Auslesen der verfügbaren Register und Boards",
                         "Automatische Bewertung und Evidenzmatrix",
-                        "Optional: Power-Cycle-Test oder Unlock-Rescan",
+                        "Optional: Vergleichstest (ohne/mit Geheimkombination + Persistenz nach Neustart)",
                         "Prüfbericht speichern und teilen",
                     ]),
                     .paragraph("Gespeicherte Prüfungen erscheinen unter „Prüfungen“ in der Übersicht und können später erneut geöffnet oder geteilt werden."),
@@ -242,7 +242,7 @@ private extension FAQCatalog {
                 segments: [
                     .paragraph("Soft Unlock bezeichnet typischerweise eine temporäre Freischaltung während des Betriebs (z. B. nach einer Bedienungsgeste). Die Wirkung kann sich in auslesbaren Werten wie erhöhtem Geschwindigkeitslimit oder Trip-Peak zeigen und nach dem Ausschalten wieder verschwinden."),
                     .paragraph("In ScooterCheck ist die Soft-Unlock-Erkennung Teil der technischen Bewertung (Evidence). Erkannt wird die Wirkung: wenn Limit und/oder Trip-Peak eine Schwelle erreichen bzw. ein Session-Hinweis gesetzt ist. Es gibt keinen eingebauten Katalog geheimer Tastenkombinationen."),
-                    .paragraph("Zusätzlich kann ein geführter Unlock-Rescan helfen: Auslese vor der Geste, Geste am Scooter, erneute Auslese — und Vergleich der Session-Werte. Erfolgreiche Kombinationen können pro Seriennummer gespeichert und später wieder geladen werden."),
+                    .paragraph("Im Prüfbericht startet der geführte Vergleichstest diese Prüfung: Ausgangszustand (aktueller Bericht), Aktivierung mit Geheimkombination und erneute Auslese, danach optional die Persistenzprüfung nach Neustart. Erfolgreiche Kombinationen können pro Seriennummer gespeichert und später wieder geladen werden."),
                     .callout("ScooterCheck erklärt Soft Unlock nur zum Verständnis und zur Diagnose. Die App liefert keine Anleitung zum Manipulieren oder Entsperren eines Scooters."),
                 ],
                 keywords: ["soft unlock", "session", "geste", "rescan", "peak", "limit", "temporär"]
@@ -340,18 +340,23 @@ private extension FAQCatalog {
                 keywords: ["marker", "safelock", "panic", "unbound", "evidence", "session"]
             ),
             FAQItem(
-                id: "power-cycle",
-                question: "Was ist der Power-Cycle-Test?",
+                id: "vergleichstest",
+                question: "Was ist der Vergleichstest?",
                 segments: [
-                    .paragraph("Beim Power-Cycle-Test wird der Scooter vollständig ausgeschaltet und erneut gestartet. ScooterCheck speichert Scan A, fordert den Neustart an, liest Scan B und vergleicht relevante Werte."),
-                    .paragraph("Verglichen werden u. a. Limit, Trip Peak, Session-Flag, Region, Fahrmodus sowie Firmware-Angaben von MCU/VCU. Daraus lässt sich oft unterscheiden:"),
+                    .paragraph("Im Prüfbericht startet „Vergleichstest“ einen geführten Vorher/Nachher-Ablauf:"),
+                    .bullets([
+                        "Schritt 1 — Ausgangszustand: der aktuelle Prüfbericht als Baseline",
+                        "Schritt 2 — Aktivierung: Geheimkombination am Scooter, erneute Auslese und Vergleich",
+                        "Schritt 3 — Persistenz: Neustart (Power Cycle), erneute Auslese — bleibt die Änderung oder verschwindet sie?",
+                    ]),
+                    .paragraph("In Schritt 3 werden u. a. Limit, Trip Peak, Session-Flag, Region, Fahrmodus sowie Firmware-Angaben von MCU/VCU verglichen. So unterscheidet ScooterCheck typischerweise:"),
                     .bullets([
                         "Temporäre Änderung: verschwindet nach Neustart",
                         "Persistente Änderung: bleibt nach Neustart bestehen",
                     ]),
-                    .paragraph("Der Power-Cycle-Test ist im Prüfbericht dokumentiert und läuft parallel nicht zum Unlock-Rescan."),
+                    .paragraph("Die Persistenzprüfung kann übersprungen werden; Aktivierungs- und Detection-Logik bleiben erhalten."),
                 ],
-                keywords: ["power cycle", "neustart", "persistenz", "temporär", "vergleich"]
+                keywords: ["vergleichstest", "power cycle", "neustart", "persistenz", "geheimkombination", "unlock"]
             ),
             FAQItem(
                 id: "weitere",
@@ -618,12 +623,12 @@ private extension FAQCatalog {
             ),
             FAQItem(
                 id: "unlock-rescan",
-                question: "Wofür ist der Unlock-Rescan?",
+                question: "Wie hängt Soft Unlock mit dem Vergleichstest zusammen?",
                 segments: [
-                    .paragraph("Der Unlock-Rescan vergleicht eine Auslese vor und nach einer vermuteten Soft-Unlock-Geste. So kann eine nur im laufenden Betrieb sichtbare Session-Freischaltung dokumentiert werden."),
-                    .paragraph("Er ersetzt keinen Power-Cycle-Test und liefert keine Anleitung zur Manipulation."),
+                    .paragraph("Die frühere Unlock-Auslese ist jetzt Schritt 2 des Vergleichstests: Messung ohne und mit Geheimkombination. Anschließend prüft Schritt 3 nach Neustart die Persistenz."),
+                    .paragraph("Der Vergleichstest liefert keine Anleitung zur Manipulation — er dokumentiert nur auslesbare Unterschiede."),
                 ],
-                keywords: ["unlock", "rescan", "soft unlock", "geste"]
+                keywords: ["unlock", "rescan", "soft unlock", "geste", "vergleichstest"]
             ),
             FAQItem(
                 id: "bluetooth",

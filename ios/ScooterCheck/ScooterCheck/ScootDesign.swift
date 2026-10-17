@@ -146,6 +146,126 @@ struct ScootOutlineButton: View {
     }
 }
 
+// MARK: - Prüfbericht Action Panel
+
+/// Primärer mintfarbener Aktionsbutton mit optionalem Chevron (Referenz: Bericht speichern).
+struct ScootActionPrimaryButton: View {
+    let title: String
+    var systemImage: String = "square.and.arrow.down"
+    var enabled: Bool = true
+    var busy: Bool = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                if busy {
+                    ProgressView().tint(Theme.ink)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.body.weight(.semibold))
+                }
+                Text(title)
+                    .font(.body.weight(.semibold))
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .opacity(0.7)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 54)
+            .background(Theme.accent.opacity(enabled && !busy ? 1 : 0.35))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled || busy)
+    }
+}
+
+/// Sekundäre Aktionskarte mit Mint-Kontur (Referenz: Vergleichstest starten).
+struct ScootActionFeatureCard: View {
+    let title: String
+    let subtitle: String
+    var systemImage: String = "testtube.2"
+    var enabled: Bool = true
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: systemImage)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.leading)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.accent)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.bg.opacity(0.55))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Theme.accent.opacity(0.9), lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.45)
+    }
+}
+
+/// Kompakte Tertiär-Aktion für die zweispaltige Fußzeile.
+struct ScootActionChipButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Theme.muted)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 48)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Theme.line, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Status badge
 
 struct VerdictBadge: View {
