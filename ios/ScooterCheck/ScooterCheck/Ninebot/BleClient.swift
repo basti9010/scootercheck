@@ -107,17 +107,25 @@ extension Data {
     }
 }
 
+// MARK: - Scan classification (≠ dauerhaft gespeicherter Scooter)
+
+/// Nur Heuristik aus Advertisement — nie automatisch „bekannter Scooter“.
+enum BleScanClassification: String, Sendable {
+    case unknownBLE
+    case possibleScooter
+}
+
 // MARK: - Scanned device
 
 struct ScannedDevice: Identifiable, Equatable {
     let id: UUID
-    /// Anzeigename (kann „Ohne Namen (…)“ sein).
+    /// Anzeigename (kann „Ohne Namen (…)“ / Platzhalter sein).
     let name: String
     /// Roher BLE-Advertisement-Name für Enc2-Key-Material (leer wenn unbekannt).
     let cryptoName: String
     let rssi: Int
     let peripheral: CBPeripheral
-    /// Heuristik anhand BLE-Name (nur Anzeige/Filter, kein Hard-Block beim Scan).
+    /// Heuristik anhand BLE-Name/Services (nur Anzeige/Filter, kein Hard-Block beim Scan).
     let looksLikeScooter: Bool
     /// SHU-ähnliche Modellbezeichnung aus dem Advertisement (z. B. „Ninebot Max G3“).
     let modelLabel: String?
@@ -126,6 +134,38 @@ struct ScannedDevice: Identifiable, Equatable {
     let suggestedProfile: ScooterProfile?
     /// Zeitpunkt der letzten Advertisement-/RSSI-Aktualisierung.
     let lastSeen: Date
+    /// Manufacturer Data aus dem Advertisement (Hex), falls vorhanden.
+    let manufacturerDataHex: String?
+    /// Service-UUIDs aus dem Advertisement.
+    let serviceUUIDs: [String]
+
+    init(
+        id: UUID,
+        name: String,
+        cryptoName: String,
+        rssi: Int,
+        peripheral: CBPeripheral,
+        looksLikeScooter: Bool,
+        modelLabel: String?,
+        modelBadge: String?,
+        suggestedProfile: ScooterProfile?,
+        lastSeen: Date,
+        manufacturerDataHex: String? = nil,
+        serviceUUIDs: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.cryptoName = cryptoName
+        self.rssi = rssi
+        self.peripheral = peripheral
+        self.looksLikeScooter = looksLikeScooter
+        self.modelLabel = modelLabel
+        self.modelBadge = modelBadge
+        self.suggestedProfile = suggestedProfile
+        self.lastSeen = lastSeen
+        self.manufacturerDataHex = manufacturerDataHex
+        self.serviceUUIDs = serviceUUIDs
+    }
 
     static func == (lhs: ScannedDevice, rhs: ScannedDevice) -> Bool {
         lhs.id == rhs.id
@@ -137,6 +177,34 @@ struct ScannedDevice: Identifiable, Equatable {
             && lhs.modelBadge == rhs.modelBadge
             && lhs.suggestedProfile == rhs.suggestedProfile
             && abs(lhs.lastSeen.timeIntervalSince(rhs.lastSeen)) < 0.05
+            && lhs.manufacturerDataHex == rhs.manufacturerDataHex
+            && lhs.serviceUUIDs == rhs.serviceUUIDs
+    }
+
+    /// Nur Advertisement-Heuristik — validierter Scooter nur nach erfolgreicher Auslese.
+    var classification: BleScanClassification {
+        looksLikeScooter ? .possibleScooter : .unknownBLE
+    }
+
+    /// Anzeigename für die Alle-BLE-Liste.
+    var bleListDisplayName: String {
+        let raw = cryptoName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !raw.isEmpty { return raw }
+        let ui = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if ui.isEmpty || ui.hasPrefix("Ohne Namen") || ui.hasPrefix("Verbunden (") {
+            return "Unbekanntes BLE-Gerät"
+        }
+        return ui
+    }
+
+    /// Kurz-ID (lokale Peripheral-UUID), iOS-sicher.
+    var bleIdentifierShort: String {
+        String(id.uuidString.prefix(8)).uppercased()
+    }
+
+    /// Gerät länger nicht gesehen → UI ausgrauen.
+    var isStale: Bool {
+        Date().timeIntervalSince(lastSeen) > 8
     }
 
     /// 0…4 Balken für die UI
@@ -196,6 +264,7 @@ final class BleClient: NSObject, ObservableObject {
     @Published var showOnlyLikelyScooters = true
 
     private static let maxTrackedDevices = 50
+    private var stalePruneTask: Task<Void, Never>?
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -299,6 +368,14 @@ final class BleClient: NSObject, ObservableObject {
             withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
+        stalePruneTask?.cancel()
+        stalePruneTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard let self, self.phase == .scanning else { break }
+                self.pruneStaleDevices(maxAge: 14)
+            }
+        }
     }
 
     /// Trennt die aktive Session, damit der Scooter wieder advertisieren kann.
@@ -401,8 +478,20 @@ final class BleClient: NSObject, ObservableObject {
         return devices
     }
 
+    /// Entfernt Geräte ohne frisches Advertisement (verbundene bleiben).
+    func pruneStaleDevices(maxAge: TimeInterval = 14) {
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        devices.removeAll { device in
+            guard device.lastSeen < cutoff else { return false }
+            let state = device.peripheral.state
+            return state != .connected && state != .connecting
+        }
+    }
+
     func stopScan() {
         central.stopScan()
+        stalePruneTask?.cancel()
+        stalePruneTask = nil
         if phase == .scanning {
             phase = .idle
             statusMessage = "Scan beendet"
@@ -653,7 +742,7 @@ final class BleClient: NSObject, ObservableObject {
         let pipeInfo = pipes.isEmpty ? "kein UART-Service" : pipes.joined(separator: " + ")
         let nameHint = cryptoName.isEmpty ? "ohne BLE-Namen" : "BLE-Name „\(cryptoName)“"
         fail(
-            "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht"
+            "Dieses BLE-Gerät konnte nicht als unterstützter Scooter bestätigt werden."
                 + " (\(pipeInfo), \(nameHint))"
                 + (lastFailure.map { " — \($0)" } ?? "")
                 + "."
@@ -1770,7 +1859,9 @@ final class BleClient: NSObject, ObservableObject {
                 modelLabel: existing.modelLabel,
                 modelBadge: existing.modelBadge,
                 suggestedProfile: existing.suggestedProfile,
-                lastSeen: existing.lastSeen
+                lastSeen: existing.lastSeen,
+                manufacturerDataHex: existing.manufacturerDataHex,
+                serviceUUIDs: existing.serviceUUIDs
             )
         }
         // lastConnectDevice nur demoten, wenn fail() (nicht markUnsupported) — sonst nil.
@@ -1784,7 +1875,9 @@ final class BleClient: NSObject, ObservableObject {
             modelLabel: last.modelLabel,
             modelBadge: last.modelBadge,
             suggestedProfile: last.suggestedProfile,
-            lastSeen: last.lastSeen
+            lastSeen: last.lastSeen,
+            manufacturerDataHex: last.manufacturerDataHex,
+            serviceUUIDs: last.serviceUUIDs
         )
     }
 
@@ -1872,6 +1965,12 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     nonisolated static func advertisementLooksLikeScooter(_ advertisementData: [String: Any]) -> Bool {
+        let uuids = advertisementServiceUUIDs(advertisementData)
+        let scooterServices: Set<CBUUID> = [NbUUID.service, XiaomiUUID.service]
+        return uuids.contains { scooterServices.contains($0) }
+    }
+
+    nonisolated static func advertisementServiceUUIDs(_ advertisementData: [String: Any]) -> [CBUUID] {
         let keys = [
             CBAdvertisementDataServiceUUIDsKey,
             CBAdvertisementDataOverflowServiceUUIDsKey
@@ -1882,8 +1981,17 @@ final class BleClient: NSObject, ObservableObject {
                 uuids.append(contentsOf: list)
             }
         }
-        let scooterServices: Set<CBUUID> = [NbUUID.service, XiaomiUUID.service]
-        return uuids.contains { scooterServices.contains($0) }
+        return uuids
+    }
+
+    nonisolated static func advertisementServiceUUIDStrings(_ advertisementData: [String: Any]) -> [String] {
+        advertisementServiceUUIDs(advertisementData).map(\.uuidString)
+    }
+
+    nonisolated static func advertisementManufacturerHex(_ advertisementData: [String: Any]) -> String? {
+        guard let data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
+              !data.isEmpty else { return nil }
+        return data.hexString
     }
 }
 
@@ -1917,6 +2025,8 @@ extension BleClient: CBCentralManagerDelegate {
             let byService = Self.advertisementLooksLikeScooter(advertisementData)
             let hint = BleModelHint.recognize(bleName: rawName.isEmpty ? nil : rawName)
             let now = Date()
+            let mfg = Self.advertisementManufacturerHex(advertisementData)
+            let services = Self.advertisementServiceUUIDStrings(advertisementData)
             let device = ScannedDevice(
                 id: peripheral.identifier,
                 name: name,
@@ -1927,21 +2037,26 @@ extension BleClient: CBCentralManagerDelegate {
                 modelLabel: hint?.title,
                 modelBadge: hint?.shortBadge,
                 suggestedProfile: hint?.profile,
-                lastSeen: now
+                lastSeen: now,
+                manufacturerDataHex: mfg,
+                serviceUUIDs: services
             )
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
                 // Badge/Modell beibehalten, sobald einmal erkannt.
+                let previous = devices[index]
                 let merged = ScannedDevice(
                     id: device.id,
                     name: device.name,
-                    cryptoName: device.cryptoName.isEmpty ? devices[index].cryptoName : device.cryptoName,
+                    cryptoName: device.cryptoName.isEmpty ? previous.cryptoName : device.cryptoName,
                     rssi: device.rssi,
                     peripheral: device.peripheral,
-                    looksLikeScooter: device.looksLikeScooter || devices[index].looksLikeScooter,
-                    modelLabel: device.modelLabel ?? devices[index].modelLabel,
-                    modelBadge: device.modelBadge ?? devices[index].modelBadge,
-                    suggestedProfile: device.suggestedProfile ?? devices[index].suggestedProfile,
-                    lastSeen: now
+                    looksLikeScooter: device.looksLikeScooter || previous.looksLikeScooter,
+                    modelLabel: device.modelLabel ?? previous.modelLabel,
+                    modelBadge: device.modelBadge ?? previous.modelBadge,
+                    suggestedProfile: device.suggestedProfile ?? previous.suggestedProfile,
+                    lastSeen: now,
+                    manufacturerDataHex: device.manufacturerDataHex ?? previous.manufacturerDataHex,
+                    serviceUUIDs: device.serviceUUIDs.isEmpty ? previous.serviceUUIDs : device.serviceUUIDs
                 )
                 devices[index] = merged
             } else {
@@ -1949,6 +2064,7 @@ extension BleClient: CBCentralManagerDelegate {
             }
             // Stärkstes Signal zuerst — hilft bei mehreren Geräten in Reichweite.
             devices.sort { $0.rssi > $1.rssi }
+            pruneStaleDevices(maxAge: 14)
             if devices.count > Self.maxTrackedDevices {
                 devices = Array(devices.prefix(Self.maxTrackedDevices))
             }

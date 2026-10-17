@@ -275,7 +275,7 @@ private extension FAQCatalog {
                         "zu große Entfernung oder starke Abschirmung",
                         "Modell wird noch nicht unterstützt bzw. Advertisement weicht ab",
                         "Firmware-/Zustandsabhängige BLE-Werbung",
-                        "Filter „Nur Scooter“ blendet unsichere Treffer aus — prüfe ggf. „Alle BLE“",
+                        "Filter „Scooter“ blendet unsichere Treffer aus — prüfe ggf. „Alle BLE-Geräte“",
                     ]),
                 ],
                 keywords: ["nicht gefunden", "fehlt", "reichweite", "ausgeschaltet", "berechtigung", "filter"]
@@ -284,7 +284,7 @@ private extension FAQCatalog {
                 id: "finden-andere-ble",
                 question: "Warum sehe ich andere Bluetooth-Geräte?",
                 segments: [
-                    .paragraph("Unter „Alle BLE“ kann ScooterCheck auch andere Bluetooth-Low-Energy-Geräte erkennen, zum Beispiel:"),
+                    .paragraph("Unter „Alle BLE-Geräte“ kann ScooterCheck auch andere Bluetooth-Low-Energy-Geräte erkennen, zum Beispiel:"),
                     .bullets([
                         "Fernseher",
                         "Kopfhörer",
@@ -295,25 +295,25 @@ private extension FAQCatalog {
                     .paragraph("Diese Geräte sind nicht automatisch Scooter."),
                     .callout("Ein fremdes BLE-Gerät wird nicht allein durch Auswahl oder einen fehlgeschlagenen Scan dauerhaft als „bekannter Scooter“ gespeichert. Das geschieht erst nach erfolgreicher technischer Scooter-Validierung."),
                 ],
-                keywords: ["alle ble", "fernseher", "kopfhörer", "smartwatch", "fremdgerät", "bekannter scooter"]
+                keywords: ["alle ble", "alle ble-geräte", "fernseher", "kopfhörer", "smartwatch", "fremdgerät", "bekannter scooter"]
             ),
             FAQItem(
                 id: "finden-nur-scooter",
-                question: "Was bedeutet „Nur Scooter“?",
+                question: "Was bedeutet „Scooter“ (Suchmodus)?",
                 segments: [
                     .paragraph("In diesem Modus versucht ScooterCheck, erkannte BLE-Geräte anhand bekannter Merkmale zu filtern."),
-                    .paragraph("Nur ausreichend plausible Treffer sollen hier erscheinen. Unsichere oder unbekannte BLE-Geräte gehören in „Alle BLE“."),
+                    .paragraph("Nur ausreichend plausible Treffer sollen hier erscheinen. Unsichere oder unbekannte BLE-Geräte gehören in „Alle BLE-Geräte“."),
                 ],
-                keywords: ["nur scooter", "filter", "heuristik", "plausibel"]
+                keywords: ["nur scooter", "scooter", "filter", "heuristik", "plausibel"]
             ),
             FAQItem(
                 id: "finden-alle-ble",
-                question: "Was bedeutet „Alle BLE“?",
+                question: "Was bedeutet „Alle BLE-Geräte“?",
                 segments: [
                     .paragraph("Hier werden alle erkannten Bluetooth-Low-Energy-Geräte angezeigt, unabhängig davon, ob ScooterCheck sie als Scooter einordnen kann."),
-                    .paragraph("Die Ansicht ist eher technisch und dient der erweiterten Suche bzw. Analyse — nicht jeder Eintrag ist ein Scooter."),
+                    .paragraph("Die Ansicht ist eher technisch und dient der erweiterten Suche bzw. Analyse — nicht jeder Eintrag ist ein Scooter. Dauerhaft gespeichert wird nur ein technisch validierter Scooter."),
                 ],
-                keywords: ["alle ble", "bluetooth", "liste", "technisch", "analyse"]
+                keywords: ["alle ble", "alle ble-geräte", "bluetooth", "liste", "technisch", "analyse"]
             ),
             FAQItem(
                 id: "finden-ausgeschaltet",

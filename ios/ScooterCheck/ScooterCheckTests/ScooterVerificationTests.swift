@@ -1,3 +1,4 @@
+import CoreBluetooth
 import XCTest
 @testable import ScooterCheck
 
@@ -155,5 +156,26 @@ final class ScooterVerificationTests: XCTestCase {
         let entry = try decoder.decode(ProtocolHistoryStore.Entry.self, from: json)
         XCTAssertNil(entry.wasVerifiedAsScooter)
         XCTAssertFalse(ScooterVerification.qualifiesAsKnownScooter(entry))
+    }
+
+    func testTvNameIsNotLikelyScooter() {
+        XCTAssertFalse(BleClient.isLikelyScooterName("Samsung Q-Series TV"))
+        XCTAssertFalse(BleClient.isLikelyScooterName("LG OLED"))
+        XCTAssertTrue(BleClient.isLikelyScooterName("Ninebot Max G3"))
+    }
+
+    func testAdvertisementManufacturerHex() {
+        let bytes = Data([0x4C, 0x00, 0x01, 0x02])
+        let adv: [String: Any] = [CBAdvertisementDataManufacturerDataKey: bytes]
+        XCTAssertEqual(BleClient.advertisementManufacturerHex(adv), "4C 00 01 02")
+        XCTAssertNil(BleClient.advertisementManufacturerHex([:]))
+    }
+
+    func testAdvertisementServiceUUIDStrings() {
+        let uuid = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+        let adv: [String: Any] = [CBAdvertisementDataServiceUUIDsKey: [uuid]]
+        let strings = BleClient.advertisementServiceUUIDStrings(adv)
+        XCTAssertEqual(strings.count, 1)
+        XCTAssertTrue(strings[0].localizedCaseInsensitiveContains("6E400001"))
     }
 }

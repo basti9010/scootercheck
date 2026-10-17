@@ -47,6 +47,8 @@ struct ContentView: View {
     /// Kurzer Glow-Boost im Sonar, wenn ein neues BLE-Gerät auftaucht.
     @State private var sonarDiscoveryFlash = false
     @State private var lastSonarDeviceCount = 0
+    /// Detailansicht für allgemeine BLE-Geräte (kein Scooter-Persistieren).
+    @State private var bleDetailDevice: ScannedDevice? = nil
 
     private enum AppScreen: Equatable {
         case home
@@ -181,6 +183,17 @@ struct ContentView: View {
             .sheet(isPresented: $showPrivacy) {
                 PrivacyView()
             }
+            .sheet(item: $bleDetailDevice) { device in
+                BleDeviceDetailSheet(
+                    device: device,
+                    onProbeAsScooter: {
+                        let selected = device
+                        bleDetailDevice = nil
+                        prepareProfileConfirm(for: selected)
+                    },
+                    onDismiss: { bleDetailDevice = nil }
+                )
+            }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
@@ -303,12 +316,19 @@ struct ContentView: View {
                 }
             }
 
-            Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
-                Text("Nur Scooter").tag(true)
-                Text("Alle BLE").tag(false)
+            Picker("Suchmodus", selection: $ble.showOnlyLikelyScooters) {
+                Text("Scooter").tag(true)
+                Text("Alle BLE-Geräte").tag(false)
             }
             .pickerStyle(.segmented)
             .font(Theme.segment)
+
+            if !ble.showOnlyLikelyScooters {
+                Text("Zeigt alle in der Umgebung erkannten BLE-Signale. Nicht jedes Gerät ist ein Scooter.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -360,17 +380,19 @@ struct ContentView: View {
         VStack(spacing: 14) {
             Text(ble.showOnlyLikelyScooters
                  ? "Kein kompatibler Scooter gefunden"
-                 : "Keine Geräte gefunden")
+                 : "Keine BLE-Geräte gefunden")
                 .font(Theme.sectionTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
-            Text("Stelle sicher, dass dein Scooter eingeschaltet und in der Nähe ist.")
+            Text(ble.showOnlyLikelyScooters
+                 ? "Stelle sicher, dass dein Scooter eingeschaltet und in der Nähe ist. Unsichere Treffer erscheinen unter „Alle BLE-Geräte“."
+                 : "Stelle sicher, dass Bluetooth aktiv ist und Geräte in der Nähe werben.")
                 .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if ble.showOnlyLikelyScooters {
-                ScootPrimaryButton(title: "Alle BLE anzeigen", systemImage: "list.bullet") {
+                ScootPrimaryButton(title: "Alle BLE-Geräte anzeigen", systemImage: "list.bullet") {
                     ble.showOnlyLikelyScooters = false
                 }
             }
@@ -432,20 +454,31 @@ struct ContentView: View {
     }
 
     private var deviceSection: some View {
-        let listed = history.sortForScanList(ble.visibleDevices)
+        let listed: [ScannedDevice] = {
+            if ble.showOnlyLikelyScooters {
+                return history.sortForScanList(ble.visibleDevices)
+            }
+            // Alle BLE: stärkstes Signal zuerst; stale nach hinten.
+            return ble.visibleDevices.sorted { a, b in
+                if a.isStale != b.isStale { return !a.isStale && b.isStale }
+                return a.rssi > b.rssi
+            }
+        }()
         return VStack(spacing: 10) {
             ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
                 Button {
-                    prepareProfileConfirm(for: item)
+                    selectScannedDevice(item)
                 } label: {
                     ScooterDeviceCard(
                         device: item,
                         knownAlias: history.knownAlias(for: item),
-                        isNearest: index == 0 && listed.count > 1
+                        isNearest: index == 0 && listed.count > 1,
+                        showsExtendedBleInfo: !ble.showOnlyLikelyScooters
                     )
                 }
                 .buttonStyle(.plain)
                 .disabled(busy || isBusyPhase)
+                .opacity(item.isStale ? 0.45 : 1)
             }
         }
         .padding(.top, 4)
@@ -1026,7 +1059,7 @@ struct ContentView: View {
                     finalizeAnalysis()
                 } else {
                     ble.markUnsupportedScooter(
-                        "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht."
+                        "Dieses BLE-Gerät konnte nicht als unterstützter Scooter bestätigt werden."
                     )
                 }
                 return
@@ -1076,6 +1109,16 @@ struct ContentView: View {
         ble.disconnect()
         screen = .home
         ble.startScan()
+    }
+
+    /// Scooter-/bekannte Geräte → Profil; sonst technische BLE-Detailansicht (kein Speichern).
+    private func selectScannedDevice(_ device: ScannedDevice) {
+        let known = history.knownAlias(for: device) != nil
+        if device.looksLikeScooter || known {
+            prepareProfileConfirm(for: device)
+        } else {
+            bleDetailDevice = device
+        }
     }
 
     private func prepareProfileConfirm(for device: ScannedDevice) {
@@ -1243,7 +1286,7 @@ struct ContentView: View {
                 } else {
                     // Verbunden, aber keine Scooter-Identität — nicht als bekannt speichern.
                     ble.markUnsupportedScooter(
-                        "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht."
+                        "Dieses BLE-Gerät konnte nicht als unterstützter Scooter bestätigt werden."
                     )
                 }
             }
@@ -1506,7 +1549,7 @@ struct ContentView: View {
         var reading = ble.reading
         guard ScooterVerification.isVerifiedScooterReading(reading) else {
             ble.markUnsupportedScooter(
-                "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht."
+                "Dieses BLE-Gerät konnte nicht als unterstützter Scooter bestätigt werden."
             )
             return
         }
@@ -2189,17 +2232,23 @@ struct ScooterDeviceCard: View {
     /// Gespeicherter Zuordnungsname / Kennzeichen aus früherem Protokoll.
     var knownAlias: String? = nil
     var isNearest: Bool = false
+    /// Zusätzliche BLE-Metadaten (Alle-BLE-Modus).
+    var showsExtendedBleInfo: Bool = false
 
     private var displayId: String {
         if let compact = BleModelHint.compactScooterId(from: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
             return compact
         }
+        if showsExtendedBleInfo {
+            return device.bleListDisplayName
+        }
         return device.name
     }
 
     private var modelTitle: String {
-        device.modelLabel
-            ?? (device.looksLikeScooter ? "Scooter" : "BLE-Gerät")
+        if let label = device.modelLabel { return label }
+        if device.looksLikeScooter { return "Möglicher Scooter" }
+        return showsExtendedBleInfo ? "BLE-Gerät" : "BLE-Gerät"
     }
 
     private var thumbName: String {
@@ -2262,6 +2311,18 @@ struct ScooterDeviceCard: View {
                     .foregroundStyle(Theme.accent)
                     .lineLimit(1)
 
+                if showsExtendedBleInfo {
+                    Text("\(device.rssi) dBm · \(device.finderSignalLabel) · ID \(device.bleIdentifierShort)")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .lineLimit(1)
+                    if device.isStale {
+                        Text("Zuletzt gesehen · Signal veraltet")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                }
+
                 HStack(spacing: 6) {
                     if knownAlias != nil {
                         Text("bekannt")
@@ -2272,8 +2333,8 @@ struct ScooterDeviceCard: View {
                             .background(Theme.warn.opacity(0.9))
                             .clipShape(Capsule())
                     }
-                    if device.looksLikeScooter || device.modelLabel != nil {
-                        Label("Erkannt", systemImage: "bolt.fill")
+                    if knownAlias == nil, device.looksLikeScooter || device.modelLabel != nil {
+                        Text(showsExtendedBleInfo ? "Möglicherweise Scooter" : "Erkannt")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(Theme.ink)
                             .padding(.horizontal, 8)
@@ -2298,9 +2359,11 @@ struct ScooterDeviceCard: View {
             VStack(alignment: .trailing, spacing: 8) {
                 SignalStrengthView(rssi: device.rssi, style: .shu)
                 HStack(spacing: 6) {
-                    Image(systemName: "bolt.fill")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.accent)
+                    if !showsExtendedBleInfo {
+                        Image(systemName: "bolt.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.accent)
+                    }
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.muted)
@@ -2319,6 +2382,110 @@ struct ScooterDeviceCard: View {
             knownAlias.map { "\(modelTitle), \(displayId), \($0), \(device.signalLabel)" }
                 ?? "\(modelTitle), \(displayId), \(device.signalLabel)"
         )
+    }
+}
+
+/// Technische Detailansicht für allgemeine BLE-Geräte — speichert nichts als Scooter.
+struct BleDeviceDetailSheet: View {
+    let device: ScannedDevice
+    var onProbeAsScooter: () -> Void
+    var onDismiss: () -> Void
+
+    private var lastSeenText: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: device.lastSeen, relativeTo: Date())
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                        Text(device.bleListDisplayName)
+                            .font(Theme.sectionTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(device.classification == .possibleScooter
+                             ? "Hinweis: einzelne Merkmale sprechen für einen möglichen Scooter — keine sichere Erkennung."
+                             : "Allgemeines BLE-Gerät. Nicht automatisch ein Scooter.")
+                            .font(Theme.body)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    detailCard
+
+                    Text("Ein Fremdgerät wird erst nach erfolgreicher Scooter-Validierung dauerhaft gespeichert.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    ScootPrimaryButton(
+                        title: "Als möglichen Scooter prüfen",
+                        systemImage: "checkmark.shield"
+                    ) {
+                        onProbeAsScooter()
+                    }
+
+                    ScootSecondaryButton(title: "Schließen", systemImage: "xmark") {
+                        onDismiss()
+                    }
+                }
+                .padding(.horizontal, Theme.Space.xl)
+                .padding(.top, Theme.Space.sm)
+                .padding(.bottom, 28)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                AppChromeSheetHeader(closeTitle: "Fertig", onClose: onDismiss)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private var detailCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
+            detailRow("Name", device.bleListDisplayName)
+            detailRow("RSSI", "\(device.rssi) dBm · \(device.finderSignalLabel)")
+            detailRow("BLE-ID", device.id.uuidString)
+            detailRow("Zuletzt gesehen", lastSeenText)
+            if let mfg = device.manufacturerDataHex, !mfg.isEmpty {
+                detailRow("Manufacturer Data", mfg)
+            } else {
+                detailRow("Manufacturer Data", "—")
+            }
+            if device.serviceUUIDs.isEmpty {
+                detailRow("Service UUIDs", "—")
+            } else {
+                detailRow("Service UUIDs", device.serviceUUIDs.joined(separator: "\n"))
+            }
+            if device.looksLikeScooter {
+                detailRow("Merkmale", "Advertisement-Heuristik: möglicher Scooter")
+            }
+        }
+        .padding(Theme.Space.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+    }
+
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+            Text(value)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textPrimary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
