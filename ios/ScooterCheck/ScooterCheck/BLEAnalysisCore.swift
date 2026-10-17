@@ -533,7 +533,7 @@ struct BLEDirectionTrend: Equatable, Sendable {
     )
 }
 
-struct BLEDirectionTrendService: Equatable, Sendable {
+struct BLEDirectionTrendService: Sendable {
     static let minPathMeters: Double = 3.5
     static let minRssiGain: Double = 4.0
     static let minSegmentSeconds: TimeInterval = 4.0
@@ -642,6 +642,22 @@ struct BLESearchArea: Equatable, Sendable {
     var height: Double { max(0, maxY - minY) }
     var isMeaningful: Bool {
         width >= 6 && height >= 6 && width * height >= 80
+    }
+
+    static func == (lhs: BLESearchArea, rhs: BLESearchArea) -> Bool {
+        guard lhs.kind == rhs.kind,
+              lhs.minX == rhs.minX, lhs.maxX == rhs.maxX,
+              lhs.minY == rhs.minY, lhs.maxY == rhs.maxY,
+              lhs.centerX == rhs.centerX, lhs.centerY == rhs.centerY,
+              lhs.radius == rhs.radius else { return false }
+        switch (lhs.polygon, rhs.polygon) {
+        case (nil, nil): return true
+        case let (l?, r?):
+            guard l.count == r.count else { return false }
+            for i in l.indices where l[i].x != r[i].x || l[i].y != r[i].y { return false }
+            return true
+        default: return false
+        }
     }
 
     func contains(x: Double, y: Double) -> Bool {
