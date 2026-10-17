@@ -15,14 +15,14 @@ workflows:
         bundle_identifier: com.scootercheck.app
       vars:
         XCODE_WORKSPACE: ""
-        XCODE_PROJECT: ios/ScootProof/ScootProof.xcodeproj
-        XCODE_SCHEME: ScootProof
+        XCODE_PROJECT: ios/ScooterCheck/ScooterCheck.xcodeproj
+        XCODE_SCHEME: ScooterCheck
         BUNDLE_ID: com.scootercheck.app
       xcode: 16.2
     scripts:
       - name: Set build number
         script: |
-          cd ios/ScootProof
+          cd ios/ScooterCheck
           LATEST=$(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID" || echo 0)
           agvtool new-version -all $((LATEST + 1))
       - name: Build IPA

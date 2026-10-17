@@ -6,8 +6,8 @@ ScooterCheck ist eine native Xcode-App. Build und Upload laufen über einen **Cl
 
 Dateien:
 - `.github/workflows/testflight.yml`
-- `ios/ScootProof/fastlane/*`
-- `ios/ScootProof/Gemfile`
+- `ios/ScooterCheck/fastlane/*`
+- `ios/ScooterCheck/Gemfile`
 
 ### 1. App Store Connect API Key
 
@@ -41,7 +41,7 @@ CI legt Bundle-ID und App **`com.scootercheck.app`** (Name **ScooterCheck**) bei
 
 ### 4. Starten
 
-- Push auf `main` / `master` / `cursor/dual-tuning-detection-133a` (nur wenn sich `ios/ScootProof/**` ändert), oder
+- Push auf `main` / `master` / `cursor/dual-tuning-detection-133a` (nur wenn sich `ios/ScooterCheck/**` ändert), oder
 - **Actions → TestFlight → Run workflow**
 
 Nach dem Upload erscheint der Build in TestFlight (Verarbeitung oft 5–20 Minuten).

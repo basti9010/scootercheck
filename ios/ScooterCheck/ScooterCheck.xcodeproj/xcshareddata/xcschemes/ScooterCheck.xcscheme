@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "F10000000000000000000001"
-               BuildableName = "ScootProof.app"
-               BlueprintName = "ScootProof"
-               ReferencedContainer = "container:ScootProof.xcodeproj">
+               BuildableName = "ScooterCheck.app"
+               BlueprintName = "ScooterCheck"
+               ReferencedContainer = "container:ScooterCheck.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -44,9 +44,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F10000000000000000000001"
-            BuildableName = "ScootProof.app"
-            BlueprintName = "ScootProof"
-            ReferencedContainer = "container:ScootProof.xcodeproj">
+            BuildableName = "ScooterCheck.app"
+            BlueprintName = "ScooterCheck"
+            ReferencedContainer = "container:ScooterCheck.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -61,9 +61,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "F10000000000000000000001"
-            BuildableName = "ScootProof.app"
-            BlueprintName = "ScootProof"
-            ReferencedContainer = "container:ScootProof.xcodeproj">
+            BuildableName = "ScooterCheck.app"
+            BlueprintName = "ScooterCheck"
+            ReferencedContainer = "container:ScooterCheck.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

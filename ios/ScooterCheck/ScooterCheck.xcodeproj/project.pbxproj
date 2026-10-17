@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A10000000000000000000001 /* ScootProofApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* ScootProofApp.swift */; };
+		A10000000000000000000001 /* ScooterCheckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* ScooterCheckApp.swift */; };
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* ContentView.swift */; };
 		A10000000000000000000003 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* Theme.swift */; };
 		A10000000000000000000026 /* ScootDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000026 /* ScootDesign.swift */; };
@@ -47,8 +47,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		C10000000000000000000001 /* ScootProof.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScootProof.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B10000000000000000000001 /* ScootProofApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScootProofApp.swift; sourceTree = "<group>"; };
+		C10000000000000000000001 /* ScooterCheck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScooterCheck.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000000000000000000001 /* ScooterCheckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterCheckApp.swift; sourceTree = "<group>"; };
 		B10000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B10000000000000000000003 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B10000000000000000000026 /* ScootDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScootDesign.swift; sourceTree = "<group>"; };
@@ -86,7 +86,7 @@
 		B1000000000000000000001D /* G3OdometerScaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G3OdometerScaleTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PeakDisReportBugsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDisReportBugsTests.swift; sourceTree = "<group>"; };
-		C10000000000000000000002 /* ScootProofTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScootProofTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000000000000000000002 /* ScooterCheckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScooterCheckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,8 +104,8 @@
 		E10000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				E10000000000000000000002 /* ScootProof */,
-				E10000000000000000000008 /* ScootProofTests */,
+				E10000000000000000000002 /* ScooterCheck */,
+				E10000000000000000000008 /* ScooterCheckTests */,
 				E10000000000000000000003 /* Frameworks */,
 				E10000000000000000000004 /* Products */,
 			);
@@ -114,16 +114,16 @@
 		E10000000000000000000004 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C10000000000000000000001 /* ScootProof.app */,
-				C10000000000000000000002 /* ScootProofTests.xctest */,
+				C10000000000000000000001 /* ScooterCheck.app */,
+				C10000000000000000000002 /* ScooterCheckTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		E10000000000000000000002 /* ScootProof */ = {
+		E10000000000000000000002 /* ScooterCheck */ = {
 			isa = PBXGroup;
 			children = (
-				B10000000000000000000001 /* ScootProofApp.swift */,
+				B10000000000000000000001 /* ScooterCheckApp.swift */,
 				B10000000000000000000002 /* ContentView.swift */,
 				B10000000000000000000003 /* Theme.swift */,
 				B10000000000000000000026 /* ScootDesign.swift */,
@@ -133,7 +133,7 @@
 				E10000000000000000000006 /* Ninebot */,
 				E10000000000000000000007 /* Xiaomi */,
 			);
-			path = ScootProof;
+			path = ScooterCheck;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000005 /* Integrity */ = {
@@ -156,7 +156,7 @@
 			path = Integrity;
 			sourceTree = "<group>";
 		};
-		E10000000000000000000008 /* ScootProofTests */ = {
+		E10000000000000000000008 /* ScooterCheckTests */ = {
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000017 /* AttributionEngineTests.swift */,
@@ -172,7 +172,7 @@
 				B10000000000000000000024 /* KnownScooterAliasTests.swift */,
 				B10000000000000000000025 /* IdentifyCommandTests.swift */,
 			);
-			path = ScootProofTests;
+			path = ScooterCheckTests;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000006 /* Ninebot */ = {
@@ -206,9 +206,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		F10000000000000000000001 /* ScootProof */ = {
+		F10000000000000000000001 /* ScooterCheck */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F10000000000000000000002 /* Build configuration list for PBXNativeTarget "ScootProof" */;
+			buildConfigurationList = F10000000000000000000002 /* Build configuration list for PBXNativeTarget "ScooterCheck" */;
 			buildPhases = (
 				F10000000000000000000003 /* Sources */,
 				D10000000000000000000001 /* Frameworks */,
@@ -218,14 +218,14 @@
 			);
 			dependencies = (
 			);
-			name = ScootProof;
-			productName = ScootProof;
-			productReference = C10000000000000000000001 /* ScootProof.app */;
+			name = ScooterCheck;
+			productName = ScooterCheck;
+			productReference = C10000000000000000000001 /* ScooterCheck.app */;
 			productType = "com.apple.product-type.application";
 		};
-		F10000000000000000000010 /* ScootProofTests */ = {
+		F10000000000000000000010 /* ScooterCheckTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = F10000000000000000000011 /* Build configuration list for PBXNativeTarget "ScootProofTests" */;
+			buildConfigurationList = F10000000000000000000011 /* Build configuration list for PBXNativeTarget "ScooterCheckTests" */;
 			buildPhases = (
 				F10000000000000000000012 /* Sources */,
 			);
@@ -234,9 +234,9 @@
 			dependencies = (
 				F10000000000000000000013 /* PBXTargetDependency */,
 			);
-			name = ScootProofTests;
-			productName = ScootProofTests;
-			productReference = C10000000000000000000002 /* ScootProofTests.xctest */;
+			name = ScooterCheckTests;
+			productName = ScooterCheckTests;
+			productReference = C10000000000000000000002 /* ScooterCheckTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -258,7 +258,7 @@
 					};
 				};
 			};
-			buildConfigurationList = F10000000000000000000006 /* Build configuration list for PBXProject "ScootProof" */;
+			buildConfigurationList = F10000000000000000000006 /* Build configuration list for PBXProject "ScooterCheck" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = de;
 			hasScannedForEncodings = 0;
@@ -272,8 +272,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F10000000000000000000001 /* ScootProof */,
-				F10000000000000000000010 /* ScootProofTests */,
+				F10000000000000000000001 /* ScooterCheck */,
+				F10000000000000000000010 /* ScooterCheckTests */,
 			);
 		};
 /* End PBXProject section */
@@ -294,7 +294,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000000000000000000001 /* ScootProofApp.swift in Sources */,
+				A10000000000000000000001 /* ScooterCheckApp.swift in Sources */,
 				A10000000000000000000002 /* ContentView.swift in Sources */,
 				A10000000000000000000003 /* Theme.swift in Sources */,
 				A10000000000000000000026 /* ScootDesign.swift in Sources */,
@@ -384,7 +384,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = ScootProof/Info.plist;
+				INFOPLIST_FILE = ScooterCheck/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScooterCheck;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -412,7 +412,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = ScootProof/Info.plist;
+				INFOPLIST_FILE = ScooterCheck/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScooterCheck;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -446,7 +446,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScootProof.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScootProof";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScooterCheck.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScooterCheck";
 			};
 			name = Debug;
 		};
@@ -464,14 +464,14 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScootProof.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScootProof";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ScooterCheck.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ScooterCheck";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F10000000000000000000006 /* Build configuration list for PBXProject "ScootProof" */ = {
+		F10000000000000000000006 /* Build configuration list for PBXProject "ScooterCheck" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F10000000000000000000007 /* Debug */,
@@ -480,7 +480,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F10000000000000000000002 /* Build configuration list for PBXNativeTarget "ScootProof" */ = {
+		F10000000000000000000002 /* Build configuration list for PBXNativeTarget "ScooterCheck" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F10000000000000000000009 /* Debug */,
@@ -489,7 +489,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		F10000000000000000000011 /* Build configuration list for PBXNativeTarget "ScootProofTests" */ = {
+		F10000000000000000000011 /* Build configuration list for PBXNativeTarget "ScooterCheckTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F10000000000000000000014 /* Debug */,
@@ -503,7 +503,7 @@
 /* Begin PBXTargetDependency section */
 		F10000000000000000000013 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = F10000000000000000000001 /* ScootProof */;
+			target = F10000000000000000000001 /* ScooterCheck */;
 			targetProxy = F10000000000000000000016 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -514,7 +514,7 @@
 			containerPortal = F10000000000000000000005 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = F10000000000000000000001;
-			remoteInfo = ScootProof;
+			remoteInfo = ScooterCheck;
 		};
 /* End PBXContainerItemProxy section */
 	};

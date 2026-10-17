@@ -45,7 +45,7 @@ platform :ios do
 
     update_code_signing_settings(
       use_automatic_signing: false,
-      path: "ScootProof.xcodeproj",
+      path: "ScooterCheck.xcodeproj",
       team_id: ENV.fetch("APPLE_TEAM_ID"),
       bundle_identifier: BUNDLE_ID,
       code_sign_identity: "iPhone Distribution",
@@ -54,7 +54,7 @@ platform :ios do
 
     increment_version_number(
       version_number: MARKETING_VERSION,
-      xcodeproj: "ScootProof.xcodeproj"
+      xcodeproj: "ScooterCheck.xcodeproj"
     )
 
     build_number = latest_testflight_build_number(
@@ -66,12 +66,12 @@ platform :ios do
 
     increment_build_number(
       build_number: build_number,
-      xcodeproj: "ScootProof.xcodeproj"
+      xcodeproj: "ScooterCheck.xcodeproj"
     )
 
     build_app(
-      project: "ScootProof.xcodeproj",
-      scheme: "ScootProof",
+      project: "ScooterCheck.xcodeproj",
+      scheme: "ScooterCheck",
       configuration: "Release",
       export_method: "app-store",
       clean: true,

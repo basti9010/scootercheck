@@ -1,5 +1,5 @@
 import XCTest
-@testable import ScootProof
+@testable import ScooterCheck
 
 @MainActor
 final class SoftUnlockComboStoreTests: XCTestCase {

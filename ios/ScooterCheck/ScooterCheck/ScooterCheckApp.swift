@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct ScootProofApp: App {
+struct ScooterCheckApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

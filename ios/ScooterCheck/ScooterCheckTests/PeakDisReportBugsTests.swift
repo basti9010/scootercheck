@@ -1,5 +1,5 @@
 import XCTest
-@testable import ScootProof
+@testable import ScooterCheck
 
 /// Peak-/DIS-Decode und Analysebericht-Report-Bugs.
 final class PeakDisReportBugsTests: XCTestCase {

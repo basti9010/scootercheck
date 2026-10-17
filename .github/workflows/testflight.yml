@@ -17,7 +17,7 @@ on:
       - cursor/back-copyright-b100
       - cursor/ui-redesign-b100
     paths:
-      - "ios/ScootProof/**"
+      - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
 
 concurrency:
@@ -31,7 +31,7 @@ jobs:
     timeout-minutes: 60
     defaults:
       run:
-        working-directory: ios/ScootProof
+        working-directory: ios/ScooterCheck
 
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -74,7 +74,7 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
-          working-directory: ios/ScootProof
+          working-directory: ios/ScooterCheck
 
       - name: Install gems
         run: bundle install --jobs 4
@@ -87,6 +87,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ScooterCheck-ipa
-          path: ios/ScootProof/build/*.ipa
+          path: ios/ScooterCheck/build/*.ipa
           if-no-files-found: ignore
           retention-days: 14
