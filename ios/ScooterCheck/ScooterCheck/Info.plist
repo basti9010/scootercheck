@@ -26,9 +26,13 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen.</string>
+	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen und ausgewählte Scooter in der Nähe wiederzufinden.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen.</string>
+	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen und ausgewählte Scooter in der Nähe wiederzufinden.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ScooterCheck verwendet deinen Standort und deine Bewegungsrichtung, um Änderungen der Bluetooth-Signalstärke während der Scootersuche auszuwerten.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>ScooterCheck nutzt Bewegungsdaten, um die Bluetooth-Signalstärke während der Scootersuche robuster auszuwerten.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

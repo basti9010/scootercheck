@@ -639,6 +639,20 @@ private extension FAQCatalog {
                 ],
                 keywords: ["bluetooth", "finden", "suche", "verbinden"]
             ),
+            FAQItem(
+                id: "scooter-finden",
+                question: "Was macht „Scooter finden“?",
+                segments: [
+                    .paragraph("Unter „Scooter finden“ wählst du einen erkannten Scooter aus der Gerätesuche. ScooterCheck schätzt anschließend eine bessere Signalrichtung, indem es Bluetooth-Signalstärke mit deiner Bewegung, Kompass und Standort während der aktiven Suche vergleicht."),
+                    .bullets([
+                        "Kein Meter-Abstand — nur Signalstufen wie Schwach, Mittel, Stark, Sehr nah",
+                        "Richtung ist eine Schätzung, keine direkte BLE-Ortung",
+                        "Standort und Bewegung nur während der aktiven Suche",
+                    ]),
+                    .callout("Die angezeigte Richtung wird aus Bluetooth-Signalstärke, Bewegung und Sensordaten geschätzt. Bluetooth liefert keine direkte Richtungsinformation."),
+                ],
+                keywords: ["finden", "richtung", "rssi", "signal", "nähe", "gerätesuche"]
+            ),
         ]
     )
 }

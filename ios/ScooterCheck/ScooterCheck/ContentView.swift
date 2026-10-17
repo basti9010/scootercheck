@@ -43,6 +43,7 @@ struct ContentView: View {
         case home
         case result
         case overview
+        case find
     }
 
     private enum PowerCyclePhase: Equatable {
@@ -95,39 +96,45 @@ struct ContentView: View {
             ZStack(alignment: .bottom) {
                 Theme.bg.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        if let err = ble.lastError, ble.phase == .failed, screen != .overview {
-                            errorBanner(err)
-                        }
-                        switch screen {
-                        case .overview:
-                            controlsOverview
-                        case .result:
-                            if let result {
-                                resultCard(result)
-                            } else {
-                                controlsOverview
+                if screen == .find {
+                    ScooterFinderView(ble: ble)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            if let err = ble.lastError, ble.phase == .failed, screen != .overview {
+                                errorBanner(err)
                             }
-                        case .home:
-                            if isBusyPhase {
-                                connectingCard
-                            } else if showsStartLanding {
-                                startLanding
-                            } else {
-                                devicesSearchHeader
-                                devicesSonarStage
-                                if ble.visibleDevices.isEmpty {
-                                    searchEmptyCopy
+                            switch screen {
+                            case .overview:
+                                controlsOverview
+                            case .result:
+                                if let result {
+                                    resultCard(result)
                                 } else {
-                                    deviceSection
+                                    controlsOverview
+                                }
+                            case .find:
+                                EmptyView()
+                            case .home:
+                                if isBusyPhase {
+                                    connectingCard
+                                } else if showsStartLanding {
+                                    startLanding
+                                } else {
+                                    devicesSearchHeader
+                                    devicesSonarStage
+                                    if ble.visibleDevices.isEmpty {
+                                        searchEmptyCopy
+                                    } else {
+                                        deviceSection
+                                    }
                                 }
                             }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, showsStartLanding ? 120 : 28)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .padding(.bottom, showsStartLanding ? 120 : 28)
                 }
 
                 if showsStartLanding {
@@ -172,6 +179,10 @@ struct ContentView: View {
                             .foregroundStyle(.white)
                     } else if screen == .result {
                         Text("Prüfbericht")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                    } else if screen == .find {
+                        Text("Scooter finden")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
                     } else if showsStartLanding {
@@ -817,7 +828,7 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            if showsStartLanding {
+            if showsStartLanding || screen == .find {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
@@ -953,6 +964,7 @@ struct ContentView: View {
         switch screen {
         case .overview: return true
         case .result: return result != nil
+        case .find: return true
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
             return true
@@ -965,6 +977,8 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
+        case .find:
+            break
         case .home:
             if ble.phase == .scanning {
                 ble.stopScan()
@@ -1550,6 +1564,13 @@ struct ContentView: View {
                     }
                 }
                 sideNavRow(
+                    title: "Scooter finden",
+                    systemImage: "location.magnifyingglass",
+                    selected: screen == .find
+                ) {
+                    navigateFromMenu(to: .find)
+                }
+                sideNavRow(
                     title: "FAQ & Wissensbasis",
                     systemImage: "questionmark.circle",
                     selected: false
@@ -1636,6 +1657,16 @@ struct ContentView: View {
         case .result:
             guard result != nil else { return }
             screen = .result
+        case .find:
+            if screen == .result { persistCurrentSession() }
+            // Finder nutzt Scan-only — aktive Diagnoseverbindung trennen.
+            if ble.isConnectedToScooter {
+                ble.disconnect()
+            }
+            screen = .find
+            if ble.phase != .scanning {
+                ble.startScan()
+            }
         }
     }
 

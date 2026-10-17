@@ -124,6 +124,8 @@ struct ScannedDevice: Identifiable, Equatable {
     /// Kurzes Badge (z. B. „Max G3“), falls erkannt.
     let modelBadge: String?
     let suggestedProfile: ScooterProfile?
+    /// Zeitpunkt der letzten Advertisement-/RSSI-Aktualisierung.
+    let lastSeen: Date
 
     static func == (lhs: ScannedDevice, rhs: ScannedDevice) -> Bool {
         lhs.id == rhs.id
@@ -134,6 +136,7 @@ struct ScannedDevice: Identifiable, Equatable {
             && lhs.modelLabel == rhs.modelLabel
             && lhs.modelBadge == rhs.modelBadge
             && lhs.suggestedProfile == rhs.suggestedProfile
+            && abs(lhs.lastSeen.timeIntervalSince(rhs.lastSeen)) < 0.05
     }
 
     /// 0…4 Balken für die UI
@@ -152,6 +155,17 @@ struct ScannedDevice: Identifiable, Equatable {
         case 3: return "Nah"
         case 2: return "Mittel"
         default: return "Weit"
+        }
+    }
+
+    /// Neutrale Signalstufe für die Gerätesuche.
+    var finderSignalLabel: String {
+        switch rssi {
+        case -48...0: return "Sehr nah"
+        case -58 ..< -48: return "Sehr stark"
+        case -68 ..< -58: return "Stark"
+        case -80 ..< -68: return "Mittel"
+        default: return "Schwach"
         }
     }
 }
@@ -307,7 +321,8 @@ final class BleClient: NSObject, ObservableObject {
                 looksLikeScooter: true,
                 modelLabel: previous.modelLabel,
                 modelBadge: previous.modelBadge,
-                suggestedProfile: previous.suggestedProfile
+                suggestedProfile: previous.suggestedProfile,
+                lastSeen: Date()
             )
         } ?? ScannedDevice(
             id: active.identifier,
@@ -318,7 +333,8 @@ final class BleClient: NSObject, ObservableObject {
             looksLikeScooter: true,
             modelLabel: nil,
             modelBadge: nil,
-            suggestedProfile: nil
+            suggestedProfile: nil,
+            lastSeen: Date()
         )
 
         central.cancelPeripheralConnection(active)
@@ -345,7 +361,8 @@ final class BleClient: NSObject, ObservableObject {
             looksLikeScooter: true,
             modelLabel: hint?.title,
             modelBadge: hint?.shortBadge,
-            suggestedProfile: hint?.profile
+            suggestedProfile: hint?.profile,
+            lastSeen: Date()
         )
         if let index = devices.firstIndex(where: { $0.id == device.id }) {
             let existing = devices[index]
@@ -358,7 +375,8 @@ final class BleClient: NSObject, ObservableObject {
                 looksLikeScooter: true,
                 modelLabel: existing.modelLabel ?? device.modelLabel,
                 modelBadge: existing.modelBadge ?? device.modelBadge,
-                suggestedProfile: existing.suggestedProfile ?? device.suggestedProfile
+                suggestedProfile: existing.suggestedProfile ?? device.suggestedProfile,
+                lastSeen: Date()
             )
         } else {
             devices.append(device)
@@ -1840,6 +1858,7 @@ extension BleClient: CBCentralManagerDelegate {
             let byName = Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
             let byService = Self.advertisementLooksLikeScooter(advertisementData)
             let hint = BleModelHint.recognize(bleName: rawName.isEmpty ? nil : rawName)
+            let now = Date()
             let device = ScannedDevice(
                 id: peripheral.identifier,
                 name: name,
@@ -1849,7 +1868,8 @@ extension BleClient: CBCentralManagerDelegate {
                 looksLikeScooter: byName || byService || hint != nil,
                 modelLabel: hint?.title,
                 modelBadge: hint?.shortBadge,
-                suggestedProfile: hint?.profile
+                suggestedProfile: hint?.profile,
+                lastSeen: now
             )
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
                 // Badge/Modell beibehalten, sobald einmal erkannt.
@@ -1862,7 +1882,8 @@ extension BleClient: CBCentralManagerDelegate {
                     looksLikeScooter: device.looksLikeScooter || devices[index].looksLikeScooter,
                     modelLabel: device.modelLabel ?? devices[index].modelLabel,
                     modelBadge: device.modelBadge ?? devices[index].modelBadge,
-                    suggestedProfile: device.suggestedProfile ?? devices[index].suggestedProfile
+                    suggestedProfile: device.suggestedProfile ?? devices[index].suggestedProfile,
+                    lastSeen: now
                 )
                 devices[index] = merged
             } else {
