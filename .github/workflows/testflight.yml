@@ -42,7 +42,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck UI redesign — Mint-Sonar, App-Icon, Radar' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck UI: Header/Wordmark, Prüfungen+Fotos, Datenschutz, FAQ Scooter finden, Geräte-Suche Scooter/Alle BLE-Geräte' }}"
 
     steps:
       - name: Checkout
