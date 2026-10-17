@@ -2,6 +2,7 @@ import Foundation
 import ARKit
 import AVFoundation
 import SceneKit
+import SwiftUI
 import UIKit
 
 /// Zustand der kamera-gestützten Indoor-Bewegung (ARKit World Tracking).
@@ -221,21 +222,20 @@ extension IndoorVisualTracker: ARSessionDelegate {
 // MARK: - Compact camera preview
 
 struct BLESearchCameraPreview: UIViewRepresentable {
-    let tracker: IndoorVisualTracker
+    @ObservedObject var tracker: IndoorVisualTracker
 
+    @MainActor
     func makeUIView(context: Context) -> ARSCNView {
         let view = ARSCNView(frame: .zero)
         view.backgroundColor = .black
         view.scene = SCNScene()
         view.autoenablesDefaultLighting = false
         view.automaticallyUpdatesLighting = false
-        #if DEBUG
-        view.showsStatistics = false
-        #endif
         tracker.attachPreview(view)
         return view
     }
 
+    @MainActor
     func updateUIView(_ uiView: ARSCNView, context: Context) {
         tracker.attachPreview(uiView)
     }
