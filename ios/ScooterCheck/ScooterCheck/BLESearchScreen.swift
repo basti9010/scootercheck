@@ -1,4 +1,7 @@
 import SwiftUI
+import MapKit
+import UIKit
+import CoreLocation
 
 /// Aktive BLE-Suche: Heatmap + Analyse-Zusatzbereiche (kein BLE-Kompass).
 struct BLESearchScreen: View {
@@ -136,20 +139,65 @@ struct BLESearchScreen: View {
 
     private var heatmapCard: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            ZStack {
-                SignalHeatmapView(snapshot: engine.heatmap)
-                if engine.searchGrid.area?.isMeaningful == true {
-                    SearchGridOverlay(grid: engine.searchGrid)
-                        .allowsHitTesting(false)
+            surfaceModePicker
+
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if engine.surfaceMode == .map {
+                        BLESearchMapCanvas(
+                            overlay: engine.mapOverlay,
+                            heatmap: engine.heatmap
+                        )
+                    } else {
+                        ZStack {
+                            SignalHeatmapView(
+                                snapshot: engine.heatmap,
+                                pathSnapshot: engine.pathSnapshot,
+                                showMeasurementDots: true
+                            )
+                            if engine.searchGrid.area?.isMeaningful == true {
+                                SearchGridOverlay(grid: engine.searchGrid)
+                                    .allowsHitTesting(false)
+                            }
+                        }
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 340)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
+
+                Button {
+                    engine.recenterViewport()
+                } label: {
+                    Image(systemName: "location.north.line.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 36, height: 36)
+                        .background(Theme.card.opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Theme.border, lineWidth: 1)
+                        )
+                }
+                .accessibilityLabel("Zentrieren")
+                .padding(10)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 340)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                    .stroke(Theme.border, lineWidth: 1)
-            )
+
+            HStack(spacing: Theme.Space.md) {
+                metricChip(title: "Messungen", value: "\(engine.measurementCount)")
+                metricChip(title: "Strecke", value: engine.pathLengthText)
+                metricChip(title: "Dauer", value: engine.durationText)
+            }
+
+            Text(engine.surfaceHint)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
 
             if let coverage = engine.searchGrid.coveragePercentText {
                 Text(coverage)
@@ -189,6 +237,40 @@ struct BLESearchScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private var surfaceModePicker: some View {
+        Picker("Ansicht", selection: Binding(
+            get: { engine.surfaceMode },
+            set: { engine.setSurfaceMode($0) }
+        )) {
+            ForEach(BLESearchSurfaceMode.allCases, id: \.self) { mode in
+                Text(mode.label).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .font(Theme.segment)
+        .accessibilityLabel("Relativ oder Karte")
+    }
+
+    private func metricChip(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+            Text(value)
+                .font(Theme.secondary.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                .stroke(Theme.border, lineWidth: 1)
+        )
     }
 
     private var heatmapLegendBar: some View {
@@ -272,7 +354,7 @@ struct BLESearchScreen: View {
                 analyseContent
             }
 
-            Text("\(engine.measurementCount) Messpunkte · keine exakte Ortung")
+            Text("Messungen: \(engine.measurementCount) · Strecke: \(engine.pathLengthText) · keine exakte Ortung")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -604,6 +686,8 @@ struct SearchGridOverlay: View {
 
 struct SignalHeatmapView: View {
     let snapshot: BLEHeatmapSnapshot
+    var pathSnapshot: BLESearchPathSnapshot = .empty
+    var showMeasurementDots: Bool = false
 
     var body: some View {
         Canvas { context, size in
@@ -627,38 +711,70 @@ struct SignalHeatmapView: View {
                         width: cw + 0.6,
                         height: rh + 0.6
                     )
-                    context.fill(Path(roundedRect: rect, cornerRadius: 1.2), with: .color(color))
+                    context.fill(Path(roundedRect: rect, cornerRadius: 1.2), with: .color(color.opacity(0.88)))
                 }
             }
 
-            if snapshot.trail.count >= 2 {
+            let poly: [(x: Double, y: Double)] = {
+                if pathSnapshot.smoothedPolyline.count >= 2 {
+                    return pathSnapshot.smoothedPolyline
+                }
+                return snapshot.trail
+            }()
+
+            if showMeasurementDots {
+                let step = max(1, poly.count / 48)
+                for (i, p) in poly.enumerated() where i % step == 0 {
+                    let pt = project(x: p.x, y: p.y, in: size, snapshot: snapshot)
+                    let r: CGFloat = 4.5
+                    let oval = Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2))
+                    context.fill(oval, with: .color(Theme.accent.opacity(0.28)))
+                }
+            }
+
+            if poly.count >= 2 {
                 var path = Path()
-                for (i, p) in snapshot.trail.enumerated() {
+                for (i, p) in poly.enumerated() {
                     let pt = project(x: p.x, y: p.y, in: size, snapshot: snapshot)
                     if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
                 }
                 context.stroke(
                     path,
-                    with: .color(Color.white.opacity(0.22)),
-                    style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round)
+                    with: .color(Color.white.opacity(0.18)),
+                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round)
+                )
+                context.stroke(
+                    path,
+                    with: .color(Theme.accent.opacity(0.72)),
+                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
                 )
             }
-            if let last = snapshot.trail.last {
+
+            if let last = pathSnapshot.current ?? poly.last.map({ BLEPathPoint(x: $0.x, y: $0.y) }) {
                 let pt = project(x: last.x, y: last.y, in: size, snapshot: snapshot)
-                let dot = Path(ellipseIn: CGRect(x: pt.x - 3.5, y: pt.y - 3.5, width: 7, height: 7))
-                context.fill(dot, with: .color(Theme.accent.opacity(0.9)))
+                var ring = Path()
+                ring.addEllipse(in: CGRect(x: pt.x - 11, y: pt.y - 11, width: 22, height: 22))
+                context.stroke(ring, with: .color(Theme.accent.opacity(0.45)), lineWidth: 1.5)
+                let dot = Path(ellipseIn: CGRect(x: pt.x - 4.5, y: pt.y - 4.5, width: 9, height: 9))
+                context.fill(dot, with: .color(Theme.accent))
             }
 
             if let s = snapshot.strongestCell {
                 let cx = (CGFloat(s.col) + 0.5) * cw
                 let cy = size.height - (CGFloat(s.row) + 0.5) * rh
                 var ring = Path()
-                ring.addEllipse(in: CGRect(x: cx - 10, y: cy - 10, width: 20, height: 20))
-                context.stroke(ring, with: .color(Color.white.opacity(0.7)), lineWidth: 1.5)
+                ring.addEllipse(in: CGRect(x: cx - 11, y: cy - 11, width: 22, height: 22))
+                context.stroke(ring, with: .color(Color.white.opacity(0.75)), lineWidth: 1.5)
+                var cross = Path()
+                cross.move(to: CGPoint(x: cx - 7, y: cy))
+                cross.addLine(to: CGPoint(x: cx + 7, y: cy))
+                cross.move(to: CGPoint(x: cx, y: cy - 7))
+                cross.addLine(to: CGPoint(x: cx, y: cy + 7))
+                context.stroke(cross, with: .color(Color.white.opacity(0.65)), lineWidth: 1)
             }
         }
         .accessibilityLabel("Signal-Heatmap")
-        .accessibilityHint("Dunkle Bereiche sind noch nicht untersucht. Mint bedeutet stärkeres Signal.")
+        .accessibilityHint("Pfad zeigt relative Bewegung. Mint bedeutet stärkeres Signal. Keine exakte Ortung.")
     }
 
     private func project(x: Double, y: Double, in size: CGSize, snapshot: BLEHeatmapSnapshot) -> CGPoint {
@@ -668,6 +784,135 @@ struct SignalHeatmapView: View {
             x: CGFloat(nx) * size.width,
             y: size.height - CGFloat(ny) * size.height
         )
+    }
+}
+
+// MARK: - Outdoor MapKit canvas (dezente Karte + Overlay)
+
+struct BLESearchMapCanvas: UIViewRepresentable {
+    let overlay: BLEMapOverlayModel
+    let heatmap: BLEHeatmapSnapshot
+
+    func makeUIView(context: Context) -> MKMapView {
+        let map = MKMapView(frame: .zero)
+        map.delegate = context.coordinator
+        map.isRotateEnabled = false
+        map.isPitchEnabled = false
+        map.pointOfInterestFilter = .excludingAll
+        map.showsCompass = false
+        map.showsTraffic = false
+        map.overrideUserInterfaceStyle = .dark
+        // Karte bewusst zurückgenommen: dunkles UI + reduzierte POIs; Heatmap/Pfad bleiben dominant.
+        return map
+    }
+
+    func updateUIView(_ map: MKMapView, context: Context) {
+        context.coordinator.heatmap = heatmap
+        map.setRegion(overlay.region, animated: false)
+
+        map.removeOverlays(map.overlays)
+        map.removeAnnotations(map.annotations)
+
+        if overlay.coordinates.count >= 2 {
+            let poly = MKPolyline(coordinates: overlay.coordinates, count: overlay.coordinates.count)
+            map.addOverlay(poly, level: .aboveRoads)
+        }
+
+        for sample in overlay.heatSamples.suffix(120) {
+            let a = BLEMapHeatAnnotation(coordinate: sample.coord, rssi: sample.rssi)
+            map.addAnnotation(a)
+        }
+
+        if let current = overlay.current {
+            let pin = BLEMapCurrentAnnotation(coordinate: current)
+            map.addAnnotation(pin)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(heatmap: heatmap)
+    }
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        var heatmap: BLEHeatmapSnapshot
+
+        init(heatmap: BLEHeatmapSnapshot) {
+            self.heatmap = heatmap
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let poly = overlay as? MKPolyline {
+                let r = MKPolylineRenderer(polyline: poly)
+                r.strokeColor = UIColor(Theme.accent).withAlphaComponent(0.85)
+                r.lineWidth = 3
+                r.lineCap = .round
+                r.lineJoin = .round
+                return r
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if annotation is BLEMapCurrentAnnotation {
+                let id = "current"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: id)
+                    ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
+                view.annotation = annotation
+                view.canShowCallout = false
+                view.image = Self.dotImage(color: UIColor(Theme.accent), size: 14, ring: true)
+                return view
+            }
+            if let heat = annotation as? BLEMapHeatAnnotation {
+                let id = "heat"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: id)
+                    ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
+                view.annotation = annotation
+                view.canShowCallout = false
+                let color = Self.color(forRssi: heat.rssi)
+                view.image = Self.dotImage(color: color, size: 10, ring: false)
+                view.alpha = 0.7
+                return view
+            }
+            return nil
+        }
+
+        private static func color(forRssi rssi: Double) -> UIColor {
+            if let c = BLEHeatmapProcessor.color(forRssi: rssi, confidence: 0.8) {
+                return UIColor(c)
+            }
+            return UIColor(Theme.accent).withAlphaComponent(0.5)
+        }
+
+        private static func dotImage(color: UIColor, size: CGFloat, ring: Bool) -> UIImage {
+            let s = size + (ring ? 8 : 0)
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
+            return renderer.image { ctx in
+                let rect = CGRect(x: (s - size) / 2, y: (s - size) / 2, width: size, height: size)
+                if ring {
+                    color.withAlphaComponent(0.35).setStroke()
+                    ctx.cgContext.setLineWidth(1.5)
+                    ctx.cgContext.strokeEllipse(in: CGRect(x: 1, y: 1, width: s - 2, height: s - 2))
+                }
+                color.setFill()
+                ctx.cgContext.fillEllipse(in: rect)
+            }
+        }
+    }
+}
+
+final class BLEMapHeatAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let rssi: Double
+    init(coordinate: CLLocationCoordinate2D, rssi: Double) {
+        self.coordinate = coordinate
+        self.rssi = rssi
+    }
+}
+
+final class BLEMapCurrentAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    init(coordinate: CLLocationCoordinate2D) {
+        self.coordinate = coordinate
     }
 }
 
@@ -765,7 +1010,11 @@ struct FineSearchPanel: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
-            SignalHeatmapView(snapshot: engine.heatmap)
+            SignalHeatmapView(
+                snapshot: engine.heatmap,
+                pathSnapshot: engine.pathSnapshot,
+                showMeasurementDots: false
+            )
                 .frame(height: 120)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
                 .opacity(0.55)

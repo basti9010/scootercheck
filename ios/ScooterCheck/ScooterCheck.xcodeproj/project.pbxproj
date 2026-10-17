@@ -73,6 +73,8 @@
 		A10000000000000000000047 /* BLEWatchRadarCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000047 /* BLEWatchRadarCore.swift */; };
 		A10000000000000000000045 /* BLEMultiDeviceScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000045 /* BLEMultiDeviceScreen.swift */; };
 		A10000000000000000000044 /* BLEAnalysisCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000044 /* BLEAnalysisCore.swift */; };
+		A1000000000000000000004A /* BLESearchMotionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004A /* BLESearchMotionCore.swift */; };
+		A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004B /* BLESearchMotionCoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -140,6 +142,8 @@
 		B10000000000000000000042 /* BLESearchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchScreen.swift; sourceTree = "<group>"; };
 		B10000000000000000000043 /* BLESearchCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000044 /* BLEAnalysisCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEAnalysisCore.swift; sourceTree = "<group>"; };
+		B1000000000000000000004A /* BLESearchMotionCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchMotionCore.swift; sourceTree = "<group>"; };
+		B1000000000000000000004B /* BLESearchMotionCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchMotionCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000045 /* BLEMultiDeviceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMultiDeviceScreen.swift; sourceTree = "<group>"; };
 		B10000000000000000000046 /* BLEAnalysisCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEAnalysisCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000049 /* BLEWatchRadarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarTests.swift; sourceTree = "<group>"; };
@@ -198,6 +202,7 @@
 				B10000000000000000000040 /* BLESearchCore.swift */,
 				B10000000000000000000041 /* BLESearchEngine.swift */,
 				B10000000000000000000042 /* BLESearchScreen.swift */,
+				B1000000000000000000004A /* BLESearchMotionCore.swift */,
 				B10000000000000000000045 /* BLEMultiDeviceScreen.swift */,
 				B10000000000000000000044 /* BLEAnalysisCore.swift */,
 				B10000000000000000000048 /* BLEWatchRadarUI.swift */,
@@ -257,6 +262,7 @@
 				B1000000000000000000002E /* ScooterFinderMathTests.swift */,
 				B10000000000000000000043 /* BLESearchCoreTests.swift */,
 				B10000000000000000000046 /* BLEAnalysisCoreTests.swift */,
+				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000049 /* BLEWatchRadarTests.swift */,
 			);
 			path = ScooterCheckTests;
@@ -398,6 +404,7 @@
 				A10000000000000000000040 /* BLESearchCore.swift in Sources */,
 				A10000000000000000000041 /* BLESearchEngine.swift in Sources */,
 				A10000000000000000000042 /* BLESearchScreen.swift in Sources */,
+				A1000000000000000000004A /* BLESearchMotionCore.swift in Sources */,
 				A10000000000000000000045 /* BLEMultiDeviceScreen.swift in Sources */,
 				A10000000000000000000044 /* BLEAnalysisCore.swift in Sources */,
 				A10000000000000000000048 /* BLEWatchRadarUI.swift in Sources */,
@@ -451,6 +458,7 @@
 				A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */,
 				A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */,
 				A10000000000000000000046 /* BLEAnalysisCoreTests.swift in Sources */,
+				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000049 /* BLEWatchRadarTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

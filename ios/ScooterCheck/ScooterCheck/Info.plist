@@ -47,7 +47,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ScooterCheck verwendet deinen Standort nur während „Scooter finden“, um eine Signal-Heatmap aus Bluetooth-Messungen und Bewegung aufzubauen. Es findet keine dauerhafte Ortung statt.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>ScooterCheck nutzt Bewegungsdaten nur während „Scooter finden“, um die Signal-Heatmap bei schwachem GPS robuster zu führen.</string>
+	<string>ScooterCheck nutzt Bewegungsdaten nur während „Scooter finden“, um den relativen Suchpfad und die Signal-Heatmap bei schwachem GPS robuster zu führen. Es findet keine exakte Innenraumortung statt.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ScooterCheck benötigt Zugriff auf die Kamera, damit du Fotos zu einer Prüfung hinzufügen kannst.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

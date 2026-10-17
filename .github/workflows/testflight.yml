@@ -18,6 +18,7 @@ on:
       - cursor/ui-redesign-b100
       - cursor/ble-analysis-suite-b100
       - cursor/ble-watch-radar-b100
+      - cursor/ble-path-heatmap-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
