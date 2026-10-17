@@ -16,7 +16,8 @@ struct FAQView: View {
                 Theme.bg.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                        PageTitle(text: "FAQ & Wissensbasis")
                         searchField
                         introCallouts
 
@@ -30,19 +31,22 @@ struct FAQView: View {
 
                         AppCopyrightFooter()
                             .frame(maxWidth: .infinity)
-                            .padding(.top, 8)
+                            .padding(.top, Theme.Space.sm)
                             .padding(.bottom, 28)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.sm)
                 }
             }
-            .navigationTitle("FAQ & Wissensbasis")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Wordmark()
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Schließen") { dismiss() }
+                        .font(Theme.buttonSecondary)
                         .foregroundStyle(Theme.accent)
                 }
             }
@@ -53,9 +57,10 @@ struct FAQView: View {
     private var searchField: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(Theme.muted)
+                .foregroundStyle(Theme.textMuted)
             TextField("Suche (z. B. Soft Unlock, Region…)", text: $query)
-                .foregroundStyle(.white)
+                .font(Theme.fieldValue)
+                .foregroundStyle(Theme.textPrimary)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
             if !query.isEmpty {
@@ -63,18 +68,19 @@ struct FAQView: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Theme.muted)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Suche löschen")
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.vertical, Theme.Space.md)
         .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: 1)
         )
     }
 
@@ -90,38 +96,25 @@ struct FAQView: View {
     }
 
     private var emptySearch: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text("Keine Treffer")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
+                .font(Theme.cardTitle)
+                .foregroundStyle(Theme.textTitle)
             Text("Versuche andere Stichworte wie Tuning, Firmware, Register, Soft Unlock oder Power Cycle.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryText)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textSecondary)
+                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
-        )
+        .scootCard()
     }
 
     private func categorySection(_ category: FAQCategory) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: category.symbolName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
-                Text(category.title)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
-            }
-            .padding(.top, 4)
+            SectionHeader(title: category.title, systemImage: category.symbolName)
+                .padding(.top, Theme.Space.xs)
 
-            VStack(spacing: 8) {
+            VStack(spacing: Theme.Space.sm) {
                 ForEach(category.items) { item in
                     FAQAccordionRow(
                         item: item,
@@ -135,7 +128,7 @@ struct FAQView: View {
     }
 
     private func toggle(_ id: String) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(Theme.Motion.standard) {
             if expandedIDs.contains(id) {
                 expandedIDs.remove(id)
             } else {
@@ -155,20 +148,20 @@ private struct FAQAccordionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: onToggle) {
-                HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .top, spacing: Theme.Space.md) {
                     Text(item.question)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .font(Theme.cardTitle)
+                        .foregroundStyle(Theme.textTitle)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 8)
+                    Spacer(minLength: Theme.Space.sm)
                     Image(systemName: "chevron.down")
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .padding(.top, 4)
+                        .padding(.top, Theme.Space.xs)
                 }
-                .padding(16)
+                .padding(Theme.Space.lg)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -176,21 +169,21 @@ private struct FAQAccordionRow: View {
             .accessibilityHint(isExpanded ? "Zuklappen" : "Aufklappen")
 
             if isExpanded {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Space.md) {
                     ForEach(Array(item.segments.enumerated()), id: \.offset) { _, segment in
                         segmentView(segment)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.horizontal, Theme.Space.lg)
+                .padding(.bottom, Theme.Space.lg)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: 1)
         )
     }
 
@@ -199,18 +192,20 @@ private struct FAQAccordionRow: View {
         switch segment {
         case .paragraph(let text):
             Text(text)
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryText)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textBody)
+                .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
         case .bullets(let items):
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(items, id: \.self) { line in
-                    HStack(alignment: .top, spacing: 8) {
+                    HStack(alignment: .top, spacing: Theme.Space.sm) {
                         Text("•")
                             .foregroundStyle(Theme.accent)
                         Text(line)
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.secondaryText)
+                            .font(Theme.body)
+                            .foregroundStyle(Theme.textBody)
+                            .lineSpacing(4)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -230,11 +225,12 @@ private struct FAQCalloutBanner: View {
                 .foregroundStyle(Theme.accent)
                 .padding(.top, 1)
             Text(text)
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(.white)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textBody)
+                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(12)
+        .padding(Theme.Space.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.accent.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

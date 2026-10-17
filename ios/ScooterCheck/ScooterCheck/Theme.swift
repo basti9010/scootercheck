@@ -1,26 +1,101 @@
 import SwiftUI
 import UIKit
 
+/// Zentrale Design-Tokens — Typografie, Farbe, Spacing, Radien.
 enum Theme {
-    /// Mockup-Hintergrund ~#12171C
+    // MARK: - Colors (bestehende Marke, weichere Textstufen)
+
+    /// App-Hintergrund ~#12171C
     static let bg = Color(red: 0.071, green: 0.090, blue: 0.110)
-    /// Kartenfläche, leicht aufgehellt
+    /// Surface / Card ~ leicht heller
     static let card = Color(red: 0.12, green: 0.145, blue: 0.175)
-    /// Primär Mint ~#6BDBC2
+    static let surfaceSecondary = Color.white.opacity(0.06)
+    /// Mint ~#6BDBC2
     static let accent = Color(red: 0.42, green: 0.86, blue: 0.76)
-    static let muted = Color.white.opacity(0.55)
-    static let secondaryText = Color.white.opacity(0.62)
+
+    /// Primär ~#F5F6F7
+    static let textPrimary = Color(red: 0.961, green: 0.965, blue: 0.969)
+    /// Card-/Listentitel ~#F0F2F3
+    static let textTitle = Color(red: 0.941, green: 0.949, blue: 0.953)
+    /// Fließtext ~#C9CED1
+    static let textBody = Color(red: 0.788, green: 0.808, blue: 0.820)
+    /// Sekundär ~#8F969C
+    static let textSecondary = Color(red: 0.561, green: 0.588, blue: 0.612)
+    /// Deaktiviert / Meta
+    static let textMuted = Color(red: 0.561, green: 0.588, blue: 0.612).opacity(0.85)
+
     static let line = Color.white.opacity(0.10)
-    static let danger = Color(red: 0.95, green: 0.42, blue: 0.40) // Koralle
+    static let border = line
+    static let danger = Color(red: 0.95, green: 0.42, blue: 0.40)
     static let warn = Color(red: 0.98, green: 0.78, blue: 0.28)
     static let ink = Color(red: 0.08, green: 0.10, blue: 0.12)
     static let hintOrange = Color(red: 0.98, green: 0.55, blue: 0.22)
 
-    static let pageTitle = Font.system(size: 30, weight: .bold)
-    static let cardTitle = Font.system(size: 17, weight: .semibold)
-    static let body = Font.system(size: 16, weight: .regular)
+    // Aliase für bestehende Call-Sites
+    static let muted = textMuted
+    static let secondaryText = textSecondary
+
+    // MARK: - Typography (System / Dynamic Type–freundlich)
+
+    /// App-Header Wordmark ~22–24 Semibold
+    static let brandWordmark = Font.system(size: 23, weight: .semibold)
+    /// Seitentitel im Content ~22–24 Semibold
+    static let pageTitle = Font.system(size: 23, weight: .semibold)
+    /// Abschnittsüberschrift ~18–20 Semibold
+    static let sectionTitle = Font.system(size: 19, weight: .semibold)
+    /// Card-/Listenüberschrift ~17–18 Medium
+    static let cardTitle = Font.system(size: 17, weight: .medium)
+    /// Fließtext ~15–16 Regular
+    static let body = Font.system(size: 15.5, weight: .regular)
+    /// Sekundärtext ~14–15 Regular
+    static let secondary = Font.system(size: 14.5, weight: .regular)
+    /// Meta / Caption ~13–14 Regular
+    static let caption = Font.system(size: 13.5, weight: .regular)
+    /// Meta klein (Badge, Copyright)
     static let meta = Font.system(size: 13, weight: .regular)
     static let badgeFont = Font.system(size: 12, weight: .semibold)
+    /// Primär-Button ~17–18 Semibold
+    static let button = Font.system(size: 17, weight: .semibold)
+    /// Sekundär-/Textbutton ~16–17 Medium
+    static let buttonSecondary = Font.system(size: 16.5, weight: .medium)
+    /// Segment ~15–16 Medium
+    static let segment = Font.system(size: 15.5, weight: .medium)
+    /// Form-Label
+    static let fieldLabel = Font.system(size: 14.5, weight: .medium)
+    /// Form-Wert
+    static let fieldValue = Font.system(size: 16.5, weight: .regular)
+
+    // MARK: - Spacing
+
+    enum Space {
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 12
+        static let lg: CGFloat = 16
+        static let xl: CGFloat = 20
+        static let xxl: CGFloat = 24
+        static let section: CGFloat = 32
+        static let hero: CGFloat = 40
+    }
+
+    // MARK: - Radius
+
+    enum Radius {
+        static let small: CGFloat = 12
+        static let medium: CGFloat = 18
+        static let large: CGFloat = 22
+        static let button: CGFloat = 26
+        static let pill: CGFloat = 999
+    }
+
+    // MARK: - Motion
+
+    enum Motion {
+        static let drawer = Animation.easeInOut(duration: 0.30)
+        static let standard = Animation.easeInOut(duration: 0.22)
+    }
+
+    // MARK: - Verdict / Fact
 
     static func verdict(_ level: VerdictLevel) -> Color {
         switch level {
@@ -36,11 +111,10 @@ enum Theme {
         case .regelkonform: return accent
         case .abweichend: return warn
         case .erheblichAbweichend: return danger
-        case .nichtFeststellbar: return muted
+        case .nichtFeststellbar: return textMuted
         }
     }
 
-    /// Kurzes Badge-Label für die Prüfungsübersicht.
     static func verdictBadgeTitle(_ level: VerdictLevel) -> String {
         switch level {
         case .stock: return "Serienzustand"
@@ -55,9 +129,9 @@ enum Theme {
         static let bg = UIColor(red: 0.071, green: 0.090, blue: 0.110, alpha: 1)
         static let card = UIColor(red: 0.12, green: 0.145, blue: 0.175, alpha: 1)
         static let accent = UIColor(red: 0.42, green: 0.86, blue: 0.76, alpha: 1)
-        static let muted = UIColor.white.withAlphaComponent(0.55)
+        static let muted = UIColor(red: 0.561, green: 0.588, blue: 0.612, alpha: 0.85)
         static let line = UIColor.white.withAlphaComponent(0.12)
-        static let text = UIColor.white
+        static let text = UIColor(red: 0.961, green: 0.965, blue: 0.969, alpha: 1)
         static let danger = UIColor(red: 0.95, green: 0.42, blue: 0.40, alpha: 1)
         static let warn = UIColor(red: 0.98, green: 0.78, blue: 0.28, alpha: 1)
 
@@ -81,26 +155,58 @@ enum Theme {
     }
 }
 
+// MARK: - Shared chrome
+
+struct PageTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(Theme.pageTitle)
+            .foregroundStyle(Theme.textPrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+struct SectionHeader: View {
+    let title: String
+    var systemImage: String? = nil
+    var body: some View {
+        HStack(spacing: Theme.Space.sm) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+            }
+            Text(title)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
 extension View {
     func scootCard() -> some View {
         self
-            .padding(16)
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.vertical, Theme.Space.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Theme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous)
+                    .stroke(Theme.border, lineWidth: 1)
             )
     }
 
     func scootField() -> some View {
         self
-            .padding(.horizontal, 12)
+            .padding(.horizontal, Theme.Space.md)
             .padding(.vertical, 10)
-            .background(Color.white.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .foregroundStyle(.white)
-            .font(.body)
+            .background(Theme.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+            .foregroundStyle(Theme.textPrimary)
+            .font(Theme.fieldValue)
     }
 }

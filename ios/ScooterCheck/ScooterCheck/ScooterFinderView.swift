@@ -36,12 +36,11 @@ struct ScooterFinderView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Scooter finden")
-                        .font(Theme.pageTitle)
-                        .foregroundStyle(.white)
+                    PageTitle(text: "Scooter finden")
                     Text("Wähle einen Scooter aus der Gerätesuche. Anschließend schätzt ScooterCheck die bessere Signalrichtung anhand deiner Bewegung.")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.secondaryText)
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textBody)
+                        .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -50,7 +49,7 @@ struct ScooterFinderView: View {
                         ble.phase == .scanning ? "Gerätesuche aktiv" : "Gerätesuche pausiert",
                         systemImage: "dot.radiowaves.left.and.right"
                     )
-                    .font(.caption.weight(.semibold))
+                    .font(Theme.secondary.weight(.medium))
                     .foregroundStyle(Theme.accent)
                     Spacer()
                     Button {
@@ -186,8 +185,8 @@ struct ScooterFinderView: View {
 
                     VStack(spacing: 8) {
                         Text(engine.headline)
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(.white)
+                            .font(Theme.sectionTitle)
+                            .foregroundStyle(Theme.textPrimary)
                             .multilineTextAlignment(.center)
                         Text(engine.subtitle)
                             .font(.subheadline)
@@ -249,7 +248,7 @@ struct ScooterFinderView: View {
                 .fill(Theme.accent.opacity(0.18))
                 .frame(width: 72, height: 72)
             Image(systemName: "wave.3.right")
-                .font(.title.weight(.bold))
+                .font(Theme.sectionTitle)
                 .foregroundStyle(Theme.accent)
         }
         .accessibilityLabel("Sehr nah")

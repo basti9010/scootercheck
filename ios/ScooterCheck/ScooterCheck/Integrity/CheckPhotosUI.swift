@@ -70,22 +70,23 @@ struct CheckPhotosSection: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Bilder")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .font(Theme.sectionTitle)
+                    .foregroundStyle(Theme.textPrimary)
                 Spacer()
                 Button {
                     showAddMenu = true
                 } label: {
                     Label("Hinzufügen", systemImage: "plus")
-                        .font(.caption.weight(.semibold))
+                        .font(Theme.buttonSecondary)
                         .foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(.plain)
             }
 
             Text("Fotos helfen, individualisierte Scooter in der Übersicht wiederzuerkennen. Das Titelbild erscheint in der Prüfliste.")
-                .font(.caption)
-                .foregroundStyle(Theme.muted)
+                .font(Theme.secondary)
+                .foregroundStyle(Theme.textSecondary)
+                .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let entry, !entry.photoIds.isEmpty {

@@ -8,6 +8,8 @@ struct ContentView: View {
     @State private var result: IntegrityResult?
     @State private var session: CheckSession?
     @State private var showMenu = false
+    /// 0 = Wordmark mittig, 1 = Wordmark im Drawer links (gekoppelt an Menü).
+    @State private var menuProgress: CGFloat = 0
     @State private var showFAQ = false
     @State private var showPrivacy = false
     @State private var showShare = false
@@ -178,35 +180,23 @@ struct ContentView: View {
                                 .foregroundStyle(Theme.accent)
                         }
                         .accessibilityLabel("Prüfbericht schließen")
-                    } else if !showMenu {
+                    } else if menuProgress < 0.5 {
                         MenuGlyphButton {
-                            withAnimation(.easeOut(duration: 0.22)) { showMenu = true }
+                            setMenuOpen(true)
                         }
-                        .transition(.opacity)
+                        .opacity(1 - Double(menuProgress) * 2)
+                        .allowsHitTesting(menuProgress < 0.2)
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    if screen == .overview {
-                        Text(historyShelf == .archive ? "Archiv" : "Prüfungen")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    } else if screen == .result {
-                        Text("Prüfbericht")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    } else if screen == .find {
-                        Text("Scooter finden")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                    } else {
-                        // Startlanding + Gerätesuche: mittig nur Wordmark, kein App-Icon.
-                        Wordmark(size: .headline)
-                    }
+                    // Wordmark schwebt als Overlay und gleitet in den Drawer — hier nur Platzhalter.
+                    Color.clear.frame(width: 1, height: 1)
                 }
             }
-            .animation(.easeOut(duration: 0.22), value: showMenu)
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .overlay { sideMenuOverlay }
+            .overlay(alignment: .top) { floatingBrandWordmark }
+            .animation(Theme.Motion.drawer, value: menuProgress)
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
             .sheet(isPresented: $showProfileConfirm, onDismiss: {
                 if !busy { pendingDevice = nil }
@@ -285,11 +275,11 @@ struct ContentView: View {
             VStack(spacing: 14) {
                 VStack(spacing: 6) {
                     Text("Kein Scooter verbunden")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
+                        .font(Theme.sectionTitle)
+                        .foregroundStyle(Theme.textPrimary)
                     Text(ble.statusMessage.isEmpty ? "Bereit zum Scan" : ble.statusMessage)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.secondaryText)
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
                 }
 
@@ -320,17 +310,20 @@ struct ContentView: View {
     }
 
     private var devicesSearchHeader: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            if ble.phase == .scanning {
-                HStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    Text("Suche aktiv")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                    RotatingSonarIcon(size: 22, isScanning: true)
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
+            HStack(alignment: .firstTextBaseline) {
+                PageTitle(text: "Geräte")
+                Spacer(minLength: Theme.Space.sm)
+                if ble.phase == .scanning {
+                    HStack(spacing: Theme.Space.sm) {
+                        Text("Suche aktiv")
+                            .font(Theme.buttonSecondary)
+                            .foregroundStyle(Theme.accent)
+                        RotatingSonarIcon(size: 20, isScanning: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Suche aktiv")
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Suche aktiv")
             }
 
             Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
@@ -338,6 +331,7 @@ struct ContentView: View {
                 Text("Alle BLE").tag(false)
             }
             .pickerStyle(.segmented)
+            .font(Theme.segment)
         }
     }
 
@@ -358,8 +352,8 @@ struct ContentView: View {
                      : (count == 1
                         ? "1 Gerät in Reichweite"
                         : "\(count) Geräte in Reichweite"))
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Theme.secondaryText)
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -587,8 +581,8 @@ struct ContentView: View {
 
             subjectAssignmentCard
 
-            if let photosEntryId = (session?.id ?? report.sessionId),
-               history.entries.contains(where: { $0.id == photosEntryId }) {
+            let photosEntryId = session?.id ?? report.sessionId
+            if history.entries.contains(where: { $0.id == photosEntryId }) {
                 CheckPhotosSection(entryId: photosEntryId)
             }
 
@@ -1578,14 +1572,34 @@ struct ContentView: View {
 
     // MARK: - Side menu (über dem aktuellen Bildschirm)
 
+    private func setMenuOpen(_ open: Bool) {
+        withAnimation(Theme.Motion.drawer) {
+            showMenu = open
+            menuProgress = open ? 1 : 0
+        }
+    }
+
+    /// Ein Wordmark: gleitet von der Nav-Mitte in den Drawer (kein Duplikat).
+    private var floatingBrandWordmark: some View {
+        GeometryReader { geo in
+            let safeTop = geo.safeAreaInsets.top
+            let markHalf: CGFloat = 78
+            let closedX = geo.size.width * 0.5
+            let openX = Theme.Space.xl + markHalf
+            let x = closedX + (openX - closedX) * menuProgress
+            let y = safeTop + 22
+            Wordmark()
+                .position(x: x, y: y)
+        }
+        .allowsHitTesting(false)
+    }
+
     private var sideMenuOverlay: some View {
         ZStack(alignment: .leading) {
             if showMenu {
                 Color.black.opacity(0.55)
                     .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
-                    }
+                    .onTapGesture { setMenuOpen(false) }
                     .transition(.opacity)
 
                 sideMenuPanel
@@ -1596,34 +1610,34 @@ struct ContentView: View {
                     .zIndex(1)
             }
         }
-        .animation(.easeOut(duration: 0.22), value: showMenu)
         .allowsHitTesting(showMenu)
     }
 
     private var sideMenuPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Wordmark(size: .headline)
+                // Wordmark kommt als schwebendes Overlay in den Drawer — hier nur Platz.
+                Color.clear.frame(height: 28)
                 Spacer()
                 Button {
-                    withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+                    setMenuOpen(false)
                 } label: {
                     Image(systemName: "xmark")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(Theme.muted)
-                        .padding(8)
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Menü schließen")
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.top, Theme.Space.lg)
+            .padding(.bottom, Theme.Space.md)
 
             Text("Navigation")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.muted)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+                .padding(.horizontal, Theme.Space.xl)
+                .padding(.bottom, Theme.Space.sm)
 
             VStack(spacing: 4) {
                 sideNavRow(
@@ -1705,12 +1719,12 @@ struct ContentView: View {
     }
 
     private func openFAQFromMenu() {
-        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        setMenuOpen(false)
         showFAQ = true
     }
 
     private func openPrivacyFromMenu() {
-        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        setMenuOpen(false)
         showPrivacy = true
     }
 
@@ -1721,29 +1735,29 @@ struct ContentView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: Theme.Space.md) {
                 Image(systemName: systemImage)
-                    .font(.body.weight(.semibold))
+                    .font(.body.weight(.medium))
                     .frame(width: 22)
                 Text(verbatim: title)
-                    .font(.body.weight(selected ? .semibold : .regular))
+                    .font(selected ? Theme.buttonSecondary : Theme.cardTitle)
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark")
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                 }
             }
-            .foregroundStyle(selected ? Theme.ink : .white)
+            .foregroundStyle(selected ? Theme.ink : Theme.textTitle)
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(selected ? Theme.accent : Color.white.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.vertical, Theme.Space.md)
+            .background(selected ? Theme.accent : Theme.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 
     private func navigateFromMenu(to target: AppScreen) {
-        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        setMenuOpen(false)
         switch target {
         case .home:
             if screen == .result { persistCurrentSession() }
@@ -1828,17 +1842,15 @@ struct ContentView: View {
     }
 
     private var historyOverviewHeader: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(historyShelfTitle)
-                    .font(Theme.pageTitle)
-                    .foregroundStyle(.white)
-                Spacer(minLength: 8)
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.md) {
+                PageTitle(text: historyShelfTitle)
+                Spacer(minLength: Theme.Space.sm)
                 Button {
                     toggleHistorySelecting()
                 } label: {
                     Text(historySelecting ? "Fertig" : "Auswählen")
-                        .font(.body.weight(.semibold))
+                        .font(Theme.buttonSecondary)
                         .foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(.plain)
@@ -1851,6 +1863,7 @@ struct ContentView: View {
                 Text("Archiv (\(history.archivedCount))").tag(HistoryShelf.archive)
             }
             .pickerStyle(.segmented)
+            .font(Theme.segment)
             .onChange(of: historyShelf) { _ in
                 selectedHistoryIds = []
                 historySelecting = false
@@ -1863,8 +1876,8 @@ struct ContentView: View {
                             ? "Keine ausgewählt"
                             : "\(selectedHistoryIds.count) ausgewählt"
                     )
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.secondaryText)
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.textSecondary)
                     Spacer()
                     if !visibleHistoryEntries.isEmpty {
                         Button(
@@ -1878,15 +1891,15 @@ struct ContentView: View {
                                 selectedHistoryIds = Set(visibleHistoryEntries.map(\.id))
                             }
                         }
-                        .font(.subheadline.weight(.semibold))
+                        .font(Theme.buttonSecondary)
                         .foregroundStyle(Theme.accent)
                         .buttonStyle(.plain)
                     }
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.horizontal, Theme.Space.xl)
+        .padding(.top, Theme.Space.sm)
     }
 
     private var historyEmptyState: some View {
@@ -1971,47 +1984,47 @@ struct ContentView: View {
 
                 CheckCoverThumbnail(entry: entry, size: 64)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    HStack(alignment: .top, spacing: Theme.Space.sm) {
                         Text(entry.protocolNumber)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+                            .font(Theme.cardTitle)
+                            .foregroundStyle(Theme.textTitle)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
                         Spacer(minLength: 4)
                         if let verdict = entry.verdict {
                             VerdictBadge(verdict: verdict)
                         }
                     }
                     Text("\(entry.profile.family.title) · \(Int(entry.profile.ratedMaxKmh)) km/h")
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.secondaryText)
+                        .font(Theme.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                     if let serial = entry.serialDisplay, !serial.isEmpty {
                         Text(serial)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(Theme.muted)
+                            .font(Theme.caption.monospaced())
+                            .foregroundStyle(Theme.textMuted)
                             .lineLimit(1)
                     }
                     if let subject = entry.subjectSummary ?? entry.knownLabel, !subject.isEmpty {
                         Text(subject)
-                            .font(.caption.weight(.medium))
+                            .font(Theme.caption.weight(.medium))
                             .foregroundStyle(Theme.accent)
                             .lineLimit(1)
                     }
                     Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
                 }
             }
-            .padding(14)
+            .padding(Theme.Space.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(selected && historySelecting ? Theme.accent.opacity(0.10) : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
                     .stroke(
-                        selected && historySelecting ? Theme.accent.opacity(0.55) : Theme.line,
+                        selected && historySelecting ? Theme.accent.opacity(0.55) : Theme.border,
                         lineWidth: 1
                     )
             )

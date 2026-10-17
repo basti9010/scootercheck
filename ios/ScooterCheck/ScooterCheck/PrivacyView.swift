@@ -14,25 +14,29 @@ struct PrivacyView: View {
             ZStack {
                 Theme.bg.ignoresSafeArea()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                        PageTitle(text: "Datenschutz")
                         hero
                         atAGlanceCard
                         topicList
                         AppCopyrightFooter()
                             .frame(maxWidth: .infinity)
-                            .padding(.top, 8)
+                            .padding(.top, Theme.Space.sm)
                             .padding(.bottom, 28)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.sm)
                 }
             }
-            .navigationTitle("Datenschutz")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Wordmark()
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Schließen") { dismiss() }
+                        .font(Theme.buttonSecondary)
                         .foregroundStyle(Theme.accent)
                 }
             }
@@ -41,46 +45,40 @@ struct PrivacyView: View {
     }
 
     private var hero: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Theme.Space.md) {
             Image(systemName: "lock.shield.fill")
-                .font(.system(size: 36, weight: .semibold))
+                .font(.system(size: 34, weight: .semibold))
                 .foregroundStyle(Theme.accent)
                 .accessibilityHidden(true)
             Text(PrivacyContent.hubSubtitle)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.white)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
             Text(PrivacyContent.documentVersionLabel)
-                .font(.caption)
-                .foregroundStyle(Theme.muted)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Space.sm)
     }
 
     private var atAGlanceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(PrivacyContent.atAGlanceTitle)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
             Text("Prüfungsdaten werden lokal auf diesem Gerät gespeichert.")
-                .font(.subheadline.weight(.semibold))
+                .font(Theme.buttonSecondary)
                 .foregroundStyle(Theme.accent)
                 .fixedSize(horizontal: false, vertical: true)
             Text(PrivacyContent.atAGlanceBody)
-                .font(.footnote)
-                .foregroundStyle(Theme.secondaryText)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textBody)
+                .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
-        )
+        .scootCard()
     }
 
     private var topicList: some View {
@@ -95,8 +93,8 @@ struct PrivacyView: View {
                             .foregroundStyle(Theme.accent)
                             .frame(width: 28)
                         Text(topic.title)
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(.white)
+                            .font(Theme.cardTitle)
+                            .foregroundStyle(Theme.textTitle)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
@@ -132,25 +130,19 @@ struct PrivacyTopicView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     ForEach(PrivacyContent.sections(for: topic)) { section in
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
                             Text(section.title)
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .font(Theme.sectionTitle)
+                                .foregroundStyle(Theme.textPrimary)
                             ForEach(Array(section.paragraphs.enumerated()), id: \.offset) { _, paragraph in
                                 Text(paragraph)
-                                    .font(.subheadline)
-                                    .foregroundStyle(Theme.secondaryText)
+                                    .font(Theme.body)
+                                    .foregroundStyle(Theme.textBody)
+                                    .lineSpacing(5)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Theme.line, lineWidth: 1)
-                        )
+                        .scootCard()
                     }
 
                     if topic == .permissions {
@@ -191,11 +183,12 @@ struct PrivacyTopicView: View {
     private var privacyRequestCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Datenschutzanfrage stellen")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
             Text("In dieser App-Version ist keine Datenschutz-E-Mail hinterlegt. Bitte nutze die Kontaktmöglichkeit des Anbieters im Apple App Store. Es wird keine Anfrage automatisch versendet.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryText)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textBody)
+                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             if let storeURL = URL(string: "https://apps.apple.com/search?term=ScooterCheck") {
                 Link(destination: storeURL) {
@@ -231,8 +224,8 @@ private struct PrivacyPermissionsPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Aktueller Status")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
 
             statusRow(title: "Bluetooth", value: bluetoothLabel)
             statusRow(title: "Kamera", value: cameraLabel)
@@ -246,35 +239,28 @@ private struct PrivacyPermissionsPanel: View {
                 }
             } label: {
                 Label("In Einstellungen öffnen", systemImage: "gear")
-                    .font(.subheadline.weight(.semibold))
+                    .font(Theme.buttonSecondary)
                     .foregroundStyle(Theme.ink)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, Theme.Space.md)
                     .background(Theme.accent)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
-            .padding(.top, 4)
+            .padding(.top, Theme.Space.xs)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
-        )
+        .scootCard()
         .onAppear(perform: refresh)
     }
 
     private func statusRow(title: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.white)
+                .font(Theme.cardTitle)
+                .foregroundStyle(Theme.textTitle)
             Spacer()
             Text(value)
-                .font(.caption.weight(.semibold))
+                .font(Theme.caption.weight(.medium))
                 .foregroundStyle(Theme.accent)
                 .multilineTextAlignment(.trailing)
         }

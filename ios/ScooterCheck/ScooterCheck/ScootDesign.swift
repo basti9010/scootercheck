@@ -3,13 +3,14 @@ import SwiftUI
 // MARK: - Branding
 
 struct Wordmark: View {
-    var size: Font = .title
+    /// Optional override; default = App-Header Semibold ~23 pt.
+    var size: Font = Theme.brandWordmark
     var body: some View {
         HStack(spacing: 0) {
             Text("Scooter").foregroundStyle(Theme.accent)
-            Text("Check").foregroundStyle(.white)
+            Text("Check").foregroundStyle(Theme.textPrimary)
         }
-        .font(size.weight(.bold))
+        .font(size)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
         .accessibilityElement(children: .ignore)
@@ -24,11 +25,11 @@ struct MenuGlyphButton: View {
         Button(action: action) {
             Image(systemName: "line.3.horizontal")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 36, height: 36)
-                .background(Color.white.opacity(0.08))
+                .foregroundStyle(Theme.textPrimary)
+                .frame(width: 44, height: 44)
+                .background(Theme.surfaceSecondary)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Theme.line, lineWidth: 1))
+                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Menü öffnen")
@@ -54,13 +55,13 @@ struct ScootPrimaryButton: View {
                         .font(.body.weight(.semibold))
                 }
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(Theme.button)
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: 54)
             .foregroundStyle(Theme.ink)
             .background(Theme.accent.opacity(enabled ? 1 : 0.35))
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
@@ -78,26 +79,26 @@ struct ScootSecondaryButton: View {
             HStack(spacing: 10) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.body.weight(.semibold))
+                        .font(.body.weight(.medium))
                 }
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(Theme.buttonSecondary)
                 Spacer(minLength: 0)
                 if showsChevron {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.muted)
+                        .foregroundStyle(Theme.textMuted)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.textPrimary)
             .padding(.horizontal, 18)
             .frame(maxWidth: .infinity)
             .frame(minHeight: 52)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Theme.line.opacity(1.4), lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                    .stroke(Theme.border, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -114,18 +115,18 @@ struct ScootOutlineButton: View {
             HStack(spacing: 10) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.body.weight(.semibold))
+                        .font(.body.weight(.medium))
                 }
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(Theme.buttonSecondary)
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: 52)
             .foregroundStyle(Theme.accent)
             .background(Theme.bg.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
                     .stroke(Theme.accent.opacity(0.85), lineWidth: 1.5)
             )
         }
@@ -153,10 +154,10 @@ struct ScootActionPrimaryButton: View {
                         .font(.body.weight(.semibold))
                 }
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(Theme.button)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                    .font(.caption.weight(.semibold))
                     .opacity(0.7)
             }
             .foregroundStyle(Theme.ink)
@@ -164,7 +165,7 @@ struct ScootActionPrimaryButton: View {
             .frame(maxWidth: .infinity)
             .frame(minHeight: 54)
             .background(Theme.accent.opacity(enabled && !busy ? 1 : 0.35))
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
@@ -186,29 +187,29 @@ struct ScootActionFeatureCard: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.accent)
                     .frame(width: 28)
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text(title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .font(Theme.cardTitle)
+                        .foregroundStyle(Theme.textTitle)
                         .multilineTextAlignment(.leading)
                     Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(Theme.secondaryText)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.accent)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Theme.Space.lg)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.bg.opacity(0.55))
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
                     .stroke(Theme.accent.opacity(0.9), lineWidth: 1.5)
             )
         }
@@ -656,8 +657,8 @@ struct AppCopyrightFooter: View {
 
     var body: some View {
         Text(verbatim: line)
-            .font(.caption2)
-            .foregroundStyle(Theme.muted)
+            .font(Theme.caption)
+            .foregroundStyle(Theme.textMuted)
             .accessibilityLabel(line)
     }
 }
