@@ -809,6 +809,7 @@ struct BLESearchGrid: Equatable, Sendable {
 
 @MainActor
 final class BLEMultiDeviceMonitor: ObservableObject {
+    static let minDevices = 1
     static let maxDevices = 5
 
     @Published private(set) var observed: [ObservedBLEDevice] = []

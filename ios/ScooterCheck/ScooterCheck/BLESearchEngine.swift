@@ -4,6 +4,7 @@ import CoreMotion
 import Combine
 import UIKit
 import AudioToolbox
+import MapKit
 
 /// Orchestriert BLE-RSSI, Position, Heatmap und Analyse — ohne Richtungs-Pfeil als BLE-Kompass.
 @MainActor
@@ -24,6 +25,21 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var measurementCount: Int = 0
     @Published var hapticsEnabled = false
     @Published var audioEnabled = false
+    /// Kamera/ARKit für Indoor-Abstände und Drehungen (wie WLAN-Analyzer).
+    @Published var cameraTrackingEnabled = true
+    @Published private(set) var cameraTrackingStatus: String = "Kamera aus"
+    /// Grünes Kamerasymbol nur bei stabilem ARKit-Tracking; sonst rot (z. B. zu dunkel).
+    @Published private(set) var cameraTrackingHealthy = false
+
+    // Pfad / Ansicht
+    @Published var surfaceMode: BLESearchSurfaceMode = .relative
+    @Published private(set) var pathSnapshot = BLESearchPathSnapshot.empty
+    @Published private(set) var mapOverlay = BLEMapOverlayModel.empty
+    @Published private(set) var pathLengthText: String = "0.00 m"
+    @Published private(set) var breadcrumbs: [BLEBreadcrumb] = []
+    @Published private(set) var surfaceHint: String = "Relative Suchfläche – keine exakte Ortung"
+
+    let visualTracker = IndoorVisualTracker()
 
     // Analyse / erweiterte Suche
     @Published private(set) var timeline = BLESearchTimeline()
@@ -40,7 +56,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private(set) var session: BLESearchSession?
 
     private let locationManager = CLLocationManager()
-    private let pedometer = CMPedometer()
+    private let indoorTracker = IndoorMotionTracker()
     private var processor = BLESignalProcessor()
     private var movementAnalyzer = BLEMovementAnalyzer()
     private var directionService = BLEDirectionTrendService()
@@ -63,16 +79,20 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private var originLocation: CLLocation?
     private var relativeX: Double = 0
     private var relativeY: Double = 0
-    private var stepCount = 0
     private var lastHapticAt: Date = .distantPast
     private var lastAudioAt: Date = .distantPast
     private var heatmapDirty = true
+    private var pathDirty = true
     private var lastFingerprintCompareAt: Date = .distantPast
     private var lastStrongerEventAt: Date = .distantPast
     private var lastCentroid: (x: Double, y: Double)?
     private var lastAdvSignature: String?
     private var lastLostFeedbackAt: Date = .distantPast
     private var lastRefoundFeedbackAt: Date = .distantPast
+    private var followViewport = true
+    private var lastPersistedRelative: (x: Double, y: Double)?
+    private var userPickedSurfaceMode = false
+    private var didAutoPickSurfaceMode = false
 
     func start(device: ScannedDevice, ble: BleClient) {
         stop(discardSession: true)
@@ -90,22 +110,34 @@ final class BLESearchEngine: NSObject, ObservableObject {
         processor.reset()
         movementAnalyzer.reset()
         directionService.reset()
+        indoorTracker.reset()
+        visualTracker.stop()
         timeline.reset()
         signalHistory.reset()
         movementHint = .inactive
         directionTrend = .none
         searchGrid = .empty
+        pathSnapshot = .empty
+        mapOverlay = .empty
+        pathLengthText = "0.00 m"
+        breadcrumbs = []
         fingerprintMatch = nil
         refoundBanner = nil
         lostDurationText = nil
         isActive = true
         searchMode = .coarse
+        surfaceMode = .relative
+        followViewport = true
+        cameraTrackingEnabled = true
+        cameraTrackingStatus = "Kamera aus"
+        cameraTrackingHealthy = false
         heatmap = .empty
         strongestRssi = nil
         strongestLabel = "—"
         measurementCount = 0
         signalStatus = "BLE-Suche aktiv"
         positionHint = nil
+        surfaceHint = "Relative Suchfläche – Kamera verbessert Abstände indoor"
         relativeX = 0
         relativeY = 0
         originLocation = nil
@@ -119,7 +151,11 @@ final class BLESearchEngine: NSObject, ObservableObject {
         sawDeviceOnce = false
         startedAt = Date()
         heatmapDirty = true
+        pathDirty = true
         lastCentroid = nil
+        lastPersistedRelative = nil
+        userPickedSurfaceMode = false
+        didAutoPickSurfaceMode = false
         lastAdvSignature = advSignature(device)
         lastFingerprintCompareAt = .distantPast
 
@@ -129,9 +165,13 @@ final class BLESearchEngine: NSObject, ObservableObject {
             description: deviceName,
             minInterval: 0
         )
-        recordEvent(type: .coarseMode, title: "Grobsuche aktiviert", minInterval: 0)
+        recordEvent(type: .coarseMode, title: "Suche aktiviert", minInterval: 0)
 
         startSensors()
+        indoorTracker.start()
+        if cameraTrackingEnabled {
+            startCameraTracking()
+        }
         bleCancellable = ble.$devices
             .receive(on: RunLoop.main)
             .sink { [weak self] devices in
@@ -140,7 +180,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         if let match = ble.devices.first(where: { $0.id == device.id }) {
             handleSighting(match, exactId: true)
         }
-        tickTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        tickTimer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
     }
@@ -155,6 +195,9 @@ final class BLESearchEngine: NSObject, ObservableObject {
         bleCancellable?.cancel()
         bleCancellable = nil
         stopSensors()
+        indoorTracker.stop()
+        visualTracker.stop()
+        syncCameraTrackingStatus()
         isActive = false
         if discardSession {
             session = nil
@@ -167,18 +210,101 @@ final class BLESearchEngine: NSObject, ObservableObject {
         ble = nil
     }
 
+    /// Früher Grob-/Feinsuche — UI hat nur noch eine Heatmap-Suche (Optik der Grobsuche).
     func setMode(_ mode: BLESearchModeKind) {
-        guard searchMode != mode else { return }
-        searchMode = mode
+        searchMode = .coarse
         if var s = session {
-            s.searchMode = mode.rawValue
+            s.searchMode = BLESearchModeKind.coarse.rawValue
             session = s
         }
-        recordEvent(
-            type: mode == .fine ? .fineMode : .coarseMode,
-            title: mode == .fine ? "Feinsuche aktiviert" : "Grobsuche aktiviert",
-            minInterval: 0
-        )
+    }
+
+    func setSurfaceMode(_ mode: BLESearchSurfaceMode) {
+        userPickedSurfaceMode = true
+        applySurfaceMode(mode)
+    }
+
+    func setCameraTrackingEnabled(_ enabled: Bool) {
+        cameraTrackingEnabled = enabled
+        if enabled {
+            startCameraTracking()
+        } else {
+            visualTracker.stop()
+            indoorTracker.setVisualPrimary(false)
+            syncCameraTrackingStatus()
+            surfaceHint = surfaceMode == .relative
+                ? "Relative Suchfläche – keine exakte Ortung"
+                : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
+        }
+    }
+
+    private func syncCameraTrackingStatus() {
+        cameraTrackingStatus = visualTracker.statusText
+        cameraTrackingHealthy = cameraTrackingEnabled && visualTracker.state.isHealthy
+    }
+
+    private func startCameraTracking() {
+        visualTracker.onPoseUpdate = { [weak self] east, north, heading in
+            guard let self, self.isActive else { return }
+            let authoritative = self.visualTracker.state == .tracking
+            self.indoorTracker.ingestVisualPose(
+                east: east,
+                north: north,
+                headingDegrees: heading,
+                authoritative: authoritative
+            )
+            self.indoorTracker.setVisualPrimary(authoritative || self.visualTracker.state == .limited)
+            self.syncCameraTrackingStatus()
+            self.pathDirty = true
+            self.heatmapDirty = true
+            if authoritative {
+                self.surfaceHint = "Kamera-Tracking aktiv – relative Meter, keine exakte Ortung"
+            } else if self.visualTracker.state == .limited {
+                self.surfaceHint = "Kamera eingeschränkt – Sensoren helfen weiter"
+            }
+        }
+        visualTracker.start()
+        syncCameraTrackingStatus()
+    }
+
+    private func applySurfaceMode(_ mode: BLESearchSurfaceMode) {
+        surfaceMode = mode
+        surfaceHint = mode == .relative
+            ? "Relative Suchfläche – keine exakte Ortung"
+            : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
+        if var s = session {
+            s.mapType = mode == .map ? "appleMapOverlay" : "relativeHeatmap"
+            session = s
+        }
+        pathDirty = true
+        heatmapDirty = true
+        rebuildPathAndHeatmap(force: true)
+    }
+
+    func recenterViewport() {
+        followViewport = true
+        if let cur = pathSnapshot.current {
+            pathSnapshot = BLESearchPathSnapshot(
+                points: pathSnapshot.points,
+                smoothedPolyline: pathSnapshot.smoothedPolyline,
+                pathLengthMeters: pathSnapshot.pathLengthMeters,
+                viewport: SearchViewportController.recenter(on: (cur.x, cur.y), span: pathSnapshot.viewport.spanMeters),
+                current: pathSnapshot.current
+            )
+            heatmapDirty = true
+            rebuildPathAndHeatmap(force: true)
+        }
+        if surfaceMode == .map {
+            mapOverlay = OutdoorMapTracker.model(
+                origin: originLocation,
+                path: pathSnapshot.points,
+                smoothedPolyline: pathSnapshot.smoothedPolyline,
+                measurements: session?.measurements ?? [],
+                lastGPS: lastLocation,
+                previousRegion: nil,
+                softFollow: false
+            )
+        }
     }
 
     func finalizeAndOptionallySave(save: Bool) {
@@ -211,20 +337,11 @@ final class BLESearchEngine: NSObject, ObservableObject {
         }
         locationManager.startUpdatingLocation()
         locationManager.startUpdatingHeading()
-        if CMPedometer.isStepCountingAvailable() {
-            pedometer.startUpdates(from: Date()) { [weak self] data, _ in
-                guard let data else { return }
-                Task { @MainActor in
-                    self?.stepCount = data.numberOfSteps.intValue
-                }
-            }
-        }
     }
 
     private func stopSensors() {
         locationManager.stopUpdatingLocation()
         locationManager.stopUpdatingHeading()
-        pedometer.stopUpdates()
     }
 
     // MARK: - Ingest
@@ -405,7 +522,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
                     minInterval: 6
                 )
             }
-            updateRelativePosition()
+            syncRelativeFromTracker()
             directionService.ingest(date: now, x: relativeX, y: relativeY, rssi: smooth)
             directionTrend = directionService.evaluate(at: now)
             maybePersistMeasurement(force: false)
@@ -416,13 +533,39 @@ final class BLESearchEngine: NSObject, ObservableObject {
 
     private func tick() {
         guard isActive else { return }
+        syncRelativeFromTracker()
         updateSignalState()
         updateDuration()
         maybePersistMeasurement(force: false)
-        if heatmapDirty {
-            rebuildHeatmap()
-        }
+        pathDirty = true
+        rebuildPathAndHeatmap(force: false)
         evaluateMovement()
+    }
+
+    private func syncRelativeFromTracker() {
+        let nx = indoorTracker.currentX
+        let ny = indoorTracker.currentY
+        if hypot(nx - relativeX, ny - relativeY) >= 0.05 {
+            relativeX = nx
+            relativeY = ny
+            pathDirty = true
+            heatmapDirty = true
+        }
+        if let heading = lastHeading {
+            applyCompassHeading(heading)
+        }
+    }
+
+    private func applyCompassHeading(_ heading: CLHeading) {
+        let h = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
+        guard h >= 0 else { return }
+        let accuracy = heading.headingAccuracy
+        // Gyro führt Indoor; Kompass nur Initial + weiche Ankerung bei brauchbarer Genauigkeit
+        indoorTracker.ingestExternalHeading(
+            h,
+            fromCompass: accuracy >= 0 && accuracy <= BLEPathConfig.compassMaxAccuracyDegrees,
+            accuracy: accuracy
+        )
     }
 
     private func updateDuration() {
@@ -531,17 +674,21 @@ final class BLESearchEngine: NSObject, ObservableObject {
               let smooth = smoothedRssi,
               signalClass != .lost else { return }
         let now = Date()
-        let moved: Bool = {
+        syncRelativeFromTracker()
+        let gpsMoved: Bool = {
             guard let last = lastPersistedLocation, let cur = lastLocation else {
                 return lastLocation != nil
             }
             return cur.distance(from: last) >= BLESignalConfig.minMoveMeters
         }()
+        let relativeMoved: Bool = {
+            guard let last = lastPersistedRelative else { return true }
+            return hypot(relativeX - last.x, relativeY - last.y) >= BLESignalConfig.minMoveMeters
+        }()
         let timeOK = lastPersistedAt.map { now.timeIntervalSince($0) >= BLESignalConfig.minSampleInterval } ?? true
         let rssiOK = lastPersistedRssi.map { abs(smooth - $0) >= BLESignalConfig.minRssiChangeForSample } ?? true
-        guard force || (timeOK && (moved || rssiOK || lastPersistedAt == nil)) else { return }
+        guard force || (timeOK && (gpsMoved || relativeMoved || rssiOK || lastPersistedAt == nil)) else { return }
 
-        updateRelativePosition()
         let accuracy = lastLocation?.horizontalAccuracy
         let quality = BLEPositionQuality.from(accuracyMeters: accuracy)
         let m = BLEMeasurement(
@@ -553,7 +700,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
             relativeX: relativeX,
             relativeY: relativeY,
             accuracy: accuracy,
-            heading: lastHeading?.trueHeading ?? lastHeading?.magneticHeading,
+            heading: lastHeading?.trueHeading ?? lastHeading?.magneticHeading ?? indoorTracker.headingDegrees,
             motionConfidence: quality.weight,
             positionQuality: quality
         )
@@ -570,35 +717,51 @@ final class BLESearchEngine: NSObject, ObservableObject {
         measurementCount = s.measurements.count
         lastPersistedAt = now
         lastPersistedLocation = lastLocation
+        lastPersistedRelative = (relativeX, relativeY)
         lastPersistedRssi = smooth
         heatmapDirty = true
     }
 
-    private func updateRelativePosition() {
-        guard let loc = lastLocation else { return }
-        if originLocation == nil {
-            originLocation = loc
-            relativeX = 0
-            relativeY = 0
-            return
+    private func rebuildPathAndHeatmap(force: Bool) {
+        guard isActive else { return }
+        if pathDirty || force {
+            let snap = SearchPathReconstructor.snapshot(
+                from: indoorTracker.path,
+                previousViewport: followViewport ? pathSnapshot.viewport : nil,
+                followSoftly: followViewport
+            )
+            pathSnapshot = snap
+            // Kamera-Distanz > Pedometer > Polyline
+            let meters = max(
+                snap.pathLengthMeters,
+                indoorTracker.traveledDistanceMeters,
+                visualTracker.traveledMeters
+            )
+            pathLengthText = String(format: "%.2f m", meters)
+            syncCameraTrackingStatus()
+            pathDirty = false
+            heatmapDirty = true
         }
-        guard let origin = originLocation else { return }
-        let (e, n) = ScooterFinderMath.enuDeltaMeters(
-            lat0: origin.coordinate.latitude,
-            lon0: origin.coordinate.longitude,
-            latA: origin.coordinate.latitude,
-            lonA: origin.coordinate.longitude,
-            latB: loc.coordinate.latitude,
-            lonB: loc.coordinate.longitude
+        guard heatmapDirty || force, let s = session else { return }
+        heatmap = HeatmapPlacementEngine.build(
+            measurements: s.measurements,
+            viewport: pathSnapshot.viewport,
+            pathPolyline: pathSnapshot.smoothedPolyline
         )
-        relativeX = e
-        relativeY = n
-    }
-
-    private func rebuildHeatmap() {
-        guard let s = session else { return }
-        heatmap = BLEHeatmapProcessor.build(from: s.measurements)
+        breadcrumbs = s.measurements.compactMap { m in
+            guard let x = m.relativeX, let y = m.relativeY else { return nil }
+            return BLEBreadcrumb(x: x, y: y, rssi: m.smoothedRssi)
+        }
         searchGrid = BLESearchGrid.build(from: s.measurements, userArea: userSearchArea)
+        mapOverlay = OutdoorMapTracker.model(
+            origin: originLocation,
+            path: pathSnapshot.points,
+            smoothedPolyline: pathSnapshot.smoothedPolyline,
+            measurements: s.measurements,
+            lastGPS: lastLocation,
+            previousRegion: followViewport ? mapOverlay.region : nil,
+            softFollow: followViewport
+        )
         heatmapDirty = false
     }
 
@@ -659,12 +822,38 @@ extension BLESearchEngine: CLLocationManagerDelegate {
         guard let loc = locations.last else { return }
         Task { @MainActor in
             self.lastLocation = loc
+            if self.originLocation == nil, loc.horizontalAccuracy > 0, loc.horizontalAccuracy < 40 {
+                self.originLocation = loc
+            }
+            // Nur bei wirklich gutem Outdoor-GPS Karte vorschlagen (Indoor oft 10–25 m „ok“ aber unbrauchbar)
+            if !self.userPickedSurfaceMode,
+               !self.didAutoPickSurfaceMode,
+               loc.horizontalAccuracy > 0,
+               loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy {
+                self.didAutoPickSurfaceMode = true
+                self.applySurfaceMode(.map)
+            }
+            if let origin = self.originLocation,
+               loc.horizontalAccuracy > 0,
+               loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy {
+                let (e, n) = ScooterFinderMath.enuDeltaMeters(
+                    lat0: origin.coordinate.latitude,
+                    lon0: origin.coordinate.longitude,
+                    latA: origin.coordinate.latitude,
+                    lonA: origin.coordinate.longitude,
+                    latB: loc.coordinate.latitude,
+                    lonB: loc.coordinate.longitude
+                )
+                self.indoorTracker.ingestGPSDelta(east: e, north: n, accuracy: loc.horizontalAccuracy)
+                self.pathDirty = true
+            }
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         Task { @MainActor in
             self.lastHeading = newHeading
+            self.applyCompassHeading(newHeading)
         }
     }
 

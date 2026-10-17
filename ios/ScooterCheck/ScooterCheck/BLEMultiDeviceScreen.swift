@@ -146,7 +146,7 @@ struct BLEMultiDeviceScreen: View {
     }
 }
 
-/// Auswahl für Multi-Device-Modus (2–5 Geräte).
+/// Auswahl für Multi-Device-Modus (1–5 Geräte).
 struct BLEMultiDevicePicker: View {
     let devices: [ScannedDevice]
     @Binding var selectedIds: Set<UUID>
@@ -157,7 +157,7 @@ struct BLEMultiDevicePicker: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Wähle 2–\(BLEMultiDeviceMonitor.maxDevices) Geräte. Es erfolgt keine automatische Scooter-Speicherung.")
+                    Text("Wähle 1–\(BLEMultiDeviceMonitor.maxDevices) Geräte. Es erfolgt keine automatische Scooter-Speicherung.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .listRowBackground(Theme.bg)
@@ -196,7 +196,8 @@ struct BLEMultiDevicePicker: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Starten", action: onStart)
                         .foregroundStyle(Theme.accent)
-                        .disabled(selectedIds.count < 2 || selectedIds.count > BLEMultiDeviceMonitor.maxDevices)
+                        .disabled(selectedIds.count < BLEMultiDeviceMonitor.minDevices
+                                  || selectedIds.count > BLEMultiDeviceMonitor.maxDevices)
                 }
             }
             .preferredColorScheme(.dark)

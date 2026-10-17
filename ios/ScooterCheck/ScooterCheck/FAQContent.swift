@@ -217,9 +217,9 @@ private extension FAQCatalog {
                         "Während du dich bewegst, speichert die App geglättete Signalstärken mit Positionsbezug",
                         "Daraus entsteht eine Signal-Heatmap: untersuchte Bereiche färben sich nach relativer Stärke",
                         "Ungemessene Bereiche bleiben dunkel — das ist Absicht, keine „tote Zone“",
-                        "Feinsuche zeigt zusätzlich wärmer/kälter für die letzten Meter",
+                        "Signalstärke und Trend (wärmer / kälter) helfen bei der Annäherung",
                     ]),
-                    .paragraph("Es gibt keine exakte Meteranzeige und keinen Richtungs-Pfeil als Hauptversprechen. Dargestellt werden relative Signalstufen und eine Heatmap ohne künstliche Präzision."),
+                    .paragraph("Es gibt keinen Richtungs-Pfeil als Hauptversprechen. Dargestellt werden relative Signalstufen, ein Bewegungs-Pfad und eine Heatmap ohne künstliche Präzision."),
                 ],
                 keywords: ["rssi", "bluetooth", "ble", "signalstärke", "entfernung", "nähe", "heatmap", "wärmer", "bewegung"]
             ),

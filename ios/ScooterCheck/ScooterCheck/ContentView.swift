@@ -947,7 +947,8 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            if showsStartLanding || screen == .find {
+            // find / watchList: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
+            if showsStartLanding || screen == .find || screen == .watchList {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel

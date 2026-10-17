@@ -7,6 +7,7 @@ struct ScooterFinderView: View {
     @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
     @ObservedObject private var radar = BLERadarService.shared
     @State private var selected: ScannedDevice?
+    @State private var detailDevice: ScannedDevice?
     @State private var showInfo = false
     @State private var showMultiPicker = false
     @State private var multiSelectedIds: Set<UUID> = []
@@ -84,7 +85,7 @@ struct ScooterFinderView: View {
                 onStart: {
                     let picked = listedDevices.filter { multiSelectedIds.contains($0.id) }
                     showMultiPicker = false
-                    guard picked.count >= 2 else { return }
+                    guard picked.count >= BLEMultiDeviceMonitor.minDevices else { return }
                     if ble.phase != .scanning { ble.startScan() }
                     multiMonitor.start(devices: picked, ble: ble)
                 },
@@ -92,6 +93,16 @@ struct ScooterFinderView: View {
                     showMultiPicker = false
                     multiSelectedIds = []
                 }
+            )
+        }
+        .sheet(item: $detailDevice) { device in
+            FinderDeviceDetailSheet(
+                device: device,
+                onStartSearch: {
+                    detailDevice = nil
+                    startFinding(device)
+                },
+                onDismiss: { detailDevice = nil }
             )
         }
     }
@@ -133,7 +144,7 @@ struct ScooterFinderView: View {
                 .font(Theme.segment)
 
                 if !showOnlyScooters {
-                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an, um die Heatmap-Suche zu starten.")
+                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an für Details, BLE-Wächter oder Heatmap-Suche.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -175,7 +186,7 @@ struct ScooterFinderView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Startet die BLE-Suche und meldet plausible E-Scooter mit ausreichendem Signal.")
 
-                if listedDevices.count >= 2 {
+                if listedDevices.count >= BLEMultiDeviceMonitor.minDevices {
                     Button {
                         multiSelectedIds = []
                         showMultiPicker = true
@@ -194,7 +205,7 @@ struct ScooterFinderView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint("Mehrere BLE-Geräte gleichzeitig beobachten, ohne sie als Scooter zu speichern.")
+                    .accessibilityHint("Ein oder mehrere BLE-Geräte in der Sitzung beobachten, ohne sie als Scooter zu speichern.")
                 }
 
                 if listedDevices.isEmpty {
@@ -203,7 +214,7 @@ struct ScooterFinderView: View {
                     VStack(spacing: 10) {
                         ForEach(listedDevices) { device in
                             Button {
-                                startFinding(device)
+                                detailDevice = device
                             } label: {
                                 finderDeviceRow(device)
                                     .overlay(alignment: .topTrailing) {
@@ -215,6 +226,7 @@ struct ScooterFinderView: View {
                             }
                             .buttonStyle(.plain)
                             .opacity(device.isStale ? 0.45 : 1)
+                            .accessibilityHint("Öffnet Details mit BLE-Wächter und Heatmap-Suche")
                         }
                     }
                 }
@@ -440,15 +452,15 @@ struct ScooterFinderView: View {
                         .font(.body)
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Es gibt keine exakte Richtung oder Meterangabe. Nutze Grobsuche für die Fläche und Feinsuche für die letzten Meter (wärmer / kälter).")
+                    Text("Es gibt keine exakte Richtung. Nutze die Heatmap und die Signalstärke (wärmer / kälter), während du dich bewegst.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Unter „Alle BLE-Geräte“ kannst du jedes Signal verfolgen. Das speichert das Gerät nicht als Scooter.")
+                    Text("Unter „Alle BLE-Geräte“ öffnest du die Detailansicht: dort kannst du den BLE-Wächter aktivieren oder die Heatmap-Suche starten. Das speichert das Gerät nicht als Scooter.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("„Geräte beobachten“ erlaubt 2–5 Signale parallel. Auch hier erfolgt keine Scooter-Speicherung.")
+                    Text("„Geräte beobachten“ erlaubt 1–5 Signale parallel in der aktiven Sitzung. Auch hier erfolgt keine Scooter-Speicherung. BLE-Wächter ist davon getrennt (Hintergrundüberwachung einzelner bekannter Geräte).")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -465,6 +477,86 @@ struct ScooterFinderView: View {
                 }
             }
             .preferredColorScheme(.dark)
+        }
+    }
+}
+
+/// Detail aus „Scooter finden“: BLE-Wächter + Einstieg in die Heatmap-Suche.
+struct FinderDeviceDetailSheet: View {
+    let device: ScannedDevice
+    var onStartSearch: () -> Void
+    var onDismiss: () -> Void
+
+    private var lastSeenText: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: device.lastSeen, relativeTo: Date())
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                        Text(device.bleListDisplayName)
+                            .font(Theme.sectionTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Allgemeines BLE-Gerät. Du kannst es beobachten (Wächter) oder die Heatmap-Suche starten — ohne Speicherung als Scooter.")
+                            .font(Theme.body)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Space.md) {
+                        detailRow("RSSI", "\(device.rssi) dBm · \(device.finderSignalLabel)")
+                        detailRow("BLE-ID", device.bleIdentifierShort)
+                        detailRow("Zuletzt gesehen", lastSeenText)
+                    }
+                    .padding(Theme.Space.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                            .stroke(Theme.border, lineWidth: 1)
+                    )
+
+                    BLEWatcherSettingsCard(device: device, isKnownScooter: false)
+
+                    ScootPrimaryButton(
+                        title: "Heatmap-Suche starten",
+                        systemImage: "dot.radiowaves.left.and.right"
+                    ) {
+                        onStartSearch()
+                    }
+
+                    ScootSecondaryButton(title: "Schließen", systemImage: "xmark") {
+                        onDismiss()
+                    }
+                }
+                .padding(.horizontal, Theme.Space.xl)
+                .padding(.top, Theme.Space.sm)
+                .padding(.bottom, 28)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                AppChromeSheetHeader(closeTitle: "Fertig", onClose: onDismiss)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+            Text(value)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textPrimary)
+                .textSelection(.enabled)
         }
     }
 }
