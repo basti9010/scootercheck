@@ -24,10 +24,13 @@ final class ProtocolHistoryStore: ObservableObject {
         var bleAdvertisementName: String?
         /// Nur nach erfolgreicher Protokoll-Validierung `true`. Fehlt bei Legacy-Einträgen (`nil`).
         var wasVerifiedAsScooter: Bool?
+        /// Archiviert: Daten bleiben erhalten, erscheinen nur unter „Archiv“.
+        var isArchived: Bool
 
         enum CodingKeys: String, CodingKey {
             case id, protocolNumber, createdAt, profile, verdict, score, serialDisplay, trackId
             case subjectSummary, knownLabel, blePeripheralId, bleAdvertisementName, wasVerifiedAsScooter
+            case isArchived
         }
 
         init(
@@ -43,7 +46,8 @@ final class ProtocolHistoryStore: ObservableObject {
             knownLabel: String? = nil,
             blePeripheralId: UUID? = nil,
             bleAdvertisementName: String? = nil,
-            wasVerifiedAsScooter: Bool? = nil
+            wasVerifiedAsScooter: Bool? = nil,
+            isArchived: Bool = false
         ) {
             self.id = id
             self.protocolNumber = protocolNumber
@@ -58,6 +62,7 @@ final class ProtocolHistoryStore: ObservableObject {
             self.blePeripheralId = blePeripheralId
             self.bleAdvertisementName = bleAdvertisementName
             self.wasVerifiedAsScooter = wasVerifiedAsScooter
+            self.isArchived = isArchived
         }
 
         init(from decoder: Decoder) throws {
@@ -75,6 +80,7 @@ final class ProtocolHistoryStore: ObservableObject {
             blePeripheralId = try c.decodeIfPresent(UUID.self, forKey: .blePeripheralId)
             bleAdvertisementName = try c.decodeIfPresent(String.self, forKey: .bleAdvertisementName)
             wasVerifiedAsScooter = try c.decodeIfPresent(Bool.self, forKey: .wasVerifiedAsScooter)
+            isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
         }
 
         func encode(to encoder: Encoder) throws {
@@ -92,6 +98,7 @@ final class ProtocolHistoryStore: ObservableObject {
             try c.encodeIfPresent(blePeripheralId, forKey: .blePeripheralId)
             try c.encodeIfPresent(bleAdvertisementName, forKey: .bleAdvertisementName)
             try c.encodeIfPresent(wasVerifiedAsScooter, forKey: .wasVerifiedAsScooter)
+            try c.encode(isArchived, forKey: .isArchived)
         }
 
         /// Label für die Geräteliste: gespeicherter Name, sonst „bereits geprüft“.
@@ -207,7 +214,8 @@ final class ProtocolHistoryStore: ObservableObject {
                 knownLabel: Self.makeKnownLabel(from: session.subject) ?? previous?.knownLabel,
                 blePeripheralId: bleId,
                 bleAdvertisementName: advName,
-                wasVerifiedAsScooter: true
+                wasVerifiedAsScooter: true,
+                isArchived: previous?.isArchived ?? false
             ),
             at: 0
         )
@@ -339,10 +347,81 @@ final class ProtocolHistoryStore: ObservableObject {
     }
 
     func delete(id: UUID) {
-        guard let entry = entries.first(where: { $0.id == id }) else { return }
-        try? fileManager.removeItem(at: packDirectory(for: entry.protocolNumber))
-        entries.removeAll { $0.id == id }
+        delete(ids: [id])
+    }
+
+    /// Dauerhaft entfernen (nicht Archivieren).
+    func delete(ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        let removing = entries.filter { ids.contains($0.id) }
+        for entry in removing {
+            try? fileManager.removeItem(at: packDirectory(for: entry.protocolNumber))
+        }
+        entries.removeAll { ids.contains($0.id) }
         try? encoder.encode(entries).write(to: indexURL, options: .atomic)
+    }
+
+    /// Aktive (nicht archivierte) Prüfungen — Standardliste.
+    var activeEntries: [Entry] {
+        entries.filter { !$0.isArchived }
+    }
+
+    /// Nur archivierte Prüfungen.
+    var archivedEntries: [Entry] {
+        entries.filter(\.isArchived)
+    }
+
+    var activeCount: Int { activeEntries.count }
+    var archivedCount: Int { archivedEntries.count }
+
+    /// Archivieren: Daten bleiben, Eintrag verschwindet aus „Aktiv“.
+    @discardableResult
+    func archive(ids: Set<UUID>) -> Int {
+        setArchived(ids, archived: true)
+    }
+
+    /// Wiederherstellen: zurück nach „Aktiv“.
+    @discardableResult
+    func restore(ids: Set<UUID>) -> Int {
+        setArchived(ids, archived: false)
+    }
+
+    @discardableResult
+    private func setArchived(_ ids: Set<UUID>, archived: Bool) -> Int {
+        guard !ids.isEmpty else { return 0 }
+        var changed = 0
+        entries = entries.map { entry in
+            guard ids.contains(entry.id), entry.isArchived != archived else { return entry }
+            var next = entry
+            next.isArchived = archived
+            changed += 1
+            return next
+        }
+        if changed > 0 {
+            try? encoder.encode(entries).write(to: indexURL, options: .atomic)
+        }
+        return changed
+    }
+
+    /// Pack-Dateien für Share Sheet (eine oder mehrere Prüfungen).
+    func shareItems(for ids: Set<UUID>) -> [Any] {
+        var items: [Any] = []
+        for entry in entries where ids.contains(entry.id) {
+            guard let pack = try? ensurePack(for: entry) else { continue }
+            items.append(contentsOf: [
+                NamedShareFile(
+                    url: pack.pdfURL,
+                    title: "ScooterCheck \(entry.protocolNumber) Bericht.pdf",
+                    utType: "com.adobe.pdf"
+                ),
+                NamedShareFile(
+                    url: pack.jsonURL,
+                    title: "ScooterCheck \(entry.protocolNumber) Daten.json",
+                    utType: "public.json"
+                )
+            ])
+        }
+        return items
     }
 
     // MARK: - Scan-Listen-Wiedererkennung
