@@ -553,10 +553,11 @@ enum HeatmapPlacementEngine {
                         samples += 1
                     }
                 }
+                // Interpolierte Zellen: schwächer und klar als „nicht gemessen“ (samples = 0)
                 if den > 0, samples >= 2 {
                     out[r * cols + c] = BLEHeatmapCell(
                         rssi: num / den,
-                        weight: den * 0.2,
+                        weight: den * 0.12,
                         samples: 0
                     )
                 }
