@@ -16,6 +16,7 @@ on:
       - cursor/unlock-rescan-prosecutor-b100
       - cursor/back-copyright-b100
       - cursor/ui-redesign-b100
+      - cursor/ble-analysis-suite-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
