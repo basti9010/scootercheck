@@ -277,8 +277,11 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var detectedStack: BleStack = .unknown
     /// Wenn true: Liste nur mit Namen, die nach Scooter aussehen. Sonst alle BLE-Geräte.
     @Published var showOnlyLikelyScooters = true
+    /// Leichtgewichtiger Hintergrund-Scan nur für aktive BLE-Wächter (kein UI-Vollscan).
+    @Published private(set) var watchScanOnly = false
 
     private static let maxTrackedDevices = 50
+    private static let centralRestoreId = "com.scootercheck.ble.central"
     private var stalePruneTask: Task<Void, Never>?
     /// Stabile Scan-Reihenfolge (gegen RSSI-Flattern).
     private var stableScanOrderIds: [UUID] = []
@@ -354,7 +357,11 @@ final class BleClient: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        central = CBCentralManager(delegate: self, queue: nil)
+        central = CBCentralManager(
+            delegate: self,
+            queue: nil,
+            options: [CBCentralManagerOptionRestoreIdentifierKey: Self.centralRestoreId]
+        )
     }
 
     // MARK: - Public API
@@ -365,6 +372,7 @@ final class BleClient: NSObject, ObservableObject {
             phase = .failed
             return
         }
+        watchScanOnly = false
         // Verbundene Scooter werben oft nicht — trennen und als Seed behalten,
         // sonst bleibt „Erneut prüfen“ leer, obwohl das Handy noch verbunden ist.
         let seed = disconnectForRescan()
@@ -394,9 +402,46 @@ final class BleClient: NSObject, ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 guard let self, self.phase == .scanning else { break }
-                self.pruneStaleDevices(maxAge: 14)
+                self.pruneStaleDevices(maxAge: self.watchScanOnly ? 60 : 14)
             }
         }
+    }
+
+    /// Hält einen gemeinsamen Scan am Leben, solange BLE-Wächter aktiv sind.
+    /// Kein zweiter CBCentralManager — erweitert denselben Scan.
+    func ensureWatchScanRunning() {
+        guard central.state == .poweredOn else { return }
+        if phase == .scanning {
+            return
+        }
+        // Nur aus ruhigen Phasen starten — nie Diagnose/Connect unterbrechen.
+        guard phase == .idle || phase == .failed || phase == .done else { return }
+        watchScanOnly = true
+        phase = .scanning
+        statusMessage = "BLE-Wächter aktiv"
+        central.scanForPeripherals(
+            withServices: nil,
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
+        )
+        stalePruneTask?.cancel()
+        stalePruneTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard let self, self.phase == .scanning else { break }
+                self.pruneStaleDevices(maxAge: 90)
+            }
+        }
+    }
+
+    /// Stoppt Watch-only-Scan, wenn keine Wächter mehr aktiv und kein UI-Scan nötig.
+    func stopWatchScanIfIdle() {
+        guard watchScanOnly, phase == .scanning else { return }
+        central.stopScan()
+        stalePruneTask?.cancel()
+        stalePruneTask = nil
+        watchScanOnly = false
+        phase = .idle
+        statusMessage = "Bereit"
     }
 
     /// Trennt die aktive Session, damit der Scooter wieder advertisieren kann.
@@ -518,10 +563,12 @@ final class BleClient: NSObject, ObservableObject {
         central.stopScan()
         stalePruneTask?.cancel()
         stalePruneTask = nil
+        watchScanOnly = false
         if phase == .scanning {
             phase = .idle
             statusMessage = "Scan beendet"
         }
+        // Kein automatischer Watch-Restart hier — würde connect/dump stören.
     }
 
     func connect(to device: ScannedDevice) async throws {
@@ -2052,9 +2099,23 @@ final class BleClient: NSObject, ObservableObject {
 extension BleClient: CBCentralManagerDelegate {
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
         Task { @MainActor in
-            if central.state != .poweredOn, phase == .scanning {
+            if central.state == .poweredOn {
+                BLEWatchService.shared.updateBackgroundScanIfNeeded()
+            } else if phase == .scanning, !watchScanOnly {
                 fail("Bluetooth nicht verfügbar")
+            } else if central.state != .poweredOn, watchScanOnly {
+                statusMessage = "Bluetooth ist aus"
             }
+        }
+    }
+
+    nonisolated func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+        Task { @MainActor in
+            // State Restoration: Scan ggf. fortsetzen, wenn Wächter aktiv.
+            if BLEWatchService.shared.hasActiveWatchers {
+                self.ensureWatchScanRunning()
+            }
+            _ = dict
         }
     }
 
