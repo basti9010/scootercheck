@@ -1642,16 +1642,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private func controlRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Theme.accent.opacity(0.12))
-                    .frame(width: 48, height: 48)
-                Image("ScooterGeneric")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 34, height: 24)
-            }
+        HStack(alignment: .top, spacing: 14) {
+            ScooterModelThumbnail(
+                assetName: ScooterThumbnailAsset.name(for: entry.profile),
+                width: 78,
+                height: 70
+            )
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .top, spacing: 8) {
@@ -1758,34 +1754,43 @@ struct ScooterDeviceCard: View {
     }
 
     private var thumbName: String {
-        if device.suggestedProfile?.family == .maxG3
-            || device.modelBadge == "Max G3"
-            || displayId.uppercased().hasPrefix("1C") {
-            return "ScooterMaxG3"
+        // G3-Serienpräfix 1C… auch ohne erkannten Badge dem Max-G3-Asset zuordnen.
+        if displayId.uppercased().hasPrefix("1C") {
+            return ScooterThumbnailAsset.maxG3
         }
-        if device.looksLikeScooter || device.modelLabel != nil {
-            return "ScooterGeneric"
-        }
-        return "ScooterGeneric"
+        return ScooterThumbnailAsset.name(
+            profile: device.suggestedProfile,
+            family: device.suggestedProfile?.family,
+            modelLabel: device.modelLabel,
+            modelBadge: device.modelBadge
+        )
     }
 
     var body: some View {
             HStack(spacing: 12) {
             Group {
                 if device.looksLikeScooter || device.modelLabel != nil {
-                    Image(thumbName)
-                        .resizable()
-                        .scaledToFit()
+                    ScooterModelThumbnail(
+                        assetName: thumbName,
+                        width: 78,
+                        height: 66,
+                        cornerRadius: 12
+                    )
                 } else {
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.title2)
                         .foregroundStyle(Theme.muted)
+                        .frame(width: 78, height: 66)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.white.opacity(0.06))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Theme.line.opacity(0.7), lineWidth: 1)
+                        )
                 }
             }
-                .frame(width: 64, height: 52)
-                .padding(6)
-                .background(Color.white.opacity(device.looksLikeScooter || device.modelLabel != nil ? 0.94 : 0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {

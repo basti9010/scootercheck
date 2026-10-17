@@ -11,6 +11,8 @@
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* ContentView.swift */; };
 		A10000000000000000000003 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* Theme.swift */; };
 		A10000000000000000000026 /* ScootDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000026 /* ScootDesign.swift */; };
+		A10000000000000000000027 /* ScooterThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000027 /* ScooterThumbnail.swift */; };
+		A10000000000000000000028 /* ScooterThumbnailAssetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000028 /* ScooterThumbnailAssetTests.swift */; };
 		A10000000000000000000004 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* Models.swift */; };
 		A10000000000000000000005 /* Analyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* Analyzer.swift */; };
 		A10000000000000000000006 /* Tracks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* Tracks.swift */; };
@@ -52,6 +54,8 @@
 		B10000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B10000000000000000000003 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B10000000000000000000026 /* ScootDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScootDesign.swift; sourceTree = "<group>"; };
+		B10000000000000000000027 /* ScooterThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterThumbnail.swift; sourceTree = "<group>"; };
+		B10000000000000000000028 /* ScooterThumbnailAssetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterThumbnailAssetTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000004 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		B10000000000000000000005 /* Analyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analyzer.swift; sourceTree = "<group>"; };
 		B10000000000000000000006 /* Tracks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tracks.swift; sourceTree = "<group>"; };
@@ -127,6 +131,7 @@
 				B10000000000000000000002 /* ContentView.swift */,
 				B10000000000000000000003 /* Theme.swift */,
 				B10000000000000000000026 /* ScootDesign.swift */,
+				B10000000000000000000027 /* ScooterThumbnail.swift */,
 				B1000000000000000000000E /* Info.plist */,
 				B1000000000000000000000C /* Assets.xcassets */,
 				E10000000000000000000005 /* Integrity */,
@@ -171,6 +176,7 @@
 				B10000000000000000000023 /* CompactReportFactsTests.swift */,
 				B10000000000000000000024 /* KnownScooterAliasTests.swift */,
 				B10000000000000000000025 /* IdentifyCommandTests.swift */,
+				B10000000000000000000028 /* ScooterThumbnailAssetTests.swift */,
 			);
 			path = ScooterCheckTests;
 			sourceTree = "<group>";
@@ -298,6 +304,7 @@
 				A10000000000000000000002 /* ContentView.swift in Sources */,
 				A10000000000000000000003 /* Theme.swift in Sources */,
 				A10000000000000000000026 /* ScootDesign.swift in Sources */,
+				A10000000000000000000027 /* ScooterThumbnail.swift in Sources */,
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* Analyzer.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
@@ -336,6 +343,7 @@
 				A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */,
 				A10000000000000000000024 /* KnownScooterAliasTests.swift in Sources */,
 				A10000000000000000000025 /* IdentifyCommandTests.swift in Sources */,
+				A10000000000000000000028 /* ScooterThumbnailAssetTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
