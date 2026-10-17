@@ -384,12 +384,12 @@ struct ContentView: View {
             Text(ble.showOnlyLikelyScooters
                  ? "Kein kompatibler Scooter gefunden"
                  : "Keine Geräte gefunden")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.white)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
             Text("Stelle sicher, dass dein Scooter eingeschaltet und in der Nähe ist.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryText)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if ble.showOnlyLikelyScooters {
@@ -480,11 +480,11 @@ struct ContentView: View {
                 ScoreRing(score: report.score, color: Theme.verdict(report.verdict))
                 VStack(alignment: .leading, spacing: 6) {
                     Text(report.verdict.label)
-                        .font(.title2.weight(.bold))
+                        .font(Theme.sectionTitle)
                         .foregroundStyle(Theme.verdict(report.verdict))
                     Text(scoreCaption(for: report.score))
-                        .font(.caption)
-                        .foregroundStyle(Theme.muted)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
                     if report.trackMatch.trackId != .unknown && report.trackMatch.trackId != .stock {
                         Text(report.trackMatch.trackId.label)
@@ -573,11 +573,11 @@ struct ContentView: View {
             }
 
             Text("Details zur Prüfung")
-                .font(.headline)
-                .foregroundStyle(.white)
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
             Text("Oben die Kurzfassung. Darunter nur Messwerte und Zusatzinfos — ohne Wiederholung derselben Auffälligkeit.")
-                .font(.footnote)
-                .foregroundStyle(Theme.muted)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textSecondary)
 
             subjectAssignmentCard
 

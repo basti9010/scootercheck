@@ -5,11 +5,35 @@ final class FAQCatalogTests: XCTestCase {
     func testRequiredCategoriesPresent() {
         let ids = Set(FAQCatalog.categories.map(\.id))
         for needed in [
-            "verstehen", "grundlagen", "tuning", "auslesen",
+            "verstehen", "grundlagen", "finden", "tuning", "auslesen",
             "register", "bewertungen", "grenzen", "haeufige",
         ] {
             XCTAssertTrue(ids.contains(needed), "missing category \(needed)")
         }
+        let order = FAQCatalog.categories.map(\.id)
+        guard let grundlagen = order.firstIndex(of: "grundlagen"),
+              let finden = order.firstIndex(of: "finden") else {
+            return XCTFail("grundlagen/finden missing")
+        }
+        XCTAssertEqual(finden, grundlagen + 1)
+    }
+
+    func testScooterFindenSearchHits() {
+        for query in [
+            "Scooter finden", "finden", "Suche", "Ortung", "Standort", "Entfernung",
+            "Nähe", "Signal", "Signalstärke", "RSSI", "Bluetooth", "BLE", "Radar",
+            "Scooter suchen", "Alle BLE", "Nur Scooter", "nicht gefunden", "Reichweite",
+        ] {
+            let hits = FAQCatalog.filtered(query: query)
+            XCTAssertFalse(hits.isEmpty, "no hits for \(query)")
+            XCTAssertTrue(
+                hits.contains(where: { $0.id == "finden" }),
+                "finden category missing for \(query)"
+            )
+        }
+        let finden = FAQCatalog.categories.first { $0.id == "finden" }
+        XCTAssertEqual(finden?.items.count, 13)
+        XCTAssertEqual(finden?.symbolName, "location.magnifyingglass")
     }
 
     func testItemsHaveContent() {

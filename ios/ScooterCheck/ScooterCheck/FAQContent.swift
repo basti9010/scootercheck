@@ -47,6 +47,7 @@ enum FAQCatalog {
     static let categories: [FAQCategory] = [
         verstehen,
         grundlagen,
+        finden,
         tuning,
         auslesen,
         register,
@@ -184,7 +185,185 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 3. Tuning verstehen
+// MARK: - 3. Scooter finden
+
+private extension FAQCatalog {
+    static let finden = FAQCategory(
+        id: "finden",
+        title: "Scooter finden",
+        symbolName: "location.magnifyingglass",
+        items: [
+            FAQItem(
+                id: "finden-was",
+                question: "Was ist die Funktion „Scooter finden“?",
+                segments: [
+                    .paragraph("„Scooter finden“ hilft dabei, Bluetooth-Signale kompatibler bzw. potenziell relevanter E-Scooter in der Umgebung zu erkennen und deren ungefähre Signalstärke darzustellen."),
+                    .paragraph("Du wählst ein erkanntes Gerät aus der Gerätesuche und bewegst dich. ScooterCheck vergleicht die Bluetooth-Signalstärke (RSSI) während deiner Bewegung und schätzt daraus eine bessere Näherungsrichtung — soweit Standort- und Bewegungsdaten freigegeben sind."),
+                    .callout("ScooterCheck bestimmt keinen exakten Standort des Scooters und ersetzt keine GPS-Ortung. Die Funktion dient der Annäherung anhand verfügbarer BLE-Signale."),
+                ],
+                keywords: [
+                    "scooter finden", "scooter suchen", "finden", "suche", "ortung", "standort",
+                    "radar", "signal", "signalstärke", "rssi", "annäherung", "richtung", "nähe",
+                ]
+            ),
+            FAQItem(
+                id: "finden-wie",
+                question: "Wie funktioniert „Scooter finden“?",
+                segments: [
+                    .paragraph("Ablauf in der App:"),
+                    .bullets([
+                        "ScooterCheck sucht nach BLE-Signalen in der Umgebung",
+                        "Du wählst einen Treffer aus der Liste",
+                        "Die App wertet die empfangene Signalstärke (RSSI) aus und aktualisiert die Anzeige laufend",
+                        "Stärkere Signale deuten grundsätzlich auf geringere Entfernung oder bessere Sichtlinie hin",
+                        "Schwächere Signale können auf größere Entfernung, Abschirmung oder ungünstige Ausrichtung hindeuten",
+                        "Während der aktiven Suche können Standort, Heading und Bewegung helfen, Änderungen der Signalstärke mit deiner Bewegungsrichtung zu verknüpfen",
+                    ]),
+                    .paragraph("Es gibt keine exakte Meteranzeige. Dargestellt werden Nähe-/Signalstufen und — bei ausreichender Datenlage — eine Richtungsschätzung, keine präzise Distanzberechnung."),
+                ],
+                keywords: ["rssi", "bluetooth", "ble", "signalstärke", "entfernung", "nähe", "richtung", "bewegung"]
+            ),
+            FAQItem(
+                id: "finden-genauigkeit",
+                question: "Wie genau ist die Entfernung?",
+                segments: [
+                    .paragraph("Die Entfernung ist nicht exakt bestimmbar. Bluetooth-Signalstärken werden unter anderem beeinflusst durch:"),
+                    .bullets([
+                        "Mauern, Fahrzeuge, Personen, Vegetation und Metall",
+                        "Ausrichtung des Scooters und Position des iPhones",
+                        "Sendeleistung des Geräts",
+                        "Reflexionen und Funkstörungen",
+                    ]),
+                    .paragraph("Deshalb verwendet ScooterCheck Signalstufen wie Schwach, Mittel, Stark, Sehr stark oder Sehr nah — keine vermeintlich präzisen Meterangaben."),
+                ],
+                keywords: ["entfernung", "genauigkeit", "meter", "reichweite", "schwankung", "abschirmung", "sehr nah"]
+            ),
+            FAQItem(
+                id: "finden-tipps",
+                question: "Wie finde ich einen Scooter am schnellsten?",
+                segments: [
+                    .paragraph("Praktische Vorgehensweise:"),
+                    .bullets([
+                        "Suche starten und einen Treffer wählen",
+                        "Langsam bewegen und die Signalstärke beobachten",
+                        "Bei stärker werdendem Signal in diese Richtung weitergehen",
+                        "iPhone möglichst frei halten (nicht stark mit dem Körper abschirmen)",
+                        "Suche aus verschiedenen Richtungen wiederholen",
+                    ]),
+                    .callout("Eine unmittelbare, reine Bluetooth-Richtung ohne Bewegung gibt es nicht. Die Richtungsschätzung entsteht aus Signaländerungen während du dich bewegst."),
+                ],
+                keywords: ["tipps", "schnell", "nähe", "suche", "bewegen", "signal"]
+            ),
+            FAQItem(
+                id: "finden-erkennung",
+                question: "Kann ScooterCheck erkennen, welcher Scooter das ist?",
+                segments: [
+                    .paragraph("Das hängt von den ausgesendeten BLE-Daten und dem Advertisement-Namen ab."),
+                    .paragraph("ScooterCheck kann Geräte anhand bekannter Merkmale (Name, Dienste, Modellhinweise) als wahrscheinlich kompatiblen Scooter einstufen. Absolute Sicherheit gibt es dabei nicht."),
+                    .paragraph("Unsichere Treffer erscheinen eher unter „Alle BLE“ bzw. ohne klare Scooter-Zuordnung. Erst nach erfolgreicher technischer Auslese und Validierung wird ein Gerät als bekannter Scooter gespeichert."),
+                ],
+                keywords: ["erkennung", "identität", "modell", "name", "kompatibel", "unsicher", "möglicher scooter"]
+            ),
+            FAQItem(
+                id: "finden-nicht-gefunden",
+                question: "Warum wird mein Scooter nicht gefunden?",
+                segments: [
+                    .paragraph("Häufige Ursachen:"),
+                    .bullets([
+                        "Scooter ausgeschaltet oder sendet aktuell kein BLE-Signal",
+                        "Bluetooth am iPhone nicht aktiv bzw. Berechtigung fehlt",
+                        "zu große Entfernung oder starke Abschirmung",
+                        "Modell wird noch nicht unterstützt bzw. Advertisement weicht ab",
+                        "Firmware-/Zustandsabhängige BLE-Werbung",
+                        "Filter „Nur Scooter“ blendet unsichere Treffer aus — prüfe ggf. „Alle BLE“",
+                    ]),
+                ],
+                keywords: ["nicht gefunden", "fehlt", "reichweite", "ausgeschaltet", "berechtigung", "filter"]
+            ),
+            FAQItem(
+                id: "finden-andere-ble",
+                question: "Warum sehe ich andere Bluetooth-Geräte?",
+                segments: [
+                    .paragraph("Unter „Alle BLE“ kann ScooterCheck auch andere Bluetooth-Low-Energy-Geräte erkennen, zum Beispiel:"),
+                    .bullets([
+                        "Fernseher",
+                        "Kopfhörer",
+                        "Smartwatches",
+                        "Sensoren und Smart-Home-Geräte",
+                        "Smartphones bzw. Zubehör",
+                    ]),
+                    .paragraph("Diese Geräte sind nicht automatisch Scooter."),
+                    .callout("Ein fremdes BLE-Gerät wird nicht allein durch Auswahl oder einen fehlgeschlagenen Scan dauerhaft als „bekannter Scooter“ gespeichert. Das geschieht erst nach erfolgreicher technischer Scooter-Validierung."),
+                ],
+                keywords: ["alle ble", "fernseher", "kopfhörer", "smartwatch", "fremdgerät", "bekannter scooter"]
+            ),
+            FAQItem(
+                id: "finden-nur-scooter",
+                question: "Was bedeutet „Nur Scooter“?",
+                segments: [
+                    .paragraph("In diesem Modus versucht ScooterCheck, erkannte BLE-Geräte anhand bekannter Merkmale zu filtern."),
+                    .paragraph("Nur ausreichend plausible Treffer sollen hier erscheinen. Unsichere oder unbekannte BLE-Geräte gehören in „Alle BLE“."),
+                ],
+                keywords: ["nur scooter", "filter", "heuristik", "plausibel"]
+            ),
+            FAQItem(
+                id: "finden-alle-ble",
+                question: "Was bedeutet „Alle BLE“?",
+                segments: [
+                    .paragraph("Hier werden alle erkannten Bluetooth-Low-Energy-Geräte angezeigt, unabhängig davon, ob ScooterCheck sie als Scooter einordnen kann."),
+                    .paragraph("Die Ansicht ist eher technisch und dient der erweiterten Suche bzw. Analyse — nicht jeder Eintrag ist ein Scooter."),
+                ],
+                keywords: ["alle ble", "bluetooth", "liste", "technisch", "analyse"]
+            ),
+            FAQItem(
+                id: "finden-ausgeschaltet",
+                question: "Kann ScooterCheck einen ausgeschalteten Scooter finden?",
+                segments: [
+                    .paragraph("Nur wenn das Gerät weiterhin Bluetooth-Signale aussendet."),
+                    .paragraph("Ohne aktives BLE-Signal kann ScooterCheck den Scooter nicht erkennen."),
+                ],
+                keywords: ["ausgeschaltet", "power", "kein signal", "ble"]
+            ),
+            FAQItem(
+                id: "finden-exakt",
+                question: "Kann ScooterCheck den exakten Standort bestimmen?",
+                segments: [
+                    .paragraph("Nein."),
+                    .paragraph("Die App kann anhand der Bluetooth-Signalstärke und — während der aktiven Suche — mit Standort-/Bewegungsdaten bei der Annäherung helfen. Sie bestimmt keinen exakten Standort und ersetzt keine GPS-Ortung."),
+                ],
+                keywords: ["standort", "gps", "exakt", "ortung", "position"]
+            ),
+            FAQItem(
+                id: "finden-waende",
+                question: "Funktioniert die Suche durch Wände oder Fahrzeuge?",
+                segments: [
+                    .paragraph("BLE-Signale können teilweise durch Hindernisse empfangen werden, werden aber deutlich abgeschwächt oder gestört."),
+                    .paragraph("Die angezeigte Signalstärke kann dadurch stark schwanken — das ist normal und keine exakte Entfernungsmessung."),
+                ],
+                keywords: ["wand", "fahrzeug", "hindernis", "abschirmung", "durchdringen"]
+            ),
+            FAQItem(
+                id: "finden-schwankt",
+                question: "Warum schwankt die Signalstärke?",
+                segments: [
+                    .paragraph("RSSI ist naturgemäß schwankend. Einflussfaktoren sind unter anderem:"),
+                    .bullets([
+                        "Bewegung von Person und Gerät",
+                        "Körperabschirmung",
+                        "Reflexionen",
+                        "Hindernisse",
+                        "Antennenausrichtung",
+                        "Funkumgebung",
+                    ]),
+                    .paragraph("ScooterCheck glättet Messwerte intern, soweit sinnvoll. Schwankungen bleiben trotzdem normal und schließen eine exakte Distanzangabe aus."),
+                ],
+                keywords: ["schwankt", "rssi", "glättung", "reflexion", "störung", "signal"]
+            ),
+        ]
+    )
+}
+
+// MARK: - 4. Tuning verstehen
 
 private extension FAQCatalog {
     static let tuning = FAQCategory(
@@ -251,7 +430,7 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 4. Was ScooterCheck auslesen kann
+// MARK: - 5. Was ScooterCheck auslesen kann
 
 private extension FAQCatalog {
     static let auslesen = FAQCategory(
@@ -378,7 +557,7 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 5. Register & Rohdaten
+// MARK: - 6. Register & Rohdaten
 
 private extension FAQCatalog {
     static let register = FAQCategory(
@@ -442,7 +621,7 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 6. Bewertungen & Ergebnisse
+// MARK: - 7. Bewertungen & Ergebnisse
 
 private extension FAQCatalog {
     static let bewertungen = FAQCategory(
@@ -495,7 +674,7 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 7. Grenzen
+// MARK: - 8. Grenzen
 
 private extension FAQCatalog {
     static let grenzen = FAQCategory(
@@ -595,7 +774,7 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 8. Häufige Fragen
+// MARK: - 9. Häufige Fragen
 
 private extension FAQCatalog {
     static let haeufige = FAQCategory(
