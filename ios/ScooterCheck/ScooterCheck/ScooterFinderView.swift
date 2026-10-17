@@ -456,7 +456,7 @@ struct ScooterFinderView: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Unter „Alle BLE-Geräte“ kannst du jedes Signal verfolgen. Das speichert das Gerät nicht als Scooter.")
+                    Text("Unter „Alle BLE-Geräte“ öffnest du die Detailansicht: dort kannst du den BLE-Wächter aktivieren oder die Heatmap-Suche starten. Das speichert das Gerät nicht als Scooter.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -477,6 +477,86 @@ struct ScooterFinderView: View {
                 }
             }
             .preferredColorScheme(.dark)
+        }
+    }
+}
+
+/// Detail aus „Scooter finden“: BLE-Wächter + Einstieg in die Heatmap-Suche.
+struct FinderDeviceDetailSheet: View {
+    let device: ScannedDevice
+    var onStartSearch: () -> Void
+    var onDismiss: () -> Void
+
+    private var lastSeenText: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: device.lastSeen, relativeTo: Date())
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                        Text(device.bleListDisplayName)
+                            .font(Theme.sectionTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Allgemeines BLE-Gerät. Du kannst es beobachten (Wächter) oder die Heatmap-Suche starten — ohne Speicherung als Scooter.")
+                            .font(Theme.body)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .leading, spacing: Theme.Space.md) {
+                        detailRow("RSSI", "\(device.rssi) dBm · \(device.finderSignalLabel)")
+                        detailRow("BLE-ID", device.bleIdentifierShort)
+                        detailRow("Zuletzt gesehen", lastSeenText)
+                    }
+                    .padding(Theme.Space.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                            .stroke(Theme.border, lineWidth: 1)
+                    )
+
+                    BLEWatcherSettingsCard(device: device, isKnownScooter: false)
+
+                    ScootPrimaryButton(
+                        title: "Heatmap-Suche starten",
+                        systemImage: "dot.radiowaves.left.and.right"
+                    ) {
+                        onStartSearch()
+                    }
+
+                    ScootSecondaryButton(title: "Schließen", systemImage: "xmark") {
+                        onDismiss()
+                    }
+                }
+                .padding(.horizontal, Theme.Space.xl)
+                .padding(.top, Theme.Space.sm)
+                .padding(.bottom, 28)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                AppChromeSheetHeader(closeTitle: "Fertig", onClose: onDismiss)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+            Text(value)
+                .font(Theme.body)
+                .foregroundStyle(Theme.textPrimary)
+                .textSelection(.enabled)
         }
     }
 }
