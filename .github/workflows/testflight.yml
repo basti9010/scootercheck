@@ -16,6 +16,7 @@ on:
       - cursor/unlock-rescan-prosecutor-b100
       - cursor/back-copyright-b100
       - cursor/ui-redesign-b100
+      - cursor/ble-analysis-suite-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -42,7 +43,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Neue BLE-Heatmap-Suche (Grob-/Feinsuche, Trend, Haptik/Ton) statt Richtungs-Pfeil' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: BLE-Analyse-Suite (Fingerprint, Refind, Timeline, RSSI-Graph, Suchraster, Geräte beobachten) auf Heatmap-Suche' }}"
 
     steps:
       - name: Checkout

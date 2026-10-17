@@ -138,6 +138,12 @@ struct ScannedDevice: Identifiable, Equatable {
     let manufacturerDataHex: String?
     /// Service-UUIDs aus dem Advertisement.
     let serviceUUIDs: [String]
+    /// TX Power Level aus dem Advertisement (dBm), falls vorhanden.
+    let txPower: Int?
+    /// Ob das Gerät als connectable beworben wurde.
+    let isConnectable: Bool?
+    /// Service Data (UUID → Hex), falls vorhanden.
+    let serviceDataHexByUUID: [String: String]?
 
     init(
         id: UUID,
@@ -151,7 +157,10 @@ struct ScannedDevice: Identifiable, Equatable {
         suggestedProfile: ScooterProfile?,
         lastSeen: Date,
         manufacturerDataHex: String? = nil,
-        serviceUUIDs: [String] = []
+        serviceUUIDs: [String] = [],
+        txPower: Int? = nil,
+        isConnectable: Bool? = nil,
+        serviceDataHexByUUID: [String: String]? = nil
     ) {
         self.id = id
         self.name = name
@@ -165,6 +174,9 @@ struct ScannedDevice: Identifiable, Equatable {
         self.lastSeen = lastSeen
         self.manufacturerDataHex = manufacturerDataHex
         self.serviceUUIDs = serviceUUIDs
+        self.txPower = txPower
+        self.isConnectable = isConnectable
+        self.serviceDataHexByUUID = serviceDataHexByUUID
     }
 
     static func == (lhs: ScannedDevice, rhs: ScannedDevice) -> Bool {
@@ -179,6 +191,9 @@ struct ScannedDevice: Identifiable, Equatable {
             && abs(lhs.lastSeen.timeIntervalSince(rhs.lastSeen)) < 0.05
             && lhs.manufacturerDataHex == rhs.manufacturerDataHex
             && lhs.serviceUUIDs == rhs.serviceUUIDs
+            && lhs.txPower == rhs.txPower
+            && lhs.isConnectable == rhs.isConnectable
+            && lhs.serviceDataHexByUUID == rhs.serviceDataHexByUUID
     }
 
     /// Nur Advertisement-Heuristik — validierter Scooter nur nach erfolgreicher Auslese.
@@ -469,7 +484,12 @@ final class BleClient: NSObject, ObservableObject {
                 modelLabel: existing.modelLabel ?? device.modelLabel,
                 modelBadge: existing.modelBadge ?? device.modelBadge,
                 suggestedProfile: existing.suggestedProfile ?? device.suggestedProfile,
-                lastSeen: Date()
+                lastSeen: Date(),
+                manufacturerDataHex: existing.manufacturerDataHex,
+                serviceUUIDs: existing.serviceUUIDs,
+                txPower: existing.txPower,
+                isConnectable: existing.isConnectable,
+                serviceDataHexByUUID: existing.serviceDataHexByUUID
             )
         } else {
             devices.append(device)
@@ -1867,7 +1887,10 @@ final class BleClient: NSObject, ObservableObject {
                 suggestedProfile: existing.suggestedProfile,
                 lastSeen: existing.lastSeen,
                 manufacturerDataHex: existing.manufacturerDataHex,
-                serviceUUIDs: existing.serviceUUIDs
+                serviceUUIDs: existing.serviceUUIDs,
+                txPower: existing.txPower,
+                isConnectable: existing.isConnectable,
+                serviceDataHexByUUID: existing.serviceDataHexByUUID
             )
         }
         // lastConnectDevice nur demoten, wenn fail() (nicht markUnsupported) — sonst nil.
@@ -1883,7 +1906,10 @@ final class BleClient: NSObject, ObservableObject {
             suggestedProfile: last.suggestedProfile,
             lastSeen: last.lastSeen,
             manufacturerDataHex: last.manufacturerDataHex,
-            serviceUUIDs: last.serviceUUIDs
+            serviceUUIDs: last.serviceUUIDs,
+            txPower: last.txPower,
+            isConnectable: last.isConnectable,
+            serviceDataHexByUUID: last.serviceDataHexByUUID
         )
     }
 
@@ -1999,6 +2025,26 @@ final class BleClient: NSObject, ObservableObject {
               !data.isEmpty else { return nil }
         return data.hexString
     }
+
+    nonisolated static func advertisementTxPower(_ advertisementData: [String: Any]) -> Int? {
+        guard let num = advertisementData[CBAdvertisementDataTxPowerLevelKey] as? NSNumber else { return nil }
+        return num.intValue
+    }
+
+    nonisolated static func advertisementIsConnectable(_ advertisementData: [String: Any]) -> Bool? {
+        guard let num = advertisementData[CBAdvertisementDataIsConnectable] as? NSNumber else { return nil }
+        return num.boolValue
+    }
+
+    nonisolated static func advertisementServiceDataHex(_ advertisementData: [String: Any]) -> [String: String]? {
+        guard let dict = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data],
+              !dict.isEmpty else { return nil }
+        var out: [String: String] = [:]
+        for (uuid, data) in dict where !data.isEmpty {
+            out[uuid.uuidString] = data.hexString
+        }
+        return out.isEmpty ? nil : out
+    }
 }
 
 // MARK: - CBCentralManagerDelegate
@@ -2033,6 +2079,9 @@ extension BleClient: CBCentralManagerDelegate {
             let now = Date()
             let mfg = Self.advertisementManufacturerHex(advertisementData)
             let services = Self.advertisementServiceUUIDStrings(advertisementData)
+            let tx = Self.advertisementTxPower(advertisementData)
+            let connectable = Self.advertisementIsConnectable(advertisementData)
+            let serviceData = Self.advertisementServiceDataHex(advertisementData)
             let device = ScannedDevice(
                 id: peripheral.identifier,
                 name: name,
@@ -2045,7 +2094,10 @@ extension BleClient: CBCentralManagerDelegate {
                 suggestedProfile: hint?.profile,
                 lastSeen: now,
                 manufacturerDataHex: mfg,
-                serviceUUIDs: services
+                serviceUUIDs: services,
+                txPower: tx,
+                isConnectable: connectable,
+                serviceDataHexByUUID: serviceData
             )
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
                 // Badge/Modell beibehalten, sobald einmal erkannt.
@@ -2062,7 +2114,13 @@ extension BleClient: CBCentralManagerDelegate {
                     suggestedProfile: device.suggestedProfile ?? previous.suggestedProfile,
                     lastSeen: now,
                     manufacturerDataHex: device.manufacturerDataHex ?? previous.manufacturerDataHex,
-                    serviceUUIDs: device.serviceUUIDs.isEmpty ? previous.serviceUUIDs : device.serviceUUIDs
+                    serviceUUIDs: device.serviceUUIDs.isEmpty ? previous.serviceUUIDs : device.serviceUUIDs,
+                    txPower: device.txPower ?? previous.txPower,
+                    isConnectable: device.isConnectable ?? previous.isConnectable,
+                    serviceDataHexByUUID: {
+                        if let sd = device.serviceDataHexByUUID, !sd.isEmpty { return sd }
+                        return previous.serviceDataHexByUUID
+                    }()
                 )
                 devices[index] = merged
             } else {

@@ -4,8 +4,11 @@ import SwiftUI
 struct ScooterFinderView: View {
     @ObservedObject var ble: BleClient
     @StateObject private var searchEngine = BLESearchEngine()
+    @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
     @State private var selected: ScannedDevice?
     @State private var showInfo = false
+    @State private var showMultiPicker = false
+    @State private var multiSelectedIds: Set<UUID> = []
     /// Eigenständiger Modus — speichert kein Gerät als Scooter.
     @State private var showOnlyScooters = true
     /// Stabile Listenreihenfolge (RSSI darf zucken, Zeilen nicht dauernd tauschen).
@@ -13,6 +16,7 @@ struct ScooterFinderView: View {
     @State private var lastStableReorderAt = Date.distantPast
 
     private var isFinding: Bool { selected != nil && searchEngine.isActive }
+    private var isObserving: Bool { multiMonitor.isActive }
 
     private var filteredDevices: [ScannedDevice] {
         showOnlyScooters
@@ -30,6 +34,10 @@ struct ScooterFinderView: View {
                 BLESearchScreen(engine: searchEngine) {
                     endFinding()
                 }
+            } else if isObserving {
+                BLEMultiDeviceScreen(monitor: multiMonitor) {
+                    multiSelectedIds = []
+                }
             } else {
                 selectionContent
             }
@@ -44,6 +52,9 @@ struct ScooterFinderView: View {
             if searchEngine.isActive {
                 searchEngine.stop(discardSession: true)
             }
+            if multiMonitor.isActive {
+                multiMonitor.stop()
+            }
         }
         .onChange(of: ble.devices) { _ in
             reconcileStableOrder(force: false)
@@ -55,6 +66,23 @@ struct ScooterFinderView: View {
         }
         .sheet(isPresented: $showInfo) {
             finderInfoSheet
+        }
+        .sheet(isPresented: $showMultiPicker) {
+            BLEMultiDevicePicker(
+                devices: listedDevices,
+                selectedIds: $multiSelectedIds,
+                onStart: {
+                    let picked = listedDevices.filter { multiSelectedIds.contains($0.id) }
+                    showMultiPicker = false
+                    guard picked.count >= 2 else { return }
+                    if ble.phase != .scanning { ble.startScan() }
+                    multiMonitor.start(devices: picked, ble: ble)
+                },
+                onCancel: {
+                    showMultiPicker = false
+                    multiSelectedIds = []
+                }
+            )
         }
     }
 
@@ -116,6 +144,28 @@ struct ScooterFinderView: View {
                             .foregroundStyle(Theme.muted)
                     }
                     .accessibilityLabel("Hinweise zur Heatmap-Suche")
+                }
+
+                if listedDevices.count >= 2 {
+                    Button {
+                        multiSelectedIds = []
+                        showMultiPicker = true
+                    } label: {
+                        Label("Geräte beobachten", systemImage: "eyeglasses")
+                            .font(Theme.secondary.weight(.medium))
+                            .foregroundStyle(Theme.accent)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 14)
+                            .background(Theme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Theme.line, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Mehrere BLE-Geräte gleichzeitig beobachten, ohne sie als Scooter zu speichern.")
                 }
 
                 if listedDevices.isEmpty {
@@ -278,6 +328,10 @@ struct ScooterFinderView: View {
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("Unter „Alle BLE-Geräte“ kannst du jedes Signal verfolgen. Das speichert das Gerät nicht als Scooter.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("„Geräte beobachten“ erlaubt 2–5 Signale parallel. Auch hier erfolgt keine Scooter-Speicherung.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
