@@ -32,6 +32,8 @@
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
 		A1000000000000000000000D /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* CoreBluetooth.framework */; };
 		A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* ProtocolHistoryStore.swift */; };
+		A10000000000000000000031 /* ScooterVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000031 /* ScooterVerification.swift */; };
+		A10000000000000000000032 /* ScooterVerificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000032 /* ScooterVerificationTests.swift */; };
 		A1000000000000000000000F /* XiaomiProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* XiaomiProtocol.swift */; };
 		A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* XiaomiDiagnosticMap.swift */; };
 		A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* SoftUnlockSettings.swift */; };
@@ -84,6 +86,8 @@
 		B1000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000000000000000000000D /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
 		B1000000000000000000000F /* ProtocolHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000031 /* ScooterVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterVerification.swift; sourceTree = "<group>"; };
+		B10000000000000000000032 /* ScooterVerificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterVerificationTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000010 /* XiaomiProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiProtocol.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiDiagnosticMap.swift; sourceTree = "<group>"; };
 		B10000000000000000000012 /* SoftUnlockSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockSettings.swift; sourceTree = "<group>"; };
@@ -171,6 +175,7 @@
 				B10000000000000000000006 /* Tracks.swift */,
 				B10000000000000000000007 /* ProtocolPDF.swift */,
 				B1000000000000000000000F /* ProtocolHistoryStore.swift */,
+				B10000000000000000000031 /* ScooterVerification.swift */,
 				B10000000000000000000012 /* SoftUnlockSettings.swift */,
 				B1000000000000000000001F /* SoftUnlockComboStore.swift */,
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
@@ -197,6 +202,7 @@
 				B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */,
 				B10000000000000000000023 /* CompactReportFactsTests.swift */,
 				B10000000000000000000024 /* KnownScooterAliasTests.swift */,
+				B10000000000000000000032 /* ScooterVerificationTests.swift */,
 				B10000000000000000000025 /* IdentifyCommandTests.swift */,
 				B10000000000000000000028 /* ScooterThumbnailAssetTests.swift */,
 				B1000000000000000000002B /* FAQCatalogTests.swift */,
@@ -340,6 +346,7 @@
 				A10000000000000000000006 /* Tracks.swift in Sources */,
 				A10000000000000000000007 /* ProtocolPDF.swift in Sources */,
 				A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */,
+				A10000000000000000000031 /* ScooterVerification.swift in Sources */,
 				A10000000000000000000008 /* Crypto.swift in Sources */,
 				A10000000000000000000009 /* Protocol.swift in Sources */,
 				A1000000000000000000000A /* DiagnosticMap.swift in Sources */,
@@ -372,6 +379,7 @@
 				A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */,
 				A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */,
 				A10000000000000000000024 /* KnownScooterAliasTests.swift in Sources */,
+				A10000000000000000000032 /* ScooterVerificationTests.swift in Sources */,
 				A10000000000000000000025 /* IdentifyCommandTests.swift in Sources */,
 				A10000000000000000000028 /* ScooterThumbnailAssetTests.swift in Sources */,
 				A1000000000000000000002B /* FAQCatalogTests.swift in Sources */,

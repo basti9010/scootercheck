@@ -22,10 +22,12 @@ final class ProtocolHistoryStore: ObservableObject {
         var blePeripheralId: UUID?
         /// Roher Advertisement-Name beim letzten Check (oft = SN).
         var bleAdvertisementName: String?
+        /// Nur nach erfolgreicher Protokoll-Validierung `true`. Fehlt bei Legacy-Einträgen (`nil`).
+        var wasVerifiedAsScooter: Bool?
 
         enum CodingKeys: String, CodingKey {
             case id, protocolNumber, createdAt, profile, verdict, score, serialDisplay, trackId
-            case subjectSummary, knownLabel, blePeripheralId, bleAdvertisementName
+            case subjectSummary, knownLabel, blePeripheralId, bleAdvertisementName, wasVerifiedAsScooter
         }
 
         init(
@@ -40,7 +42,8 @@ final class ProtocolHistoryStore: ObservableObject {
             subjectSummary: String? = nil,
             knownLabel: String? = nil,
             blePeripheralId: UUID? = nil,
-            bleAdvertisementName: String? = nil
+            bleAdvertisementName: String? = nil,
+            wasVerifiedAsScooter: Bool? = nil
         ) {
             self.id = id
             self.protocolNumber = protocolNumber
@@ -54,6 +57,7 @@ final class ProtocolHistoryStore: ObservableObject {
             self.knownLabel = knownLabel
             self.blePeripheralId = blePeripheralId
             self.bleAdvertisementName = bleAdvertisementName
+            self.wasVerifiedAsScooter = wasVerifiedAsScooter
         }
 
         init(from decoder: Decoder) throws {
@@ -70,6 +74,7 @@ final class ProtocolHistoryStore: ObservableObject {
             knownLabel = try c.decodeIfPresent(String.self, forKey: .knownLabel)
             blePeripheralId = try c.decodeIfPresent(UUID.self, forKey: .blePeripheralId)
             bleAdvertisementName = try c.decodeIfPresent(String.self, forKey: .bleAdvertisementName)
+            wasVerifiedAsScooter = try c.decodeIfPresent(Bool.self, forKey: .wasVerifiedAsScooter)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -86,13 +91,15 @@ final class ProtocolHistoryStore: ObservableObject {
             try c.encodeIfPresent(knownLabel, forKey: .knownLabel)
             try c.encodeIfPresent(blePeripheralId, forKey: .blePeripheralId)
             try c.encodeIfPresent(bleAdvertisementName, forKey: .bleAdvertisementName)
+            try c.encodeIfPresent(wasVerifiedAsScooter, forKey: .wasVerifiedAsScooter)
         }
 
         /// Label für die Geräteliste: gespeicherter Name, sonst „bereits geprüft“.
         var scanListAlias: String? {
+            guard ScooterVerification.qualifiesAsKnownScooter(self) else { return nil }
             if let knownLabel, !knownLabel.isEmpty { return knownLabel }
             if let subjectSummary, !subjectSummary.isEmpty { return subjectSummary }
-            if serialDisplay != nil || blePeripheralId != nil { return "bereits geprüft" }
+            if serialDisplay != nil { return "bereits geprüft" }
             return nil
         }
     }
@@ -137,12 +144,20 @@ final class ProtocolHistoryStore: ObservableObject {
     }
 
     /// Saves session + regenerates durable PDF/JSON pack. Returns pack URLs.
-    /// `scannedDevice` merkt BLE-UUID/Advertisement für Wiedererkennung in der Scan-Liste.
+    /// `scannedDevice` merkt BLE-UUID/Advertisement nur bei verifizierter Scooter-Auslese.
     @discardableResult
     func save(_ session: CheckSession, scannedDevice: ScannedDevice? = nil) throws -> ProtocolPack.PackURLs {
         guard let result = session.result else {
             throw HistoryError.missingResult
         }
+
+        let verified = ScooterVerification.isVerifiedScooterReading(result.reading)
+            || ScooterVerification.isVerifiedScooterReading(session.reading)
+        // Ohne technische Scooter-Validierung kein „bekannter Scooter“ und keine BLE-Verknüpfung.
+        guard verified else {
+            throw HistoryError.notVerifiedScooter
+        }
+        let rememberDevice = scannedDevice
 
         let dir = packDirectory(for: session.protocolNumber)
         try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -160,10 +175,21 @@ final class ProtocolHistoryStore: ObservableObject {
             })
 
         let advName: String? = {
-            guard let scannedDevice else { return previous?.bleAdvertisementName }
-            let raw = scannedDevice.cryptoName.isEmpty ? scannedDevice.name : scannedDevice.cryptoName
+            guard let rememberDevice else {
+                return previous?.bleAdvertisementName
+            }
+            let raw = rememberDevice.cryptoName.isEmpty ? rememberDevice.name : rememberDevice.cryptoName
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty || trimmed.hasPrefix("Ohne Namen") ? previous?.bleAdvertisementName : trimmed
+        }()
+
+        let bleId: UUID? = {
+            if let rememberDevice { return rememberDevice.id }
+            // Kein neues Gerät → bestehende UUID behalten (nur bei bereits verifiziertem Eintrag).
+            if let previous, ScooterVerification.qualifiesAsKnownScooter(previous) {
+                return previous.blePeripheralId
+            }
+            return previous?.blePeripheralId
         }()
 
         var next = entries.filter { $0.id != session.id }
@@ -179,8 +205,9 @@ final class ProtocolHistoryStore: ObservableObject {
                 trackId: result.trackMatch.trackId.rawValue,
                 subjectSummary: session.subject.summaryLine,
                 knownLabel: Self.makeKnownLabel(from: session.subject) ?? previous?.knownLabel,
-                blePeripheralId: scannedDevice?.id ?? previous?.blePeripheralId,
-                bleAdvertisementName: advName
+                blePeripheralId: bleId,
+                bleAdvertisementName: advName,
+                wasVerifiedAsScooter: true
             ),
             at: 0
         )
@@ -321,20 +348,24 @@ final class ProtocolHistoryStore: ObservableObject {
     // MARK: - Scan-Listen-Wiedererkennung
 
     /// Gespeicherter Name / Kennzeichen für ein Gerät in der BLE-Suche.
+    /// Nur für technisch verifizierte Scooter (nie nach bloßem Connect/Fehler).
     func knownAlias(for device: ScannedDevice) -> String? {
         knownEntry(for: device)?.scanListAlias
     }
 
     func knownEntry(for device: ScannedDevice) -> Entry? {
         let keys = Self.scanIdentityKeys(for: device)
-        for entry in entries {
-            if let pid = entry.blePeripheralId, pid == device.id {
-                return entry
-            }
+        for entry in entries where ScooterVerification.qualifiesAsKnownScooter(entry) {
             if let sn = entry.serialDisplay, Self.identityMatches(sn, keys: keys) {
                 return entry
             }
             if let adv = entry.bleAdvertisementName, Self.identityMatches(adv, keys: keys) {
+                return entry
+            }
+            // Peripheral-UUID nur bei verifiziertem Eintrag mit SN (kein TV-Fehllink).
+            if entry.wasVerifiedAsScooter == true
+                || (entry.wasVerifiedAsScooter == nil && (entry.serialDisplay?.count ?? 0) >= 8),
+               let pid = entry.blePeripheralId, pid == device.id {
                 return entry
             }
         }
@@ -349,6 +380,12 @@ final class ProtocolHistoryStore: ObservableObject {
             if aKnown != bKnown { return aKnown && !bKnown }
             return a.rssi > b.rssi
         }
+    }
+
+    /// Ob Advertisement/Name des Geräts zur ausgelesenen Seriennummer passt.
+    static func deviceMatchesSerial(_ device: ScannedDevice, serial: String?) -> Bool {
+        guard let serial, !serial.isEmpty else { return false }
+        return identityMatches(serial, keys: scanIdentityKeys(for: device))
     }
 
     static func makeKnownLabel(from subject: ProtocolSubject) -> String? {
@@ -397,10 +434,12 @@ final class ProtocolHistoryStore: ObservableObject {
 
     enum HistoryError: LocalizedError {
         case missingResult
+        case notVerifiedScooter
 
         var errorDescription: String? {
             switch self {
             case .missingResult: return "Protokoll ohne Analyse-Ergebnis"
+            case .notVerifiedScooter: return "Kein unterstützter Scooter erkannt — Speicherung übersprungen"
             }
         }
     }

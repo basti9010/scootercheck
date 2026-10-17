@@ -773,9 +773,29 @@ struct ContentView: View {
         persistSession(current)
     }
 
-    /// Speichert Protokoll inkl. BLE-UUID/Advertisement für spätere Scan-Wiedererkennung.
+    /// Speichert Protokoll; BLE-Wiedererkennung nur nach verifizierter Scooter-Auslese.
     private func persistSession(_ current: CheckSession) {
-        let device = ble.lastConnectedDevice ?? unlockRescanDevice ?? powerCycleDevice
+        let reading = current.result?.reading ?? current.reading
+        guard ScooterVerification.isVerifiedScooterReading(reading) else {
+            // Fehlversuch / Fremd-BLE: kein Protokoll, kein „bekannter Scooter“.
+            return
+        }
+        // lastConnectedDevice kann nach einem späteren Fehlversuch (TV o.ä.) auf ein
+        // Fremdgerät zeigen — UUID nur verknüpfen, wenn die Session noch authentifiziert
+        // ist oder die Geräteidentität zur ausgelesenen SN passt.
+        let candidate = ble.lastConnectedDevice ?? unlockRescanDevice ?? powerCycleDevice
+        let device: ScannedDevice? = {
+            guard let candidate else { return nil }
+            if ble.lastConnectedDevice?.id == candidate.id, ble.isAuthenticatedForDump {
+                return candidate
+            }
+            if ProtocolHistoryStore.deviceMatchesSerial(candidate, serial: reading.serialDisplay) {
+                return candidate
+            }
+            if let unlock = unlockRescanDevice, unlock.id == candidate.id { return candidate }
+            if let power = powerCycleDevice, power.id == candidate.id { return candidate }
+            return nil
+        }()
         try? history.save(current, scannedDevice: device)
     }
 
@@ -985,7 +1005,13 @@ struct ContentView: View {
                 return
             }
             if ble.phase == .done {
-                finalizeAnalysis()
+                if ScooterVerification.isVerifiedScooterReading(ble.reading) {
+                    finalizeAnalysis()
+                } else {
+                    ble.markUnsupportedScooter(
+                        "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht."
+                    )
+                }
                 return
             }
             result = nil
@@ -1190,8 +1216,16 @@ struct ContentView: View {
             }
             await ble.handshakeAndDump(profile: profile)
             if ble.phase == .done {
-                powerCycleDevice = device
-                finalizeAnalysis()
+                // Nur nach technisch verifizierter Scooter-Auslese speichern/merken.
+                if ScooterVerification.isVerifiedScooterReading(ble.reading) {
+                    powerCycleDevice = device
+                    finalizeAnalysis()
+                } else {
+                    // Verbunden, aber keine Scooter-Identität — nicht als bekannt speichern.
+                    ble.markUnsupportedScooter(
+                        "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht."
+                    )
+                }
             }
         } catch {
             // lastError already set by BleClient
@@ -1449,8 +1483,13 @@ struct ContentView: View {
     }
 
     private func finalizeAnalysis() {
-
         var reading = ble.reading
+        guard ScooterVerification.isVerifiedScooterReading(reading) else {
+            ble.markUnsupportedScooter(
+                "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht."
+            )
+            return
+        }
         if reading.serialExpected == nil, let sn = reading.serialDisplay {
             reading.serialExpected = sn
         }

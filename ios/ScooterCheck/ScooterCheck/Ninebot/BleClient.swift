@@ -309,6 +309,10 @@ final class BleClient: NSObject, ObservableObject {
         let connected = active.state == .connected || active.state == .connecting
         guard connected || peripheral != nil else { return nil }
 
+        // Nie pauschal als Scooter markieren — nur beibehalten, was zuvor heuristisch/verifiziert war.
+        let verifiedSeed = lastConnectDevice.map { previous in
+            previous.looksLikeScooter && (detectedStack.isReadable || previous.modelLabel != nil)
+        } ?? false
         let seed = lastConnectDevice.map { previous in
             ScannedDevice(
                 id: active.identifier,
@@ -318,24 +322,29 @@ final class BleClient: NSObject, ObservableObject {
                     : previous.cryptoName,
                 rssi: max(previous.rssi, -55),
                 peripheral: active,
-                looksLikeScooter: true,
+                looksLikeScooter: verifiedSeed || previous.looksLikeScooter,
                 modelLabel: previous.modelLabel,
                 modelBadge: previous.modelBadge,
                 suggestedProfile: previous.suggestedProfile,
                 lastSeen: Date()
             )
-        } ?? ScannedDevice(
-            id: active.identifier,
-            name: btName.isEmpty ? (active.name ?? "Verbunden") : btName,
-            cryptoName: cryptoName.isEmpty ? (active.name ?? "") : cryptoName,
-            rssi: -55,
-            peripheral: active,
-            looksLikeScooter: true,
-            modelLabel: nil,
-            modelBadge: nil,
-            suggestedProfile: nil,
-            lastSeen: Date()
-        )
+        } ?? {
+            let raw = cryptoName.isEmpty ? (btName.isEmpty ? (active.name ?? "") : btName) : cryptoName
+            let hint = BleModelHint.recognize(bleName: raw.isEmpty ? nil : raw)
+            let likely = Self.isLikelyScooterName(raw.isEmpty ? nil : raw) || hint != nil
+            return ScannedDevice(
+                id: active.identifier,
+                name: btName.isEmpty ? (active.name ?? "Verbunden") : btName,
+                cryptoName: cryptoName.isEmpty ? (active.name ?? "") : cryptoName,
+                rssi: -55,
+                peripheral: active,
+                looksLikeScooter: likely,
+                modelLabel: hint?.title,
+                modelBadge: hint?.shortBadge,
+                suggestedProfile: hint?.profile,
+                lastSeen: Date()
+            )
+        }()
 
         central.cancelPeripheralConnection(active)
         expectDisconnect = true
@@ -352,13 +361,14 @@ final class BleClient: NSObject, ObservableObject {
         let shortId = String(peripheral.identifier.uuidString.prefix(8))
         let name = rawName.isEmpty ? "Verbunden (\(shortId))" : rawName
         let hint = BleModelHint.recognize(bleName: rawName.isEmpty ? nil : rawName)
+        let likely = Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName) || hint != nil
         let device = ScannedDevice(
             id: peripheral.identifier,
             name: name,
             cryptoName: rawName,
             rssi: -50,
             peripheral: peripheral,
-            looksLikeScooter: true,
+            looksLikeScooter: likely,
             modelLabel: hint?.title,
             modelBadge: hint?.shortBadge,
             suggestedProfile: hint?.profile,
@@ -372,7 +382,7 @@ final class BleClient: NSObject, ObservableObject {
                 cryptoName: existing.cryptoName.isEmpty ? device.cryptoName : existing.cryptoName,
                 rssi: existing.rssi,
                 peripheral: peripheral,
-                looksLikeScooter: true,
+                looksLikeScooter: existing.looksLikeScooter || device.looksLikeScooter,
                 modelLabel: existing.modelLabel ?? device.modelLabel,
                 modelBadge: existing.modelBadge ?? device.modelBadge,
                 suggestedProfile: existing.suggestedProfile ?? device.suggestedProfile,
@@ -643,9 +653,10 @@ final class BleClient: NSObject, ObservableObject {
         let pipeInfo = pipes.isEmpty ? "kein UART-Service" : pipes.joined(separator: " + ")
         let nameHint = cryptoName.isEmpty ? "ohne BLE-Namen" : "BLE-Name „\(cryptoName)“"
         fail(
-            "Kein unterstütztes Protokoll erkannt (\(pipeInfo), \(nameHint))"
+            "Kein unterstützter Scooter erkannt. Das ausgewählte Bluetooth-Gerät unterstützt das ScooterCheck-Protokoll nicht"
+                + " (\(pipeInfo), \(nameHint))"
                 + (lastFailure.map { " — \($0)" } ?? "")
-                + ". Scooter eingeschaltet lassen; bei Pairing Power-Taste drücken."
+                + "."
         )
     }
 
@@ -1728,6 +1739,53 @@ final class BleClient: NSObject, ObservableObject {
         lastError = message
         phase = .failed
         statusMessage = message
+        demoteUnverifiedLastConnect()
+    }
+
+    /// Öffentlich: Verbindung ohne gültige Scooter-Auslese — kein „bekannter Scooter“.
+    func markUnsupportedScooter(_ message: String) {
+        demoteUnverifiedLastConnect()
+        // Fremdgerät darf keine spätere Protokoll-Speicherung „verunreinigen“.
+        lastConnectDevice = nil
+        lastError = message
+        phase = .failed
+        statusMessage = message
+        disconnect()
+    }
+
+    private func demoteUnverifiedLastConnect() {
+        guard let last = lastConnectDevice else { return }
+        // Advertisement-Heuristik behalten; Connect-Erfolg allein macht kein Scooter.
+        let keepLikely = last.modelLabel != nil
+            || Self.isLikelyScooterName(last.cryptoName.isEmpty ? last.name : last.cryptoName)
+        if let index = devices.firstIndex(where: { $0.id == last.id }) {
+            let existing = devices[index]
+            devices[index] = ScannedDevice(
+                id: existing.id,
+                name: existing.name,
+                cryptoName: existing.cryptoName,
+                rssi: existing.rssi,
+                peripheral: existing.peripheral,
+                looksLikeScooter: keepLikely || existing.modelLabel != nil,
+                modelLabel: existing.modelLabel,
+                modelBadge: existing.modelBadge,
+                suggestedProfile: existing.suggestedProfile,
+                lastSeen: existing.lastSeen
+            )
+        }
+        // lastConnectDevice nur demoten, wenn fail() (nicht markUnsupported) — sonst nil.
+        lastConnectDevice = ScannedDevice(
+            id: last.id,
+            name: last.name,
+            cryptoName: last.cryptoName,
+            rssi: last.rssi,
+            peripheral: last.peripheral,
+            looksLikeScooter: keepLikely,
+            modelLabel: last.modelLabel,
+            modelBadge: last.modelBadge,
+            suggestedProfile: last.suggestedProfile,
+            lastSeen: last.lastSeen
+        )
     }
 
     private func resetSession() {

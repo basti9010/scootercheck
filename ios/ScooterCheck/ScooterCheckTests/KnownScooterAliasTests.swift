@@ -27,7 +27,8 @@ final class KnownScooterAliasTests: XCTestCase {
             protocolNumber: "SC-TEST",
             createdAt: Date(),
             profile: .maxG3D,
-            serialDisplay: "1EFHE2515C0440"
+            serialDisplay: "1EFHE2515C0440",
+            wasVerifiedAsScooter: true
         )
         XCTAssertEqual(entry.scanListAlias, "bereits geprüft")
     }
@@ -40,9 +41,23 @@ final class KnownScooterAliasTests: XCTestCase {
             profile: .maxG3D,
             serialDisplay: "1EFHE2515C0440",
             subjectSummary: "Neukirch · 905YFI",
-            knownLabel: "Neukirch · 905YFI"
+            knownLabel: "Neukirch · 905YFI",
+            wasVerifiedAsScooter: true
         )
         XCTAssertEqual(entry.scanListAlias, "Neukirch · 905YFI")
+    }
+
+    func testScanListAliasHiddenWhenNotVerified() {
+        let entry = ProtocolHistoryStore.Entry(
+            id: UUID(),
+            protocolNumber: "SC-TV",
+            createdAt: Date(),
+            profile: .maxG3D,
+            blePeripheralId: UUID(),
+            bleAdvertisementName: "Living Room TV",
+            wasVerifiedAsScooter: false
+        )
+        XCTAssertNil(entry.scanListAlias)
     }
 
     func testEntryDecodesWithoutNewAliasFields() throws {
