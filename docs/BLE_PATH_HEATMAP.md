@@ -20,15 +20,18 @@ Funktionale Überarbeitung der Indoor-/Outdoor-Suchdarstellung. Visuell bleibt d
 
 ## Indoor-Pfadrekonstruktion
 
-`IndoorMotionTracker` kombiniert (WLAN-Analyzer-nah, weiterhin relativ):
+`IndoorMotionTracker` + optional `IndoorVisualTracker` (ARKit):
 
-1. **Gyro / Device-Motion-Yaw** führt Indoor-Drehungen (deltas)
-2. **Kompass** nur Initial-Heading + weiche Ankerung bei guter `headingAccuracy`
-3. **CMPedometer.distance** kalibriert die Schrittlänge und schreibt Meter entlang des Headings
-4. **Fallback User-Acceleration** nur ohne Pedometer und nur bei erkannter Bewegung
-5. **Stillstand** → kein Positions-Drift; GPS-Fusion nur outdoor ≤ 8 m
+1. **Kamera / ARKit World Tracking** (optional, Standard an) → Meter & Drehungen auf der Bodenebene, wie bei WLAN-Analyzer-Apps
+2. **Gyro / Device-Motion** als Fallback bzw. Ergänzung bei eingeschränktem Tracking
+3. **Kompass** nur Initial-Heading + weiche Ankerung
+4. **CMPedometer.distance** kalibriert Schrittlänge; bei aktivem Kamera-Tracking keine Doppelzählung
+5. **Stillstand** → kein Drift; GPS-Fusion nur outdoor ≤ 8 m
 
-Messpunkte (`BLEBreadcrumb`) behalten ihr RSSI vom Aufnahmezeitpunkt — Farben „wandern“ nicht mehr mit.
+UI: Toggle **Kamera-Tracking** + kleine Live-Vorschau (kein Video speichern).  
+Messpunkte (`BLEBreadcrumb`) behalten RSSI vom Aufnahmezeitpunkt.
+
+Neue Datei: `BLESearchVisualTracker.swift`
 
 ### Karten-Zoom & Heatmap (Feedback-Fixes)
 

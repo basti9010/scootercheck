@@ -156,8 +156,10 @@ final class IndoorMotionTracker {
     private var lastYawRadians: Double?
     private var isWalking = false
     private var lastWalkAt = Date.distantPast
+    /// Wenn ARKit/Kamera führt: Pedometer nicht zusätzlich Meter aufaddieren.
+    private var visualPrimary = false
     private(set) var path: [BLEPathPoint] = []
-    /// Summe der tatsächlich fortgeschriebenen Meter (Pedometer-Distanz / kalibrierte Schritte).
+    /// Summe der tatsächlich fortgeschriebenen Meter (Pedometer-Distanz / kalibrierte Schritte / Kamera).
     private(set) var traveledDistanceMeters: Double = 0
 
     var currentX: Double { x }
@@ -180,8 +182,13 @@ final class IndoorMotionTracker {
         lastYawRadians = nil
         isWalking = false
         lastWalkAt = .distantPast
+        visualPrimary = false
         traveledDistanceMeters = 0
         path = [BLEPathPoint(x: 0, y: 0, isStep: false)]
+    }
+
+    func setVisualPrimary(_ enabled: Bool) {
+        visualPrimary = enabled
     }
 
     func start() {
@@ -237,6 +244,39 @@ final class IndoorMotionTracker {
         x = x * 0.85 + east * 0.15
         y = y * 0.85 + north * 0.15
         appendIfMoved(isStep: false)
+    }
+
+    /// ARKit-/Kamera-Pose als primäre Indoor-Position (Meter auf der Bodenebene).
+    /// `authoritative`: bei normalem Tracking Position direkt übernehmen.
+    func ingestVisualPose(east: Double, north: Double, headingDegrees: Double?, authoritative: Bool) {
+        let dist = hypot(east - x, north - y)
+        if authoritative {
+            visualPrimary = true
+            if dist >= 0.03 {
+                traveledDistanceMeters += dist
+                x = east
+                y = north
+                isWalking = true
+                lastWalkAt = Date()
+                appendIfMoved(isStep: true)
+            } else {
+                x = east
+                y = north
+            }
+        } else if dist >= 0.08 {
+            // Limited tracking: weich mischen
+            x = x * 0.55 + east * 0.45
+            y = y * 0.55 + north * 0.45
+            if visualPrimary {
+                traveledDistanceMeters += dist
+            } else {
+                traveledDistanceMeters += dist * 0.45
+            }
+            appendIfMoved(isStep: false)
+        }
+        if let h = headingDegrees {
+            applyHeading(h, alpha: authoritative ? 0.55 : 0.25, minDeltaScale: 0.08)
+        }
     }
 
     // MARK: Gyro-first heading
@@ -316,7 +356,8 @@ final class IndoorMotionTracker {
                     calibratedStepLength = calibratedStepLength * 0.65 + instant * 0.35
                 }
             }
-            // Echte Pedometer-Meter entlang des aktuellen Headings (Kurven bleiben sichtbar)
+            // Kamera führt → Pedometer nur kalibrieren, nicht zusätzlich laufen
+            guard !visualPrimary else { return }
             if dDist >= 0.08 {
                 isWalking = true
                 lastWalkAt = Date()
@@ -325,7 +366,7 @@ final class IndoorMotionTracker {
             return
         }
 
-        guard stepDelta > 0 else { return }
+        guard !visualPrimary, stepDelta > 0 else { return }
         isWalking = true
         lastWalkAt = Date()
         advanceByMeters(Double(min(stepDelta, 4)) * calibratedStepLength)

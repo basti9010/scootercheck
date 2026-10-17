@@ -74,6 +74,8 @@
 		A10000000000000000000045 /* BLEMultiDeviceScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000045 /* BLEMultiDeviceScreen.swift */; };
 		A10000000000000000000044 /* BLEAnalysisCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000044 /* BLEAnalysisCore.swift */; };
 		A1000000000000000000004A /* BLESearchMotionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004A /* BLESearchMotionCore.swift */; };
+		A1000000000000000000004C /* BLESearchVisualTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004C /* BLESearchVisualTracker.swift */; };
+		A1000000000000000000004D /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004D /* ARKit.framework */; };
 		A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004B /* BLESearchMotionCoreTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -143,6 +145,8 @@
 		B10000000000000000000043 /* BLESearchCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000044 /* BLEAnalysisCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEAnalysisCore.swift; sourceTree = "<group>"; };
 		B1000000000000000000004A /* BLESearchMotionCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchMotionCore.swift; sourceTree = "<group>"; };
+		B1000000000000000000004C /* BLESearchVisualTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchVisualTracker.swift; sourceTree = "<group>"; };
+		B1000000000000000000004D /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		B1000000000000000000004B /* BLESearchMotionCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchMotionCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000045 /* BLEMultiDeviceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMultiDeviceScreen.swift; sourceTree = "<group>"; };
 		B10000000000000000000046 /* BLEAnalysisCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEAnalysisCoreTests.swift; sourceTree = "<group>"; };
@@ -159,6 +163,7 @@
 				A1000000000000000000000D /* CoreBluetooth.framework in Frameworks */,
 				A1000000000000000000002F /* CoreLocation.framework in Frameworks */,
 				A10000000000000000000030 /* CoreMotion.framework in Frameworks */,
+				A1000000000000000000004D /* ARKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,6 +208,7 @@
 				B10000000000000000000041 /* BLESearchEngine.swift */,
 				B10000000000000000000042 /* BLESearchScreen.swift */,
 				B1000000000000000000004A /* BLESearchMotionCore.swift */,
+				B1000000000000000000004C /* BLESearchVisualTracker.swift */,
 				B10000000000000000000045 /* BLEMultiDeviceScreen.swift */,
 				B10000000000000000000044 /* BLEAnalysisCore.swift */,
 				B10000000000000000000048 /* BLEWatchRadarUI.swift */,
@@ -294,6 +300,7 @@
 				B1000000000000000000000D /* CoreBluetooth.framework */,
 				B1000000000000000000002F /* CoreLocation.framework */,
 				B10000000000000000000030 /* CoreMotion.framework */,
+				B1000000000000000000004D /* ARKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -405,6 +412,7 @@
 				A10000000000000000000041 /* BLESearchEngine.swift in Sources */,
 				A10000000000000000000042 /* BLESearchScreen.swift in Sources */,
 				A1000000000000000000004A /* BLESearchMotionCore.swift in Sources */,
+				A1000000000000000000004C /* BLESearchVisualTracker.swift in Sources */,
 				A10000000000000000000045 /* BLEMultiDeviceScreen.swift in Sources */,
 				A10000000000000000000044 /* BLEAnalysisCore.swift in Sources */,
 				A10000000000000000000048 /* BLEWatchRadarUI.swift in Sources */,

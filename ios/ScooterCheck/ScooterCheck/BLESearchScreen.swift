@@ -189,6 +189,28 @@ struct BLESearchScreen: View {
                 .padding(10)
             }
 
+            if engine.cameraTrackingEnabled {
+                BLESearchCameraPreview(tracker: engine.visualTracker)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                            .stroke(Theme.border, lineWidth: 1)
+                    )
+                    .overlay(alignment: .bottomLeading) {
+                        Text(engine.cameraTrackingStatus)
+                            .font(Theme.caption.weight(.medium))
+                            .foregroundStyle(Theme.textPrimary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.black.opacity(0.55))
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                            .padding(8)
+                    }
+                    .accessibilityLabel("Kamera-Vorschau für Bewegungs-Tracking")
+            }
+
             HStack(spacing: Theme.Space.md) {
                 metricChip(title: "Messungen", value: "\(engine.measurementCount)")
                 metricChip(title: "Strecke", value: engine.pathLengthText)
@@ -320,6 +342,21 @@ struct BLESearchScreen: View {
                 }
                 .tint(Theme.accent)
             }
+            .foregroundStyle(Theme.textSecondary)
+
+            Toggle(isOn: Binding(
+                get: { engine.cameraTrackingEnabled },
+                set: { engine.setCameraTrackingEnabled($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Kamera-Tracking")
+                        .font(Theme.secondary)
+                    Text(engine.cameraTrackingStatus)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
+            .tint(Theme.accent)
             .foregroundStyle(Theme.textSecondary)
 
             BLERadarControlsCard(radar: radar)

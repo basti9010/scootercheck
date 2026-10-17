@@ -49,7 +49,7 @@
 	<key>NSMotionUsageDescription</key>
 	<string>ScooterCheck nutzt Bewegungsdaten nur während „Scooter finden“, um den relativen Suchpfad und die Signal-Heatmap bei schwachem GPS robuster zu führen. Es findet keine exakte Innenraumortung statt.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>ScooterCheck benötigt Zugriff auf die Kamera, damit du Fotos zu einer Prüfung hinzufügen kannst.</string>
+	<string>ScooterCheck nutzt die Kamera optional während „Scooter finden“ für kamera-gestütztes Bewegungs-Tracking (Abstände und Drehungen indoor) sowie für Fotos zu einer Prüfung. Es werden keine Videos gespeichert.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ScooterCheck benötigt Zugriff auf deine Fotos, damit du Bilder zu einer Prüfung hinzufügen kannst.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

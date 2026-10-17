@@ -25,6 +25,9 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var measurementCount: Int = 0
     @Published var hapticsEnabled = false
     @Published var audioEnabled = false
+    /// Kamera/ARKit für Indoor-Abstände und Drehungen (wie WLAN-Analyzer).
+    @Published var cameraTrackingEnabled = true
+    @Published private(set) var cameraTrackingStatus: String = "Kamera aus"
 
     // Pfad / Ansicht
     @Published var surfaceMode: BLESearchSurfaceMode = .relative
@@ -33,6 +36,8 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var pathLengthText: String = "0.00 m"
     @Published private(set) var breadcrumbs: [BLEBreadcrumb] = []
     @Published private(set) var surfaceHint: String = "Relative Suchfläche – keine exakte Ortung"
+
+    let visualTracker = IndoorVisualTracker()
 
     // Analyse / erweiterte Suche
     @Published private(set) var timeline = BLESearchTimeline()
@@ -104,6 +109,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         movementAnalyzer.reset()
         directionService.reset()
         indoorTracker.reset()
+        visualTracker.stop()
         timeline.reset()
         signalHistory.reset()
         movementHint = .inactive
@@ -120,13 +126,15 @@ final class BLESearchEngine: NSObject, ObservableObject {
         searchMode = .coarse
         surfaceMode = .relative
         followViewport = true
+        cameraTrackingEnabled = true
+        cameraTrackingStatus = "Kamera aus"
         heatmap = .empty
         strongestRssi = nil
         strongestLabel = "—"
         measurementCount = 0
         signalStatus = "BLE-Suche aktiv"
         positionHint = nil
-        surfaceHint = "Relative Suchfläche – keine exakte Ortung"
+        surfaceHint = "Relative Suchfläche – Kamera verbessert Abstände indoor"
         relativeX = 0
         relativeY = 0
         originLocation = nil
@@ -158,6 +166,9 @@ final class BLESearchEngine: NSObject, ObservableObject {
 
         startSensors()
         indoorTracker.start()
+        if cameraTrackingEnabled {
+            startCameraTracking()
+        }
         bleCancellable = ble.$devices
             .receive(on: RunLoop.main)
             .sink { [weak self] devices in
@@ -182,6 +193,8 @@ final class BLESearchEngine: NSObject, ObservableObject {
         bleCancellable = nil
         stopSensors()
         indoorTracker.stop()
+        visualTracker.stop()
+        cameraTrackingStatus = visualTracker.statusText
         isActive = false
         if discardSession {
             session = nil
@@ -211,6 +224,44 @@ final class BLESearchEngine: NSObject, ObservableObject {
     func setSurfaceMode(_ mode: BLESearchSurfaceMode) {
         userPickedSurfaceMode = true
         applySurfaceMode(mode)
+    }
+
+    func setCameraTrackingEnabled(_ enabled: Bool) {
+        cameraTrackingEnabled = enabled
+        if enabled {
+            startCameraTracking()
+        } else {
+            visualTracker.stop()
+            indoorTracker.setVisualPrimary(false)
+            cameraTrackingStatus = visualTracker.statusText
+            surfaceHint = surfaceMode == .relative
+                ? "Relative Suchfläche – keine exakte Ortung"
+                : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
+        }
+    }
+
+    private func startCameraTracking() {
+        visualTracker.onPoseUpdate = { [weak self] east, north, heading in
+            guard let self, self.isActive else { return }
+            let authoritative = self.visualTracker.state == .tracking
+            self.indoorTracker.ingestVisualPose(
+                east: east,
+                north: north,
+                headingDegrees: heading,
+                authoritative: authoritative
+            )
+            self.indoorTracker.setVisualPrimary(authoritative || self.visualTracker.state == .limited)
+            self.cameraTrackingStatus = self.visualTracker.statusText
+            self.pathDirty = true
+            self.heatmapDirty = true
+            if authoritative {
+                self.surfaceHint = "Kamera-Tracking aktiv – relative Meter, keine exakte Ortung"
+            } else if self.visualTracker.state == .limited {
+                self.surfaceHint = "Kamera eingeschränkt – Sensoren helfen weiter"
+            }
+        }
+        visualTracker.start()
+        cameraTrackingStatus = visualTracker.statusText
     }
 
     private func applySurfaceMode(_ mode: BLESearchSurfaceMode) {
@@ -677,9 +728,14 @@ final class BLESearchEngine: NSObject, ObservableObject {
                 followSoftly: followViewport
             )
             pathSnapshot = snap
-            // Pedometer-kalibrierte Distanz bevorzugen, Polyline als Untergrenze
-            let meters = max(snap.pathLengthMeters, indoorTracker.traveledDistanceMeters)
+            // Kamera-Distanz > Pedometer > Polyline
+            let meters = max(
+                snap.pathLengthMeters,
+                indoorTracker.traveledDistanceMeters,
+                visualTracker.traveledMeters
+            )
             pathLengthText = String(format: "%.2f m", meters)
+            cameraTrackingStatus = visualTracker.statusText
             pathDirty = false
             heatmapDirty = true
         }

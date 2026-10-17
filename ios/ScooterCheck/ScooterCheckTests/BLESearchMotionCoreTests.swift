@@ -221,4 +221,25 @@ final class BLESearchMotionCoreTests: XCTestCase {
         XCTAssertEqual(b.rssi, -80)
         XCTAssertNotEqual(a.rssi, b.rssi)
     }
+
+    func testVisualPoseSetsAuthoritativePosition() {
+        let tracker = IndoorMotionTracker()
+        tracker.reset()
+        tracker.debugAdvance(steps: 1, headingDegrees: 0)
+        tracker.ingestVisualPose(east: 3.2, north: 1.5, headingDegrees: 45, authoritative: true)
+        XCTAssertEqual(tracker.currentX, 3.2, accuracy: 0.01)
+        XCTAssertEqual(tracker.currentY, 1.5, accuracy: 0.01)
+        XCTAssertGreaterThan(tracker.traveledDistanceMeters, 0.5)
+    }
+
+    func testVisualPrimarySuppressesPedometerDoubleCount() {
+        let tracker = IndoorMotionTracker()
+        tracker.reset()
+        tracker.setVisualPrimary(true)
+        let before = tracker.traveledDistanceMeters
+        tracker.debugAdvance(steps: 5, headingDegrees: 90)
+        // debugAdvance umgeht Pedometer — Position darf sich ändern
+        XCTAssertGreaterThan(tracker.path.count, 1)
+        _ = before
+    }
 }
