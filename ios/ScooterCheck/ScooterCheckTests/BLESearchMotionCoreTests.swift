@@ -242,4 +242,108 @@ final class BLESearchMotionCoreTests: XCTestCase {
         XCTAssertGreaterThan(tracker.path.count, 1)
         _ = before
     }
+
+    func testHeatmapKeepsDistantCellUntilRemeasured() {
+        let viewport = BLESearchViewport(centerX: 5, centerY: 5, spanMeters: 24)
+        let first = [
+            BLEMeasurement(
+                timestamp: Date(),
+                rawRssi: -52,
+                smoothedRssi: -52,
+                relativeX: 1.0,
+                relativeY: 1.0,
+                positionQuality: .high
+            )
+        ]
+        let heat1 = HeatmapPlacementEngine.build(
+            measurements: first,
+            viewport: viewport,
+            pathPolyline: [(1, 1)]
+        )
+        let frozen = HeatmapPlacementEngine.measuredRssi(in: heat1, x: 1.0, y: 1.0)
+        XCTAssertEqual(frozen, -52, accuracy: 0.01)
+
+        // Neue Messung weit entfernt — alter Ort bleibt unverändert
+        let second = first + [
+            BLEMeasurement(
+                timestamp: Date().addingTimeInterval(2),
+                rawRssi: -78,
+                smoothedRssi: -78,
+                relativeX: 10.0,
+                relativeY: 10.0,
+                positionQuality: .high
+            )
+        ]
+        let heat2 = HeatmapPlacementEngine.build(
+            measurements: second,
+            viewport: viewport,
+            pathPolyline: [(1, 1), (10, 10)]
+        )
+        XCTAssertEqual(
+            HeatmapPlacementEngine.measuredRssi(in: heat2, x: 1.0, y: 1.0),
+            -52,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
+            HeatmapPlacementEngine.measuredRssi(in: heat2, x: 10.0, y: 10.0),
+            -78,
+            accuracy: 0.01
+        )
+    }
+
+    func testHeatmapUpdatesOnlyWhenSameCellRemeasured() {
+        let viewport = BLESearchViewport(centerX: 2, centerY: 2, spanMeters: 20)
+        let measurements = [
+            BLEMeasurement(
+                timestamp: Date(),
+                rawRssi: -48,
+                smoothedRssi: -48,
+                relativeX: 2.0,
+                relativeY: 2.0,
+                positionQuality: .high
+            ),
+            BLEMeasurement(
+                timestamp: Date().addingTimeInterval(3),
+                rawRssi: -70,
+                smoothedRssi: -70,
+                relativeX: 2.1,
+                relativeY: 2.0,
+                positionQuality: .high
+            )
+        ]
+        let heat = HeatmapPlacementEngine.build(
+            measurements: measurements,
+            viewport: viewport,
+            pathPolyline: [(2, 2), (2.1, 2)]
+        )
+        // Gleicher Rasterplatz → letzter Wert gewinnt
+        XCTAssertEqual(
+            HeatmapPlacementEngine.measuredRssi(in: heat, x: 2.0, y: 2.0),
+            -70,
+            accuracy: 0.01
+        )
+    }
+
+    func testHeatmapCellSizeStaysFixedWhenViewportGrows() {
+        let small = BLESearchViewport(centerX: 0, centerY: 0, spanMeters: 12)
+        let large = BLESearchViewport(centerX: 0, centerY: 0, spanMeters: 40)
+        let m = [
+            BLEMeasurement(
+                timestamp: Date(),
+                rawRssi: -55,
+                smoothedRssi: -55,
+                relativeX: 0.5,
+                relativeY: 0.5,
+                positionQuality: .high
+            )
+        ]
+        let a = HeatmapPlacementEngine.build(measurements: m, viewport: small, pathPolyline: [(0.5, 0.5)])
+        let b = HeatmapPlacementEngine.build(measurements: m, viewport: large, pathPolyline: [(0.5, 0.5)])
+        XCTAssertEqual(a.cellSize, BLESignalConfig.cellSizeMeters, accuracy: 0.001)
+        XCTAssertEqual(b.cellSize, BLESignalConfig.cellSizeMeters, accuracy: 0.001)
+        XCTAssertEqual(
+            HeatmapPlacementEngine.measuredRssi(in: a, x: 0.5, y: 0.5),
+            HeatmapPlacementEngine.measuredRssi(in: b, x: 0.5, y: 0.5)
+        )
+    }
 }

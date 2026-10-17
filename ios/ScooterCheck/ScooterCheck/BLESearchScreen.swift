@@ -801,7 +801,7 @@ struct SignalHeatmapView: View {
             }
         }
         .accessibilityLabel("Signal-Heatmap")
-        .accessibilityHint("Messpunkte behalten ihre Signalstärke. Pfad ist relative Bewegung — keine exakte Ortung.")
+        .accessibilityHint("Farben bleiben am Ort, bis dort neu gemessen wird. Pfad ist relative Bewegung — keine exakte Ortung.")
     }
 
     private static func decimateBreadcrumbs(_ samples: [BLEBreadcrumb], maxCount: Int) -> [BLEBreadcrumb] {

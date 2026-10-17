@@ -52,8 +52,9 @@ Ergebnis: Geradeaus → gerade Linie; Rechtsdrehung → sichtbarer Knick; Kehrtw
 `HeatmapPlacementEngine`:
 
 - Messpunkte nutzen `relativeX` / `relativeY` vom rekonstruierten Tracker
-- Zellgröße = `viewport.spanMeters / cols` → Heatmap und Pfad teilen denselben Viewport
-- Weiche lokale Füllung nur in Nachbarschaft gemessener Zellen (keine weite Extrapolation)
+- **Feste Welt-Zellgröße** (`cellSizeMeters`) — Farben wandern nicht mit dem Zoom
+- Pro Rasterzelle gilt der **letzte Messwert**; ältere Orte bleiben unverändert, bis du denselben Platz erneut misst
+- Weiche lokale Füllung nur in leeren Nachbarzellen (überschreibt nie gemessene Zellen)
 - Trail = geglättete Polyline des Laufwegs
 
 ## Zentrierung

@@ -127,7 +127,6 @@ enum BLEPathConfig {
     static let mapSoftFollow: Double = 0.28
     static let gpsFusionMaxAccuracy: Double = 8
     static let maxPathPoints = 800
-    static let heatmapPaintRadius: Double = 1.6
 }
 
 /// Ein Messpunkt mit eingefrorenem RSSI (WLAN-Analyzer-Stil).
@@ -587,43 +586,52 @@ enum SearchViewportController {
 enum HeatmapPlacementEngine {
     /// Baut Heatmap aus Messungen entlang des Pfads.
     ///
-    /// Warum ältere Farben früher „wanderten“:
-    /// Beim Mittelwert haben neue schwächere Messungen alte starke Zellen verwässert,
-    /// und Soft-Fill hat Nachbarschafts-Farben bei jedem Rebuild neu gemischt.
-    /// Jetzt: Peak-RSSI in gemessenen Zellen + Origin am Raster eingerastet.
+    /// Farben bleiben an Orten eingefroren, bis du denselben Rasterplatz
+    /// erneut misst — dann zählt der neue Wert (last-write). Kein Peak-Mittel,
+    /// kein Paint-Radius auf Nachbarn, feste Welt-Zellgröße gegen Zoom-Drift.
     static func build(
         measurements: [BLEMeasurement],
         viewport: BLESearchViewport,
         pathPolyline: [(x: Double, y: Double)]
     ) -> BLEHeatmapSnapshot {
-        let cols = BLESignalConfig.heatmapCols
-        let rows = BLESignalConfig.heatmapRows
-        let bounds = max(viewport.spanMeters, 1)
-        let cell = bounds / Double(cols)
-        // Origin an fester Welt-Rasterkante einrasten → weniger Index-Verschiebung beim Zoomen
-        let snap = BLESignalConfig.cellSizeMeters
-        let originEast = (viewport.originEast / snap).rounded(.down) * snap
-        let originNorth = (viewport.originNorth / snap).rounded(.down) * snap
+        let cell = BLESignalConfig.cellSizeMeters
+        // Welt-Raster absolut: gleiche Meter-Zelle behält Index-Logik beim Zoomen
+        let originEast = (viewport.originEast / cell).rounded(.down) * cell
+        let originNorth = (viewport.originNorth / cell).rounded(.down) * cell
+        let cols = min(
+            64,
+            max(12, Int(ceil(max(viewport.spanMeters, cell) / cell)) + 1)
+        )
+        let rows = cols
+        let bounds = Double(cols) * cell
 
-        var cells: [BLEHeatmapCell?] = Array(repeating: nil, count: cols * rows)
-        let plotted = measurements.compactMap { m -> (Double, Double, Double, Double)? in
-            guard let x = m.relativeX, let y = m.relativeY else { return nil }
+        // Chronologisch: letzter Messwert pro Weltzelle gewinnt
+        var worldRssi: [Int64: (rssi: Double, weight: Double)] = [:]
+        for m in measurements {
+            guard let x = m.relativeX, let y = m.relativeY else { continue }
             let w = m.quality.weight
-            guard w > 0.05 else { return nil }
-            return (x, y, m.smoothedRssi, w)
+            guard w > 0.05 else { continue }
+            let key = worldKey(x: x, y: y, cell: cell)
+            worldRssi[key] = (m.smoothedRssi, w)
         }
 
-        let paintRadius = min(BLEPathConfig.heatmapPaintRadius, cell * 1.6)
-        for p in plotted {
-            paint(
-                x: p.0, y: p.1, rssi: p.2, weight: p.3,
-                into: &cells, cols: cols, rows: rows,
-                originE: originEast, originN: originNorth,
-                cell: cell, paintRadius: paintRadius
+        var cells: [BLEHeatmapCell?] = Array(repeating: nil, count: cols * rows)
+        let originCol = Int((originEast / cell).rounded(.down))
+        let originRow = Int((originNorth / cell).rounded(.down))
+        for (key, value) in worldRssi {
+            let (wc, wr) = decodeWorldKey(key)
+            let c = wc - originCol
+            let r = wr - originRow
+            guard c >= 0, c < cols, r >= 0, r < rows else { continue }
+            // samples = 1 → Confidence bleibt stabil (Farbe ändert sich nur mit RSSI)
+            cells[r * cols + c] = BLEHeatmapCell(
+                rssi: value.rssi,
+                weight: value.weight,
+                samples: 1
             )
         }
 
-        // Nur lokal weich füllen — keine weite Extrapolation; überschreibt nie samples > 0.
+        // Soft-Fill nur leere Nachbarn; gemessene Zellen werden nie überschrieben.
         cells = softFillNearPath(cells: cells, cols: cols, rows: rows, cell: cell)
 
         var strongest: (Int, Int)?
@@ -649,6 +657,35 @@ enum HeatmapPlacementEngine {
             strongestCell: strongest,
             boundsMeters: bounds
         )
+    }
+
+    /// Raster-Schlüssel in Weltkoordinaten (nicht Viewport-Index).
+    static func worldKey(x: Double, y: Double, cell: Double = BLESignalConfig.cellSizeMeters) -> Int64 {
+        let c = Int32((x / cell).rounded(.down))
+        let r = Int32((y / cell).rounded(.down))
+        return (Int64(c) << 32) | Int64(UInt32(bitPattern: r))
+    }
+
+    static func decodeWorldKey(_ key: Int64) -> (col: Int, row: Int) {
+        let c = Int(Int32(truncatingIfNeeded: key >> 32))
+        let r = Int(Int32(bitPattern: UInt32(truncatingIfNeeded: key)))
+        return (c, r)
+    }
+
+    /// RSSI einer gemessenen Weltzelle (nil = noch nie / außerhalb).
+    static func measuredRssi(
+        in snapshot: BLEHeatmapSnapshot,
+        x: Double,
+        y: Double
+    ) -> Double? {
+        let cell = snapshot.cellSize
+        guard cell > 0 else { return nil }
+        let c = Int(((x - snapshot.originEast) / cell).rounded(.down))
+        let r = Int(((y - snapshot.originNorth) / cell).rounded(.down))
+        guard c >= 0, c < snapshot.cols, r >= 0, r < snapshot.rows else { return nil }
+        let entry = snapshot.cells[r * snapshot.cols + c]
+        guard let entry, entry.samples > 0 else { return nil }
+        return entry.rssi
     }
 
     private static func softFillNearPath(
@@ -691,50 +728,6 @@ enum HeatmapPlacementEngine {
             }
         }
         return out
-    }
-
-    private static func paint(
-        x: Double,
-        y: Double,
-        rssi: Double,
-        weight: Double,
-        into cells: inout [BLEHeatmapCell?],
-        cols: Int,
-        rows: Int,
-        originE: Double,
-        originN: Double,
-        cell: Double,
-        paintRadius: Double
-    ) {
-        let c0 = Int(((x - originE) / cell).rounded(.down))
-        let r0 = Int(((y - originN) / cell).rounded(.down))
-        let radiusCells = max(1, Int(ceil(paintRadius / cell)))
-        for dr in -radiusCells...radiusCells {
-            for dc in -radiusCells...radiusCells {
-                let c = c0 + dc
-                let r = r0 + dr
-                guard c >= 0, c < cols, r >= 0, r < rows else { continue }
-                let dist = hypot(Double(dc), Double(dr)) * cell
-                guard dist <= paintRadius else { continue }
-                let falloff = max(0.15, 1.0 - dist / paintRadius)
-                let w = weight * falloff
-                let idx = r * cols + c
-                let isCore = dist < cell * 0.55
-                if var existing = cells[idx] {
-                    // Peak-RSSI: ältere starke Messungen nicht durch spätere schwächere Mittelwerte verwässern
-                    existing.rssi = max(existing.rssi, rssi)
-                    existing.weight = max(existing.weight, w)
-                    if isCore { existing.samples += 1 }
-                    cells[idx] = existing
-                } else {
-                    cells[idx] = BLEHeatmapCell(
-                        rssi: rssi,
-                        weight: w,
-                        samples: isCore ? 1 : 0
-                    )
-                }
-            }
-        }
     }
 }
 
