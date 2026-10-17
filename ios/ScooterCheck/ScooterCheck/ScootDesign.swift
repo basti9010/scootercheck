@@ -92,7 +92,7 @@ struct AppChromeSheetHeader: View {
     }
 }
 
-/// Runder ☰-Button wie im Mockup.
+/// Runder ☰-Button wie im Mockup — eine Fläche, keine äußere Kontur.
 struct MenuGlyphButton: View {
     let action: () -> Void
     var body: some View {
@@ -103,7 +103,6 @@ struct MenuGlyphButton: View {
                 .frame(width: 44, height: 44)
                 .background(Theme.surfaceSecondary)
                 .clipShape(Circle())
-                .overlay(Circle().stroke(Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Menü öffnen")
