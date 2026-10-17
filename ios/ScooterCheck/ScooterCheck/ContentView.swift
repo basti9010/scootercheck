@@ -240,7 +240,7 @@ struct ContentView: View {
                 }
             }
         }
-        // Eine Wordmark über dem gesamten NavigationStack (Nav-Bar-Band), nicht im Content/Radar.
+        // Über Drawer + Header, Y über resolved Safe Area (nicht Statusleiste/Dynamic Island).
         .overlay {
             FloatingAppBrandWordmark(menuProgress: menuProgress)
         }
@@ -1598,7 +1598,7 @@ struct ContentView: View {
         }
     }
 
-    /// Fester Header unter der Safe Area; Wordmark kommt als Overlay (gleiche Y überall).
+    /// Fester Header unter der Safe Area; Wordmark kommt als Overlay (gleiche Y wie Hamburger).
     private var appChromeHeader: some View {
         AppChromeHeaderBar {
             if screen == .result {
@@ -1625,7 +1625,8 @@ struct ContentView: View {
     private var sideMenuOverlay: some View {
         GeometryReader { geo in
             let panelWidth = Theme.Chrome.drawerPanelWidth(screenWidth: geo.size.width)
-            let safeTop = geo.safeAreaInsets.top
+            // Nie 0 melden lassen — sonst rutscht der Drawer-Header in die Statusleiste.
+            let safeTop = Theme.Chrome.resolvedSafeAreaTop(geo.safeAreaInsets.top)
             ZStack(alignment: .leading) {
                 Color.black.opacity(0.55 * Double(menuProgress))
                     .ignoresSafeArea()

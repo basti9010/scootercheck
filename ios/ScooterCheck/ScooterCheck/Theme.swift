@@ -106,9 +106,29 @@ enum Theme {
             max(0, screenWidth * drawerWidthFraction)
         }
 
-        /// Absolute Y-Mitte der Wordmark: safeAreaTop + headerHeight/2.
+        /// Y-Mitte der Wordmark relativ zum Header-Band (nicht zur Statusleiste).
+        static var brandCenterYInHeader: CGFloat { headerHeight * 0.5 }
+
+        /// Absolute Y nur wenn ein Full-Screen-Overlay nötig ist.
         static func brandCenterY(safeAreaTop: CGFloat) -> CGFloat {
-            safeAreaTop + headerHeight * 0.5
+            resolvedSafeAreaTop(safeAreaTop) + brandCenterYInHeader
+        }
+
+        /// GeometryReader in Full-Screen-Overlays meldet oft `safeAreaInsets.top == 0`.
+        static func resolvedSafeAreaTop(_ reported: CGFloat) -> CGFloat {
+            if reported > 1 { return reported }
+            return keyWindowSafeAreaTop
+        }
+
+        static var keyWindowSafeAreaTop: CGFloat {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            let window = scenes
+                .flatMap(\.windows)
+                .first(where: \.isKeyWindow)
+                ?? scenes.first?.windows.first
+            let top = window?.safeAreaInsets.top ?? 0
+            // Dynamic Island / Notch typisch ≥ 47; Fallback verhindert Statusleisten-Kollision.
+            return top > 1 ? top : 59
         }
     }
 

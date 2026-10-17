@@ -19,7 +19,7 @@ struct Wordmark: View {
 }
 
 /// Einzige animierte App-Wordmark-Instanz: Display-Mitte ↔ Drawer-Mitte.
-/// Nur X wird animiert; Y bleibt in der festen Header-Mitte unter der Safe Area.
+/// Full-Screen-Overlay über dem Drawer; Y = SafeArea + Header-Mitte (nie Statusleiste).
 struct FloatingAppBrandWordmark: View {
     /// 0 = horizontal mittig im App-Header, 1 = mittig in der Drawer-Breite.
     var menuProgress: CGFloat
@@ -30,6 +30,7 @@ struct FloatingAppBrandWordmark: View {
             let closedX = geo.size.width * 0.5
             let openX = panelWidth * 0.5
             let x = closedX + (openX - closedX) * menuProgress
+            // GeometryReader-Overlays liefern oft safeAreaInsets.top == 0 → UIKit-Fallback.
             let y = Theme.Chrome.brandCenterY(safeAreaTop: geo.safeAreaInsets.top)
             Wordmark()
                 .position(x: x, y: y)
@@ -39,7 +40,7 @@ struct FloatingAppBrandWordmark: View {
     }
 }
 
-/// Fester App-Header unter der Safe Area (68 pt). Wordmark kommt separat als Overlay.
+/// Fester App-Header unter der Safe Area (68 pt). Wordmark kommt als Overlay darüber.
 struct AppChromeHeaderBar<Leading: View, Trailing: View>: View {
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
