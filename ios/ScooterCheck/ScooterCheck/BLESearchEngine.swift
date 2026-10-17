@@ -5,7 +5,7 @@ import Combine
 import UIKit
 import AudioToolbox
 
-/// Orchestriert BLE-RSSI, Position und Heatmap-Session — ohne Richtungs-Pfeil als Haupt-UI.
+/// Orchestriert BLE-RSSI, Position, Heatmap und Analyse — ohne Richtungs-Pfeil als BLE-Kompass.
 @MainActor
 final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var isActive = false
@@ -25,12 +25,27 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published var hapticsEnabled = false
     @Published var audioEnabled = false
 
+    // Analyse / erweiterte Suche
+    @Published private(set) var timeline = BLESearchTimeline()
+    @Published private(set) var signalHistory = BLESignalHistory()
+    @Published private(set) var movementHint = BLEMovementHint.inactive
+    @Published private(set) var directionTrend = BLEDirectionTrend.none
+    @Published private(set) var searchGrid = BLESearchGrid.empty
+    @Published private(set) var fingerprintMatch: BLEFingerprintMatchResult?
+    @Published private(set) var baselineFingerprint: BLEDeviceFingerprint?
+    @Published private(set) var refoundBanner: String?
+    @Published private(set) var lostDurationText: String?
+    @Published var userSearchArea: BLESearchArea?
+
     private(set) var session: BLESearchSession?
 
     private let locationManager = CLLocationManager()
     private let pedometer = CMPedometer()
     private var processor = BLESignalProcessor()
+    private var movementAnalyzer = BLEMovementAnalyzer()
+    private var directionService = BLEDirectionTrendService()
     private var trackedId: UUID?
+    private var baselineFP: BLEDeviceFingerprint?
     private weak var ble: BleClient?
     private var bleCancellable: AnyCancellable?
     private var tickTimer: Timer?
@@ -41,6 +56,10 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private var lastPersistedLocation: CLLocation?
     private var lastPersistedRssi: Double?
     private var lastSeenDeviceAt: Date?
+    private var lostSince: Date?
+    private var wasSoftLost = false
+    private var wasHardLost = false
+    private var sawDeviceOnce = false
     private var originLocation: CLLocation?
     private var relativeX: Double = 0
     private var relativeY: Double = 0
@@ -48,14 +67,37 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private var lastHapticAt: Date = .distantPast
     private var lastAudioAt: Date = .distantPast
     private var heatmapDirty = true
+    private var lastFingerprintCompareAt: Date = .distantPast
+    private var lastStrongerEventAt: Date = .distantPast
+    private var lastCentroid: (x: Double, y: Double)?
+    private var lastAdvSignature: String?
+    private var lastLostFeedbackAt: Date = .distantPast
+    private var lastRefoundFeedbackAt: Date = .distantPast
 
     func start(device: ScannedDevice, ble: BleClient) {
         stop(discardSession: true)
         self.ble = ble
         trackedId = device.id
         deviceName = device.bleListDisplayName
-        session = BLESearchSession(deviceId: device.id, deviceName: deviceName)
+        let fp = BLEDeviceFingerprint.from(device: device)
+        baselineFP = fp
+        baselineFingerprint = fp
+        session = BLESearchSession(
+            deviceId: device.id,
+            deviceName: deviceName,
+            baselineFingerprint: fp
+        )
         processor.reset()
+        movementAnalyzer.reset()
+        directionService.reset()
+        timeline.reset()
+        signalHistory.reset()
+        movementHint = .inactive
+        directionTrend = .none
+        searchGrid = .empty
+        fingerprintMatch = nil
+        refoundBanner = nil
+        lostDurationText = nil
         isActive = true
         searchMode = .coarse
         heatmap = .empty
@@ -71,8 +113,23 @@ final class BLESearchEngine: NSObject, ObservableObject {
         lastPersistedLocation = nil
         lastPersistedRssi = nil
         lastSeenDeviceAt = Date()
+        lostSince = nil
+        wasSoftLost = false
+        wasHardLost = false
+        sawDeviceOnce = false
         startedAt = Date()
         heatmapDirty = true
+        lastCentroid = nil
+        lastAdvSignature = advSignature(device)
+        lastFingerprintCompareAt = .distantPast
+
+        recordEvent(
+            type: .searchStarted,
+            title: "Suche gestartet",
+            description: deviceName,
+            minInterval: 0
+        )
+        recordEvent(type: .coarseMode, title: "Grobsuche aktiviert", minInterval: 0)
 
         startSensors()
         bleCancellable = ble.$devices
@@ -81,7 +138,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
                 self?.ingestDevices(devices)
             }
         if let match = ble.devices.first(where: { $0.id == device.id }) {
-            ingestRssi(match.rssi)
+            handleSighting(match, exactId: true)
         }
         tickTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -89,6 +146,10 @@ final class BLESearchEngine: NSObject, ObservableObject {
     }
 
     func stop(discardSession: Bool) {
+        if isActive {
+            recordEvent(type: .searchEnded, title: "Suche beendet", minInterval: 0)
+            syncEventsToSession()
+        }
         tickTimer?.invalidate()
         tickTimer = nil
         bleCancellable?.cancel()
@@ -99,6 +160,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
             session = nil
         } else if var s = session {
             s.endedAt = Date()
+            s.events = timeline.events
             session = s
         }
         trackedId = nil
@@ -106,16 +168,23 @@ final class BLESearchEngine: NSObject, ObservableObject {
     }
 
     func setMode(_ mode: BLESearchModeKind) {
+        guard searchMode != mode else { return }
         searchMode = mode
         if var s = session {
             s.searchMode = mode.rawValue
             session = s
         }
+        recordEvent(
+            type: mode == .fine ? .fineMode : .coarseMode,
+            title: mode == .fine ? "Feinsuche aktiviert" : "Grobsuche aktiviert",
+            minInterval: 0
+        )
     }
 
     func finalizeAndOptionallySave(save: Bool) {
         guard var s = session else { return }
         s.endedAt = Date()
+        s.events = timeline.events
         session = s
         if save {
             BLESearchStore.shared.save(s)
@@ -161,20 +230,172 @@ final class BLESearchEngine: NSObject, ObservableObject {
     // MARK: - Ingest
 
     private func ingestDevices(_ devices: [ScannedDevice]) {
-        guard let trackedId,
-              let device = devices.first(where: { $0.id == trackedId }) else { return }
-        lastSeenDeviceAt = Date()
+        guard let trackedId else { return }
+
+        if let device = devices.first(where: { $0.id == trackedId }) {
+            handleSighting(device, exactId: true)
+            return
+        }
+
+        // Signal verloren — weiter per Fingerprint suchen (Session bleibt aktiv).
+        guard wasSoftLost || wasHardLost, let baseline = baselineFP else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastFingerprintCompareAt) >= 1.8 else { return }
+        lastFingerprintCompareAt = now
+
+        var best: (ScannedDevice, BLEFingerprintMatchResult)?
+        for d in devices {
+            // Keine Geräte, die schon klar andere IDs mit schlechtem Score haben — Score prüfen
+            let fp = BLEDeviceFingerprint.from(device: d)
+            let match = BLEFingerprintService.compare(baseline, fp)
+            if match.similarity == .high || match.similarity == .medium {
+                if best == nil || match.score > (best?.1.score ?? 0) {
+                    best = (d, match)
+                }
+            }
+        }
+        if let best, best.1.similarity == .high || best.1.similarity == .medium {
+            fingerprintMatch = best.1
+            handleSighting(best.0, exactId: false, fingerprintSimilarity: best.1.similarity)
+        }
+    }
+
+    private func handleSighting(
+        _ device: ScannedDevice,
+        exactId: Bool,
+        fingerprintSimilarity: BLEFingerprintSimilarity? = nil
+    ) {
+        let now = Date()
+        let previouslyLost = wasSoftLost || wasHardLost
+        let lostFor = lostSince.map { now.timeIntervalSince($0) } ?? 0
+
+        lastSeenDeviceAt = now
+        deviceName = device.bleListDisplayName
+
+        if !sawDeviceOnce {
+            sawDeviceOnce = true
+            recordEvent(
+                type: .deviceFirstSeen,
+                title: "Gerät erstmals gesehen",
+                rssi: Double(device.rssi),
+                minInterval: 0
+            )
+        }
+
+        if previouslyLost {
+            let possible = !exactId || fingerprintSimilarity == .medium
+            let mins = Int(lostFor) / 60
+            let secs = Int(lostFor) % 60
+            let duration = String(format: "%d:%02d min", mins, secs)
+            if possible {
+                signalStatus = "Möglicherweise wiedergefunden"
+                refoundBanner = "Möglicherweise wiedergefunden nach \(duration)"
+                recordEvent(
+                    type: .signalPossiblyRefound,
+                    title: "Möglicherweise wiedergefunden",
+                    description: "Wiedererkennung über Fingerprint-Ähnlichkeit · nach \(duration)",
+                    rssi: Double(device.rssi),
+                    minInterval: 0
+                )
+                signalHistory.addMarker(.signalRefound, at: now)
+            } else {
+                signalStatus = "Signal wiedergefunden"
+                refoundBanner = "Wiedergefunden nach \(duration)"
+                recordEvent(
+                    type: .signalRefound,
+                    title: "Signal wiedergefunden",
+                    description: "nach \(duration)",
+                    rssi: Double(device.rssi),
+                    minInterval: 0
+                )
+                signalHistory.addMarker(.signalRefound, at: now)
+            }
+            lostDurationText = duration
+            lostSince = nil
+            wasSoftLost = false
+            wasHardLost = false
+            if now.timeIntervalSince(lastRefoundFeedbackAt) > 1.5 {
+                lastRefoundFeedbackAt = now
+                if hapticsEnabled {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                }
+                if audioEnabled {
+                    AudioServicesPlaySystemSound(1057)
+                }
+            }
+            // Banner nach kurzer Zeit ausblenden
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 4_500_000_000)
+                if self.refoundBanner != nil {
+                    self.refoundBanner = nil
+                }
+            }
+        }
+
+        // Advertising-Änderung
+        let sig = advSignature(device)
+        if let prev = lastAdvSignature, prev != sig {
+            recordEvent(
+                type: .advertisingChanged,
+                title: "Advertising-Daten verändert",
+                description: "Technische Merkmale haben sich geändert",
+                minInterval: 8
+            )
+            if let baseline = baselineFP {
+                let match = BLEFingerprintService.compare(baseline, BLEDeviceFingerprint.from(device: device))
+                fingerprintMatch = match
+            }
+        }
+        lastAdvSignature = sig
+
+        if exactId, let baseline = baselineFP, now.timeIntervalSince(lastFingerprintCompareAt) >= 2.5 {
+            lastFingerprintCompareAt = now
+            fingerprintMatch = BLEFingerprintService.compare(baseline, BLEDeviceFingerprint.from(device: device))
+        }
+
         ingestRssi(device.rssi)
+    }
+
+    private func advSignature(_ device: ScannedDevice) -> String {
+        [
+            device.cryptoName,
+            device.manufacturerDataHex ?? "-",
+            device.serviceUUIDs.sorted().joined(separator: ","),
+            device.serviceDataHexByUUID?.map { "\($0.key):\($0.value)" }.sorted().joined(separator: "|") ?? "-",
+            device.txPower.map(String.init) ?? "-",
+            device.isConnectable.map { $0 ? "1" : "0" } ?? "?"
+        ].joined(separator: "#")
     }
 
     private func ingestRssi(_ rssi: Int) {
         rawRssi = rssi
         if let smooth = processor.ingest(rawRssi: rssi) {
             smoothedRssi = smooth
+            signalHistory.append(smoothed: smooth, raw: rssi)
             if strongestRssi == nil || smooth > (strongestRssi ?? -999) {
                 strongestRssi = smooth
                 strongestLabel = BLESignalClass.from(smoothedRssi: smooth, lost: false).label
+                signalHistory.addMarker(.strongest)
+                recordEvent(
+                    type: .strongestAreaUpdated,
+                    title: "Stärkster Bereich aktualisiert",
+                    rssi: smooth,
+                    minInterval: 4
+                )
             }
+            let now = Date()
+            if trend == .stronger, now.timeIntervalSince(lastStrongerEventAt) > 6 {
+                lastStrongerEventAt = now
+                recordEvent(
+                    type: .signalStronger,
+                    title: "Signal stärker geworden",
+                    rssi: smooth,
+                    minInterval: 6
+                )
+            }
+            updateRelativePosition()
+            directionService.ingest(date: now, x: relativeX, y: relativeY, rssi: smooth)
+            directionTrend = directionService.evaluate(at: now)
             maybePersistMeasurement(force: false)
             feedback(for: smooth)
         }
@@ -189,6 +410,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         if heatmapDirty {
             rebuildHeatmap()
         }
+        evaluateMovement()
     }
 
     private func updateDuration() {
@@ -204,12 +426,41 @@ final class BLESearchEngine: NSObject, ObservableObject {
         let hardLost = since >= BLESignalConfig.signalLostHardSeconds
         signalClass = BLESignalClass.from(smoothedRssi: smoothedRssi, lost: softLost)
         trend = processor.trend(at: now)
+
+        if softLost && !wasSoftLost {
+            wasSoftLost = true
+            if lostSince == nil { lostSince = lastSeenDeviceAt ?? now }
+            signalStatus = "Signal verloren"
+            signalHistory.addMarker(.signalLost, at: now)
+            recordEvent(
+                type: .signalLost,
+                title: "Signal verloren",
+                description: "Suche bleibt aktiv — weiter nach bekannten Merkmalen",
+                minInterval: 0
+            )
+            if now.timeIntervalSince(lastLostFeedbackAt) > 2 {
+                lastLostFeedbackAt = now
+                if hapticsEnabled {
+                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                }
+            }
+        }
         if hardLost {
-            signalStatus = "Signal nicht mehr empfangen"
+            wasHardLost = true
+            signalStatus = "Signal verloren"
+            if let lostSince {
+                let sec = Int(now.timeIntervalSince(lostSince))
+                lostDurationText = String(format: "%d:%02d", sec / 60, sec % 60)
+            }
         } else if softLost {
-            signalStatus = "Signal kurzzeitig verloren"
-        } else {
+            signalStatus = "Signal verloren"
+        } else if refoundBanner == nil {
             signalStatus = "BLE-Suche aktiv"
+        }
+
+        wasSoftLost = softLost
+        if !softLost {
+            wasHardLost = false
         }
 
         if let loc = lastLocation {
@@ -223,10 +474,50 @@ final class BLESearchEngine: NSObject, ObservableObject {
         }
     }
 
+    private func evaluateMovement() {
+        let speed = lastLocation?.speed
+        let accuracy = lastLocation?.horizontalAccuracy
+        var centroidShift: Double?
+        if let s = session {
+            let recent = s.measurements.suffix(12)
+            let pts = recent.compactMap { m -> (Double, Double)? in
+                guard let x = m.relativeX, let y = m.relativeY else { return nil }
+                return (x, y)
+            }
+            if pts.count >= 3 {
+                let cx = pts.map(\.0).reduce(0, +) / Double(pts.count)
+                let cy = pts.map(\.1).reduce(0, +) / Double(pts.count)
+                if let last = lastCentroid {
+                    centroidShift = hypot(cx - last.x, cy - last.y)
+                }
+                lastCentroid = (cx, cy)
+            }
+        }
+        let hint = movementAnalyzer.evaluate(
+            now: Date(),
+            phoneSpeed: speed,
+            accuracy: accuracy,
+            smoothedRssi: smoothedRssi,
+            signalLostRecently: wasHardLost || (lostSince != nil),
+            heatmapCentroidShiftMeters: centroidShift
+        )
+        if hint.active && !movementHint.active {
+            recordEvent(
+                type: .devicePossiblyMoved,
+                title: "Mögliche Bewegung erkannt",
+                description: hint.explanation + " (\(hint.confidence.label))",
+                rssi: smoothedRssi,
+                minInterval: 12
+            )
+        }
+        movementHint = hint
+    }
+
     private func maybePersistMeasurement(force: Bool) {
         guard isActive,
               let raw = rawRssi,
-              let smooth = smoothedRssi else { return }
+              let smooth = smoothedRssi,
+              signalClass != .lost else { return }
         let now = Date()
         let moved: Bool = {
             guard let last = lastPersistedLocation, let cur = lastLocation else {
@@ -295,7 +586,37 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private func rebuildHeatmap() {
         guard let s = session else { return }
         heatmap = BLEHeatmapProcessor.build(from: s.measurements)
+        searchGrid = BLESearchGrid.build(from: s.measurements, userArea: userSearchArea)
         heatmapDirty = false
+    }
+
+    private func recordEvent(
+        type: BLESearchEventType,
+        title: String,
+        description: String? = nil,
+        rssi: Double? = nil,
+        minInterval: TimeInterval = 1.2
+    ) {
+        let event = BLESearchEvent(
+            timestamp: Date(),
+            type: type,
+            title: title,
+            description: description,
+            rssi: rssi,
+            latitude: lastLocation?.coordinate.latitude,
+            longitude: lastLocation?.coordinate.longitude
+        )
+        var t = timeline
+        if t.append(event, minInterval: minInterval) {
+            timeline = t
+            syncEventsToSession()
+        }
+    }
+
+    private func syncEventsToSession() {
+        guard var s = session else { return }
+        s.events = timeline.events
+        session = s
     }
 
     // MARK: - Feedback

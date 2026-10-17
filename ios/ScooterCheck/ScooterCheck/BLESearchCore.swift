@@ -184,7 +184,7 @@ struct BLESignalProcessor: Sendable {
         smoothed = ScooterFinderMath.ema(previous: smoothed, sample: next, alpha: BLESignalConfig.emaAlpha)
         if let s = smoothed {
             smoothedTimeline.append((date, s))
-            let cutoff = date.addingTimeInterval(-20)
+            let cutoff = date.addingTimeInterval(-60)
             smoothedTimeline.removeAll { $0.0 < cutoff }
         }
         return smoothed
@@ -265,6 +265,10 @@ struct BLESearchSession: Identifiable, Codable, Equatable, Sendable {
     var searchMode: String
     var mapType: String
     var strongestMeasurementId: UUID?
+    /// Timeline-Ereignisse gehören zur Session (nicht global).
+    var events: [BLESearchEvent]
+    /// Baseline-Fingerprint der Session (technisch, kein Scooter-Persist).
+    var baselineFingerprint: BLEDeviceFingerprint?
 
     init(
         id: UUID = UUID(),
@@ -275,7 +279,9 @@ struct BLESearchSession: Identifiable, Codable, Equatable, Sendable {
         measurements: [BLEMeasurement] = [],
         searchMode: BLESearchModeKind = .coarse,
         mapType: String = "relativeHeatmap",
-        strongestMeasurementId: UUID? = nil
+        strongestMeasurementId: UUID? = nil,
+        events: [BLESearchEvent] = [],
+        baselineFingerprint: BLEDeviceFingerprint? = nil
     ) {
         self.id = id
         self.deviceId = deviceId
@@ -286,6 +292,8 @@ struct BLESearchSession: Identifiable, Codable, Equatable, Sendable {
         self.searchMode = searchMode.rawValue
         self.mapType = mapType
         self.strongestMeasurementId = strongestMeasurementId
+        self.events = events
+        self.baselineFingerprint = baselineFingerprint
     }
 
     var duration: TimeInterval {
@@ -297,6 +305,41 @@ struct BLESearchSession: Identifiable, Codable, Equatable, Sendable {
             return measurements.first { $0.id == id }
         }
         return measurements.max(by: { $0.smoothedRssi < $1.smoothedRssi })
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, deviceId, deviceName, startedAt, endedAt, measurements
+        case searchMode, mapType, strongestMeasurementId, events, baselineFingerprint
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        deviceId = try c.decode(UUID.self, forKey: .deviceId)
+        deviceName = try c.decode(String.self, forKey: .deviceName)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        endedAt = try c.decodeIfPresent(Date.self, forKey: .endedAt)
+        measurements = try c.decodeIfPresent([BLEMeasurement].self, forKey: .measurements) ?? []
+        searchMode = try c.decodeIfPresent(String.self, forKey: .searchMode) ?? BLESearchModeKind.coarse.rawValue
+        mapType = try c.decodeIfPresent(String.self, forKey: .mapType) ?? "relativeHeatmap"
+        strongestMeasurementId = try c.decodeIfPresent(UUID.self, forKey: .strongestMeasurementId)
+        events = try c.decodeIfPresent([BLESearchEvent].self, forKey: .events) ?? []
+        baselineFingerprint = try c.decodeIfPresent(BLEDeviceFingerprint.self, forKey: .baselineFingerprint)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(deviceId, forKey: .deviceId)
+        try c.encode(deviceName, forKey: .deviceName)
+        try c.encode(startedAt, forKey: .startedAt)
+        try c.encodeIfPresent(endedAt, forKey: .endedAt)
+        try c.encode(measurements, forKey: .measurements)
+        try c.encode(searchMode, forKey: .searchMode)
+        try c.encode(mapType, forKey: .mapType)
+        try c.encodeIfPresent(strongestMeasurementId, forKey: .strongestMeasurementId)
+        try c.encode(events, forKey: .events)
+        try c.encodeIfPresent(baselineFingerprint, forKey: .baselineFingerprint)
     }
 }
 
