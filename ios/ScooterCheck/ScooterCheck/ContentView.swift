@@ -7,8 +7,7 @@ struct ContentView: View {
     @State private var profile: ScooterProfile = .maxG3D
     @State private var result: IntegrityResult?
     @State private var session: CheckSession?
-    @State private var showMenu = false
-    /// 0 = Wordmark mittig, 1 = Wordmark im Drawer links (gekoppelt an Menü).
+    /// 0 = Wordmark mittig im App-Header, 1 = mittig in der Drawer-Breite.
     @State private var menuProgress: CGFloat = 0
     @State private var showFAQ = false
     @State private var showPrivacy = false
@@ -189,14 +188,14 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    // Wordmark schwebt als Overlay und gleitet in den Drawer — hier nur Platzhalter.
+                    // Wordmark liegt in FloatingAppBrandWordmark über dem NavigationStack.
                     Color.clear.frame(width: 1, height: 1)
                 }
             }
+            .toolbarBackground(Theme.bg, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .overlay { sideMenuOverlay }
-            .overlay(alignment: .top) { floatingBrandWordmark }
-            .animation(Theme.Motion.drawer, value: menuProgress)
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
             .sheet(isPresented: $showProfileConfirm, onDismiss: {
                 if !busy { pendingDevice = nil }
@@ -255,6 +254,11 @@ struct ContentView: View {
                 }
             }
         }
+        // Eine Wordmark über dem gesamten NavigationStack (Nav-Bar-Band), nicht im Content/Radar.
+        .overlay {
+            FloatingAppBrandWordmark(menuProgress: menuProgress)
+        }
+        .animation(Theme.Motion.drawer, value: menuProgress)
         .preferredColorScheme(.dark)
         .tint(Theme.accent)
     }
@@ -1574,51 +1578,37 @@ struct ContentView: View {
 
     private func setMenuOpen(_ open: Bool) {
         withAnimation(Theme.Motion.drawer) {
-            showMenu = open
             menuProgress = open ? 1 : 0
         }
     }
 
-    /// Ein Wordmark: gleitet von der Nav-Mitte in den Drawer (kein Duplikat).
-    private var floatingBrandWordmark: some View {
-        GeometryReader { geo in
-            let safeTop = geo.safeAreaInsets.top
-            let markHalf: CGFloat = 78
-            let closedX = geo.size.width * 0.5
-            let openX = Theme.Space.xl + markHalf
-            let x = closedX + (openX - closedX) * menuProgress
-            let y = safeTop + 22
-            Wordmark()
-                .position(x: x, y: y)
-        }
-        .allowsHitTesting(false)
-    }
-
     private var sideMenuOverlay: some View {
-        ZStack(alignment: .leading) {
-            if showMenu {
-                Color.black.opacity(0.55)
+        GeometryReader { geo in
+            let panelWidth = min(Theme.Chrome.drawerWidth, geo.size.width)
+            ZStack(alignment: .leading) {
+                Color.black.opacity(0.55 * Double(menuProgress))
                     .ignoresSafeArea()
                     .onTapGesture { setMenuOpen(false) }
-                    .transition(.opacity)
+                    .allowsHitTesting(menuProgress > 0.05)
 
                 sideMenuPanel
-                    .frame(maxWidth: 320)
+                    .frame(width: panelWidth)
                     .frame(maxHeight: .infinity, alignment: .top)
                     .background(Theme.card.ignoresSafeArea())
-                    .transition(.move(edge: .leading))
-                    .zIndex(1)
+                    // Gleicher Progress wie die Wordmark — kein separates Transition-Timing.
+                    .offset(x: -panelWidth * (1 - menuProgress))
+                    .allowsHitTesting(menuProgress > 0.5)
             }
         }
-        .allowsHitTesting(showMenu)
+        .allowsHitTesting(menuProgress > 0.05)
     }
 
     private var sideMenuPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                // Wordmark kommt als schwebendes Overlay in den Drawer — hier nur Platz.
-                Color.clear.frame(height: 28)
-                Spacer()
+                // Wordmark kommt als schwebendes Overlay mittig in der Drawer-Breite — hier nur Höhe.
+                Color.clear.frame(width: 44, height: 44)
+                Spacer(minLength: 0)
                 Button {
                     setMenuOpen(false)
                 } label: {
@@ -1629,8 +1619,7 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("Menü schließen")
             }
-            .padding(.horizontal, Theme.Space.xl)
-            .padding(.top, Theme.Space.lg)
+            .padding(.horizontal, Theme.Space.lg)
             .padding(.bottom, Theme.Space.md)
 
             Text("Navigation")

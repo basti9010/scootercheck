@@ -18,6 +18,28 @@ struct Wordmark: View {
     }
 }
 
+/// Einzige animierte App-Wordmark-Instanz: Nav-Mitte ↔ Drawer-Mitte.
+/// Liegt als Full-Screen-Overlay über dem NavigationStack (nicht im Seiteninhalt).
+struct FloatingAppBrandWordmark: View {
+    /// 0 = horizontal mittig im App-Header, 1 = mittig in der Drawer-Breite.
+    var menuProgress: CGFloat
+    var drawerWidth: CGFloat = Theme.Chrome.drawerWidth
+
+    var body: some View {
+        GeometryReader { geo in
+            let panelWidth = min(drawerWidth, geo.size.width)
+            let closedX = geo.size.width * 0.5
+            let openX = panelWidth * 0.5
+            let x = closedX + (openX - closedX) * menuProgress
+            let y = geo.safeAreaInsets.top + Theme.Chrome.brandCenterYBelowSafeTop
+            Wordmark()
+                .position(x: x, y: y)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
 /// Runder ☰-Button wie im Mockup.
 struct MenuGlyphButton: View {
     let action: () -> Void

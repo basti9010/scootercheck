@@ -95,6 +95,14 @@ enum Theme {
         static let standard = Animation.easeInOut(duration: 0.22)
     }
 
+    /// Gemeinsames App-Chrome (Header / Side-Drawer).
+    enum Chrome {
+        /// Breite des Seitenmenüs (Wordmark zentriert relativ dazu).
+        static let drawerWidth: CGFloat = 320
+        /// Vertikale Mitte der Nav-Bar unter der Safe-Area (~44 pt Bar → 22).
+        static let brandCenterYBelowSafeTop: CGFloat = 22
+    }
+
     // MARK: - Verdict / Fact
 
     static func verdict(_ level: VerdictLevel) -> Color {
