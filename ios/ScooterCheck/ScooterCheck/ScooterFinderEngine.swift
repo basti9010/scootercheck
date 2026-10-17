@@ -67,6 +67,99 @@ struct FinderSample: Equatable, Sendable {
     let distanceMeters: Double?
 }
 
+/// Stabile Scan-Listen-Reihenfolge: RSSI-Werte dürfen zucken, die Zeilen nicht dauernd tauschen.
+enum BleScanListStabilizer {
+    /// Erst umsortieren, wenn der Nachbar klar stärker ist (dBm).
+    static let hysteresisDb = 8
+    /// Mindestabstand zwischen Umsortierungen.
+    static let minReorderInterval: TimeInterval = 1.8
+
+    struct Item: Equatable, Sendable {
+        let id: UUID
+        let rssi: Int
+        let isStale: Bool
+    }
+
+    static func reconcile(
+        previousOrder: [UUID],
+        devices: [ScannedDevice],
+        lastReorderAt: Date,
+        now: Date = Date(),
+        hysteresisDb: Int = hysteresisDb,
+        minInterval: TimeInterval = minReorderInterval
+    ) -> (order: [UUID], reorderAt: Date) {
+        reconcile(
+            previousOrder: previousOrder,
+            items: devices.map { Item(id: $0.id, rssi: $0.rssi, isStale: $0.isStale) },
+            lastReorderAt: lastReorderAt,
+            now: now,
+            hysteresisDb: hysteresisDb,
+            minInterval: minInterval
+        )
+    }
+
+    static func reconcile(
+        previousOrder: [UUID],
+        items: [Item],
+        lastReorderAt: Date,
+        now: Date = Date(),
+        hysteresisDb: Int = hysteresisDb,
+        minInterval: TimeInterval = minReorderInterval
+    ) -> (order: [UUID], reorderAt: Date) {
+        let byId = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        var order = previousOrder.filter { byId[$0] != nil }
+        let known = Set(order)
+        let newcomers = items
+            .map(\.id)
+            .filter { !known.contains($0) }
+            .sorted { (byId[$0]?.rssi ?? -120) > (byId[$1]?.rssi ?? -120) }
+
+        for id in newcomers {
+            let rssi = byId[id]?.rssi ?? -120
+            if let idx = order.firstIndex(where: { (byId[$0]?.rssi ?? -120) < rssi }) {
+                order.insert(id, at: idx)
+            } else {
+                order.append(id)
+            }
+        }
+
+        let live = order.filter { !(byId[$0]?.isStale ?? true) }
+        let stale = order.filter { byId[$0]?.isStale ?? true }
+        guard live.count > 1, now.timeIntervalSince(lastReorderAt) >= minInterval else {
+            return (live + stale, lastReorderAt)
+        }
+
+        var mutable = live
+        var changed = false
+        for _ in 0..<mutable.count {
+            var swapped = false
+            var i = 0
+            while i < mutable.count - 1 {
+                let ra = byId[mutable[i]]?.rssi ?? -120
+                let rb = byId[mutable[i + 1]]?.rssi ?? -120
+                if rb >= ra + hysteresisDb {
+                    mutable.swapAt(i, i + 1)
+                    swapped = true
+                    changed = true
+                }
+                i += 1
+            }
+            if !swapped { break }
+        }
+        return (mutable + stale, changed ? now : lastReorderAt)
+    }
+
+    static func apply(order: [UUID], to devices: [ScannedDevice]) -> [ScannedDevice] {
+        let byId = Dictionary(uniqueKeysWithValues: devices.map { ($0.id, $0) })
+        var result = order.compactMap { byId[$0] }
+        let seen = Set(order)
+        for device in devices where !seen.contains(device.id) {
+            result.append(device)
+        }
+        return result
+    }
+}
+
 /// Reine Mathematik für Tests — ohne Sensor-Hardware.
 enum ScooterFinderMath {
     /// EMA: höhere alpha = reaktiver. rssi ist negativ (stärker = weniger negativ).

@@ -8,18 +8,21 @@ struct ScooterFinderView: View {
     @State private var showInfo = false
     /// Eigenständiger Modus — speichert kein Gerät als Scooter.
     @State private var showOnlyScooters = true
+    /// Stabile Listenreihenfolge (RSSI darf zucken, Zeilen nicht dauernd tauschen).
+    @State private var stableOrderIds: [UUID] = []
+    @State private var lastStableReorderAt = Date.distantPast
 
     private var isFinding: Bool { selected != nil }
 
-    /// Alle gescannten Advertiser bzw. nur Scooter-Heuristik (aus `ble.devices`, nicht nur visibleDevices).
-    private var listedDevices: [ScannedDevice] {
-        let base = showOnlyScooters
+    private var filteredDevices: [ScannedDevice] {
+        showOnlyScooters
             ? ble.devices.filter(\.looksLikeScooter)
             : ble.devices
-        return base.sorted { a, b in
-            if a.isStale != b.isStale { return !a.isStale && b.isStale }
-            return a.rssi > b.rssi
-        }
+    }
+
+    /// Alle gescannten Advertiser bzw. nur Scooter-Heuristik — Reihenfolge hysterese-stabil.
+    private var listedDevices: [ScannedDevice] {
+        BleScanListStabilizer.apply(order: stableOrderIds, to: filteredDevices)
     }
 
     var body: some View {
@@ -34,13 +37,35 @@ struct ScooterFinderView: View {
             if ble.phase != .scanning {
                 ble.startScan()
             }
+            reconcileStableOrder(force: true)
         }
         .onDisappear {
             engine.stop()
         }
+        .onChange(of: ble.devices) { _ in
+            reconcileStableOrder(force: false)
+        }
+        .onChange(of: showOnlyScooters) { _ in
+            stableOrderIds = []
+            lastStableReorderAt = .distantPast
+            reconcileStableOrder(force: true)
+        }
         .sheet(isPresented: $showInfo) {
             finderInfoSheet
         }
+    }
+
+    private func reconcileStableOrder(force: Bool) {
+        let devices = filteredDevices
+        let now = Date()
+        let result = BleScanListStabilizer.reconcile(
+            previousOrder: stableOrderIds,
+            devices: devices,
+            lastReorderAt: force ? .distantPast : lastStableReorderAt,
+            now: now
+        )
+        stableOrderIds = result.order
+        lastStableReorderAt = result.reorderAt
     }
 
     // MARK: - Selection

@@ -98,4 +98,57 @@ final class ScooterFinderMathTests: XCTestCase {
         let path = ScooterFinderMath.pathLengthMeters(samples)
         XCTAssertGreaterThan(path, 15)
     }
+
+    func testStableListIgnoresSmallRssiFlicker() {
+        let a = UUID()
+        let b = UUID()
+        let t0 = Date()
+        let first = BleScanListStabilizer.reconcile(
+            previousOrder: [],
+            items: [
+                .init(id: a, rssi: -60, isStale: false),
+                .init(id: b, rssi: -70, isStale: false),
+            ],
+            lastReorderAt: .distantPast,
+            now: t0
+        )
+        XCTAssertEqual(first.order, [a, b])
+
+        // Kleiner RSSI-Tausch (−58 vs −60) darf die Reihenfolge nicht drehen.
+        let flickered = BleScanListStabilizer.reconcile(
+            previousOrder: first.order,
+            items: [
+                .init(id: a, rssi: -62, isStale: false),
+                .init(id: b, rssi: -58, isStale: false),
+            ],
+            lastReorderAt: first.reorderAt,
+            now: t0.addingTimeInterval(2)
+        )
+        XCTAssertEqual(flickered.order, [a, b])
+    }
+
+    func testStableListReordersWhenHysteresisExceeded() {
+        let a = UUID()
+        let b = UUID()
+        let t0 = Date()
+        let first = BleScanListStabilizer.reconcile(
+            previousOrder: [],
+            items: [
+                .init(id: a, rssi: -60, isStale: false),
+                .init(id: b, rssi: -70, isStale: false),
+            ],
+            lastReorderAt: .distantPast,
+            now: t0
+        )
+        let reordered = BleScanListStabilizer.reconcile(
+            previousOrder: first.order,
+            items: [
+                .init(id: a, rssi: -72, isStale: false),
+                .init(id: b, rssi: -55, isStale: false),
+            ],
+            lastReorderAt: first.reorderAt,
+            now: t0.addingTimeInterval(2)
+        )
+        XCTAssertEqual(reordered.order, [b, a])
+    }
 }

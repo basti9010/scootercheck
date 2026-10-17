@@ -265,6 +265,9 @@ final class BleClient: NSObject, ObservableObject {
 
     private static let maxTrackedDevices = 50
     private var stalePruneTask: Task<Void, Never>?
+    /// Stabile Scan-Reihenfolge (gegen RSSI-Flattern).
+    private var stableScanOrderIds: [UUID] = []
+    private var lastStableScanReorderAt = Date.distantPast
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -351,8 +354,11 @@ final class BleClient: NSObject, ObservableObject {
         // sonst bleibt „Erneut prüfen“ leer, obwohl das Handy noch verbunden ist.
         let seed = disconnectForRescan()
         devices.removeAll()
+        stableScanOrderIds = []
+        lastStableScanReorderAt = .distantPast
         if let seed {
             devices.append(seed)
+            stableScanOrderIds = [seed.id]
         }
         for peripheral in retrieveAlreadyConnectedScooters() {
             upsertScanned(fromConnected: peripheral)
@@ -2062,11 +2068,19 @@ extension BleClient: CBCentralManagerDelegate {
             } else {
                 devices.append(device)
             }
-            // Stärkstes Signal zuerst — hilft bei mehreren Geräten in Reichweite.
-            devices.sort { $0.rssi > $1.rssi }
+            // Stabile Reihenfolge: RSSI live, Zeilen nicht bei jedem dBm-Zucken tauschen.
+            let stabilized = BleScanListStabilizer.reconcile(
+                previousOrder: stableScanOrderIds,
+                devices: devices,
+                lastReorderAt: lastStableScanReorderAt
+            )
+            stableScanOrderIds = stabilized.order
+            lastStableScanReorderAt = stabilized.reorderAt
+            devices = BleScanListStabilizer.apply(order: stabilized.order, to: devices)
             pruneStaleDevices(maxAge: 14)
             if devices.count > Self.maxTrackedDevices {
                 devices = Array(devices.prefix(Self.maxTrackedDevices))
+                stableScanOrderIds = devices.map(\.id)
             }
             if phase == .scanning {
                 let visible = showOnlyLikelyScooters
