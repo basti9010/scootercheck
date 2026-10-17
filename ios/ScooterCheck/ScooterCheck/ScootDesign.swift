@@ -210,7 +210,7 @@ struct ScootOutlineButton: View {
 
 // MARK: - Prüfbericht Action Panel
 
-/// Primärer mintfarbener Aktionsbutton mit optionalem Chevron (Referenz: Bericht speichern).
+/// Primärer Mint-Button für die Ergebnis-Bottom-Bar (Bericht speichern).
 struct ScootActionPrimaryButton: View {
     let title: String
     var systemImage: String = "square.and.arrow.down"
@@ -220,33 +220,29 @@ struct ScootActionPrimaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 if busy {
                     ProgressView().tint(Theme.ink)
                 } else {
                     Image(systemName: systemImage)
-                        .font(.body.weight(.semibold))
+                        .font(.subheadline.weight(.medium))
                 }
                 Text(title)
-                    .font(Theme.button)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .opacity(0.7)
+                    .font(.system(size: 16.5, weight: .medium))
             }
             .foregroundStyle(Theme.ink)
-            .padding(.horizontal, 18)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 54)
+            .frame(height: 56)
             .background(Theme.accent.opacity(enabled && !busy ? 1 : 0.35))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
+        .accessibilityLabel(title)
     }
 }
 
-/// Sekundäre Aktionskarte mit Mint-Kontur (Referenz: Vergleichstest starten).
+/// Ruhiger Sekundärbutton mit Mint-Outline (Vergleichstest).
 struct ScootActionFeatureCard: View {
     let title: String
     let subtitle: String
@@ -256,40 +252,38 @@ struct ScootActionFeatureCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 Image(systemName: systemImage)
-                    .font(.title3.weight(.semibold))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.accent)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(Theme.cardTitle)
-                        .foregroundStyle(Theme.textTitle)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Theme.textPrimary)
                         .multilineTextAlignment(.leading)
                     Text(subtitle)
                         .font(Theme.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                        .foregroundStyle(Theme.textMuted)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, Theme.Space.lg)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.bg.opacity(0.55))
+            .frame(minHeight: 48)
+            .background(Theme.card)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                    .stroke(Theme.accent.opacity(0.9), lineWidth: 1.5)
+                    .stroke(Theme.accent.opacity(0.55), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.45)
+        .accessibilityLabel("\(title). \(subtitle)")
     }
 }
 
@@ -301,30 +295,26 @@ struct ScootActionChipButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.caption.weight(.medium))
                 Text(title)
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 13.5, weight: .medium))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(Theme.muted)
+                    .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
+            .foregroundStyle(Theme.textPrimary)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 48)
+            .frame(height: 42)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Theme.line, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                    .stroke(Theme.border, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 

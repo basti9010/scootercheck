@@ -135,14 +135,12 @@ struct ContentView: View {
                                 errorBanner(err)
                             }
                             switch screen {
-                            case .overview:
+                            case .overview, .find, .watchList:
                                 EmptyView()
                             case .result:
                                 if let result {
                                     resultCard(result)
                                 }
-                            case .find:
-                                EmptyView()
                             case .home:
                                 if isBusyPhase {
                                     connectingCard
@@ -161,7 +159,7 @@ struct ContentView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
-                        .padding(.bottom, showsStartLanding ? 120 : 28)
+                        .padding(.bottom, scrollBottomPadding)
                     }
                 }
 
@@ -993,9 +991,16 @@ struct ContentView: View {
         }
     }
 
-    /// Unterer Aktionsbereich des Prüfberichts (Referenzlayout).
+    /// Zusätzlicher Scroll-Abstand: Ergebnisseite braucht Luft über der festen Action Bar.
+    private var scrollBottomPadding: CGFloat {
+        if showsStartLanding { return 120 }
+        if screen == .result { return 20 }
+        return 28
+    }
+
+    /// Feste, deckende Bottom Action Bar für den Prüfbericht — kein schwebendes Modal.
     private var resultActionPanel: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             ScootActionPrimaryButton(
                 title: "Bericht speichern",
                 systemImage: "square.and.arrow.down",
@@ -1017,10 +1022,9 @@ struct ContentView: View {
                 Button("Vergleichstest abbrechen") {
                     cancelComparisonTest()
                 }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.muted)
+                .font(Theme.caption.weight(.medium))
+                .foregroundStyle(Theme.textMuted)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 2)
             } else if powerCyclePhase == .awaitReboot || powerCyclePhase == .scanningB {
                 ScootActionPrimaryButton(
                     title: "Scooter ist wieder an — weiter",
@@ -1033,10 +1037,9 @@ struct ContentView: View {
                 Button("Persistenzprüfung überspringen") {
                     cancelPersistenzPhaseOnly()
                 }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.muted)
+                .font(Theme.caption.weight(.medium))
+                .foregroundStyle(Theme.textMuted)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 2)
             } else {
                 ScootActionFeatureCard(
                     title: "Vergleichstest starten",
@@ -1048,9 +1051,9 @@ struct ContentView: View {
                 }
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ScootActionChipButton(
-                    title: "Teilen / AirDrop",
+                    title: "Teilen",
                     systemImage: "square.and.arrow.up"
                 ) {
                     persistCurrentSession()
@@ -1065,29 +1068,31 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
         .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Theme.card.opacity(0.92))
-            }
+            // Voll deckend inkl. Home-Indicator-Zone — kein Modal-/Blur-Look.
+            Theme.bg
+                .ignoresSafeArea(edges: .bottom)
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
-        )
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
+        .overlay(alignment: .top) {
+            // Leichte Abrundung der oberen Kante ohne Inhalt dahinter sichtbar zu machen.
+            UnevenRoundedRectangle(
+                cornerRadii: .init(topLeading: 14, bottomLeading: 0, bottomTrailing: 0, topTrailing: 14),
+                style: .continuous
+            )
+            .stroke(Theme.border.opacity(0.65), lineWidth: 1)
+            .frame(height: 20)
+            .allowsHitTesting(false)
+        }
     }
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview: return true
+        case .overview, .find, .watchList: return true
         case .result: return result != nil
-        case .find: return true
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
             return true
@@ -1100,7 +1105,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find:
+        case .find, .watchList:
             break
         case .home:
             if ble.phase == .scanning {
