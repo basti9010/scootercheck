@@ -45,7 +45,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: BLE-Wächter + Scooter-Radar (Background-Watch, Notifications, Radar bei aktiver Suche)' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: BLE-Suche mit Pfadrekonstruktion (Indoor-PDR, Relativ/Karte, Heatmap am Laufweg, Strecke in Metern)' }}"
 
     steps:
       - name: Checkout

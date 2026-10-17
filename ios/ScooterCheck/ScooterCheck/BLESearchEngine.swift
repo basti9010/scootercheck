@@ -238,8 +238,16 @@ final class BLESearchEngine: NSObject, ObservableObject {
             heatmapDirty = true
             rebuildPathAndHeatmap(force: true)
         }
-        if surfaceMode == .map, let c = mapOverlay.current {
-            mapOverlay.region = MKCoordinateRegion(center: c, latitudinalMeters: 80, longitudinalMeters: 80)
+        if surfaceMode == .map {
+            mapOverlay = OutdoorMapTracker.model(
+                origin: originLocation,
+                path: pathSnapshot.points,
+                smoothedPolyline: pathSnapshot.smoothedPolyline,
+                measurements: session?.measurements ?? [],
+                lastGPS: lastLocation,
+                previousRegion: nil,
+                softFollow: false
+            )
         }
     }
 
@@ -487,8 +495,20 @@ final class BLESearchEngine: NSObject, ObservableObject {
             pathDirty = true
             heatmapDirty = true
         }
-        if let h = lastHeading?.trueHeading ?? lastHeading?.magneticHeading, h >= 0 {
-            indoorTracker.ingestExternalHeading(h)
+        if let heading = lastHeading {
+            applyCompassHeading(heading)
+        }
+    }
+
+    private func applyCompassHeading(_ heading: CLHeading) {
+        let h = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
+        guard h >= 0 else { return }
+        let accuracy = heading.headingAccuracy
+        if accuracy >= 0, accuracy <= 35 {
+            indoorTracker.ingestExternalHeading(h, fromCompass: true)
+        } else if accuracy >= 0 {
+            // Schwacher Kompass — nur leicht
+            indoorTracker.ingestExternalHeading(h, fromCompass: false)
         }
     }
 
@@ -669,8 +689,11 @@ final class BLESearchEngine: NSObject, ObservableObject {
         mapOverlay = OutdoorMapTracker.model(
             origin: originLocation,
             path: pathSnapshot.points,
+            smoothedPolyline: pathSnapshot.smoothedPolyline,
             measurements: s.measurements,
-            lastGPS: lastLocation
+            lastGPS: lastLocation,
+            previousRegion: followViewport ? mapOverlay.region : nil,
+            softFollow: followViewport
         )
         heatmapDirty = false
     }
@@ -735,15 +758,17 @@ extension BLESearchEngine: CLLocationManagerDelegate {
             if self.originLocation == nil, loc.horizontalAccuracy > 0, loc.horizontalAccuracy < 40 {
                 self.originLocation = loc
             }
-            // Brauchbares GPS → Outdoor/Karte einmalig vorschlagen (manuell überschreibbar)
+            // Nur bei wirklich gutem Outdoor-GPS Karte vorschlagen (Indoor oft 10–25 m „ok“ aber unbrauchbar)
             if !self.userPickedSurfaceMode,
                !self.didAutoPickSurfaceMode,
                loc.horizontalAccuracy > 0,
-               loc.horizontalAccuracy <= 15 {
+               loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy {
                 self.didAutoPickSurfaceMode = true
                 self.applySurfaceMode(.map)
             }
-            if let origin = self.originLocation, loc.horizontalAccuracy > 0, loc.horizontalAccuracy <= 22 {
+            if let origin = self.originLocation,
+               loc.horizontalAccuracy > 0,
+               loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy {
                 let (e, n) = ScooterFinderMath.enuDeltaMeters(
                     lat0: origin.coordinate.latitude,
                     lon0: origin.coordinate.longitude,
@@ -761,10 +786,7 @@ extension BLESearchEngine: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         Task { @MainActor in
             self.lastHeading = newHeading
-            let h = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
-            if h >= 0 {
-                self.indoorTracker.ingestExternalHeading(h)
-            }
+            self.applyCompassHeading(newHeading)
         }
     }
 

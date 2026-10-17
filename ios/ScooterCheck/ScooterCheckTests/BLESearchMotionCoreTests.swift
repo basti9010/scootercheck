@@ -1,4 +1,5 @@
 import XCTest
+import CoreLocation
 @testable import ScooterCheck
 
 final class BLESearchMotionCoreTests: XCTestCase {
@@ -122,5 +123,71 @@ final class BLESearchMotionCoreTests: XCTestCase {
     func testSurfaceModeLabels() {
         XCTAssertEqual(BLESearchSurfaceMode.relative.label, "Relativ")
         XCTAssertEqual(BLESearchSurfaceMode.map.label, "Karte")
+    }
+
+    func testMapRegionFitsTightlyAroundShortPath() {
+        let origin = CLLocation(latitude: 52.52, longitude: 13.405)
+        // Kurzer L-Pfad ~5 m × 5 m
+        let enu: [(x: Double, y: Double)] = [
+            (0, 0), (0, 3), (0, 5), (2, 5), (5, 5)
+        ]
+        let region = OutdoorMapTracker.fittedRegion(
+            enuPoints: enu,
+            currentENU: (5, 5),
+            origin: origin,
+            previous: nil,
+            softFollow: false
+        )
+        let mPerDegLat = 111_320.0
+        let spanMeters = region.span.latitudeDelta * mPerDegLat
+        // Eng am Weg — nicht die alten ~90 m Stadtblick-Zoomstufe
+        XCTAssertLessThan(spanMeters, 45)
+        XCTAssertGreaterThanOrEqual(spanMeters, BLEPathConfig.mapMinSpanMeters * 0.9)
+    }
+
+    func testMapHeatUsesRelativeNotRawGPS() {
+        let origin = CLLocation(latitude: 52.52, longitude: 13.405)
+        let path = [
+            BLEPathPoint(x: 0, y: 0),
+            BLEPathPoint(x: 0, y: 4),
+            BLEPathPoint(x: 3, y: 4)
+        ]
+        // Messungen mit absichtlich falschen GPS-Koordinaten (Indoor-Rauschen)
+        let noisyGPS = BLEMeasurement(
+            timestamp: Date(),
+            rawRssi: -60,
+            smoothedRssi: -60,
+            latitude: 52.53, // weit weg
+            longitude: 13.42,
+            relativeX: 0,
+            relativeY: 4,
+            positionQuality: .low
+        )
+        let model = OutdoorMapTracker.model(
+            origin: origin,
+            path: path,
+            smoothedPolyline: path.map { (x: $0.x, y: $0.y) },
+            measurements: [noisyGPS],
+            lastGPS: origin,
+            previousRegion: nil,
+            softFollow: false
+        )
+        XCTAssertEqual(model.heatSamples.count, 1)
+        // Heat muss am relativen Punkt liegen, nicht am GPS-Rauschen
+        let heat = model.heatSamples[0].coord
+        XCTAssertEqual(heat.latitude, origin.coordinate.latitude + 4 / 111_320.0, accuracy: 0.00005)
+        XCTAssertLessThan(abs(heat.longitude - origin.coordinate.longitude), 0.00005)
+    }
+
+    func testGPSFusionIgnoredWhenAccuracyPoor() {
+        let tracker = IndoorMotionTracker()
+        tracker.reset()
+        tracker.debugAdvance(steps: 3, headingDegrees: 0)
+        let beforeX = tracker.currentX
+        let beforeY = tracker.currentY
+        // Indoor-typische GPS-Genauigkeit darf den Pfad nicht verbiegen
+        tracker.ingestGPSDelta(east: 25, north: -18, accuracy: 18)
+        XCTAssertEqual(tracker.currentX, beforeX, accuracy: 0.001)
+        XCTAssertEqual(tracker.currentY, beforeY, accuracy: 0.001)
     }
 }

@@ -103,18 +103,27 @@ struct BLESearchPathSnapshot: Equatable, Sendable {
 // MARK: - Config
 
 enum BLEPathConfig {
-    static let stepLengthMeters: Double = 0.72
-    static let minStepDistance: Double = 0.35
-    static let minHeadingChangeDegrees: Double = 12
-    static let headingEmaAlpha: Double = 0.22
-    static let minMoveForSample: Double = 0.45
+    static let stepLengthMeters: Double = 0.70
+    static let minStepDistance: Double = 0.28
+    static let minHeadingChangeDegrees: Double = 8
+    static let headingEmaAlpha: Double = 0.28
+    /// Compass (CLHeading) darf stärker ziehen als Device-Yaw.
+    static let compassHeadingAlpha: Double = 0.45
+    static let minMoveForSample: Double = 0.32
     static let standstillSpeedMax: Double = 0.18
-    static let viewportPadding: Double = 1.35
-    static let viewportMinSpan: Double = 12
-    static let viewportMaxSpan: Double = 90
-    static let viewportSoftFollow: Double = 0.18
-    static let maxPathPoints = 600
-    static let heatmapPaintRadius: Double = 2.2
+    static let viewportPadding: Double = 1.45
+    static let viewportMinSpan: Double = 10
+    static let viewportMaxSpan: Double = 80
+    static let viewportSoftFollow: Double = 0.22
+    /// Karten-Zoom eng am Laufweg — startet nah, wächst mit der Strecke.
+    static let mapMinSpanMeters: Double = 18
+    static let mapMaxSpanMeters: Double = 100
+    static let mapPadding: Double = 1.55
+    static let mapSoftFollow: Double = 0.28
+    /// GPS nur bei wirklich guter Outdoor-Genauigkeit in den Pfad mischen.
+    static let gpsFusionMaxAccuracy: Double = 8
+    static let maxPathPoints = 800
+    static let heatmapPaintRadius: Double = 1.8
 }
 
 // MARK: - Indoor motion tracker (PDR-light)
@@ -132,6 +141,8 @@ final class IndoorMotionTracker {
     private var lastAccelMag: Double = 1.0
     private var stepCooldownUntil = Date.distantPast
     private var lastUserAccelPeak = Date.distantPast
+    /// Compass hat Vorrang vor Device-Yaw (vermeidet Misch-Sprünge).
+    private var lastCompassAt = Date.distantPast
     private(set) var path: [BLEPathPoint] = []
 
     var currentX: Double { x }
@@ -149,13 +160,14 @@ final class IndoorMotionTracker {
         lastAccelMag = 1.0
         stepCooldownUntil = .distantPast
         lastUserAccelPeak = .distantPast
+        lastCompassAt = .distantPast
         path = [BLEPathPoint(x: 0, y: 0, isStep: false)]
     }
 
     func start() {
         reset()
         if motion.isDeviceMotionAvailable {
-            motion.deviceMotionUpdateInterval = 0.08
+            motion.deviceMotionUpdateInterval = 0.06
             motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] data, _ in
                 guard let self, let data else { return }
                 self.ingestAttitude(data.attitude)
@@ -178,28 +190,34 @@ final class IndoorMotionTracker {
         pedometer.stopUpdates()
     }
 
-    /// Optional GPS/CL-Heading Fusion für Outdoor — relativen Pfad sanft korrigieren.
-    func ingestExternalHeading(_ degrees: Double?) {
+    /// CLHeading / Compass — bevorzugte Laufrichtung (wie WLAN-Analyzer-Feeling).
+    func ingestExternalHeading(_ degrees: Double?, fromCompass: Bool = false) {
         guard let degrees else { return }
-        applyHeading(degrees)
+        if fromCompass {
+            lastCompassAt = Date()
+            applyHeading(degrees, alpha: BLEPathConfig.compassHeadingAlpha, minDeltaScale: 0.2)
+        } else {
+            applyHeading(degrees)
+        }
     }
 
     func ingestGPSDelta(east: Double, north: Double, accuracy: Double) {
-        // Nur bei brauchbarer GPS-Genauigkeit Outdoor-Drift korrigieren
-        guard accuracy > 0, accuracy <= 18 else { return }
+        // Indoor-GPS (oft 10–25 m) zerstört den Laufweg — nur echte Outdoor-Genauigkeit.
+        guard accuracy > 0, accuracy <= BLEPathConfig.gpsFusionMaxAccuracy else { return }
         let dist = hypot(east - x, north - y)
-        guard dist >= 0.8 else { return }
-        // Weiche Annäherung, kein harter Sprung
-        x = x * 0.65 + east * 0.35
-        y = y * 0.65 + north * 0.35
+        guard dist >= 1.2 else { return }
+        // Sehr weiche Annäherung
+        x = x * 0.82 + east * 0.18
+        y = y * 0.82 + north * 0.18
         appendIfMoved(isStep: false)
     }
 
     private func ingestAttitude(_ attitude: CMAttitude) {
-        // yaw: -π…π, 0 ≈ Gerät-Nord relativ zu Referenz
+        // Compass aktiv → Yaw nicht mischen (sonst Richtungs-Zacken)
+        if Date().timeIntervalSince(lastCompassAt) < 1.8 { return }
         var deg = attitude.yaw * 180 / .pi
         if deg < 0 { deg += 360 }
-        applyHeading(deg)
+        applyHeading(deg, alpha: BLEPathConfig.headingEmaAlpha * 0.75, minDeltaScale: 0.5)
     }
 
     /// Fallback-Schritterkennung, wenn CMPedometer fehlt (Simulator / eingeschränkt).
@@ -218,7 +236,7 @@ final class IndoorMotionTracker {
         _ = lastUserAccelPeak
     }
 
-    private func applyHeading(_ raw: Double) {
+    private func applyHeading(_ raw: Double, alpha: Double = BLEPathConfig.headingEmaAlpha, minDeltaScale: Double = 0.35) {
         var h = raw.truncatingRemainder(dividingBy: 360)
         if h < 0 { h += 360 }
         if let prev = smoothedHeading {
@@ -226,10 +244,10 @@ final class IndoorMotionTracker {
             while delta > 180 { delta -= 360 }
             while delta < -180 { delta += 360 }
             // Kleine Rauschänderungen ignorieren
-            if abs(delta) < BLEPathConfig.minHeadingChangeDegrees * 0.35 {
+            if abs(delta) < BLEPathConfig.minHeadingChangeDegrees * minDeltaScale {
                 return
             }
-            let next = prev + delta * BLEPathConfig.headingEmaAlpha
+            let next = prev + delta * alpha
             smoothedHeading = normalize(next)
         } else {
             smoothedHeading = h
@@ -244,19 +262,21 @@ final class IndoorMotionTracker {
     }
 
     private func advanceBySteps(_ count: Int) {
-        guard count > 0, let heading = smoothedHeading else { return }
-        let rad = heading * .pi / 180
-        // Heading 0 = Nord → y+, 90 = Ost → x+
+        guard count > 0, smoothedHeading != nil else { return }
+        // Pro Schritt aktuelles Heading lesen → Kurven werden sichtbar (nicht ein Batch-Heading)
         for _ in 0..<count {
+            guard let heading = smoothedHeading else { return }
+            let rad = heading * .pi / 180
+            // Heading 0 = Nord → y+, 90 = Ost → x+
             x += sin(rad) * BLEPathConfig.stepLengthMeters
             y += cos(rad) * BLEPathConfig.stepLengthMeters
+            appendIfMoved(isStep: true)
         }
-        appendIfMoved(isStep: true)
     }
 
     /// Test-/Engine-Hook: manueller Schritt mit bekanntem Heading.
     func debugAdvance(steps: Int, headingDegrees: Double) {
-        applyHeading(headingDegrees)
+        applyHeading(headingDegrees, alpha: 1.0, minDeltaScale: 0)
         advanceBySteps(steps)
     }
 
@@ -614,8 +634,11 @@ enum OutdoorMapTracker {
     static func model(
         origin: CLLocation?,
         path: [BLEPathPoint],
+        smoothedPolyline: [(x: Double, y: Double)],
         measurements: [BLEMeasurement],
-        lastGPS: CLLocation?
+        lastGPS: CLLocation?,
+        previousRegion: MKCoordinateRegion?,
+        softFollow: Bool
     ) -> BLEMapOverlayModel {
         guard let origin else {
             if let gps = lastGPS {
@@ -625,8 +648,8 @@ enum OutdoorMapTracker {
                     current: gps.coordinate,
                     region: MKCoordinateRegion(
                         center: gps.coordinate,
-                        latitudinalMeters: 80,
-                        longitudinalMeters: 80
+                        latitudinalMeters: BLEPathConfig.mapMinSpanMeters,
+                        longitudinalMeters: BLEPathConfig.mapMinSpanMeters
                     )
                 )
             }
@@ -635,28 +658,104 @@ enum OutdoorMapTracker {
 
         func toCoord(x: Double, y: Double) -> CLLocationCoordinate2D {
             let mPerDegLat = 111_320.0
-            let mPerDegLon = 111_320.0 * cos(origin.coordinate.latitude * .pi / 180)
+            let mPerDegLon = max(1e-6, 111_320.0 * cos(origin.coordinate.latitude * .pi / 180))
             return CLLocationCoordinate2D(
                 latitude: origin.coordinate.latitude + y / mPerDegLat,
                 longitude: origin.coordinate.longitude + x / mPerDegLon
             )
         }
 
-        let coords = path.map { toCoord(x: $0.x, y: $0.y) }
-        let heats = measurements.compactMap { m -> (CLLocationCoordinate2D, Double)? in
-            if let la = m.latitude, let lo = m.longitude {
-                return (CLLocationCoordinate2D(latitude: la, longitude: lo), m.smoothedRssi)
-            }
+        // Polyline aus geglättetem PDR-Pfad — nicht aus rohem Indoor-GPS.
+        let polyENU = smoothedPolyline.isEmpty
+            ? path.map { (x: $0.x, y: $0.y) }
+            : smoothedPolyline
+        let coords = polyENU.map { toCoord(x: $0.x, y: $0.y) }
+
+        // Heat/Messpunkte immer entlang relativer Bewegung (WLAN-Analyzer-Stil).
+        // Rohe GPS-Koordinaten indoor erzeugen den „Kritzel-Haufen“.
+        let heats: [(CLLocationCoordinate2D, Double)] = measurements.compactMap { m in
             guard let x = m.relativeX, let y = m.relativeY else { return nil }
             return (toCoord(x: x, y: y), m.smoothedRssi)
         }
-        let current = path.last.map { toCoord(x: $0.x, y: $0.y) } ?? lastGPS?.coordinate
-        let center = current ?? origin.coordinate
+
+        let current = path.last.map { toCoord(x: $0.x, y: $0.y) }
+            ?? polyENU.last.map { toCoord(x: $0.x, y: $0.y) }
+            ?? lastGPS?.coordinate
+
+        let region = fittedRegion(
+            enuPoints: polyENU,
+            currentENU: path.last.map { (x: $0.x, y: $0.y) },
+            origin: origin,
+            previous: previousRegion,
+            softFollow: softFollow
+        )
+
         return BLEMapOverlayModel(
             coordinates: coords,
             heatSamples: heats.map { (coord: $0.0, rssi: $0.1) },
             current: current,
-            region: MKCoordinateRegion(center: center, latitudinalMeters: 90, longitudinalMeters: 90)
+            region: region
+        )
+    }
+
+    /// Zoom eng um den gelaufenen Weg; wächst mit der Strecke.
+    static func fittedRegion(
+        enuPoints: [(x: Double, y: Double)],
+        currentENU: (x: Double, y: Double)?,
+        origin: CLLocation,
+        previous: MKCoordinateRegion?,
+        softFollow: Bool
+    ) -> MKCoordinateRegion {
+        var minX = 0.0, maxX = 0.0, minY = 0.0, maxY = 0.0
+        if let first = enuPoints.first {
+            minX = first.x; maxX = first.x; minY = first.y; maxY = first.y
+            for p in enuPoints.dropFirst() {
+                minX = min(minX, p.x); maxX = max(maxX, p.x)
+                minY = min(minY, p.y); maxY = max(maxY, p.y)
+            }
+        }
+        if let c = currentENU {
+            minX = min(minX, c.x); maxX = max(maxX, c.x)
+            minY = min(minY, c.y); maxY = max(maxY, c.y)
+        }
+        let width = max(maxX - minX, 2)
+        let height = max(maxY - minY, 2)
+        let span = min(
+            BLEPathConfig.mapMaxSpanMeters,
+            max(BLEPathConfig.mapMinSpanMeters, max(width, height) * BLEPathConfig.mapPadding)
+        )
+        var cx = (minX + maxX) / 2
+        var cy = (minY + maxY) / 2
+        if let c = currentENU {
+            cx = cx * 0.5 + c.x * 0.5
+            cy = cy * 0.5 + c.y * 0.5
+        }
+
+        let mPerDegLat = 111_320.0
+        let mPerDegLon = max(1e-6, 111_320.0 * cos(origin.coordinate.latitude * .pi / 180))
+        var center = CLLocationCoordinate2D(
+            latitude: origin.coordinate.latitude + cy / mPerDegLat,
+            longitude: origin.coordinate.longitude + cx / mPerDegLon
+        )
+        var meters = span
+
+        if softFollow, let prev = previous {
+            let prevMeters = max(
+                prev.span.latitudeDelta * mPerDegLat,
+                prev.span.longitudeDelta * mPerDegLon
+            )
+            let a = BLEPathConfig.mapSoftFollow
+            center = CLLocationCoordinate2D(
+                latitude: prev.center.latitude * (1 - a) + center.latitude * a,
+                longitude: prev.center.longitude * (1 - a) + center.longitude * a
+            )
+            meters = prevMeters * (1 - a) + span * a
+        }
+
+        return MKCoordinateRegion(
+            center: center,
+            latitudinalMeters: meters,
+            longitudinalMeters: meters
         )
     }
 }

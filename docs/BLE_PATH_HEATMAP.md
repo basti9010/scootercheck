@@ -22,12 +22,19 @@ Funktionale Überarbeitung der Indoor-/Outdoor-Suchdarstellung. Visuell bleibt d
 
 `IndoorMotionTracker` kombiniert:
 
-1. **Device Motion (Yaw)** → geglättetes Heading (EMA, Mindestwinkel gegen Rauschen)
-2. **CMPedometer** → Schritte → Vorwärtsbewegung mit fester Schrittlänge (~0,72 m)
-3. **Fallback User-Acceleration** → Peak-Detektor, wenn Pedometer fehlt
-4. **Optional GPS/CLHeading** → weiche Korrektur outdoor (kein harter Sprung)
+1. **CLHeading (Kompass)** bevorzugt → geglättetes Heading (stärkeres EMA)
+2. **Device Motion (Yaw)** nur als Fallback, wenn kein Kompass (kein Mischen)
+3. **CMPedometer** → Schritte; Heading wird **pro Schritt** gelesen (Kurven sichtbar)
+4. **Fallback User-Acceleration** → Peak-Detektor, wenn Pedometer fehlt
+5. **GPS-Position** nur bei Genauigkeit ≤ 8 m (Outdoor) — Indoor-GPS zerstört den Laufweg sonst
 
 Stehen bleiben erzeugt **keine** künstliche Bewegung (nur Heading-Updates ohne Schritte).
+
+### Karten-Zoom & Heatmap (Feedback-Fixes)
+
+- Region folgt dem **Bounding-Box des PDR-Pfads** (Start ~18 m, wächst mit Strecke) — kein fixer 90-m-Stadtblick
+- Heat-/Messpunkte kommen aus **relativer ENU-Position**, nicht aus rohem Indoor-GPS (verhindert Kritzel-Haufen)
+- Auto-Kartenmodus nur bei GPS ≤ 8 m
 
 ## Richtungswechsel
 

@@ -723,12 +723,14 @@ struct SignalHeatmapView: View {
             }()
 
             if showMeasurementDots {
-                let step = max(1, poly.count / 48)
+                let step = max(1, poly.count / 56)
                 for (i, p) in poly.enumerated() where i % step == 0 {
                     let pt = project(x: p.x, y: p.y, in: size, snapshot: snapshot)
-                    let r: CGFloat = 4.5
+                    let r: CGFloat = 6.5
                     let oval = Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2))
-                    context.fill(oval, with: .color(Theme.accent.opacity(0.28)))
+                    context.fill(oval, with: .color(Theme.accent.opacity(0.32)))
+                    let inner = Path(ellipseIn: CGRect(x: pt.x - 2.2, y: pt.y - 2.2, width: 4.4, height: 4.4))
+                    context.fill(inner, with: .color(Theme.accent.opacity(0.7)))
                 }
             }
 
@@ -802,13 +804,17 @@ struct BLESearchMapCanvas: UIViewRepresentable {
         map.showsCompass = false
         map.showsTraffic = false
         map.overrideUserInterfaceStyle = .dark
-        // Karte bewusst zurückgenommen: dunkles UI + reduzierte POIs; Heatmap/Pfad bleiben dominant.
+        map.setRegion(overlay.region, animated: false)
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
         context.coordinator.heatmap = heatmap
-        map.setRegion(overlay.region, animated: false)
+        context.coordinator.applyRegionIfNeeded(overlay.region, on: map)
+
+        let signature = "\(overlay.coordinates.count)|\(overlay.heatSamples.count)|\(overlay.current?.latitude ?? 0)"
+        guard signature != context.coordinator.lastOverlaySignature else { return }
+        context.coordinator.lastOverlaySignature = signature
 
         map.removeOverlays(map.overlays)
         map.removeAnnotations(map.annotations)
@@ -818,15 +824,29 @@ struct BLESearchMapCanvas: UIViewRepresentable {
             map.addOverlay(poly, level: .aboveRoads)
         }
 
-        for sample in overlay.heatSamples.suffix(120) {
-            let a = BLEMapHeatAnnotation(coordinate: sample.coord, rssi: sample.rssi)
-            map.addAnnotation(a)
+        // Breadcrumbs entlang des Laufwegs (ausgedünnt, lesbar wie WLAN-Analyzer)
+        let samples = Self.decimate(overlay.heatSamples, maxCount: 80)
+        for sample in samples {
+            map.addAnnotation(BLEMapHeatAnnotation(coordinate: sample.coord, rssi: sample.rssi))
         }
 
         if let current = overlay.current {
-            let pin = BLEMapCurrentAnnotation(coordinate: current)
-            map.addAnnotation(pin)
+            map.addAnnotation(BLEMapCurrentAnnotation(coordinate: current))
         }
+    }
+
+    private static func decimate(
+        _ samples: [(coord: CLLocationCoordinate2D, rssi: Double)],
+        maxCount: Int
+    ) -> [(coord: CLLocationCoordinate2D, rssi: Double)] {
+        guard samples.count > maxCount, maxCount > 1 else { return samples }
+        let step = Double(samples.count - 1) / Double(maxCount - 1)
+        var out: [(coord: CLLocationCoordinate2D, rssi: Double)] = []
+        for i in 0..<maxCount {
+            let idx = min(samples.count - 1, Int((Double(i) * step).rounded()))
+            out.append(samples[idx])
+        }
+        return out
     }
 
     func makeCoordinator() -> Coordinator {
@@ -835,16 +855,30 @@ struct BLESearchMapCanvas: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var heatmap: BLEHeatmapSnapshot
+        var lastOverlaySignature = ""
+        private var lastAppliedRegion: MKCoordinateRegion?
 
         init(heatmap: BLEHeatmapSnapshot) {
             self.heatmap = heatmap
         }
 
+        func applyRegionIfNeeded(_ region: MKCoordinateRegion, on map: MKMapView) {
+            if let prev = lastAppliedRegion {
+                let dLat = abs(prev.center.latitude - region.center.latitude)
+                let dLon = abs(prev.center.longitude - region.center.longitude)
+                let dSpan = abs(prev.span.latitudeDelta - region.span.latitudeDelta)
+                // Nur bei spürbarer Änderung zoomen — kein ständiges Zucken
+                if dLat < 0.00002, dLon < 0.00002, dSpan < 0.00003 { return }
+            }
+            lastAppliedRegion = region
+            map.setRegion(region, animated: true)
+        }
+
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let poly = overlay as? MKPolyline {
                 let r = MKPolylineRenderer(polyline: poly)
-                r.strokeColor = UIColor(Theme.accent).withAlphaComponent(0.85)
-                r.lineWidth = 3
+                r.strokeColor = UIColor(Theme.accent).withAlphaComponent(0.9)
+                r.lineWidth = 3.5
                 r.lineCap = .round
                 r.lineJoin = .round
                 return r
@@ -859,7 +893,7 @@ struct BLESearchMapCanvas: UIViewRepresentable {
                     ?? MKAnnotationView(annotation: annotation, reuseIdentifier: id)
                 view.annotation = annotation
                 view.canShowCallout = false
-                view.image = Self.dotImage(color: UIColor(Theme.accent), size: 14, ring: true)
+                view.image = Self.dotImage(color: UIColor(Theme.accent), size: 16, ring: true)
                 return view
             }
             if let heat = annotation as? BLEMapHeatAnnotation {
@@ -869,28 +903,29 @@ struct BLESearchMapCanvas: UIViewRepresentable {
                 view.annotation = annotation
                 view.canShowCallout = false
                 let color = Self.color(forRssi: heat.rssi)
-                view.image = Self.dotImage(color: color, size: 10, ring: false)
-                view.alpha = 0.7
+                // Größere, halbtransparente Kreise entlang der Route
+                view.image = Self.dotImage(color: color.withAlphaComponent(0.55), size: 14, ring: false)
+                view.alpha = 0.85
                 return view
             }
             return nil
         }
 
         private static func color(forRssi rssi: Double) -> UIColor {
-            if let c = BLEHeatmapProcessor.color(forRssi: rssi, confidence: 0.8) {
+            if let c = BLEHeatmapProcessor.color(forRssi: rssi, confidence: 0.85) {
                 return UIColor(c)
             }
-            return UIColor(Theme.accent).withAlphaComponent(0.5)
+            return UIColor(Theme.accent).withAlphaComponent(0.55)
         }
 
         private static func dotImage(color: UIColor, size: CGFloat, ring: Bool) -> UIImage {
-            let s = size + (ring ? 8 : 0)
+            let s = size + (ring ? 10 : 0)
             let renderer = UIGraphicsImageRenderer(size: CGSize(width: s, height: s))
             return renderer.image { ctx in
                 let rect = CGRect(x: (s - size) / 2, y: (s - size) / 2, width: size, height: size)
                 if ring {
-                    color.withAlphaComponent(0.35).setStroke()
-                    ctx.cgContext.setLineWidth(1.5)
+                    color.withAlphaComponent(0.4).setStroke()
+                    ctx.cgContext.setLineWidth(2)
                     ctx.cgContext.strokeEllipse(in: CGRect(x: 1, y: 1, width: s - 2, height: s - 2))
                 }
                 color.setFill()
