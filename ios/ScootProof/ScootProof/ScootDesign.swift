@@ -259,7 +259,7 @@ struct RotatingSonarIcon: View {
 }
 
 /// Sonar hinter dem bereitgestellten `radar_scooter`-Asset.
-/// Ebenen: Disk → Achsen → Ringe → Sweep → Blips → Image("radar_scooter") → Check.
+/// Ebenen: Disk → Achsen → Ringe → Sweep → Blips → Image("radar_scooter").
 struct SonarRadarView: View {
     enum Style {
         case compact
@@ -269,7 +269,6 @@ struct SonarRadarView: View {
 
     var isScanning: Bool
     var blipCount: Int = 0
-    var highlightIndex: Int? = nil
     var size: CGFloat = 220
     var style: Style = .search
     var discoveryFlash: Bool = false
@@ -277,11 +276,15 @@ struct SonarRadarView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let revolutionSeconds: Double = 2.0
-    /// ~0.6 s Fade bei 2 s/Umdrehung → ~108°.
-    private let blipFadeDegrees: Double = 108
+    /// ~0.9 s Nachleuchten bei 2 s/Umdrehung → ~162°, danach opacity = 0.
+    private let blipFadeDegrees: Double = 162
+
+    /// Lenkerstange sitzt im Asset bei ~34 % der Bildbreite → nach rechts versetzen,
+    /// damit das Sonarzentrum hinter dem Rohr liegt.
+    private let stemAlignOffsetXFactor: CGFloat = 0.16
 
     private var blips: [SonarBlip] {
-        let fallback = (style == .hero) ? 4 : (isScanning ? 5 : 4)
+        let fallback = isScanning ? 5 : (style == .hero ? 4 : 0)
         return SonarBlip.seeded(count: max(blipCount, fallback), style: style)
     }
 
@@ -320,29 +323,18 @@ struct SonarRadarView: View {
         return (t.truncatingRemainder(dividingBy: revolutionSeconds) / revolutionSeconds) * 360.0
     }
 
-    /// Ausschließlich das bereitgestellte Asset — kein gezeichneter Scooter.
+    /// Nur das bereitgestellte Asset — visuell an der Lenkerstange zentriert.
     private var scooterForeground: some View {
-        ZStack {
-            Image("radar_scooter")
-                .resizable()
-                .scaledToFit()
-                .frame(width: size * 0.62)
-                .offset(y: size * 0.01)
-
-            // Separates Check-Symbol (nicht Teil des Assets)
-            ZStack {
-                Circle()
-                    .fill(Theme.bg.opacity(0.82))
-                Circle()
-                    .stroke(Theme.accent.opacity(0.9), lineWidth: max(1.1, size * 0.007))
-                Image(systemName: "checkmark")
-                    .font(.system(size: size * 0.052, weight: .bold))
-                    .foregroundStyle(Theme.accent)
-            }
-            .frame(width: size * 0.12, height: size * 0.12)
-            .offset(y: size * 0.02)
-        }
-        .allowsHitTesting(false)
+        let displayW = size * 0.78
+        return Image("radar_scooter")
+            .resizable()
+            .scaledToFit()
+            .frame(width: displayW)
+            .offset(
+                x: displayW * stemAlignOffsetXFactor,
+                y: size * 0.02
+            )
+            .allowsHitTesting(false)
     }
 
     private func canvas(angle: Double) -> some View {
@@ -351,13 +343,13 @@ struct SonarRadarView: View {
         let strokeW: CGFloat = style == .compact ? 0.65 : 0.85
         let span: Double = style == .compact ? 46 : 58
         let flashBoost = discoveryFlash ? 1.25 : 1.0
-        let animateBlips = drawSweep && isScanning && !reduceMotion
+        let animateBlips = isScanning && !reduceMotion
 
         return Canvas { context, canvasSize in
             let mid = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
             let radius = min(canvasSize.width, canvasSize.height) / 2
 
-            // 1. Dunkler / transparenter Radarbereich
+            // 1. Dunkler Radarbereich
             let disk = Path(ellipseIn: CGRect(
                 x: mid.x - radius, y: mid.y - radius,
                 width: radius * 2, height: radius * 2
@@ -397,7 +389,7 @@ struct SonarRadarView: View {
                 )
             }
 
-            // 4. Einzelner weicher Sweep (hellere Vorderkante, transparenter Schweif)
+            // 4. Einzelner weicher Sweep
             if drawSweep {
                 let steps = style == .compact ? 40 : 72
                 for i in 0..<steps {
@@ -405,7 +397,6 @@ struct SonarRadarView: View {
                     let a0 = angle - span * t
                     let a1 = angle - span * min(1, t + 1.0 / Double(steps))
                     let fall = 1.0 - t
-                    // Vorderkante etwas heller, Schweif cubic aus
                     let peak: Double = style == .compact ? 0.48 : 0.40
                     let alpha = fall * fall * fall * peak * flashBoost
                     guard alpha > 0.003 else { continue }
@@ -421,7 +412,7 @@ struct SonarRadarView: View {
                     wedge.closeSubpath()
                     context.fill(wedge, with: .color(Theme.accent.opacity(alpha)))
                 }
-                // Klare, weiche Vorderkante — Teil des Kegels, kein zweiter Strich dahinter
+                // Weiche Vorderkante (kein zweiter Schweif-Strich)
                 var lead = Path()
                 let leadLen = radius * 0.985
                 let lx = mid.x + leadLen * CGFloat(cos((angle - 90) * .pi / 180))
@@ -435,32 +426,32 @@ struct SonarRadarView: View {
                 )
             }
 
-            // 5. Erkennungspunkte: unsichtbar → Treffer → Fade auf 0
-            for (index, blip) in blips.enumerated() {
-                let pulse = animateBlips ? blipPulse(blipAngle: blip.angle, sweep: angle) : 0
-                let highlighted = highlightIndex == index && animateBlips
-                let intensity = highlighted ? max(pulse, 0.9) : pulse
-                guard intensity > 0.01 else { continue }
+            // 5. Punkte nur beim Sweep — länger nachleuchten, dann opacity 0
+            if animateBlips {
+                for blip in blips {
+                    let intensity = blipPulse(blipAngle: blip.angle, sweep: angle)
+                    guard intensity > 0.012 else { continue }
 
-                let br = radius * blip.radius
-                let bx = mid.x + br * CGFloat(cos((blip.angle - 90) * .pi / 180))
-                let by = mid.y + br * CGFloat(sin((blip.angle - 90) * .pi / 180))
-                let baseDot: CGFloat = style == .compact
-                    ? max(1.5, size * 0.05)
-                    : max(2.2, size * blip.dot)
-                let d = baseDot * (0.85 + 0.55 * intensity)
+                    let br = radius * blip.radius
+                    let bx = mid.x + br * CGFloat(cos((blip.angle - 90) * .pi / 180))
+                    let by = mid.y + br * CGFloat(sin((blip.angle - 90) * .pi / 180))
+                    let baseDot: CGFloat = style == .compact
+                        ? max(1.5, size * 0.05)
+                        : max(2.2, size * blip.dot)
+                    let d = baseDot * (0.85 + 0.55 * intensity)
 
-                let glow = d * (1.6 + intensity * 1.6)
-                let glowRect = CGRect(x: bx - glow / 2, y: by - glow / 2, width: glow, height: glow)
-                context.fill(
-                    Path(ellipseIn: glowRect),
-                    with: .color(Theme.accent.opacity(0.18 * intensity))
-                )
-                let dotRect = CGRect(x: bx - d / 2, y: by - d / 2, width: d, height: d)
-                context.fill(
-                    Path(ellipseIn: dotRect),
-                    with: .color(Color.white.opacity(intensity))
-                )
+                    let glow = d * (1.6 + intensity * 1.8)
+                    let glowRect = CGRect(x: bx - glow / 2, y: by - glow / 2, width: glow, height: glow)
+                    context.fill(
+                        Path(ellipseIn: glowRect),
+                        with: .color(Theme.accent.opacity(0.20 * intensity))
+                    )
+                    let dotRect = CGRect(x: bx - d / 2, y: by - d / 2, width: d, height: d)
+                    context.fill(
+                        Path(ellipseIn: dotRect),
+                        with: .color(Color.white.opacity(intensity))
+                    )
+                }
             }
 
             if style == .compact {
@@ -473,15 +464,20 @@ struct SonarRadarView: View {
         }
     }
 
-    /// 0…1: Peak beim Treffer, danach weich auf 0 (nicht auf Resthelligkeit).
+    /// Peak beim Treffer, dann längeres Nachleuchten, danach exakt 0.
     private func blipPulse(blipAngle: Double, sweep: Double) -> Double {
         let behind = normalizedDelta(sweep - blipAngle)
         if behind < 0 || behind > blipFadeDegrees {
             return 0
         }
         let t = behind / blipFadeDegrees
-        let fade = 1.0 - t
-        return fade * fade
+        // Erste ~20 % hell halten (Nachleuchten), danach weich aus
+        if t < 0.22 {
+            return 1.0 - t * 0.15
+        }
+        let u = (t - 0.22) / 0.78
+        let fade = 1.0 - u
+        return fade * fade * fade
     }
 
     private func normalizedDelta(_ degrees: Double) -> Double {
@@ -527,8 +523,7 @@ struct PulsingSearchGraphic: View {
     var body: some View {
         SonarRadarView(
             isScanning: isScanning,
-            blipCount: max(min(deviceCount, 5), isScanning ? 4 : 3),
-            highlightIndex: deviceCount > 0 ? 0 : nil,
+            blipCount: max(min(deviceCount, 5), isScanning ? 5 : 0),
             size: size,
             style: .search,
             discoveryFlash: discoveryFlash
