@@ -15,8 +15,9 @@ on:
       - cursor/dual-tuning-detection-133a
       - cursor/unlock-rescan-prosecutor-b100
       - cursor/back-copyright-b100
+      - cursor/ui-redesign-b100
     paths:
-      - "ios/ScootProof/**"
+      - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
 
 concurrency:
@@ -30,7 +31,7 @@ jobs:
     timeout-minutes: 60
     defaults:
       run:
-        working-directory: ios/ScootProof
+        working-directory: ios/ScooterCheck
 
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -41,7 +42,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: ${{ github.event.inputs.changelog || 'ScooterCheck Diagnose-Build' }}
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Neue BLE-Heatmap-Suche (Grob-/Feinsuche, Trend, Haptik/Ton) statt Richtungs-Pfeil' }}"
 
     steps:
       - name: Checkout
@@ -73,7 +74,7 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
-          working-directory: ios/ScootProof
+          working-directory: ios/ScooterCheck
 
       - name: Install gems
         run: bundle install --jobs 4
@@ -86,6 +87,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ScooterCheck-ipa
-          path: ios/ScootProof/build/*.ipa
+          path: ios/ScooterCheck/build/*.ipa
           if-no-files-found: ignore
           retention-days: 14

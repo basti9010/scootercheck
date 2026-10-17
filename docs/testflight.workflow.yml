@@ -13,7 +13,7 @@ on:
       - master
       - cursor/dual-tuning-detection-133a
     paths:
-      - "ios/ScootProof/**"
+      - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
 
 concurrency:
@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 60
     defaults:
       run:
-        working-directory: ios/ScootProof
+        working-directory: ios/ScooterCheck
 
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -47,14 +47,14 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
       - name: Show Xcode
-        run: xcodebuild -version && xcodebuild -list -project ScootProof.xcodeproj
+        run: xcodebuild -version && xcodebuild -list -project ScooterCheck.xcodeproj
 
       - name: Ruby + Bundler
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
           bundler-cache: true
-          working-directory: ios/ScootProof
+          working-directory: ios/ScooterCheck
 
       - name: Install gems
         run: bundle install --jobs 4
@@ -67,6 +67,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ScooterCheck-ipa
-          path: ios/ScootProof/build/*.ipa
+          path: ios/ScooterCheck/build/*.ipa
           if-no-files-found: ignore
           retention-days: 14
