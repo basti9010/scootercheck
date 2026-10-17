@@ -444,10 +444,14 @@ struct SonarRadarView: View {
     }
 
     /// Nur das bereitgestellte Asset — visuell an der Lenkerstange zentriert.
+    /// Kein Shadow/Glow; RenderingMode original, damit die defringte Alpha-Kante sauber bleibt.
     private var scooterForeground: some View {
         let displayW = size * 0.78
         return Image("radar_scooter")
+            .renderingMode(.original)
             .resizable()
+            .interpolation(.high)
+            .antialiased(true)
             .scaledToFit()
             .frame(width: displayW)
             .offset(
@@ -455,6 +459,7 @@ struct SonarRadarView: View {
                 y: size * 0.02
             )
             .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private func canvas(angle: Double) -> some View {
@@ -615,18 +620,20 @@ private struct SonarBlip {
 
     static func seeded(count: Int, style: SonarRadarView.Style) -> [SonarBlip] {
         guard count > 0 else { return [] }
+        // Radien bewusst über Innen-/Mittel-/Außenbereich (Ringe ~0.24…0.96),
+        // Winkel unregelmäßig — nicht alle nah am Zentrum.
         let catalog: [SonarBlip] = [
-            .init(angle: 28, radius: 0.30, dot: 0.018),
-            .init(angle: 95, radius: 0.38, dot: 0.015),
-            .init(angle: 155, radius: 0.26, dot: 0.017),
-            .init(angle: 220, radius: 0.36, dot: 0.014),
-            .init(angle: 290, radius: 0.32, dot: 0.016),
-            .init(angle: 335, radius: 0.22, dot: 0.013)
+            .init(angle: 22, radius: 0.34, dot: 0.017),
+            .init(angle: 78, radius: 0.78, dot: 0.015),
+            .init(angle: 138, radius: 0.52, dot: 0.016),
+            .init(angle: 198, radius: 0.88, dot: 0.014),
+            .init(angle: 256, radius: 0.41, dot: 0.016),
+            .init(angle: 318, radius: 0.66, dot: 0.013)
         ]
         let n = min(count, catalog.count)
         if style == .compact {
             return Array(catalog.prefix(min(n, 2))).map {
-                SonarBlip(angle: $0.angle, radius: min($0.radius, 0.34), dot: 0.08)
+                SonarBlip(angle: $0.angle, radius: min($0.radius, 0.55), dot: 0.08)
             }
         }
         return Array(catalog.prefix(n))
