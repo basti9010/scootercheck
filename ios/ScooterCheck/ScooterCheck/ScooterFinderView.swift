@@ -5,10 +5,12 @@ struct ScooterFinderView: View {
     @ObservedObject var ble: BleClient
     @StateObject private var searchEngine = BLESearchEngine()
     @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
+    @ObservedObject private var radar = BLERadarService.shared
     @State private var selected: ScannedDevice?
     @State private var showInfo = false
     @State private var showMultiPicker = false
     @State private var multiSelectedIds: Set<UUID> = []
+    @State private var radarBrowseMode = false
     /// Eigenständiger Modus — speichert kein Gerät als Scooter.
     @State private var showOnlyScooters = true
     /// Stabile Listenreihenfolge (RSSI darf zucken, Zeilen nicht dauernd tauschen).
@@ -17,6 +19,7 @@ struct ScooterFinderView: View {
 
     private var isFinding: Bool { selected != nil && searchEngine.isActive }
     private var isObserving: Bool { multiMonitor.isActive }
+    private var isRadarBrowsing: Bool { radarBrowseMode && radar.isEnabled && !isFinding && !isObserving }
 
     private var filteredDevices: [ScannedDevice] {
         showOnlyScooters
@@ -38,6 +41,8 @@ struct ScooterFinderView: View {
                 BLEMultiDeviceScreen(monitor: multiMonitor) {
                     multiSelectedIds = []
                 }
+            } else if isRadarBrowsing {
+                radarBrowseContent
             } else {
                 selectionContent
             }
@@ -46,6 +51,7 @@ struct ScooterFinderView: View {
             if ble.phase != .scanning {
                 ble.startScan()
             }
+            BLERadarService.shared.attach(ble: ble)
             reconcileStableOrder(force: true)
         }
         .onDisappear {
@@ -54,6 +60,10 @@ struct ScooterFinderView: View {
             }
             if multiMonitor.isActive {
                 multiMonitor.stop()
+            }
+            if radarBrowseMode {
+                radar.endSession()
+                radarBrowseMode = false
             }
         }
         .onChange(of: ble.devices) { _ in
@@ -146,6 +156,25 @@ struct ScooterFinderView: View {
                     .accessibilityLabel("Hinweise zur Heatmap-Suche")
                 }
 
+                Button {
+                    startRadarBrowse()
+                } label: {
+                    Label("Radar starten", systemImage: "dot.radiowaves.left.and.right")
+                        .font(Theme.secondary.weight(.medium))
+                        .foregroundStyle(Theme.accent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 14)
+                        .background(Theme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Theme.line, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Startet die BLE-Suche und meldet plausible E-Scooter mit ausreichendem Signal.")
+
                 if listedDevices.count >= 2 {
                     Button {
                         multiSelectedIds = []
@@ -177,6 +206,12 @@ struct ScooterFinderView: View {
                                 startFinding(device)
                             } label: {
                                 finderDeviceRow(device)
+                                    .overlay(alignment: .topTrailing) {
+                                        if radar.highlightDeviceIds.contains(device.id) {
+                                            BLERadarHitBadge()
+                                                .padding(10)
+                                        }
+                                    }
                             }
                             .buttonStyle(.plain)
                             .opacity(device.isStale ? 0.45 : 1)
@@ -284,17 +319,99 @@ struct ScooterFinderView: View {
 
     /// Startet Heatmap-Suche — speichert das Gerät nie als bekannten Scooter.
     private func startFinding(_ device: ScannedDevice) {
+        radarBrowseMode = false
         selected = device
         if ble.phase != .scanning {
             ble.startScan()
         }
+        radar.startSession(enableRadar: radar.isEnabled)
         searchEngine.start(device: device, ble: ble)
+        BLESearchLiveActivityController.shared.start(deviceName: device.bleListDisplayName)
     }
 
     private func endFinding() {
         selected = nil
+        radar.endSession()
+        BLESearchLiveActivityController.shared.end()
         if ble.phase != .scanning {
             ble.startScan()
+        }
+    }
+
+    private func startRadarBrowse() {
+        selected = nil
+        radarBrowseMode = true
+        if ble.phase != .scanning {
+            ble.startScan()
+        }
+        showOnlyScooters = true
+        radar.startSession(enableRadar: true)
+        Task { _ = await BLENotificationService.shared.requestAuthorization() }
+    }
+
+    private var radarBrowseContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.md) {
+                HStack {
+                    Button {
+                        radar.endSession()
+                        radarBrowseMode = false
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 44, height: 44)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Scooter-Radar")
+                            .font(Theme.cardTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Aktive Suche · kein Zielgerät nötig")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    Spacer()
+                }
+
+                if let banner = radar.banner {
+                    BLERadarBannerView(text: banner)
+                }
+
+                BLERadarControlsCard(radar: radar)
+
+                Text("Nur hinreichend plausible E-Scooter lösen einen Alarm aus — nicht jedes BLE-Gerät.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if listedDevices.isEmpty {
+                    Text("Warte auf Scooter-Signale…")
+                        .font(Theme.secondary)
+                        .foregroundStyle(Theme.textSecondary)
+                } else {
+                    ForEach(listedDevices) { device in
+                        Button {
+                            startFinding(device)
+                        } label: {
+                            finderDeviceRow(device)
+                                .overlay(alignment: .topTrailing) {
+                                    if radar.highlightDeviceIds.contains(device.id) {
+                                        BLERadarHitBadge()
+                                            .padding(10)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                ScootOutlineButton(title: "Radar beenden", systemImage: "xmark") {
+                    radar.endSession()
+                    radarBrowseMode = false
+                }
+            }
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.bottom, Theme.Space.xl)
         }
     }
 

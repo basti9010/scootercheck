@@ -3,6 +3,7 @@ import SwiftUI
 /// Aktive BLE-Suche: Heatmap + Analyse-Zusatzbereiche (kein BLE-Kompass).
 struct BLESearchScreen: View {
     @ObservedObject var engine: BLESearchEngine
+    @ObservedObject private var radar = BLERadarService.shared
     var onClose: () -> Void
 
     @State private var showEndDialog = false
@@ -21,6 +22,11 @@ struct BLESearchScreen: View {
                         .padding(.horizontal, Theme.Space.xl)
                         .padding(.top, Theme.Space.sm)
                 }
+                if let radarBanner = radar.banner {
+                    BLERadarBannerView(text: radarBanner)
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.sm)
+                }
                 if engine.searchMode == .fine {
                     FineSearchPanel(engine: engine)
                         .padding(.horizontal, Theme.Space.xl)
@@ -33,6 +39,25 @@ struct BLESearchScreen: View {
                 bottomPanel
                     .padding(.top, Theme.Space.md)
             }
+        }
+        .onAppear {
+            radar.startSession(enableRadar: radar.isEnabled)
+            BLESearchLiveActivityController.shared.start(deviceName: engine.deviceName)
+        }
+        .onChange(of: engine.signalStatus) { status in
+            let lastSeen: String = {
+                if status.contains("verloren") { return "Signal verloren" }
+                return "vor Kurzem"
+            }()
+            BLESearchLiveActivityController.shared.update(
+                status: status,
+                signal: engine.signalClass.label,
+                lastSeen: lastSeen,
+                deviceName: engine.deviceName
+            )
+        }
+        .onDisappear {
+            BLESearchLiveActivityController.shared.end()
         }
         .background(Theme.bg.ignoresSafeArea())
         .confirmationDialog(
@@ -213,6 +238,8 @@ struct BLESearchScreen: View {
                 .tint(Theme.accent)
             }
             .foregroundStyle(Theme.textSecondary)
+
+            BLERadarControlsCard(radar: radar)
 
             collapsibleSection(
                 title: "Signalverlauf",

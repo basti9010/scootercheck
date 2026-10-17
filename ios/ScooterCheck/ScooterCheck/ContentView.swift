@@ -49,12 +49,15 @@ struct ContentView: View {
     @State private var lastSonarDeviceCount = 0
     /// Detailansicht für allgemeine BLE-Geräte (kein Scooter-Persistieren).
     @State private var bleDetailDevice: ScannedDevice? = nil
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var watchService = BLEWatchService.shared
 
     private enum AppScreen: Equatable {
         case home
         case result
         case overview
         case find
+        case watchList
     }
 
     private enum HistoryShelf: Equatable {
@@ -114,6 +117,15 @@ struct ContentView: View {
 
                 if screen == .find {
                     ScooterFinderView(ble: ble)
+                } else if screen == .watchList {
+                    BLEWatchListScreen(
+                        onSelect: { target in
+                            if let device = ble.devices.first(where: { $0.id == target.deviceId }) {
+                                bleDetailDevice = device
+                            }
+                        },
+                        onClose: { screen = .home }
+                    )
                 } else if screen == .overview {
                     controlsOverview
                 } else {
@@ -186,6 +198,9 @@ struct ContentView: View {
             .sheet(item: $bleDetailDevice) { device in
                 BleDeviceDetailSheet(
                     device: device,
+                    isKnownScooter: history.entries.contains {
+                        $0.blePeripheralId == device.id && ScooterVerification.qualifiesAsKnownScooter($0)
+                    },
                     onProbeAsScooter: {
                         let selected = device
                         bleDetailDevice = nil
@@ -239,6 +254,14 @@ struct ContentView: View {
                         .allowsHitTesting(false)
                 }
             }
+            .overlay(alignment: .top) {
+                if let banner = watchService.lastBanner, screen != .find {
+                    BLERadarBannerView(text: banner)
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Chrome.headerHeight + 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
         }
         // Über Drawer + Header, Y über resolved Safe Area (nicht Statusleiste/Dynamic Island).
         .overlay {
@@ -247,6 +270,36 @@ struct ContentView: View {
         .animation(Theme.Motion.drawer, value: menuProgress)
         .preferredColorScheme(.dark)
         .tint(Theme.accent)
+        .onAppear {
+            BLEWatchService.shared.attach(ble: ble)
+            BLERadarService.shared.attach(ble: ble)
+        }
+        .onChange(of: scenePhase) { phase in
+            BLEWatchService.shared.setForeground(phase == .active)
+            if phase == .active {
+                Task { await BLENotificationService.shared.refreshAuthorization() }
+            }
+        }
+        .onOpenURL { url in
+            handleDeepLink(url)
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        guard let link = BLEDeepLink.parse(url) else { return }
+        switch link {
+        case .watch(let targetId):
+            screen = .watchList
+            if let target = BLEWatchStore.shared.targets.first(where: { $0.id == targetId }),
+               let device = ble.devices.first(where: { $0.id == target.deviceId }) {
+                bleDetailDevice = device
+            }
+            BLEWatchService.shared.updateBackgroundScanIfNeeded()
+        case .radar, .find:
+            if ble.isConnectedToScooter { ble.disconnect() }
+            screen = .find
+            if ble.phase != .scanning { ble.startScan() }
+        }
     }
 
     private var isBusyPhase: Bool {
@@ -1707,6 +1760,15 @@ struct ContentView: View {
                     navigateFromMenu(to: .find)
                 }
                 sideNavRow(
+                    title: BLEWatchStore.shared.activeCount == 0
+                        ? "BLE-Wächter"
+                        : "BLE-Wächter (\(BLEWatchStore.shared.activeCount))",
+                    systemImage: "bell.badge",
+                    selected: screen == .watchList
+                ) {
+                    navigateFromMenu(to: .watchList)
+                }
+                sideNavRow(
                     title: "FAQ & Wissensbasis",
                     systemImage: "questionmark.circle",
                     selected: false
@@ -1815,6 +1877,10 @@ struct ContentView: View {
             if ble.phase != .scanning {
                 ble.startScan()
             }
+        case .watchList:
+            if screen == .result { persistCurrentSession() }
+            screen = .watchList
+            BLEWatchService.shared.updateBackgroundScanIfNeeded()
         }
     }
 
@@ -2389,6 +2455,7 @@ struct ScooterDeviceCard: View {
 /// Technische Detailansicht für allgemeine BLE-Geräte — speichert nichts als Scooter.
 struct BleDeviceDetailSheet: View {
     let device: ScannedDevice
+    var isKnownScooter: Bool = false
     var onProbeAsScooter: () -> Void
     var onDismiss: () -> Void
 
@@ -2416,6 +2483,8 @@ struct BleDeviceDetailSheet: View {
                     }
 
                     detailCard
+
+                    BLEWatcherSettingsCard(device: device, isKnownScooter: isKnownScooter)
 
                     Text("Ein Fremdgerät wird erst nach erfolgreicher Scooter-Validierung dauerhaft gespeichert.")
                         .font(Theme.caption)
