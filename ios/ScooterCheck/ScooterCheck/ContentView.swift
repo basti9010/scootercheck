@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var result: IntegrityResult?
     @State private var session: CheckSession?
     @State private var showMenu = false
+    @State private var showFAQ = false
     @State private var showShare = false
     @State private var historySharePack: ProtocolPack.PackURLs?
     @State private var showHistoryShare = false
@@ -185,6 +186,9 @@ struct ContentView: View {
                 if !busy { pendingDevice = nil }
             }) {
                 profileConfirmSheet
+            }
+            .sheet(isPresented: $showFAQ) {
+                FAQView()
             }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
@@ -1188,7 +1192,7 @@ struct ContentView: View {
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
             } else if discoveredUnlockCombo == nil {
-                Text("Keine gespeicherte Kombination für diese Seriennummer. Kombination selbst am Scooter herausfinden, in Soft-Unlock eintragen, dann erneut auslesen.")
+                Text("Keine gespeicherte Kombination für diese Seriennummer. Kombination selbst am Scooter herausfinden, dann erneut auslesen. Bei Erfolg wird sie für diese SN gespeichert. Mehr dazu in der FAQ unter Soft Unlock.")
                     .font(.caption)
                     .foregroundStyle(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1198,13 +1202,6 @@ struct ContentView: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            if discoveredUnlockCombo == nil {
-                Button("Kombination in Soft-Unlock eintragen…") {
-                    showMenu = true
-                }
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Theme.accent)
-            }
         }
         .foregroundStyle(.white)
         .scootCard()
@@ -1285,7 +1282,6 @@ struct ContentView: View {
             softUnlock.apply(stored)
         } else {
             discoveredUnlockCombo = nil
-            // Aktuelle Soft-Unlock-Einstellung bleibt Editier-Vorlage für den Nutzer.
         }
         unlockRescanScanA = report.reading
         unlockRescanPhase = .awaitUnlock
@@ -1485,6 +1481,13 @@ struct ContentView: View {
                         navigateFromMenu(to: .result)
                     }
                 }
+                sideNavRow(
+                    title: "FAQ & Wissensbasis",
+                    systemImage: "questionmark.circle",
+                    selected: false
+                ) {
+                    openFAQFromMenu()
+                }
             }
             .padding(.horizontal, 12)
 
@@ -1492,39 +1495,6 @@ struct ContentView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Soft-Unlock")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.muted)
-                        Picker("Bedienung", selection: $softUnlock.control) {
-                            ForEach(SoftUnlockControl.allCases) { kind in
-                                Text(kind.title).tag(kind)
-                            }
-                        }
-                        .tint(Theme.accent)
-                        if softUnlock.control == .custom {
-                            TextField("Eigene Beschreibung", text: $softUnlock.customLabel)
-                                .scootField()
-                        } else {
-                            Stepper("Wiederholungen: \(softUnlock.repetitions)×", value: $softUnlock.repetitions, in: 1...20)
-                                .foregroundStyle(.white)
-                        }
-                        Stepper(
-                            "Schwelle: \(Int(softUnlock.speedThresholdKmh.rounded())) km/h",
-                            value: Binding(
-                                get: { softUnlock.speedThresholdKmh },
-                                set: { softUnlock.speedThresholdKmh = $0 }
-                            ),
-                            in: 21...60,
-                            step: 1
-                        )
-                        .foregroundStyle(.white)
-                        Text(softUnlock.unlockCodeSummary)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
                     if ble.isConnectedToScooter {
                         Button(role: .destructive) {
                             ble.disconnect()
@@ -1548,6 +1518,11 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private func openFAQFromMenu() {
+        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        showFAQ = true
     }
 
     private func sideNavRow(
