@@ -1,9 +1,6 @@
 import Foundation
 import ARKit
 import AVFoundation
-import SceneKit
-import SwiftUI
-import UIKit
 
 /// Zustand der kamera-gestützten Indoor-Bewegung (ARKit World Tracking).
 enum IndoorVisualTrackingState: String, Sendable {
@@ -24,6 +21,9 @@ enum IndoorVisualTrackingState: String, Sendable {
         case .unavailable: return "Kamera-Tracking nicht verfügbar"
         }
     }
+
+    /// Grünes Kamerasymbol nur bei stabilem Tracking.
+    var isHealthy: Bool { self == .tracking }
 }
 
 /// ARKit World Tracking → relative Meter auf der Bodenebene (East/North).
@@ -93,15 +93,6 @@ final class IndoorVisualTracker: NSObject, ObservableObject {
         state = .off
         statusText = state.label
         onPoseUpdate = nil
-    }
-
-    /// Für Preview — dieselbe Session wie das Tracking.
-    func attachPreview(_ view: ARSCNView) {
-        guard let session else { return }
-        view.session = session
-        view.scene = SCNScene()
-        view.automaticallyUpdatesLighting = false
-        view.rendersCameraGrain = false
     }
 
     private func stopSessionOnly() {
@@ -183,7 +174,7 @@ final class IndoorVisualTracker: NSObject, ObservableObject {
         switch reason {
         case .initializing: return "Kamera initialisiert…"
         case .excessiveMotion: return "Zu schnelle Bewegung — langsamer"
-        case .insufficientFeatures: return "Mehr Struktur filmen (Wände/Möbel)"
+        case .insufficientFeatures: return "Zu dunkel oder zu wenig Struktur"
         case .relocalizing: return "Kamera sucht Position…"
         @unknown default: return IndoorVisualTrackingState.limited.label
         }
@@ -216,27 +207,5 @@ extension IndoorVisualTracker: ARSessionDelegate {
             // Session läuft weiter; Tracking-State kommt über Frames
             self.statusText = "Kamera fortgesetzt…"
         }
-    }
-}
-
-// MARK: - Compact camera preview
-
-struct BLESearchCameraPreview: UIViewRepresentable {
-    @ObservedObject var tracker: IndoorVisualTracker
-
-    @MainActor
-    func makeUIView(context: Context) -> ARSCNView {
-        let view = ARSCNView(frame: .zero)
-        view.backgroundColor = .black
-        view.scene = SCNScene()
-        view.autoenablesDefaultLighting = false
-        view.automaticallyUpdatesLighting = false
-        tracker.attachPreview(view)
-        return view
-    }
-
-    @MainActor
-    func updateUIView(_ uiView: ARSCNView, context: Context) {
-        tracker.attachPreview(uiView)
     }
 }

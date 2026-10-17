@@ -28,6 +28,8 @@ final class BLESearchEngine: NSObject, ObservableObject {
     /// Kamera/ARKit für Indoor-Abstände und Drehungen (wie WLAN-Analyzer).
     @Published var cameraTrackingEnabled = true
     @Published private(set) var cameraTrackingStatus: String = "Kamera aus"
+    /// Grünes Kamerasymbol nur bei stabilem ARKit-Tracking; sonst rot (z. B. zu dunkel).
+    @Published private(set) var cameraTrackingHealthy = false
 
     // Pfad / Ansicht
     @Published var surfaceMode: BLESearchSurfaceMode = .relative
@@ -128,6 +130,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         followViewport = true
         cameraTrackingEnabled = true
         cameraTrackingStatus = "Kamera aus"
+        cameraTrackingHealthy = false
         heatmap = .empty
         strongestRssi = nil
         strongestLabel = "—"
@@ -194,7 +197,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         stopSensors()
         indoorTracker.stop()
         visualTracker.stop()
-        cameraTrackingStatus = visualTracker.statusText
+        syncCameraTrackingStatus()
         isActive = false
         if discardSession {
             session = nil
@@ -228,11 +231,16 @@ final class BLESearchEngine: NSObject, ObservableObject {
         } else {
             visualTracker.stop()
             indoorTracker.setVisualPrimary(false)
-            cameraTrackingStatus = visualTracker.statusText
+            syncCameraTrackingStatus()
             surfaceHint = surfaceMode == .relative
                 ? "Relative Suchfläche – keine exakte Ortung"
                 : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
         }
+    }
+
+    private func syncCameraTrackingStatus() {
+        cameraTrackingStatus = visualTracker.statusText
+        cameraTrackingHealthy = cameraTrackingEnabled && visualTracker.state.isHealthy
     }
 
     private func startCameraTracking() {
@@ -246,7 +254,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
                 authoritative: authoritative
             )
             self.indoorTracker.setVisualPrimary(authoritative || self.visualTracker.state == .limited)
-            self.cameraTrackingStatus = self.visualTracker.statusText
+            self.syncCameraTrackingStatus()
             self.pathDirty = true
             self.heatmapDirty = true
             if authoritative {
@@ -256,7 +264,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
             }
         }
         visualTracker.start()
-        cameraTrackingStatus = visualTracker.statusText
+        syncCameraTrackingStatus()
     }
 
     private func applySurfaceMode(_ mode: BLESearchSurfaceMode) {
@@ -730,7 +738,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
                 visualTracker.traveledMeters
             )
             pathLengthText = String(format: "%.2f m", meters)
-            cameraTrackingStatus = visualTracker.statusText
+            syncCameraTrackingStatus()
             pathDirty = false
             heatmapDirty = true
         }
