@@ -458,8 +458,12 @@ enum SearchViewportController {
 // MARK: - Heatmap placement along path
 
 enum HeatmapPlacementEngine {
-    /// Baut Heatmap aus Messungen, die relativeX/Y entlang des Pfads tragen, und Viewport-Span.
-    /// Zellgröße folgt dem Viewport, damit Pfad und Heatmap deckungsgleich bleiben.
+    /// Baut Heatmap aus Messungen entlang des Pfads.
+    ///
+    /// Warum ältere Farben früher „wanderten“:
+    /// Beim Mittelwert haben neue schwächere Messungen alte starke Zellen verwässert,
+    /// und Soft-Fill hat Nachbarschafts-Farben bei jedem Rebuild neu gemischt.
+    /// Jetzt: Peak-RSSI in gemessenen Zellen + Origin am Raster eingerastet.
     static func build(
         measurements: [BLEMeasurement],
         viewport: BLESearchViewport,
@@ -469,8 +473,10 @@ enum HeatmapPlacementEngine {
         let rows = BLESignalConfig.heatmapRows
         let bounds = max(viewport.spanMeters, 1)
         let cell = bounds / Double(cols)
-        let originEast = viewport.originEast
-        let originNorth = viewport.originNorth
+        // Origin an fester Welt-Rasterkante einrasten → weniger Index-Verschiebung beim Zoomen
+        let snap = BLESignalConfig.cellSizeMeters
+        let originEast = (viewport.originEast / snap).rounded(.down) * snap
+        let originNorth = (viewport.originNorth / snap).rounded(.down) * snap
 
         var cells: [BLEHeatmapCell?] = Array(repeating: nil, count: cols * rows)
         let plotted = measurements.compactMap { m -> (Double, Double, Double, Double)? in
@@ -480,7 +486,7 @@ enum HeatmapPlacementEngine {
             return (x, y, m.smoothedRssi, w)
         }
 
-        let paintRadius = min(BLEPathConfig.heatmapPaintRadius, cell * 2.4)
+        let paintRadius = min(BLEPathConfig.heatmapPaintRadius, cell * 1.6)
         for p in plotted {
             paint(
                 x: p.0, y: p.1, rssi: p.2, weight: p.3,
@@ -490,7 +496,7 @@ enum HeatmapPlacementEngine {
             )
         }
 
-        // Nur lokal weich füllen — keine weite Extrapolation über ungemessene Flächen.
+        // Nur lokal weich füllen — keine weite Extrapolation; überschreibt nie samples > 0.
         cells = softFillNearPath(cells: cells, cols: cols, rows: rows, cell: cell)
 
         var strongest: (Int, Int)?
@@ -585,17 +591,18 @@ enum HeatmapPlacementEngine {
                 let falloff = max(0.15, 1.0 - dist / paintRadius)
                 let w = weight * falloff
                 let idx = r * cols + c
+                let isCore = dist < cell * 0.55
                 if var existing = cells[idx] {
-                    let tw = existing.weight + w
-                    existing.rssi = (existing.rssi * existing.weight + rssi * w) / max(tw, 0.001)
-                    existing.weight = tw
-                    existing.samples += dist < cell * 0.35 ? 1 : 0
+                    // Peak-RSSI: ältere starke Messungen nicht durch spätere schwächere Mittelwerte verwässern
+                    existing.rssi = max(existing.rssi, rssi)
+                    existing.weight = max(existing.weight, w)
+                    if isCore { existing.samples += 1 }
                     cells[idx] = existing
                 } else {
                     cells[idx] = BLEHeatmapCell(
                         rssi: rssi,
                         weight: w,
-                        samples: dist < cell * 0.6 ? 1 : 0
+                        samples: isCore ? 1 : 0
                     )
                 }
             }
