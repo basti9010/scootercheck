@@ -135,14 +135,12 @@ struct ContentView: View {
                                 errorBanner(err)
                             }
                             switch screen {
-                            case .overview:
+                            case .overview, .find, .watchList:
                                 EmptyView()
                             case .result:
                                 if let result {
                                     resultCard(result)
                                 }
-                            case .find:
-                                EmptyView()
                             case .home:
                                 if isBusyPhase {
                                     connectingCard
@@ -1093,9 +1091,8 @@ struct ContentView: View {
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview: return true
+        case .overview, .find, .watchList: return true
         case .result: return result != nil
-        case .find: return true
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
             return true
@@ -1108,7 +1105,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find:
+        case .find, .watchList:
             break
         case .home:
             if ble.phase == .scanning {

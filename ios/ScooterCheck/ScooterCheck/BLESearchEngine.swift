@@ -357,13 +357,25 @@ final class BLESearchEngine: NSObject, ObservableObject {
     }
 
     private func advSignature(_ device: ScannedDevice) -> String {
-        [
+        let services = device.serviceUUIDs.sorted().joined(separator: ",")
+        let serviceData: String = {
+            guard let dict = device.serviceDataHexByUUID, !dict.isEmpty else { return "-" }
+            return dict.keys.sorted().map { key in
+                "\(key):\(dict[key] ?? "")"
+            }.joined(separator: "|")
+        }()
+        let tx = device.txPower.map(String.init) ?? "-"
+        let connectable: String = {
+            guard let flag = device.isConnectable else { return "?" }
+            return flag ? "1" : "0"
+        }()
+        return [
             device.cryptoName,
             device.manufacturerDataHex ?? "-",
-            device.serviceUUIDs.sorted().joined(separator: ","),
-            device.serviceDataHexByUUID?.map { "\($0.key):\($0.value)" }.sorted().joined(separator: "|") ?? "-",
-            device.txPower.map(String.init) ?? "-",
-            device.isConnectable.map { $0 ? "1" : "0" } ?? "?"
+            services,
+            serviceData,
+            tx,
+            connectable
         ].joined(separator: "#")
     }
 
