@@ -6,8 +6,21 @@ struct ScooterFinderView: View {
     @StateObject private var engine = ScooterFinderEngine()
     @State private var selected: ScannedDevice?
     @State private var showInfo = false
+    /// Eigenständiger Modus — speichert kein Gerät als Scooter.
+    @State private var showOnlyScooters = true
 
     private var isFinding: Bool { selected != nil }
+
+    /// Alle gescannten Advertiser bzw. nur Scooter-Heuristik (aus `ble.devices`, nicht nur visibleDevices).
+    private var listedDevices: [ScannedDevice] {
+        let base = showOnlyScooters
+            ? ble.devices.filter(\.looksLikeScooter)
+            : ble.devices
+        return base.sorted { a, b in
+            if a.isStale != b.isStale { return !a.isStale && b.isStale }
+            return a.rssi > b.rssi
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,10 +50,26 @@ struct ScooterFinderView: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     PageTitle(text: "Scooter finden")
-                    Text("Wähle einen Scooter aus der Gerätesuche. Anschließend schätzt ScooterCheck die bessere Signalrichtung anhand deiner Bewegung.")
+                    Text(showOnlyScooters
+                         ? "Wähle einen Scooter. Anschließend schätzt ScooterCheck die bessere Signalrichtung anhand deiner Bewegung."
+                         : "Wähle ein BLE-Signal zur Annäherung. Nicht jedes Gerät ist ein Scooter — es wird nichts als bekannter Scooter gespeichert.")
                         .font(Theme.body)
                         .foregroundStyle(Theme.textBody)
                         .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Picker("Suchmodus", selection: $showOnlyScooters) {
+                    Text("Scooter").tag(true)
+                    Text("Alle BLE-Geräte").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .font(Theme.segment)
+
+                if !showOnlyScooters {
+                    Text("Zeigt alle in der Umgebung erkannten BLE-Signale. Tippe ein Gerät an, um die Signalstärke zu verfolgen.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -61,18 +90,18 @@ struct ScooterFinderView: View {
                     .accessibilityLabel("Hinweise zur Richtungsschätzung")
                 }
 
-                let devices = ble.visibleDevices.filter(\.looksLikeScooter)
-                if devices.isEmpty {
+                if listedDevices.isEmpty {
                     emptySelectionCard
                 } else {
                     VStack(spacing: 10) {
-                        ForEach(devices) { device in
+                        ForEach(listedDevices) { device in
                             Button {
                                 startFinding(device)
                             } label: {
                                 finderDeviceRow(device)
                             }
                             .buttonStyle(.plain)
+                            .opacity(device.isStale ? 0.45 : 1)
                         }
                     }
                 }
@@ -89,13 +118,23 @@ struct ScooterFinderView: View {
 
     private var emptySelectionCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Keine Scooter in Reichweite")
+            Text(showOnlyScooters
+                 ? "Keine Scooter in Reichweite"
+                 : "Keine BLE-Geräte in Reichweite")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.white)
-            Text("Halte das iPhone in der Nähe und warte, bis Geräte in der Gerätesuche erscheinen.")
+            Text(showOnlyScooters
+                 ? "Halte das iPhone in der Nähe — oder wechsle zu „Alle BLE-Geräte“, falls die Erkennung unsicher ist."
+                 : "Stelle sicher, dass Bluetooth aktiv ist und Geräte in der Nähe werben.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
+            if showOnlyScooters {
+                ScootPrimaryButton(title: "Alle BLE-Geräte anzeigen", systemImage: "list.bullet") {
+                    showOnlyScooters = false
+                }
+                .padding(.top, 4)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -105,7 +144,7 @@ struct ScooterFinderView: View {
     private func finderDeviceRow(_ device: ScannedDevice) -> some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(device.modelLabel ?? (device.looksLikeScooter ? "Scooter" : device.name))
+                Text(rowTitle(device))
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -121,9 +160,25 @@ struct ScooterFinderView: View {
                         .font(.caption)
                         .foregroundStyle(Theme.secondaryText)
                 }
-                Text(lastSeenLabel(device.lastSeen))
-                    .font(.caption2)
-                    .foregroundStyle(Theme.muted)
+                if !showOnlyScooters {
+                    Text("ID \(device.bleIdentifierShort) · \(lastSeenLabel(device.lastSeen))")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                        .lineLimit(1)
+                } else {
+                    Text(lastSeenLabel(device.lastSeen))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.muted)
+                }
+                if device.looksLikeScooter, !showOnlyScooters {
+                    Text("Möglicherweise Scooter")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.accent.opacity(0.9))
+                        .clipShape(Capsule())
+                }
             }
             Spacer(minLength: 8)
             SignalStrengthView(rssi: device.rssi, style: .shu)
@@ -141,6 +196,12 @@ struct ScooterFinderView: View {
         )
     }
 
+    private func rowTitle(_ device: ScannedDevice) -> String {
+        if let label = device.modelLabel { return label }
+        if device.looksLikeScooter { return "Möglicher Scooter" }
+        return device.bleListDisplayName
+    }
+
     // MARK: - Finder
 
     private func finderContent(for device: ScannedDevice) -> some View {
@@ -148,12 +209,18 @@ struct ScooterFinderView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     VStack(spacing: 4) {
-                        Text(device.modelLabel ?? "Ausgewählter Scooter")
+                        Text(device.modelLabel
+                             ?? (device.looksLikeScooter ? "Ausgewählter Scooter" : device.bleListDisplayName))
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
                         Text(finderDisplayId(device))
                             .font(.caption.monospaced())
                             .foregroundStyle(Theme.muted)
+                        if !device.looksLikeScooter {
+                            Text("Allgemeines BLE-Signal · keine Scooter-Speicherung")
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
                     }
                     .frame(maxWidth: .infinity)
 
@@ -304,6 +371,7 @@ struct ScooterFinderView: View {
 
     // MARK: - Actions
 
+    /// Startet nur die RSSI-/Richtungs-Suche — speichert das Gerät nie als bekannten Scooter.
     private func startFinding(_ device: ScannedDevice) {
         selected = device
         if ble.phase != .scanning {
@@ -324,7 +392,10 @@ struct ScooterFinderView: View {
         if let compact = BleModelHint.compactScooterId(from: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
             return compact
         }
-        return device.name
+        if device.cryptoName.isEmpty {
+            return "\(device.bleListDisplayName) · \(device.bleIdentifierShort)"
+        }
+        return device.bleListDisplayName
     }
 
     private func lastSeenLabel(_ date: Date) -> String {
@@ -343,6 +414,10 @@ struct ScooterFinderView: View {
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("ScooterCheck nutzt Standort und Bewegungsrichtung nur während der aktiven Gerätesuche, um Änderungen der Signalstärke auszuwerten. Es werden keine Meter-Entfernungen angezeigt.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Unter „Alle BLE-Geräte“ kannst du jedes sichtbare BLE-Signal verfolgen. Das speichert das Gerät nicht als Scooter.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
