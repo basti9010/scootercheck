@@ -26,19 +26,19 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen und ausgewählte Scooter in der Nähe wiederzufinden.</string>
+	<string>ScooterCheck benötigt Bluetooth, um kompatible E-Scooter in der Nähe zu erkennen und technische Daten auszulesen.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>ScooterCheck verbindet sich per Bluetooth mit Ninebot- und Xiaomi-E-Scootern, um Diagnosedaten nur zu lesen und ausgewählte Scooter in der Nähe wiederzufinden.</string>
+	<string>ScooterCheck benötigt Bluetooth, um kompatible E-Scooter in der Nähe zu erkennen und technische Daten auszulesen.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>ScooterCheck verwendet deinen Standort und deine Bewegungsrichtung, um Änderungen der Bluetooth-Signalstärke während der Scootersuche auszuwerten.</string>
+	<string>ScooterCheck verwendet deinen Standort und deine Bewegungsrichtung nur während „Scooter finden“, um Änderungen der Bluetooth-Signalstärke auszuwerten.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>ScooterCheck nutzt Bewegungsdaten, um die Bluetooth-Signalstärke während der Scootersuche robuster auszuwerten.</string>
+	<string>ScooterCheck nutzt Bewegungsdaten nur während „Scooter finden“, um die Bluetooth-Signalstärke robuster auszuwerten.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>ScooterCheck speichert Fotos des geprüften Scooters als Dokumentation und Vorschaubild in der Prüfungsübersicht.</string>
+	<string>ScooterCheck benötigt Zugriff auf die Kamera, damit du Fotos zu einer Prüfung hinzufügen kannst.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ScooterCheck speichert Fotos aus deiner Mediathek als Dokumentation und Vorschaubild zur jeweiligen Prüfung.</string>
+	<string>ScooterCheck benötigt Zugriff auf deine Fotos, damit du Bilder zu einer Prüfung hinzufügen kannst.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>ScooterCheck kann Prüf-Fotos optional in deine Fotomediathek exportieren.</string>
+	<string>ScooterCheck kann Fotos über die Teilen-Funktion in deine Fotomediathek speichern, wenn du das ausdrücklich wählst.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

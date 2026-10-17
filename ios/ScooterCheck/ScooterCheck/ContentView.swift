@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var session: CheckSession?
     @State private var showMenu = false
     @State private var showFAQ = false
+    @State private var showPrivacy = false
     @State private var showShare = false
     @State private var historyShareItems: [Any] = []
     @State private var showHistoryShare = false
@@ -214,6 +215,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showFAQ) {
                 FAQView()
+            }
+            .sheet(isPresented: $showPrivacy) {
+                PrivacyView()
             }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
@@ -1661,6 +1665,13 @@ struct ContentView: View {
                 ) {
                     openFAQFromMenu()
                 }
+                sideNavRow(
+                    title: "Datenschutz",
+                    systemImage: "lock.shield",
+                    selected: false
+                ) {
+                    openPrivacyFromMenu()
+                }
             }
             .padding(.horizontal, 12)
 
@@ -1696,6 +1707,11 @@ struct ContentView: View {
     private func openFAQFromMenu() {
         withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
         showFAQ = true
+    }
+
+    private func openPrivacyFromMenu() {
+        withAnimation(.easeOut(duration: 0.22)) { showMenu = false }
+        showPrivacy = true
     }
 
     private func sideNavRow(
