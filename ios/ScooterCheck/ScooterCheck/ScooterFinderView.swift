@@ -7,6 +7,7 @@ struct ScooterFinderView: View {
     @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
     @ObservedObject private var radar = BLERadarService.shared
     @State private var selected: ScannedDevice?
+    @State private var detailDevice: ScannedDevice?
     @State private var showInfo = false
     @State private var showMultiPicker = false
     @State private var multiSelectedIds: Set<UUID> = []
@@ -84,7 +85,7 @@ struct ScooterFinderView: View {
                 onStart: {
                     let picked = listedDevices.filter { multiSelectedIds.contains($0.id) }
                     showMultiPicker = false
-                    guard picked.count >= 2 else { return }
+                    guard picked.count >= BLEMultiDeviceMonitor.minDevices else { return }
                     if ble.phase != .scanning { ble.startScan() }
                     multiMonitor.start(devices: picked, ble: ble)
                 },
@@ -92,6 +93,16 @@ struct ScooterFinderView: View {
                     showMultiPicker = false
                     multiSelectedIds = []
                 }
+            )
+        }
+        .sheet(item: $detailDevice) { device in
+            FinderDeviceDetailSheet(
+                device: device,
+                onStartSearch: {
+                    detailDevice = nil
+                    startFinding(device)
+                },
+                onDismiss: { detailDevice = nil }
             )
         }
     }
@@ -133,7 +144,7 @@ struct ScooterFinderView: View {
                 .font(Theme.segment)
 
                 if !showOnlyScooters {
-                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an, um die Heatmap-Suche zu starten.")
+                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an für Details, BLE-Wächter oder Heatmap-Suche.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -175,7 +186,7 @@ struct ScooterFinderView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint("Startet die BLE-Suche und meldet plausible E-Scooter mit ausreichendem Signal.")
 
-                if listedDevices.count >= 2 {
+                if listedDevices.count >= BLEMultiDeviceMonitor.minDevices {
                     Button {
                         multiSelectedIds = []
                         showMultiPicker = true
@@ -194,7 +205,7 @@ struct ScooterFinderView: View {
                             )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint("Mehrere BLE-Geräte gleichzeitig beobachten, ohne sie als Scooter zu speichern.")
+                    .accessibilityHint("Ein oder mehrere BLE-Geräte in der Sitzung beobachten, ohne sie als Scooter zu speichern.")
                 }
 
                 if listedDevices.isEmpty {
@@ -203,7 +214,7 @@ struct ScooterFinderView: View {
                     VStack(spacing: 10) {
                         ForEach(listedDevices) { device in
                             Button {
-                                startFinding(device)
+                                detailDevice = device
                             } label: {
                                 finderDeviceRow(device)
                                     .overlay(alignment: .topTrailing) {
@@ -215,6 +226,7 @@ struct ScooterFinderView: View {
                             }
                             .buttonStyle(.plain)
                             .opacity(device.isStale ? 0.45 : 1)
+                            .accessibilityHint("Öffnet Details mit BLE-Wächter und Heatmap-Suche")
                         }
                     }
                 }
