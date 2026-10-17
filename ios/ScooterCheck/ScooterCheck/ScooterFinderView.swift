@@ -448,7 +448,7 @@ struct ScooterFinderView: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("„Geräte beobachten“ erlaubt 2–5 Signale parallel. Auch hier erfolgt keine Scooter-Speicherung.")
+                    Text("„Geräte beobachten“ erlaubt 1–5 Signale parallel in der aktiven Sitzung. Auch hier erfolgt keine Scooter-Speicherung. BLE-Wächter ist davon getrennt (Hintergrundüberwachung einzelner bekannter Geräte).")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
