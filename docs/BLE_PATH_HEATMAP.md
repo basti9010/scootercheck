@@ -20,15 +20,15 @@ Funktionale Überarbeitung der Indoor-/Outdoor-Suchdarstellung. Visuell bleibt d
 
 ## Indoor-Pfadrekonstruktion
 
-`IndoorMotionTracker` kombiniert:
+`IndoorMotionTracker` kombiniert (WLAN-Analyzer-nah, weiterhin relativ):
 
-1. **CLHeading (Kompass)** bevorzugt → geglättetes Heading (stärkeres EMA)
-2. **Device Motion (Yaw)** nur als Fallback, wenn kein Kompass (kein Mischen)
-3. **CMPedometer** → Schritte; Heading wird **pro Schritt** gelesen (Kurven sichtbar)
-4. **Fallback User-Acceleration** → Peak-Detektor, wenn Pedometer fehlt
-5. **GPS-Position** nur bei Genauigkeit ≤ 8 m (Outdoor) — Indoor-GPS zerstört den Laufweg sonst
+1. **Gyro / Device-Motion-Yaw** führt Indoor-Drehungen (deltas)
+2. **Kompass** nur Initial-Heading + weiche Ankerung bei guter `headingAccuracy`
+3. **CMPedometer.distance** kalibriert die Schrittlänge und schreibt Meter entlang des Headings
+4. **Fallback User-Acceleration** nur ohne Pedometer und nur bei erkannter Bewegung
+5. **Stillstand** → kein Positions-Drift; GPS-Fusion nur outdoor ≤ 8 m
 
-Stehen bleiben erzeugt **keine** künstliche Bewegung (nur Heading-Updates ohne Schritte).
+Messpunkte (`BLEBreadcrumb`) behalten ihr RSSI vom Aufnahmezeitpunkt — Farben „wandern“ nicht mehr mit.
 
 ### Karten-Zoom & Heatmap (Feedback-Fixes)
 

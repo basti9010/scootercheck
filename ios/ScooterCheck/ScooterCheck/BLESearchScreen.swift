@@ -153,6 +153,7 @@ struct BLESearchScreen: View {
                             SignalHeatmapView(
                                 snapshot: engine.heatmap,
                                 pathSnapshot: engine.pathSnapshot,
+                                breadcrumbs: engine.breadcrumbs,
                                 showMeasurementDots: true
                             )
                             if engine.searchGrid.area?.isMeaningful == true {
@@ -687,6 +688,8 @@ struct SearchGridOverlay: View {
 struct SignalHeatmapView: View {
     let snapshot: BLEHeatmapSnapshot
     var pathSnapshot: BLESearchPathSnapshot = .empty
+    /// Eingefrorene Messpunkte (RSSI zum Aufnahmezeitpunkt) — wie WLAN-Analyzer-Breadcrumbs.
+    var breadcrumbs: [BLEBreadcrumb] = []
     var showMeasurementDots: Bool = false
 
     var body: some View {
@@ -699,11 +702,12 @@ struct SignalHeatmapView: View {
             let cw = size.width / CGFloat(cols)
             let rh = size.height / CGFloat(rows)
 
+            // Weiche Heatmap-Schicht zurückgenommen — Breadcrumbs sind die Hauptlesart
             for r in 0..<rows {
                 for c in 0..<cols {
                     let idx = r * cols + c
                     guard idx < snapshot.cells.count, let cell = snapshot.cells[idx] else { continue }
-                    let conf = cell.samples > 0 ? cell.confidence : max(0.12, cell.confidence * 0.55)
+                    let conf = cell.samples > 0 ? cell.confidence * 0.55 : max(0.08, cell.confidence * 0.35)
                     guard let color = BLEHeatmapProcessor.color(forRssi: cell.rssi, confidence: conf) else { continue }
                     let rect = CGRect(
                         x: CGFloat(c) * cw,
@@ -711,7 +715,7 @@ struct SignalHeatmapView: View {
                         width: cw + 0.6,
                         height: rh + 0.6
                     )
-                    context.fill(Path(roundedRect: rect, cornerRadius: 1.2), with: .color(color.opacity(0.88)))
+                    context.fill(Path(roundedRect: rect, cornerRadius: 1.2), with: .color(color.opacity(0.55)))
                 }
             }
 
@@ -722,18 +726,6 @@ struct SignalHeatmapView: View {
                 return snapshot.trail
             }()
 
-            if showMeasurementDots {
-                let step = max(1, poly.count / 56)
-                for (i, p) in poly.enumerated() where i % step == 0 {
-                    let pt = project(x: p.x, y: p.y, in: size, snapshot: snapshot)
-                    let r: CGFloat = 6.5
-                    let oval = Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2))
-                    context.fill(oval, with: .color(Theme.accent.opacity(0.32)))
-                    let inner = Path(ellipseIn: CGRect(x: pt.x - 2.2, y: pt.y - 2.2, width: 4.4, height: 4.4))
-                    context.fill(inner, with: .color(Theme.accent.opacity(0.7)))
-                }
-            }
-
             if poly.count >= 2 {
                 var path = Path()
                 for (i, p) in poly.enumerated() {
@@ -742,14 +734,32 @@ struct SignalHeatmapView: View {
                 }
                 context.stroke(
                     path,
-                    with: .color(Color.white.opacity(0.18)),
-                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round)
+                    with: .color(Color.white.opacity(0.16)),
+                    style: StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round)
                 )
                 context.stroke(
                     path,
-                    with: .color(Theme.accent.opacity(0.72)),
-                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
+                    with: .color(Theme.accent.opacity(0.55)),
+                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
                 )
+            }
+
+            if showMeasurementDots {
+                let dots: [BLEBreadcrumb] = {
+                    if !breadcrumbs.isEmpty { return Self.decimateBreadcrumbs(breadcrumbs, maxCount: 90) }
+                    // Fallback: Pfadpunkte ohne RSSI
+                    return poly.map { BLEBreadcrumb(x: $0.x, y: $0.y, rssi: -70) }
+                }()
+                for b in dots {
+                    let pt = project(x: b.x, y: b.y, in: size, snapshot: snapshot)
+                    let fill = BLEHeatmapProcessor.color(forRssi: b.rssi, confidence: 0.92)
+                        ?? Theme.accent.opacity(0.55)
+                    let r: CGFloat = 7
+                    let oval = Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2))
+                    context.fill(oval, with: .color(fill.opacity(0.42)))
+                    let inner = Path(ellipseIn: CGRect(x: pt.x - 2.4, y: pt.y - 2.4, width: 4.8, height: 4.8))
+                    context.fill(inner, with: .color(fill.opacity(0.95)))
+                }
             }
 
             if let last = pathSnapshot.current ?? poly.last.map({ BLEPathPoint(x: $0.x, y: $0.y) }) {
@@ -776,7 +786,18 @@ struct SignalHeatmapView: View {
             }
         }
         .accessibilityLabel("Signal-Heatmap")
-        .accessibilityHint("Pfad zeigt relative Bewegung. Mint bedeutet stärkeres Signal. Keine exakte Ortung.")
+        .accessibilityHint("Messpunkte behalten ihre Signalstärke. Pfad ist relative Bewegung — keine exakte Ortung.")
+    }
+
+    private static func decimateBreadcrumbs(_ samples: [BLEBreadcrumb], maxCount: Int) -> [BLEBreadcrumb] {
+        guard samples.count > maxCount, maxCount > 1 else { return samples }
+        let step = Double(samples.count - 1) / Double(maxCount - 1)
+        var out: [BLEBreadcrumb] = []
+        for i in 0..<maxCount {
+            let idx = min(samples.count - 1, Int((Double(i) * step).rounded()))
+            out.append(samples[idx])
+        }
+        return out
     }
 
     private func project(x: Double, y: Double, in size: CGSize, snapshot: BLEHeatmapSnapshot) -> CGPoint {
@@ -1048,6 +1069,7 @@ struct FineSearchPanel: View {
             SignalHeatmapView(
                 snapshot: engine.heatmap,
                 pathSnapshot: engine.pathSnapshot,
+                breadcrumbs: engine.breadcrumbs,
                 showMeasurementDots: false
             )
                 .frame(height: 120)

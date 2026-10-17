@@ -103,75 +103,96 @@ struct BLESearchPathSnapshot: Equatable, Sendable {
 // MARK: - Config
 
 enum BLEPathConfig {
-    static let stepLengthMeters: Double = 0.70
-    static let minStepDistance: Double = 0.28
-    static let minHeadingChangeDegrees: Double = 8
-    static let headingEmaAlpha: Double = 0.28
-    /// Compass (CLHeading) darf stärker ziehen als Device-Yaw.
-    static let compassHeadingAlpha: Double = 0.45
-    static let minMoveForSample: Double = 0.32
-    static let standstillSpeedMax: Double = 0.18
+    /// Fallback-Schrittlänge, bis Pedometer-Distanz kalibriert.
+    static let stepLengthMeters: Double = 0.72
+    static let minCalibratedStepLength: Double = 0.48
+    static let maxCalibratedStepLength: Double = 0.98
+    static let minStepDistance: Double = 0.22
+    static let minHeadingChangeDegrees: Double = 6
+    /// Gyro-first: Drehungen aus Device-Motion übernehmen.
+    static let gyroHeadingAlpha: Double = 0.72
+    /// Kompass nur als weiche Absolut-Ankerung (nicht primär indoor).
+    static let compassAnchorAlpha: Double = 0.07
+    static let compassMaxAccuracyDegrees: Double = 28
+    static let minMoveForSample: Double = 0.28
+    static let standstillAccelMax: Double = 0.11
+    static let walkingAccelMin: Double = 0.16
     static let viewportPadding: Double = 1.45
     static let viewportMinSpan: Double = 10
     static let viewportMaxSpan: Double = 80
     static let viewportSoftFollow: Double = 0.22
-    /// Karten-Zoom eng am Laufweg — startet nah, wächst mit der Strecke.
-    static let mapMinSpanMeters: Double = 18
+    static let mapMinSpanMeters: Double = 16
     static let mapMaxSpanMeters: Double = 100
     static let mapPadding: Double = 1.55
     static let mapSoftFollow: Double = 0.28
-    /// GPS nur bei wirklich guter Outdoor-Genauigkeit in den Pfad mischen.
     static let gpsFusionMaxAccuracy: Double = 8
     static let maxPathPoints = 800
-    static let heatmapPaintRadius: Double = 1.8
+    static let heatmapPaintRadius: Double = 1.6
 }
 
-// MARK: - Indoor motion tracker (PDR-light)
+/// Ein Messpunkt mit eingefrorenem RSSI (WLAN-Analyzer-Stil).
+struct BLEBreadcrumb: Equatable, Sendable {
+    var x: Double
+    var y: Double
+    var rssi: Double
+}
 
-/// Relative Bewegung aus Schritten + geglättetem Heading — keine Zentimeter-Präzision.
+// MARK: - Indoor motion tracker (PDR)
+
+/// Relative Bewegung: Gyro-Drehungen + kalibrierte Pedometer-Distanz — keine Zentimeter-Präzision.
 final class IndoorMotionTracker {
     private let motion = CMMotionManager()
     private let pedometer = CMPedometer()
     private var lastStepCount = 0
+    private var lastPedometerDistance: Double = 0
+    private var calibratedStepLength = BLEPathConfig.stepLengthMeters
     private var smoothedHeading: Double?
     private var x: Double = 0
     private var y: Double = 0
     private var lastEmit = Date.distantPast
     private var usePedometer = false
-    private var lastAccelMag: Double = 1.0
+    private var lastAccelMag: Double = 0.05
     private var stepCooldownUntil = Date.distantPast
-    private var lastUserAccelPeak = Date.distantPast
-    /// Compass hat Vorrang vor Device-Yaw (vermeidet Misch-Sprünge).
-    private var lastCompassAt = Date.distantPast
+    private var lastYawRadians: Double?
+    private var isWalking = false
+    private var lastWalkAt = Date.distantPast
     private(set) var path: [BLEPathPoint] = []
+    /// Summe der tatsächlich fortgeschriebenen Meter (Pedometer-Distanz / kalibrierte Schritte).
+    private(set) var traveledDistanceMeters: Double = 0
 
     var currentX: Double { x }
     var currentY: Double { y }
     var headingDegrees: Double? { smoothedHeading }
+    var stepLengthMeters: Double { calibratedStepLength }
 
     func reset() {
         stop()
         lastStepCount = 0
+        lastPedometerDistance = 0
+        calibratedStepLength = BLEPathConfig.stepLengthMeters
         smoothedHeading = nil
         x = 0
         y = 0
         lastEmit = .distantPast
         usePedometer = false
-        lastAccelMag = 1.0
+        lastAccelMag = 0.05
         stepCooldownUntil = .distantPast
-        lastUserAccelPeak = .distantPast
-        lastCompassAt = .distantPast
+        lastYawRadians = nil
+        isWalking = false
+        lastWalkAt = .distantPast
+        traveledDistanceMeters = 0
         path = [BLEPathPoint(x: 0, y: 0, isStep: false)]
     }
 
     func start() {
         reset()
         if motion.isDeviceMotionAvailable {
-            motion.deviceMotionUpdateInterval = 0.06
+            motion.deviceMotionUpdateInterval = 0.05
             motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] data, _ in
                 guard let self, let data else { return }
-                self.ingestAttitude(data.attitude)
-                self.ingestUserAcceleration(data.userAcceleration)
+                self.updateWalkState(data.userAcceleration)
+                self.ingestGyroYaw(data.attitude.yaw)
+                self.ingestUserAccelerationFallback(data.userAcceleration)
             }
         }
         if CMPedometer.isStepCountingAvailable() {
@@ -179,7 +200,10 @@ final class IndoorMotionTracker {
             pedometer.startUpdates(from: Date()) { [weak self] data, _ in
                 guard let self, let data else { return }
                 DispatchQueue.main.async {
-                    self.ingestSteps(data.numberOfSteps.intValue)
+                    self.ingestPedometer(
+                        steps: data.numberOfSteps.intValue,
+                        distanceMeters: data.distance?.doubleValue
+                    )
                 }
             }
         }
@@ -190,101 +214,163 @@ final class IndoorMotionTracker {
         pedometer.stopUpdates()
     }
 
-    /// CLHeading / Compass — bevorzugte Laufrichtung (wie WLAN-Analyzer-Feeling).
-    func ingestExternalHeading(_ degrees: Double?, fromCompass: Bool = false) {
+    /// Kompass: nur Initial-Heading + weiche Ankerung — Gyro führt Indoor-Drehungen.
+    func ingestExternalHeading(_ degrees: Double?, fromCompass: Bool = false, accuracy: Double? = nil) {
         guard let degrees else { return }
-        if fromCompass {
-            lastCompassAt = Date()
-            applyHeading(degrees, alpha: BLEPathConfig.compassHeadingAlpha, minDeltaScale: 0.2)
-        } else {
-            applyHeading(degrees)
+        if smoothedHeading == nil {
+            applyHeading(degrees, alpha: 1.0, minDeltaScale: 0)
+            return
         }
+        guard fromCompass else { return }
+        let acc = accuracy ?? 999
+        guard acc >= 0, acc <= BLEPathConfig.compassMaxAccuracyDegrees else { return }
+        // Indoor oft magnetisch gestört: nur leicht und vor allem beim Laufen nachziehen
+        guard isWalking || Date().timeIntervalSince(lastWalkAt) < 1.2 else { return }
+        applyHeading(degrees, alpha: BLEPathConfig.compassAnchorAlpha, minDeltaScale: 0.15)
     }
 
     func ingestGPSDelta(east: Double, north: Double, accuracy: Double) {
-        // Indoor-GPS (oft 10–25 m) zerstört den Laufweg — nur echte Outdoor-Genauigkeit.
         guard accuracy > 0, accuracy <= BLEPathConfig.gpsFusionMaxAccuracy else { return }
+        guard isWalking else { return }
         let dist = hypot(east - x, north - y)
         guard dist >= 1.2 else { return }
-        // Sehr weiche Annäherung
-        x = x * 0.82 + east * 0.18
-        y = y * 0.82 + north * 0.18
+        x = x * 0.85 + east * 0.15
+        y = y * 0.85 + north * 0.15
         appendIfMoved(isStep: false)
     }
 
-    private func ingestAttitude(_ attitude: CMAttitude) {
-        // Compass aktiv → Yaw nicht mischen (sonst Richtungs-Zacken)
-        if Date().timeIntervalSince(lastCompassAt) < 1.8 { return }
-        var deg = attitude.yaw * 180 / .pi
-        if deg < 0 { deg += 360 }
-        applyHeading(deg, alpha: BLEPathConfig.headingEmaAlpha * 0.75, minDeltaScale: 0.5)
+    // MARK: Gyro-first heading
+
+    private func ingestGyroYaw(_ yawRadians: Double) {
+        defer { lastYawRadians = yawRadians }
+        guard let prev = lastYawRadians else {
+            if smoothedHeading == nil { smoothedHeading = 0 }
+            return
+        }
+        var dyaw = yawRadians - prev
+        while dyaw > .pi { dyaw -= 2 * .pi }
+        while dyaw < -.pi { dyaw += 2 * .pi }
+
+        // Stillstand: Drift unterdrücken; beim Laufen Drehungen reagibel übernehmen
+        let minRad = isWalking ? 0.012 : 0.045
+        guard abs(dyaw) >= minRad else { return }
+
+        let ddeg = dyaw * 180 / .pi
+        // CMAttitude.yaw: Zunahme ≈ Linksdrehung von oben → Heading verringern (Kompass-Konvention)
+        let next = (smoothedHeading ?? 0) - ddeg
+        applyHeading(next, alpha: BLEPathConfig.gyroHeadingAlpha, minDeltaScale: 0.05)
     }
 
-    /// Fallback-Schritterkennung, wenn CMPedometer fehlt (Simulator / eingeschränkt).
-    private func ingestUserAcceleration(_ accel: CMAcceleration) {
-        guard !usePedometer, smoothedHeading != nil else { return }
+    private func updateWalkState(_ accel: CMAcceleration) {
+        let mag = sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z)
+        lastAccelMag = mag * 0.4 + lastAccelMag * 0.6
+        if lastAccelMag >= BLEPathConfig.walkingAccelMin {
+            isWalking = true
+            lastWalkAt = Date()
+        } else if lastAccelMag <= BLEPathConfig.standstillAccelMax,
+                  Date().timeIntervalSince(lastWalkAt) > 0.55 {
+            isWalking = false
+        }
+    }
+
+    /// Fallback-Schritte nur ohne Pedometer und nur bei klarer Bewegung.
+    private func ingestUserAccelerationFallback(_ accel: CMAcceleration) {
+        guard !usePedometer, smoothedHeading != nil, isWalking else { return }
         let mag = sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z)
         let now = Date()
-        // Einfacher Peak-Detektor: Anstieg über Schwellwert, dann Abklingen
-        if mag > 0.22, lastAccelMag < 0.18, now > stepCooldownUntil {
-            stepCooldownUntil = now.addingTimeInterval(0.38)
-            lastUserAccelPeak = now
-            advanceBySteps(1)
+        if mag > 0.24, lastAccelMag < 0.16, now > stepCooldownUntil {
+            stepCooldownUntil = now.addingTimeInterval(0.36)
+            advanceByMeters(calibratedStepLength)
         }
-        lastAccelMag = mag * 0.35 + lastAccelMag * 0.65
-        // Stehen bleiben: kein künstliches Weiterlaufen
-        _ = lastUserAccelPeak
     }
 
-    private func applyHeading(_ raw: Double, alpha: Double = BLEPathConfig.headingEmaAlpha, minDeltaScale: Double = 0.35) {
+    private func applyHeading(_ raw: Double, alpha: Double, minDeltaScale: Double) {
         var h = raw.truncatingRemainder(dividingBy: 360)
         if h < 0 { h += 360 }
         if let prev = smoothedHeading {
             var delta = h - prev
             while delta > 180 { delta -= 360 }
             while delta < -180 { delta += 360 }
-            // Kleine Rauschänderungen ignorieren
             if abs(delta) < BLEPathConfig.minHeadingChangeDegrees * minDeltaScale {
                 return
             }
-            let next = prev + delta * alpha
-            smoothedHeading = normalize(next)
+            smoothedHeading = normalize(prev + delta * alpha)
         } else {
             smoothedHeading = h
         }
     }
 
-    private func ingestSteps(_ total: Int) {
-        let delta = total - lastStepCount
-        lastStepCount = total
-        guard delta > 0 else { return }
-        advanceBySteps(min(delta, 4))
+    // MARK: Distance / steps
+
+    private func ingestPedometer(steps: Int, distanceMeters: Double?) {
+        let stepDelta = steps - lastStepCount
+        defer { lastStepCount = steps }
+
+        if let distance = distanceMeters, distance > lastPedometerDistance {
+            let dDist = distance - lastPedometerDistance
+            lastPedometerDistance = distance
+            if stepDelta > 0 {
+                let instant = dDist / Double(stepDelta)
+                if instant >= BLEPathConfig.minCalibratedStepLength,
+                   instant <= BLEPathConfig.maxCalibratedStepLength {
+                    calibratedStepLength = calibratedStepLength * 0.65 + instant * 0.35
+                }
+            }
+            // Echte Pedometer-Meter entlang des aktuellen Headings (Kurven bleiben sichtbar)
+            if dDist >= 0.08 {
+                isWalking = true
+                lastWalkAt = Date()
+                advanceByMeters(dDist)
+            }
+            return
+        }
+
+        guard stepDelta > 0 else { return }
+        isWalking = true
+        lastWalkAt = Date()
+        advanceByMeters(Double(min(stepDelta, 4)) * calibratedStepLength)
     }
 
-    private func advanceBySteps(_ count: Int) {
-        guard count > 0, smoothedHeading != nil else { return }
-        // Pro Schritt aktuelles Heading lesen → Kurven werden sichtbar (nicht ein Batch-Heading)
+    private func advanceByMeters(_ meters: Double) {
+        guard meters > 0.04, smoothedHeading != nil else { return }
+        // In Segmente splitten, damit Heading-Änderungen während des Schritts sichtbar werden
+        let segment = max(0.28, min(0.45, calibratedStepLength * 0.45))
+        let count = max(1, Int((meters / segment).rounded(.up)))
+        let each = meters / Double(count)
         for _ in 0..<count {
             guard let heading = smoothedHeading else { return }
             let rad = heading * .pi / 180
-            // Heading 0 = Nord → y+, 90 = Ost → x+
-            x += sin(rad) * BLEPathConfig.stepLengthMeters
-            y += cos(rad) * BLEPathConfig.stepLengthMeters
+            x += sin(rad) * each
+            y += cos(rad) * each
+            traveledDistanceMeters += each
             appendIfMoved(isStep: true)
         }
+    }
+
+    private func advanceBySteps(_ count: Int) {
+        guard count > 0 else { return }
+        advanceByMeters(Double(count) * calibratedStepLength)
     }
 
     /// Test-/Engine-Hook: manueller Schritt mit bekanntem Heading.
     func debugAdvance(steps: Int, headingDegrees: Double) {
         applyHeading(headingDegrees, alpha: 1.0, minDeltaScale: 0)
+        isWalking = true
+        lastWalkAt = Date()
         advanceBySteps(steps)
+    }
+
+    /// Test-Hook: Gyro-Drehung in Grad (positiv = Linksdrehung / Heading sinkt).
+    func debugApplyGyroTurn(degrees: Double) {
+        let next = (smoothedHeading ?? 0) - degrees
+        applyHeading(next, alpha: 1.0, minDeltaScale: 0)
     }
 
     private func appendIfMoved(isStep: Bool) {
         let now = Date()
         if let last = path.last {
             let d = hypot(x - last.x, y - last.y)
-            if d < BLEPathConfig.minStepDistance, now.timeIntervalSince(lastEmit) < 0.8 {
+            if d < BLEPathConfig.minStepDistance, now.timeIntervalSince(lastEmit) < 0.55 {
                 return
             }
         }

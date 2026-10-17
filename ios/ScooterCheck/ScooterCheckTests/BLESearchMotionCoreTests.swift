@@ -190,4 +190,35 @@ final class BLESearchMotionCoreTests: XCTestCase {
         XCTAssertEqual(tracker.currentX, beforeX, accuracy: 0.001)
         XCTAssertEqual(tracker.currentY, beforeY, accuracy: 0.001)
     }
+
+    func testGyroTurnChangesHeadingWithoutCompass() {
+        let tracker = IndoorMotionTracker()
+        tracker.reset()
+        tracker.debugAdvance(steps: 2, headingDegrees: 0)
+        tracker.debugApplyGyroTurn(degrees: 90) // Linksdrehung → Heading 270
+        tracker.debugAdvance(steps: 4, headingDegrees: tracker.headingDegrees ?? 270)
+        let last = tracker.path.last!
+        // Nach Linksdrehung aus Norden: eher nach Westen (x negativ)
+        XCTAssertLessThan(last.x, -1.5)
+    }
+
+    func testTraveledDistanceTracksSteps() {
+        let tracker = IndoorMotionTracker()
+        tracker.reset()
+        tracker.debugAdvance(steps: 5, headingDegrees: 0)
+        XCTAssertGreaterThan(tracker.traveledDistanceMeters, 2.5)
+        XCTAssertEqual(
+            tracker.traveledDistanceMeters,
+            5 * tracker.stepLengthMeters,
+            accuracy: 0.05
+        )
+    }
+
+    func testBreadcrumbKeepsFrozenRssi() {
+        let a = BLEBreadcrumb(x: 0, y: 0, rssi: -50)
+        let b = BLEBreadcrumb(x: 2, y: 0, rssi: -80)
+        XCTAssertEqual(a.rssi, -50)
+        XCTAssertEqual(b.rssi, -80)
+        XCTAssertNotEqual(a.rssi, b.rssi)
+    }
 }

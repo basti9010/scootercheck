@@ -31,6 +31,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var pathSnapshot = BLESearchPathSnapshot.empty
     @Published private(set) var mapOverlay = BLEMapOverlayModel.empty
     @Published private(set) var pathLengthText: String = "0.00 m"
+    @Published private(set) var breadcrumbs: [BLEBreadcrumb] = []
     @Published private(set) var surfaceHint: String = "Relative Suchfläche – keine exakte Ortung"
 
     // Analyse / erweiterte Suche
@@ -111,6 +112,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         pathSnapshot = .empty
         mapOverlay = .empty
         pathLengthText = "0.00 m"
+        breadcrumbs = []
         fingerprintMatch = nil
         refoundBanner = nil
         lostDurationText = nil
@@ -504,12 +506,12 @@ final class BLESearchEngine: NSObject, ObservableObject {
         let h = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
         guard h >= 0 else { return }
         let accuracy = heading.headingAccuracy
-        if accuracy >= 0, accuracy <= 35 {
-            indoorTracker.ingestExternalHeading(h, fromCompass: true)
-        } else if accuracy >= 0 {
-            // Schwacher Kompass — nur leicht
-            indoorTracker.ingestExternalHeading(h, fromCompass: false)
-        }
+        // Gyro führt Indoor; Kompass nur Initial + weiche Ankerung bei brauchbarer Genauigkeit
+        indoorTracker.ingestExternalHeading(
+            h,
+            fromCompass: accuracy >= 0 && accuracy <= BLEPathConfig.compassMaxAccuracyDegrees,
+            accuracy: accuracy
+        )
     }
 
     private func updateDuration() {
@@ -675,7 +677,9 @@ final class BLESearchEngine: NSObject, ObservableObject {
                 followSoftly: followViewport
             )
             pathSnapshot = snap
-            pathLengthText = String(format: "%.2f m", snap.pathLengthMeters)
+            // Pedometer-kalibrierte Distanz bevorzugen, Polyline als Untergrenze
+            let meters = max(snap.pathLengthMeters, indoorTracker.traveledDistanceMeters)
+            pathLengthText = String(format: "%.2f m", meters)
             pathDirty = false
             heatmapDirty = true
         }
@@ -685,6 +689,10 @@ final class BLESearchEngine: NSObject, ObservableObject {
             viewport: pathSnapshot.viewport,
             pathPolyline: pathSnapshot.smoothedPolyline
         )
+        breadcrumbs = s.measurements.compactMap { m in
+            guard let x = m.relativeX, let y = m.relativeY else { return nil }
+            return BLEBreadcrumb(x: x, y: y, rssi: m.smoothedRssi)
+        }
         searchGrid = BLESearchGrid.build(from: s.measurements, userArea: userSearchArea)
         mapOverlay = OutdoorMapTracker.model(
             origin: originLocation,
