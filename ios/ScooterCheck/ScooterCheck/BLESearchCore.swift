@@ -369,6 +369,28 @@ struct BLEHeatmapSnapshot: Equatable, Sendable {
         strongestCell: nil,
         boundsMeters: 40
     )
+
+    /// Manuell, weil gelabelte Tuples nicht auto-synthetisiert werden.
+    static func == (lhs: BLEHeatmapSnapshot, rhs: BLEHeatmapSnapshot) -> Bool {
+        guard lhs.originEast == rhs.originEast,
+              lhs.originNorth == rhs.originNorth,
+              lhs.cellSize == rhs.cellSize,
+              lhs.cols == rhs.cols,
+              lhs.rows == rhs.rows,
+              lhs.boundsMeters == rhs.boundsMeters,
+              lhs.cells == rhs.cells,
+              lhs.trail.count == rhs.trail.count else { return false }
+        for i in lhs.trail.indices {
+            if lhs.trail[i].x != rhs.trail[i].x || lhs.trail[i].y != rhs.trail[i].y {
+                return false
+            }
+        }
+        switch (lhs.strongestCell, rhs.strongestCell) {
+        case (nil, nil): return true
+        case let (l?, r?): return l.col == r.col && l.row == r.row
+        default: return false
+        }
+    }
 }
 
 enum BLEHeatmapProcessor {
