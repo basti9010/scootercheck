@@ -33,6 +33,12 @@
 	<string>ScooterCheck verwendet deinen Standort und deine Bewegungsrichtung, um Änderungen der Bluetooth-Signalstärke während der Scootersuche auszuwerten.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>ScooterCheck nutzt Bewegungsdaten, um die Bluetooth-Signalstärke während der Scootersuche robuster auszuwerten.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ScooterCheck speichert Fotos des geprüften Scooters als Dokumentation und Vorschaubild in der Prüfungsübersicht.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ScooterCheck speichert Fotos aus deiner Mediathek als Dokumentation und Vorschaubild zur jeweiligen Prüfung.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ScooterCheck kann Prüf-Fotos optional in deine Fotomediathek exportieren.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

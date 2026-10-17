@@ -583,6 +583,11 @@ struct ContentView: View {
 
             subjectAssignmentCard
 
+            if let photosEntryId = (session?.id ?? report.sessionId),
+               history.entries.contains(where: { $0.id == photosEntryId }) {
+                CheckPhotosSection(entryId: photosEntryId)
+            }
+
             ForEach(detailFactGroups, id: \.self) { group in
                 let facts = compactDetailFacts(report.factGroups[group] ?? [])
                 if !facts.isEmpty {
@@ -1764,55 +1769,43 @@ struct ContentView: View {
 
     private var controlsOverview: some View {
         List {
-            Section {
-                Color.clear
-                    .frame(height: 0)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-            } header: {
-                historyOverviewHeader
-                    .textCase(nil)
-                    .padding(.bottom, 8)
-            }
+            historyOverviewHeader
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+                .listRowSeparator(.hidden)
 
             if visibleHistoryEntries.isEmpty {
-                Section {
-                    historyEmptyState
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
-                        .listRowSeparator(.hidden)
-                }
+                historyEmptyState
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+                    .listRowSeparator(.hidden)
             } else {
-                Section {
-                    ForEach(visibleHistoryEntries) { entry in
-                        Group {
-                            if historySelecting {
-                                controlRow(entry)
-                            } else {
-                                controlRow(entry)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                        historySwipeActions(for: entry)
-                                    }
-                            }
+                ForEach(visibleHistoryEntries) { entry in
+                    Group {
+                        if historySelecting {
+                            controlRow(entry)
+                        } else {
+                            controlRow(entry)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    historySwipeActions(for: entry)
+                                }
                         }
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
-                        .listRowSeparator(.hidden)
                     }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
+                    .listRowSeparator(.hidden)
                 }
             }
 
-            Section {
-                AppCopyrightFooter()
-                    .frame(maxWidth: .infinity)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 28, trailing: 20))
-                    .listRowSeparator(.hidden)
-            }
+            AppCopyrightFooter()
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 28, trailing: 20))
+                .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, 1)
         .background(Theme.bg)
         .animation(.easeInOut(duration: 0.22), value: historyShelf)
         .animation(.easeInOut(duration: 0.22), value: historySelecting)
@@ -1960,11 +1953,7 @@ struct ContentView: View {
                         .accessibilityHidden(true)
                 }
 
-                ScooterModelThumbnail(
-                    assetName: ScooterThumbnailAsset.name(for: entry.profile),
-                    width: 78,
-                    height: 70
-                )
+                CheckCoverThumbnail(entry: entry, size: 64)
 
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .top, spacing: 8) {

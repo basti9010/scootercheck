@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Offline persistence for check sessions and their PDF/JSON packs.
 @MainActor
@@ -26,11 +27,15 @@ final class ProtocolHistoryStore: ObservableObject {
         var wasVerifiedAsScooter: Bool?
         /// Archiviert: Daten bleiben erhalten, erscheinen nur unter „Archiv“.
         var isArchived: Bool
+        /// Gespeicherte Fotos dieser Prüfung (Dateinamen = UUID).
+        var photoIds: [UUID]
+        /// Genau ein Titelbild / Vorschaubild für die Übersicht.
+        var coverPhotoId: UUID?
 
         enum CodingKeys: String, CodingKey {
             case id, protocolNumber, createdAt, profile, verdict, score, serialDisplay, trackId
             case subjectSummary, knownLabel, blePeripheralId, bleAdvertisementName, wasVerifiedAsScooter
-            case isArchived
+            case isArchived, photoIds, coverPhotoId
         }
 
         init(
@@ -47,7 +52,9 @@ final class ProtocolHistoryStore: ObservableObject {
             blePeripheralId: UUID? = nil,
             bleAdvertisementName: String? = nil,
             wasVerifiedAsScooter: Bool? = nil,
-            isArchived: Bool = false
+            isArchived: Bool = false,
+            photoIds: [UUID] = [],
+            coverPhotoId: UUID? = nil
         ) {
             self.id = id
             self.protocolNumber = protocolNumber
@@ -63,6 +70,8 @@ final class ProtocolHistoryStore: ObservableObject {
             self.bleAdvertisementName = bleAdvertisementName
             self.wasVerifiedAsScooter = wasVerifiedAsScooter
             self.isArchived = isArchived
+            self.photoIds = photoIds
+            self.coverPhotoId = coverPhotoId
         }
 
         init(from decoder: Decoder) throws {
@@ -81,6 +90,8 @@ final class ProtocolHistoryStore: ObservableObject {
             bleAdvertisementName = try c.decodeIfPresent(String.self, forKey: .bleAdvertisementName)
             wasVerifiedAsScooter = try c.decodeIfPresent(Bool.self, forKey: .wasVerifiedAsScooter)
             isArchived = try c.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+            photoIds = try c.decodeIfPresent([UUID].self, forKey: .photoIds) ?? []
+            coverPhotoId = try c.decodeIfPresent(UUID.self, forKey: .coverPhotoId)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -99,6 +110,8 @@ final class ProtocolHistoryStore: ObservableObject {
             try c.encodeIfPresent(bleAdvertisementName, forKey: .bleAdvertisementName)
             try c.encodeIfPresent(wasVerifiedAsScooter, forKey: .wasVerifiedAsScooter)
             try c.encode(isArchived, forKey: .isArchived)
+            try c.encode(photoIds, forKey: .photoIds)
+            try c.encodeIfPresent(coverPhotoId, forKey: .coverPhotoId)
         }
 
         /// Label für die Geräteliste: gespeicherter Name, sonst „bereits geprüft“.
@@ -215,7 +228,10 @@ final class ProtocolHistoryStore: ObservableObject {
                 blePeripheralId: bleId,
                 bleAdvertisementName: advName,
                 wasVerifiedAsScooter: true,
-                isArchived: previous?.isArchived ?? false
+                isArchived: previous?.isArchived ?? false,
+                // Fotos nur beim Update derselben Session behalten — nie von anderer SN „erben“.
+                photoIds: previous?.id == session.id ? (previous?.photoIds ?? []) : [],
+                coverPhotoId: previous?.id == session.id ? previous?.coverPhotoId : nil
             ),
             at: 0
         )
@@ -420,8 +436,171 @@ final class ProtocolHistoryStore: ObservableObject {
                     utType: "public.json"
                 )
             ])
+            // Fotos der Prüfung mitgeben (Titelbild zuerst).
+            for photoId in orderedPhotoIds(for: entry) {
+                let url = originalPhotoURL(entry: entry, photoId: photoId)
+                guard fileManager.fileExists(atPath: url.path) else { continue }
+                items.append(
+                    NamedShareFile(
+                        url: url,
+                        title: "ScooterCheck \(entry.protocolNumber) Foto.jpg",
+                        utType: "public.jpeg"
+                    )
+                )
+            }
         }
         return items
+    }
+
+    // MARK: - Fotos
+
+    private let thumbnailCache = NSCache<NSString, UIImage>()
+    private let thumbnailPixelSize: CGFloat = 240
+    private let jpegQuality: CGFloat = 0.82
+
+    private func photosDirectory(for entry: Entry) -> URL {
+        packDirectory(for: entry.protocolNumber).appendingPathComponent("photos", isDirectory: true)
+    }
+
+    private func originalPhotoURL(entry: Entry, photoId: UUID) -> URL {
+        photosDirectory(for: entry).appendingPathComponent("\(photoId.uuidString).jpg")
+    }
+
+    private func thumbnailPhotoURL(entry: Entry, photoId: UUID) -> URL {
+        photosDirectory(for: entry).appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
+    }
+
+    private func persistIndex() {
+        try? encoder.encode(entries).write(to: indexURL, options: .atomic)
+    }
+
+    private func updateEntry(id: UUID, mutate: (inout Entry) -> Void) {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        var entry = entries[index]
+        mutate(&entry)
+        entries[index] = entry
+        persistIndex()
+        objectWillChange.send()
+    }
+
+    /// Reihenfolge: Titelbild zuerst, dann übrige.
+    func orderedPhotoIds(for entry: Entry) -> [UUID] {
+        guard let cover = entry.coverPhotoId, entry.photoIds.contains(cover) else {
+            return entry.photoIds
+        }
+        return [cover] + entry.photoIds.filter { $0 != cover }
+    }
+
+    @discardableResult
+    func addPhotos(to entryId: UUID, images: [UIImage]) -> [UUID] {
+        guard let entry = entries.first(where: { $0.id == entryId }), !images.isEmpty else { return [] }
+        let dir = photosDirectory(for: entry)
+        try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        var added: [UUID] = []
+        for image in images {
+            guard let prepared = Self.normalizedJPEG(image, maxPixel: 2048, quality: jpegQuality),
+                  let thumb = Self.normalizedJPEG(image, maxPixel: thumbnailPixelSize, quality: 0.72)
+            else { continue }
+            let id = UUID()
+            let originalURL = originalPhotoURL(entry: entry, photoId: id)
+            let thumbURL = thumbnailPhotoURL(entry: entry, photoId: id)
+            do {
+                try prepared.write(to: originalURL, options: .atomic)
+                try thumb.write(to: thumbURL, options: .atomic)
+                if let ui = UIImage(data: thumb) {
+                    thumbnailCache.setObject(ui, forKey: cacheKey(entryId: entryId, photoId: id))
+                }
+                added.append(id)
+            } catch {
+                try? fileManager.removeItem(at: originalURL)
+                try? fileManager.removeItem(at: thumbURL)
+            }
+        }
+        guard !added.isEmpty else { return [] }
+
+        updateEntry(id: entryId) { entry in
+            entry.photoIds.append(contentsOf: added)
+            if entry.coverPhotoId == nil {
+                entry.coverPhotoId = added.first
+            }
+        }
+        return added
+    }
+
+    func setCoverPhoto(entryId: UUID, photoId: UUID) {
+        updateEntry(id: entryId) { entry in
+            guard entry.photoIds.contains(photoId) else { return }
+            entry.coverPhotoId = photoId
+        }
+    }
+
+    func deletePhoto(entryId: UUID, photoId: UUID) {
+        guard let entry = entries.first(where: { $0.id == entryId }) else { return }
+        try? fileManager.removeItem(at: originalPhotoURL(entry: entry, photoId: photoId))
+        try? fileManager.removeItem(at: thumbnailPhotoURL(entry: entry, photoId: photoId))
+        thumbnailCache.removeObject(forKey: cacheKey(entryId: entryId, photoId: photoId))
+
+        updateEntry(id: entryId) { entry in
+            entry.photoIds.removeAll { $0 == photoId }
+            if entry.coverPhotoId == photoId {
+                entry.coverPhotoId = entry.photoIds.first
+            }
+        }
+    }
+
+    func thumbnailImage(for entry: Entry, photoId: UUID) -> UIImage? {
+        let key = cacheKey(entryId: entry.id, photoId: photoId)
+        if let cached = thumbnailCache.object(forKey: key) { return cached }
+        let url = thumbnailPhotoURL(entry: entry, photoId: photoId)
+        if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+            thumbnailCache.setObject(image, forKey: key)
+            return image
+        }
+        // Fallback: Original verkleinern, falls Thumb fehlt.
+        guard let original = originalImage(for: entry, photoId: photoId),
+              let thumbData = Self.normalizedJPEG(original, maxPixel: thumbnailPixelSize, quality: 0.72),
+              let thumb = UIImage(data: thumbData) else { return nil }
+        try? thumbData.write(to: url, options: .atomic)
+        thumbnailCache.setObject(thumb, forKey: key)
+        return thumb
+    }
+
+    func coverThumbnail(for entry: Entry) -> UIImage? {
+        guard let cover = entry.coverPhotoId ?? entry.photoIds.first else { return nil }
+        return thumbnailImage(for: entry, photoId: cover)
+    }
+
+    func originalImage(for entry: Entry, photoId: UUID) -> UIImage? {
+        let url = originalPhotoURL(entry: entry, photoId: photoId)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return UIImage(data: data)
+    }
+
+    func originalPhotoFileURL(for entry: Entry, photoId: UUID) -> URL? {
+        let url = originalPhotoURL(entry: entry, photoId: photoId)
+        return fileManager.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func cacheKey(entryId: UUID, photoId: UUID) -> NSString {
+        "\(entryId.uuidString)-\(photoId.uuidString)" as NSString
+    }
+
+    /// Downscale + JPEG für effiziente Speicherung.
+    nonisolated static func normalizedJPEG(_ image: UIImage, maxPixel: CGFloat, quality: CGFloat) -> Data? {
+        let pixelWidth = image.size.width * image.scale
+        let pixelHeight = image.size.height * image.scale
+        let longest = max(pixelWidth, pixelHeight)
+        let scale = longest > maxPixel ? maxPixel / longest : 1
+        let target = CGSize(
+            width: max(1, (image.size.width * scale).rounded()),
+            height: max(1, (image.size.height * scale).rounded())
+        )
+        let renderer = UIGraphicsImageRenderer(size: target)
+        let rendered = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return rendered.jpegData(compressionQuality: quality)
     }
 
     // MARK: - Scan-Listen-Wiedererkennung
