@@ -4,29 +4,16 @@ import SwiftUI
 
 struct Wordmark: View {
     var size: Font = .title
-    var showsMark: Bool = true
     var body: some View {
-        HStack(spacing: 8) {
-            if showsMark {
-                Image("BrandMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 28, height: 28)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .stroke(Theme.accent.opacity(0.25), lineWidth: 0.5)
-                    )
-                    .accessibilityHidden(true)
-            }
-            HStack(spacing: 0) {
-                Text("Scooter").foregroundStyle(Theme.accent)
-                Text("Check").foregroundStyle(.white)
-            }
+        HStack(spacing: 0) {
+            Text("Scooter").foregroundStyle(Theme.accent)
+            Text("Check").foregroundStyle(.white)
         }
         .font(size.weight(.bold))
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("ScooterCheck")
     }
 }
 

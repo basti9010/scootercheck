@@ -185,13 +185,8 @@ struct ContentView: View {
                         Text("Scooter finden")
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
-                    } else if showsStartLanding {
-                        Wordmark(size: .headline)
-                    } else if screen == .home {
-                        Text("Geräte")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
                     } else {
+                        // Startlanding + Gerätesuche: mittig nur Wordmark, kein App-Icon.
                         Wordmark(size: .headline)
                     }
                 }
@@ -277,21 +272,16 @@ struct ContentView: View {
 
     private var devicesSearchHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center) {
-                Text("Geräte")
-                    .font(Theme.pageTitle)
-                    .foregroundStyle(.white)
-                Spacer(minLength: 8)
-                if ble.phase == .scanning {
-                    HStack(spacing: 8) {
-                        Text("Suche aktiv")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                        RotatingSonarIcon(size: 22, isScanning: true)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Suche aktiv")
+            if ble.phase == .scanning {
+                HStack(spacing: 8) {
+                    Spacer(minLength: 0)
+                    Text("Suche aktiv")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                    RotatingSonarIcon(size: 22, isScanning: true)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Suche aktiv")
             }
 
             Picker("Filter", selection: $ble.showOnlyLikelyScooters) {
