@@ -214,14 +214,14 @@ private extension FAQCatalog {
                     .bullets([
                         "ScooterCheck sucht nach BLE-Signalen in der Umgebung",
                         "Du wählst einen Treffer aus der Liste",
-                        "Die App wertet die empfangene Signalstärke (RSSI) aus und aktualisiert die Anzeige laufend",
-                        "Stärkere Signale deuten grundsätzlich auf geringere Entfernung oder bessere Sichtlinie hin",
-                        "Schwächere Signale können auf größere Entfernung, Abschirmung oder ungünstige Ausrichtung hindeuten",
-                        "Während der aktiven Suche können Standort, Heading und Bewegung helfen, Änderungen der Signalstärke mit deiner Bewegungsrichtung zu verknüpfen",
+                        "Während du dich bewegst, speichert die App geglättete Signalstärken mit Positionsbezug",
+                        "Daraus entsteht eine Signal-Heatmap: untersuchte Bereiche färben sich nach relativer Stärke",
+                        "Ungemessene Bereiche bleiben dunkel — das ist Absicht, keine „tote Zone“",
+                        "Feinsuche zeigt zusätzlich wärmer/kälter für die letzten Meter",
                     ]),
-                    .paragraph("Es gibt keine exakte Meteranzeige. Dargestellt werden Nähe-/Signalstufen und — bei ausreichender Datenlage — eine Richtungsschätzung, keine präzise Distanzberechnung."),
+                    .paragraph("Es gibt keine exakte Meteranzeige und keinen Richtungs-Pfeil als Hauptversprechen. Dargestellt werden relative Signalstufen und eine Heatmap ohne künstliche Präzision."),
                 ],
-                keywords: ["rssi", "bluetooth", "ble", "signalstärke", "entfernung", "nähe", "richtung", "bewegung"]
+                keywords: ["rssi", "bluetooth", "ble", "signalstärke", "entfernung", "nähe", "heatmap", "wärmer", "bewegung"]
             ),
             FAQItem(
                 id: "finden-genauigkeit",
@@ -250,9 +250,9 @@ private extension FAQCatalog {
                         "iPhone möglichst frei halten (nicht stark mit dem Körper abschirmen)",
                         "Suche aus verschiedenen Richtungen wiederholen",
                     ]),
-                    .callout("Eine unmittelbare, reine Bluetooth-Richtung ohne Bewegung gibt es nicht. Die Richtungsschätzung entsteht aus Signaländerungen während du dich bewegst."),
+                    .callout("Systematisch absuchen und die Heatmap lesen ist zuverlässiger als einem einzelnen Pfeil zu folgen. BLE liefert keine exakte Richtung."),
                 ],
-                keywords: ["tipps", "schnell", "nähe", "suche", "bewegen", "signal"]
+                keywords: ["tipps", "schnell", "nähe", "suche", "bewegen", "signal", "heatmap"]
             ),
             FAQItem(
                 id: "finden-erkennung",

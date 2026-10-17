@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Geräteauswahl + Finder für „Scooter finden“.
+/// Geräteauswahl + professionelle BLE-Heatmap-Suche („Scooter finden“).
 struct ScooterFinderView: View {
     @ObservedObject var ble: BleClient
-    @StateObject private var engine = ScooterFinderEngine()
+    @StateObject private var searchEngine = BLESearchEngine()
     @State private var selected: ScannedDevice?
     @State private var showInfo = false
     /// Eigenständiger Modus — speichert kein Gerät als Scooter.
@@ -12,7 +12,7 @@ struct ScooterFinderView: View {
     @State private var stableOrderIds: [UUID] = []
     @State private var lastStableReorderAt = Date.distantPast
 
-    private var isFinding: Bool { selected != nil }
+    private var isFinding: Bool { selected != nil && searchEngine.isActive }
 
     private var filteredDevices: [ScannedDevice] {
         showOnlyScooters
@@ -20,15 +20,16 @@ struct ScooterFinderView: View {
             : ble.devices
     }
 
-    /// Alle gescannten Advertiser bzw. nur Scooter-Heuristik — Reihenfolge hysterese-stabil.
     private var listedDevices: [ScannedDevice] {
         BleScanListStabilizer.apply(order: stableOrderIds, to: filteredDevices)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let selected, isFinding {
-                finderContent(for: selected)
+        Group {
+            if isFinding {
+                BLESearchScreen(engine: searchEngine) {
+                    endFinding()
+                }
             } else {
                 selectionContent
             }
@@ -40,7 +41,9 @@ struct ScooterFinderView: View {
             reconcileStableOrder(force: true)
         }
         .onDisappear {
-            engine.stop()
+            if searchEngine.isActive {
+                searchEngine.stop(discardSession: true)
+            }
         }
         .onChange(of: ble.devices) { _ in
             reconcileStableOrder(force: false)
@@ -76,8 +79,8 @@ struct ScooterFinderView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     PageTitle(text: "Scooter finden")
                     Text(showOnlyScooters
-                         ? "Wähle einen Scooter. Anschließend schätzt ScooterCheck die bessere Signalrichtung anhand deiner Bewegung."
-                         : "Wähle ein BLE-Signal zur Annäherung. Nicht jedes Gerät ist ein Scooter — es wird nichts als bekannter Scooter gespeichert.")
+                         ? "Wähle einen Scooter. ScooterCheck baut während du gehst eine Signal-Heatmap auf — ohne falsche Richtungsversprechen."
+                         : "Wähle ein BLE-Signal. Die Suche speichert das Gerät nicht als Scooter und zeigt relative Signalstärke als Heatmap.")
                         .font(Theme.body)
                         .foregroundStyle(Theme.textBody)
                         .lineSpacing(4)
@@ -92,7 +95,7 @@ struct ScooterFinderView: View {
                 .font(Theme.segment)
 
                 if !showOnlyScooters {
-                    Text("Zeigt alle in der Umgebung erkannten BLE-Signale. Tippe ein Gerät an, um die Signalstärke zu verfolgen.")
+                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an, um die Heatmap-Suche zu starten.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -112,7 +115,7 @@ struct ScooterFinderView: View {
                         Image(systemName: "info.circle")
                             .foregroundStyle(Theme.muted)
                     }
-                    .accessibilityLabel("Hinweise zur Richtungsschätzung")
+                    .accessibilityLabel("Hinweise zur Heatmap-Suche")
                 }
 
                 if listedDevices.isEmpty {
@@ -227,186 +230,18 @@ struct ScooterFinderView: View {
         return device.bleListDisplayName
     }
 
-    // MARK: - Finder
-
-    private func finderContent(for device: ScannedDevice) -> some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 18) {
-                    VStack(spacing: 4) {
-                        Text(device.modelLabel
-                             ?? (device.looksLikeScooter ? "Ausgewählter Scooter" : device.bleListDisplayName))
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(finderDisplayId(device))
-                            .font(.caption.monospaced())
-                            .foregroundStyle(Theme.muted)
-                        if !device.looksLikeScooter {
-                            Text("Allgemeines BLE-Signal · keine Scooter-Speicherung")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.textMuted)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    ZStack {
-                        SonarRadarView(
-                            isScanning: true,
-                            blipCount: 4,
-                            size: 230,
-                            style: .search
-                        )
-
-                        if engine.phase == .proximity {
-                            proximityPulse
-                        } else if engine.showArrow, let deg = engine.relativeArrowDegrees {
-                            Image(systemName: "location.north.fill")
-                                .font(.system(size: 56, weight: .semibold))
-                                .foregroundStyle(Theme.accent)
-                                .rotationEffect(.degrees(deg))
-                                .shadow(color: Theme.accent.opacity(0.35), radius: 10, y: 2)
-                                .accessibilityLabel("Signalrichtung")
-                        } else {
-                            ProgressView()
-                                .tint(Theme.accent)
-                                .scaleEffect(1.2)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-
-                    VStack(spacing: 8) {
-                        Text(engine.headline)
-                            .font(Theme.sectionTitle)
-                            .foregroundStyle(Theme.textPrimary)
-                            .multilineTextAlignment(.center)
-                        Text(engine.subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.secondaryText)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let footnote = engine.footnote {
-                            Text(footnote)
-                                .font(.caption)
-                                .foregroundStyle(Theme.muted)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-
-                    metricsCard
-
-                    if let hint = engine.authorizationHint {
-                        Text(hint)
-                            .font(.caption)
-                            .foregroundStyle(Theme.warn)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 4)
-                    }
-
-                    Button {
-                        showInfo = true
-                    } label: {
-                        Label("Hinweise zur Richtungsschätzung", systemImage: "info.circle")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .padding(.bottom, 8)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 110)
-            }
-
-            VStack(spacing: 10) {
-                ScootOutlineButton(title: "Suche beenden", systemImage: "xmark") {
-                    endFinding()
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 10)
-            .padding(.bottom, 16)
-            .background(Theme.bg.opacity(0.92))
-        }
-    }
-
-    private var proximityPulse: some View {
-        ZStack {
-            Circle()
-                .stroke(Theme.accent.opacity(0.35), lineWidth: 3)
-                .frame(width: 120, height: 120)
-            Circle()
-                .fill(Theme.accent.opacity(0.18))
-                .frame(width: 72, height: 72)
-            Image(systemName: "wave.3.right")
-                .font(Theme.sectionTitle)
-                .foregroundStyle(Theme.accent)
-        }
-        .accessibilityLabel("Sehr nah")
-    }
-
-    private var metricsCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                metric(title: "RSSI", value: engine.rawRssi.map { "\($0) dBm" } ?? "—")
-                Divider().overlay(Theme.line)
-                metric(title: "Signal", value: engine.signalTier.label)
-                Divider().overlay(Theme.line)
-                metric(title: "Richtung", value: engine.quality.label)
-            }
-            .frame(maxWidth: .infinity)
-
-            if let strongest = engine.strongestRssi {
-                HStack {
-                    Text("Stärkstes Signal bisher")
-                        .font(.caption)
-                        .foregroundStyle(Theme.muted)
-                    Spacer()
-                    Text("\(Int(strongest.rounded())) dBm")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-            if engine.movingAwayFromPeak, engine.phase != .proximity {
-                Text("Signal wird schwächer — du entfernst dich vom stärksten bisherigen Signal.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.warn)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .scootCard()
-    }
-
-    private func metric(title: String, value: String) -> some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(Theme.muted)
-            Text(value)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     // MARK: - Actions
 
-    /// Startet nur die RSSI-/Richtungs-Suche — speichert das Gerät nie als bekannten Scooter.
+    /// Startet Heatmap-Suche — speichert das Gerät nie als bekannten Scooter.
     private func startFinding(_ device: ScannedDevice) {
         selected = device
         if ble.phase != .scanning {
             ble.startScan()
         }
-        engine.start(tracking: device.id, ble: ble)
+        searchEngine.start(device: device, ble: ble)
     }
 
     private func endFinding() {
-        engine.stop()
         selected = nil
         if ble.phase != .scanning {
             ble.startScan()
@@ -434,15 +269,15 @@ struct ScooterFinderView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Die angezeigte Richtung wird aus Bluetooth-Signalstärke, Bewegung und Sensordaten geschätzt. Bluetooth liefert keine direkte Richtungsinformation.")
+                    Text("ScooterCheck baut aus geglätteten Bluetooth-Signalstärken und deiner Bewegung eine Heatmap. Bereiche ohne Messung bleiben dunkel — das ist Absicht.")
                         .font(.body)
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("ScooterCheck nutzt Standort und Bewegungsrichtung nur während der aktiven Gerätesuche, um Änderungen der Signalstärke auszuwerten. Es werden keine Meter-Entfernungen angezeigt.")
+                    Text("Es gibt keine exakte Richtung oder Meterangabe. Nutze Grobsuche für die Fläche und Feinsuche für die letzten Meter (wärmer / kälter).")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Unter „Alle BLE-Geräte“ kannst du jedes sichtbare BLE-Signal verfolgen. Das speichert das Gerät nicht als Scooter.")
+                    Text("Unter „Alle BLE-Geräte“ kannst du jedes Signal verfolgen. Das speichert das Gerät nicht als Scooter.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)

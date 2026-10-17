@@ -63,6 +63,10 @@
 		A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* G3OdometerScaleTests.swift */; };
 		A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PeakDisReportBugsTests.swift */; };
 		A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */; };
+		A10000000000000000000040 /* BLESearchCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000040 /* BLESearchCore.swift */; };
+		A10000000000000000000041 /* BLESearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000041 /* BLESearchEngine.swift */; };
+		A10000000000000000000042 /* BLESearchScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000042 /* BLESearchScreen.swift */; };
+		A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000043 /* BLESearchCoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -125,6 +129,10 @@
 		B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PeakDisReportBugsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDisReportBugsTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000002 /* ScooterCheckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScooterCheckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000000000000000000040 /* BLESearchCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchCore.swift; sourceTree = "<group>"; };
+		B10000000000000000000041 /* BLESearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000042 /* BLESearchScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchScreen.swift; sourceTree = "<group>"; };
+		B10000000000000000000043 /* BLESearchCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchCoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -175,6 +183,9 @@
 				B10000000000000000000038 /* PrivacyInfo.xcprivacy */,
 				B1000000000000000000002C /* ScooterFinderEngine.swift */,
 				B1000000000000000000002D /* ScooterFinderView.swift */,
+				B10000000000000000000040 /* BLESearchCore.swift */,
+				B10000000000000000000041 /* BLESearchEngine.swift */,
+				B10000000000000000000042 /* BLESearchScreen.swift */,
 				B1000000000000000000000E /* Info.plist */,
 				B1000000000000000000000C /* Assets.xcassets */,
 				E10000000000000000000005 /* Integrity */,
@@ -228,6 +239,7 @@
 				B1000000000000000000002B /* FAQCatalogTests.swift */,
 				B10000000000000000000039 /* PrivacyContentTests.swift */,
 				B1000000000000000000002E /* ScooterFinderMathTests.swift */,
+				B10000000000000000000043 /* BLESearchCoreTests.swift */,
 			);
 			path = ScooterCheckTests;
 			sourceTree = "<group>";
@@ -365,6 +377,9 @@
 				A10000000000000000000037 /* PrivacyView.swift in Sources */,
 				A1000000000000000000002C /* ScooterFinderEngine.swift in Sources */,
 				A1000000000000000000002D /* ScooterFinderView.swift in Sources */,
+				A10000000000000000000040 /* BLESearchCore.swift in Sources */,
+				A10000000000000000000041 /* BLESearchEngine.swift in Sources */,
+				A10000000000000000000042 /* BLESearchScreen.swift in Sources */,
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* Analyzer.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
@@ -412,6 +427,7 @@
 				A1000000000000000000002B /* FAQCatalogTests.swift in Sources */,
 				A10000000000000000000039 /* PrivacyContentTests.swift in Sources */,
 				A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */,
+				A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
