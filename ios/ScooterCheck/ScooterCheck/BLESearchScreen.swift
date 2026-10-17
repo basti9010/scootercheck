@@ -30,15 +30,9 @@ struct BLESearchScreen: View {
                         .padding(.horizontal, Theme.Space.xl)
                         .padding(.top, Theme.Space.sm)
                 }
-                if engine.searchMode == .fine {
-                    FineSearchPanel(engine: engine)
-                        .padding(.horizontal, Theme.Space.xl)
-                        .padding(.top, Theme.Space.md)
-                } else {
-                    heatmapCard
-                        .padding(.horizontal, Theme.Space.xl)
-                        .padding(.top, Theme.Space.sm)
-                }
+                heatmapCard
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.sm)
                 bottomPanel
                     .padding(.top, Theme.Space.md)
             }
@@ -319,16 +313,6 @@ struct BLESearchScreen: View {
                 smoothedRssi: engine.smoothedRssi,
                 barLevel: engine.signalClass.barLevel
             )
-
-            Picker("Modus", selection: Binding(
-                get: { engine.searchMode },
-                set: { engine.setMode($0) }
-            )) {
-                Text("Grobsuche").tag(BLESearchModeKind.coarse)
-                Text("Feinsuche").tag(BLESearchModeKind.fine)
-            }
-            .pickerStyle(.segmented)
-            .font(Theme.segment)
 
             HStack(spacing: Theme.Space.lg) {
                 Toggle(isOn: $engine.hapticsEnabled) {
@@ -1061,59 +1045,3 @@ struct SignalTrendIndicator: View {
     }
 }
 
-struct FineSearchPanel: View {
-    @ObservedObject var engine: BLESearchEngine
-
-    var body: some View {
-        VStack(spacing: Theme.Space.xl) {
-            Text("Feinsuche")
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-
-            Text(engine.signalClass.label)
-                .font(.system(size: 36, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.1))
-                    Capsule()
-                        .fill(Theme.accent)
-                        .frame(width: max(12, geo.size.width * engine.signalClass.barLevel))
-                }
-            }
-            .frame(height: 18)
-
-            Label(engine.trend.warmColdLabel, systemImage: engine.trend.symbol)
-                .font(Theme.sectionTitle)
-                .foregroundStyle(Theme.accent)
-
-            if let rssi = engine.smoothedRssi, engine.signalClass != .lost {
-                Text("\(Int(rssi.rounded())) dBm")
-                    .font(Theme.caption.monospacedDigit())
-                    .foregroundStyle(Theme.textMuted)
-            }
-
-            BLELiveRssiGraph(history: engine.signalHistory, showRaw: false)
-                .frame(height: 88)
-
-            Text("Heatmap im Hintergrund — Fokus auf Annäherung über Signalstärke.")
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            SignalHeatmapView(
-                snapshot: engine.heatmap,
-                pathSnapshot: engine.pathSnapshot,
-                breadcrumbs: engine.breadcrumbs,
-                showMeasurementDots: false
-            )
-                .frame(height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
-                .opacity(0.55)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.lg)
-    }
-}

@@ -452,7 +452,7 @@ struct ScooterFinderView: View {
                         .font(.body)
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Es gibt keine exakte Richtung oder Meterangabe. Nutze Grobsuche für die Fläche und Feinsuche für die letzten Meter (wärmer / kälter).")
+                    Text("Es gibt keine exakte Richtung. Nutze die Heatmap und die Signalstärke (wärmer / kälter), während du dich bewegst.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)

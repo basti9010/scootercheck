@@ -162,7 +162,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
             description: deviceName,
             minInterval: 0
         )
-        recordEvent(type: .coarseMode, title: "Grobsuche aktiviert", minInterval: 0)
+        recordEvent(type: .coarseMode, title: "Suche aktiviert", minInterval: 0)
 
         startSensors()
         indoorTracker.start()
@@ -207,18 +207,13 @@ final class BLESearchEngine: NSObject, ObservableObject {
         ble = nil
     }
 
+    /// Früher Grob-/Feinsuche — UI hat nur noch eine Heatmap-Suche (Optik der Grobsuche).
     func setMode(_ mode: BLESearchModeKind) {
-        guard searchMode != mode else { return }
-        searchMode = mode
+        searchMode = .coarse
         if var s = session {
-            s.searchMode = mode.rawValue
+            s.searchMode = BLESearchModeKind.coarse.rawValue
             session = s
         }
-        recordEvent(
-            type: mode == .fine ? .fineMode : .coarseMode,
-            title: mode == .fine ? "Feinsuche aktiviert" : "Grobsuche aktiviert",
-            minInterval: 0
-        )
     }
 
     func setSurfaceMode(_ mode: BLESearchSurfaceMode) {
