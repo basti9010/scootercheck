@@ -26,6 +26,7 @@ on:
       - cursor/faq-finden-hub-b100
       - cursor/menu-edge-swipe-b100
       - cursor/geraete-auslesen-nav-b100
+      - cursor/faq-accordion-polish-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

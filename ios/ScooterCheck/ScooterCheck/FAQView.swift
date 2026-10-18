@@ -1,13 +1,12 @@
 import SwiftUI
 
-/// Native FAQ- & Wissensbasis-Seite (Dark Mode, Themen-Chips, Accordion).
+/// Native FAQ- & Wissensbasis-Seite (Dark Mode, ruhige Accordion-Hierarchie).
 struct FAQView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var expandedIDs: Set<String> = []
-    /// Welche Themenblöcke aufgeklappt sind (bei Suche: alle Treffer-Themen).
-    @State private var expandedCategories: Set<String> = ["verstehen"]
-    @State private var focusCategoryID: String?
+    /// Geöffnete Hauptkategorie (nur eine gleichzeitig — außer bei aktiver Suche).
+    @State private var expandedCategoryID: String? = "verstehen"
 
     private var isSearching: Bool {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -17,59 +16,41 @@ struct FAQView: View {
         FAQCatalog.filtered(query: query)
     }
 
-    private var chipCategories: [FAQCategory] {
-        isSearching ? categories : FAQCatalog.categories
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
                 Theme.bg.ignoresSafeArea()
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                        VStack(alignment: .leading, spacing: 6) {
                             PageTitle(text: "FAQ & Wissensbasis")
-                            Text("Themen wählen oder suchen — Antworten klappen sich bei Bedarf auf.")
+                            Text("Themen aufklappen oder suchen — Antworten erscheinen darunter.")
                                 .font(Theme.body)
                                 .foregroundStyle(Theme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
+                        }
 
-                            searchField
-                            categoryChips(proxy: proxy)
+                        searchField
 
-                            if !isSearching {
-                                introCallouts
-                            }
-
-                            if categories.isEmpty {
-                                emptySearch
-                            } else {
+                        if categories.isEmpty {
+                            emptySearch
+                        } else {
+                            VStack(alignment: .leading, spacing: Theme.Space.md) {
                                 ForEach(categories) { category in
-                                    categorySection(category)
+                                    categoryBlock(category)
                                         .id(category.id)
                                 }
                             }
+                        }
 
-                            AppCopyrightFooter()
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, Theme.Space.sm)
-                                .padding(.bottom, 28)
-                        }
-                        .padding(.horizontal, Theme.Space.xl)
-                        .padding(.top, Theme.Space.sm)
+                        AppCopyrightFooter()
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, Theme.Space.sm)
+                            .padding(.bottom, 28)
                     }
-                    .onChange(of: focusCategoryID) { id in
-                        guard let id else { return }
-                        withAnimation(Theme.Motion.standard) {
-                            proxy.scrollTo(id, anchor: .top)
-                        }
-                    }
-                    .onChange(of: query) { _ in
-                        if isSearching {
-                            expandedCategories = Set(categories.map(\.id))
-                        }
-                    }
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.sm)
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
@@ -77,6 +58,13 @@ struct FAQView: View {
                 AppChromeSheetHeader { dismiss() }
             }
             .preferredColorScheme(.dark)
+            .onChange(of: query) { _ in
+                if isSearching {
+                    expandedIDs = []
+                } else if expandedCategoryID == nil {
+                    expandedCategoryID = "verstehen"
+                }
+            }
         }
     }
 
@@ -110,57 +98,6 @@ struct FAQView: View {
         )
     }
 
-    private func categoryChips(proxy: ScrollViewProxy) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(chipCategories) { category in
-                    let selected = focusCategoryID == category.id
-                        || (focusCategoryID == nil && expandedCategories.contains(category.id))
-                    Button {
-                        query = ""
-                        withAnimation(Theme.Motion.standard) {
-                            // Ein Thema fokussieren: andere zuklappen für Übersicht
-                            expandedCategories = [category.id]
-                            focusCategoryID = category.id
-                            proxy.scrollTo(category.id, anchor: .top)
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: category.symbolName)
-                                .font(.caption.weight(.semibold))
-                            Text(category.title)
-                                .font(Theme.caption.weight(.semibold))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(selected ? Theme.ink : Theme.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(selected ? Theme.accent : Theme.card)
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(selected ? Color.clear : Theme.border, lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(category.title)
-                }
-            }
-            .padding(.vertical, 2)
-        }
-    }
-
-    private var introCallouts: some View {
-        VStack(spacing: 10) {
-            FAQCalloutBanner(
-                text: "ScooterCheck bewertet die aktuell technisch auslesbaren Daten. Ein unauffälliges Ergebnis ist kein Beweis dafür, dass ein Fahrzeug zu keinem früheren Zeitpunkt verändert wurde."
-            )
-            FAQCalloutBanner(
-                text: "Technische Auffälligkeiten können auch durch Reparaturen, Ersatzteile, Softwareupdates oder Modellvarianten entstehen und sollten immer im Gesamtzusammenhang betrachtet werden."
-            )
-        }
-    }
-
     private var emptySearch: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text("Keine Treffer")
@@ -175,17 +112,19 @@ struct FAQView: View {
         .scootCard()
     }
 
-    private func categorySection(_ category: FAQCategory) -> some View {
-        let isOpen = isSearching || expandedCategories.contains(category.id)
-        return VStack(alignment: .leading, spacing: 10) {
+    @ViewBuilder
+    private func categoryBlock(_ category: FAQCategory) -> some View {
+        let isOpen = isSearching || expandedCategoryID == category.id
+
+        VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(Theme.Motion.standard) {
-                    if expandedCategories.contains(category.id) {
-                        expandedCategories.remove(category.id)
+                withAnimation(.easeInOut(duration: 0.28)) {
+                    if expandedCategoryID == category.id {
+                        expandedCategoryID = nil
                     } else {
-                        expandedCategories.insert(category.id)
+                        expandedCategoryID = category.id
+                        expandedIDs = []
                     }
-                    focusCategoryID = category.id
                 }
             } label: {
                 HStack(spacing: Theme.Space.md) {
@@ -217,26 +156,28 @@ struct FAQView: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint(isOpen ? "Themen zuklappen" : "Themen aufklappen")
+            .disabled(isSearching)
 
-            if isOpen {
-                VStack(spacing: Theme.Space.sm) {
+            // Inhalt bleibt im lokalen Block; Höhe clippt nach oben — kein slide-from-top.
+            FAQExpandablePanel(isExpanded: isOpen) {
+                VStack(alignment: .leading, spacing: 8) {
                     ForEach(category.items) { item in
                         FAQAccordionRow(
                             item: item,
                             isExpanded: expandedIDs.contains(item.id)
                         ) {
-                            toggle(item.id)
+                            toggleQuestion(item.id)
                         }
                     }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.leading, 16)
+                .padding(.top, 10)
             }
         }
-        .padding(.top, Theme.Space.xs)
     }
 
-    private func toggle(_ id: String) {
-        withAnimation(Theme.Motion.standard) {
+    private func toggleQuestion(_ id: String) {
+        withAnimation(.easeInOut(duration: 0.26)) {
             if expandedIDs.contains(id) {
                 expandedIDs.remove(id)
             } else {
@@ -246,7 +187,26 @@ struct FAQView: View {
     }
 }
 
-// MARK: - Rows
+// MARK: - Local height accordion (kein move-from-top)
+
+/// Klappt Inhalt lokal unter dem Header auf; clippt von oben nach unten (kein slide-from-top).
+private struct FAQExpandablePanel<Content: View>: View {
+    let isExpanded: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: isExpanded ? nil : 0, alignment: .top)
+            .clipped()
+            .opacity(isExpanded ? 1 : 0)
+            .allowsHitTesting(isExpanded)
+            .accessibilityHidden(!isExpanded)
+    }
+}
+
+// MARK: - Question rows
 
 private struct FAQAccordionRow: View {
     let item: FAQItem
@@ -258,7 +218,7 @@ private struct FAQAccordionRow: View {
             Button(action: onToggle) {
                 HStack(alignment: .top, spacing: Theme.Space.md) {
                     Text(item.question)
-                        .font(Theme.cardTitle)
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(Theme.textTitle)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -267,16 +227,17 @@ private struct FAQAccordionRow: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .padding(.top, Theme.Space.xs)
+                        .padding(.top, 2)
                 }
-                .padding(Theme.Space.lg)
+                .padding(.horizontal, Theme.Space.lg)
+                .padding(.vertical, 14)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(.isButton)
             .accessibilityHint(isExpanded ? "Zuklappen" : "Aufklappen")
 
-            if isExpanded {
+            FAQExpandablePanel(isExpanded: isExpanded) {
                 VStack(alignment: .leading, spacing: Theme.Space.md) {
                     ForEach(Array(item.segments.enumerated()), id: \.offset) { _, segment in
                         segmentView(segment)
@@ -284,14 +245,13 @@ private struct FAQAccordionRow: View {
                 }
                 .padding(.horizontal, Theme.Space.lg)
                 .padding(.bottom, Theme.Space.lg)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(Theme.card)
+        .background(Theme.card.opacity(0.92))
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                .stroke(Theme.border, lineWidth: 1)
+                .stroke(Theme.border.opacity(0.9), lineWidth: 1)
         )
     }
 
