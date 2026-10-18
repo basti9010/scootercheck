@@ -119,8 +119,6 @@ struct ContentView: View {
             && ble.visibleDevices.isEmpty
     }
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
