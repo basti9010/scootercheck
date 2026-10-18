@@ -43,6 +43,7 @@ on:
       - cursor/map-accurate-location-b100
       - cursor/find-chrome-slide-fix-b100
       - cursor/find-edge-ar-bugs-b100
+      - cursor/radar-alarm-signal-options-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -69,7 +70,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Edge-Zurück schließt Live-Suche nicht mehr still; AR Best-Zone nur aktuelle Epoche' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Radar-Alarm — Stufe Schwach ergänzt, totes Signal-Feld entfernt' }}"
 
     steps:
       - name: Checkout

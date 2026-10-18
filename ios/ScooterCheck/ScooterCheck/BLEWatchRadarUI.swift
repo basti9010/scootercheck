@@ -289,11 +289,13 @@ struct BLERadarControlsCard: View {
                     }
                     if radar.isEnabled {
                         Section("Alarm ab Signalstärke") {
-                            Picker("Signal", selection: $radar.minimumSignalClass) {
+                            Picker("Alarm ab Signalstärke", selection: $radar.minimumSignalClass) {
+                                Text("Schwach").tag(BLESignalClass.weak)
                                 Text("Mittel").tag(BLESignalClass.medium)
                                 Text("Stark").tag(BLESignalClass.strong)
                                 Text("Sehr stark").tag(BLESignalClass.veryStrong)
                             }
+                            .labelsHidden()
                             .pickerStyle(.inline)
                         }
                         Section {
