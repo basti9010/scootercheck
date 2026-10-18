@@ -45,6 +45,7 @@ on:
       - cursor/find-edge-ar-bugs-b100
       - cursor/radar-alarm-signal-options-b100
       - cursor/pruefungen-swipe-order-b100
+      - cursor/ar-path-screen-awake-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

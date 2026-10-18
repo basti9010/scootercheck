@@ -227,6 +227,8 @@ struct BLESearchARSceneRepresentable: UIViewRepresentable {
         private var lastTextureAt: Date = .distantPast
         private var lastSampleCount = 0
         private var lastEpoch = -1
+        private var lastPathCount = -1
+        private var lastPathAt: Date = .distantPast
 
         func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
             // Leichtgewichtig — schwere Texture nur in refreshContent
@@ -315,44 +317,99 @@ struct BLESearchARSceneRepresentable: UIViewRepresentable {
         private func updatePath(engine: BLESearchEngine) {
             guard let pathNode else { return }
             pathNode.isHidden = !settings.showPath
-            pathNode.enumerateChildNodes { child, _ in child.removeFromParentNode() }
-            guard settings.showPath else { return }
+            guard settings.showPath else {
+                pathNode.enumerateChildNodes { child, _ in child.removeFromParentNode() }
+                lastPathCount = -1
+                return
+            }
 
-            let poly: [(x: Double, y: Double)] = {
+            let raw: [(x: Double, y: Double)] = {
                 let p = engine.pathSnapshot.smoothedPolyline
                 if p.count >= 2 { return p }
                 return engine.pathSnapshot.points.map { ($0.x, $0.y) }
             }()
+            let poly = Self.decimatePath(raw, maxPoints: 90)
+            let now = Date()
+            let pathDirty = poly.count != lastPathCount
+                || now.timeIntervalSince(lastPathAt) > 0.45
+            guard pathDirty else { return }
+            lastPathCount = poly.count
+            lastPathAt = now
+
+            pathNode.enumerateChildNodes { child, _ in child.removeFromParentNode() }
             guard poly.count >= 2 else { return }
 
             var positions: [SCNVector3] = []
+            positions.reserveCapacity(poly.count)
             for p in poly {
                 if let w = engine.visualTracker.worldPosition(east: p.x, north: p.y) {
-                    positions.append(SCNVector3(w.x, w.y + 0.04, w.z))
+                    positions.append(SCNVector3(w.x, w.y + 0.05, w.z))
                 }
             }
             guard positions.count >= 2 else { return }
 
-            let source = SCNGeometrySource(vertices: positions)
-            var indices: [Int32] = []
+            // SCN line primitives are ~1px — cylinders keep the walked path readable.
+            let accent = UIColor(Theme.accent)
+            let underlay = UIColor.black.withAlphaComponent(0.55)
+            let core = accent.withAlphaComponent(0.95)
+            let underRadius: CGFloat = 0.055
+            let coreRadius: CGFloat = 0.038
+            let up = SCNVector3(0, 1, 0)
+
             for i in 0..<(positions.count - 1) {
-                indices.append(Int32(i))
-                indices.append(Int32(i + 1))
+                let a = positions[i]
+                let b = positions[i + 1]
+                let dx = b.x - a.x
+                let dy = b.y - a.y
+                let dz = b.z - a.z
+                let length = CGFloat(sqrt(dx * dx + dy * dy + dz * dz))
+                guard length > 0.02 else { continue }
+
+                let mid = SCNVector3((a.x + b.x) * 0.5, (a.y + b.y) * 0.5, (a.z + b.z) * 0.5)
+
+                func segment(radius: CGFloat, color: UIColor) -> SCNNode {
+                    let cyl = SCNCylinder(radius: radius, height: length)
+                    let mat = SCNMaterial()
+                    mat.diffuse.contents = color
+                    mat.lightingModel = .constant
+                    mat.writesToDepthBuffer = false
+                    cyl.materials = [mat]
+                    let node = SCNNode(geometry: cyl)
+                    node.position = mid
+                    node.look(at: b, up: up, localFront: SCNVector3(0, 1, 0))
+                    return node
+                }
+
+                pathNode.addChildNode(segment(radius: underRadius, color: underlay))
+                pathNode.addChildNode(segment(radius: coreRadius, color: core))
             }
-            let indexData = Data(bytes: indices, count: indices.count * MemoryLayout<Int32>.size)
-            let element = SCNGeometryElement(
-                data: indexData,
-                primitiveType: .line,
-                primitiveCount: positions.count - 1,
-                bytesPerIndex: MemoryLayout<Int32>.size
-            )
-            let geo = SCNGeometry(sources: [source], elements: [element])
-            let mat = SCNMaterial()
-            mat.diffuse.contents = UIColor(Theme.accent).withAlphaComponent(0.7)
-            mat.lightingModel = .constant
-            geo.materials = [mat]
-            let node = SCNNode(geometry: geo)
-            pathNode.addChildNode(node)
+
+            if let last = positions.last {
+                let tip = SCNSphere(radius: 0.05)
+                let tipMat = SCNMaterial()
+                tipMat.diffuse.contents = accent
+                tipMat.lightingModel = .constant
+                tip.materials = [tipMat]
+                let tipNode = SCNNode(geometry: tip)
+                tipNode.position = last
+                pathNode.addChildNode(tipNode)
+            }
+        }
+
+        /// Gleichmäßig ausdünnen, damit der AR-Pfad flüssig bleibt.
+        private static func decimatePath(
+            _ pts: [(x: Double, y: Double)],
+            maxPoints: Int
+        ) -> [(x: Double, y: Double)] {
+            guard pts.count > maxPoints, maxPoints >= 2 else { return pts }
+            let step = Double(pts.count - 1) / Double(maxPoints - 1)
+            var out: [(x: Double, y: Double)] = []
+            out.reserveCapacity(maxPoints)
+            for i in 0..<maxPoints {
+                let idx = min(pts.count - 1, Int((Double(i) * step).rounded()))
+                out.append(pts[idx])
+            }
+            return out
         }
 
         @MainActor
@@ -459,7 +516,16 @@ struct ARMinimapView: View {
                         let p = project(pt.x, pt.y)
                         if i == 0 { path.move(to: p) } else { path.addLine(to: p) }
                     }
-                    context.stroke(path, with: .color(Theme.accent.opacity(0.55)), lineWidth: 1.4)
+                    context.stroke(
+                        path,
+                        with: .color(Color.black.opacity(0.55)),
+                        style: StrokeStyle(lineWidth: 4.2, lineCap: .round, lineJoin: .round)
+                    )
+                    context.stroke(
+                        path,
+                        with: .color(Theme.accent.opacity(0.95)),
+                        style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round)
+                    )
                 }
 
                 if let zone = bestZone {
