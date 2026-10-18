@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var session: CheckSession?
     /// 0 = Wordmark mittig im App-Header, 1 = mittig in der Drawer-Breite.
     @State private var menuProgress: CGFloat = 0
+    /// Basis-Progress zu Beginn einer Menü-Wischgeste (nil = kein Drag aktiv).
+    @State private var menuDragStartProgress: CGFloat?
     @State private var showFAQ = false
     @State private var showPrivacy = false
     @State private var showShare = false
@@ -258,7 +260,7 @@ struct ContentView: View {
         .overlay {
             FloatingAppBrandWordmark(menuProgress: menuProgress)
         }
-        .animation(Theme.Motion.drawer, value: menuProgress)
+        .animation(menuDragStartProgress == nil ? Theme.Motion.drawer : nil, value: menuProgress)
         .preferredColorScheme(.dark)
         .tint(Theme.accent)
         .onAppear {
@@ -1653,9 +1655,31 @@ struct ContentView: View {
     // MARK: - Side menu (über dem aktuellen Bildschirm)
 
     private func setMenuOpen(_ open: Bool) {
+        menuDragStartProgress = nil
         withAnimation(Theme.Motion.drawer) {
             menuProgress = open ? 1 : 0
         }
+    }
+
+    private func updateMenuDrag(translationWidth: CGFloat, panelWidth: CGFloat) {
+        guard panelWidth > 1 else { return }
+        let base = menuDragStartProgress ?? menuProgress
+        if menuDragStartProgress == nil {
+            menuDragStartProgress = menuProgress
+        }
+        let next = base + translationWidth / panelWidth
+        menuProgress = min(1, max(0, next))
+    }
+
+    private func endMenuDrag(translationWidth: CGFloat, predictedWidth: CGFloat, panelWidth: CGFloat) {
+        defer { menuDragStartProgress = nil }
+        guard panelWidth > 1 else {
+            setMenuOpen(menuProgress > 0.5)
+            return
+        }
+        let projected = menuProgress + (predictedWidth - translationWidth) * 0.35 / panelWidth
+        let shouldOpen = projected > 0.45 || (menuProgress > 0.15 && predictedWidth > 280)
+        setMenuOpen(shouldOpen)
     }
 
     /// Fester Header unter der Safe Area; Wordmark kommt als Overlay (gleiche Y wie Hamburger).
@@ -1687,11 +1711,13 @@ struct ContentView: View {
             let panelWidth = Theme.Chrome.drawerPanelWidth(screenWidth: geo.size.width)
             // Nie 0 melden lassen — sonst rutscht der Drawer-Header in die Statusleiste.
             let safeTop = Theme.Chrome.resolvedSafeAreaTop(geo.safeAreaInsets.top)
+            let edgeWidth: CGFloat = 28
             ZStack(alignment: .leading) {
                 Color.black.opacity(0.55 * Double(menuProgress))
                     .ignoresSafeArea()
                     .onTapGesture { setMenuOpen(false) }
                     .allowsHitTesting(menuProgress > 0.05)
+                    .gesture(menuDragGesture(panelWidth: panelWidth, fromEdgeOnly: false))
 
                 sideMenuPanel
                     .padding(.top, safeTop)
@@ -1701,10 +1727,44 @@ struct ContentView: View {
                     // Gleicher Progress wie die Wordmark — nur X, gleiche Y.
                     .offset(x: -panelWidth * (1 - menuProgress))
                     .allowsHitTesting(menuProgress > 0.5)
+                    .gesture(menuDragGesture(panelWidth: panelWidth, fromEdgeOnly: false))
+
+                // Linker Rand: Menü aufziehen, auch wenn der Drawer noch geschlossen ist.
+                // Nur dieser Streifen fängt Touches — der restliche Overlay bleibt durchlässig.
+                if menuProgress < 0.05, screen != .result {
+                    Color.clear
+                        .frame(width: edgeWidth)
+                        .frame(maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(menuDragGesture(panelWidth: panelWidth, fromEdgeOnly: true))
+                        .accessibilityLabel("Menü aufziehen")
+                }
             }
         }
         .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(menuProgress > 0.05)
+    }
+
+    private func menuDragGesture(panelWidth: CGFloat, fromEdgeOnly: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .local)
+            .onChanged { value in
+                let horizontal = abs(value.translation.width)
+                let vertical = abs(value.translation.height)
+                // Vertikal scrolls nicht als Menü-Geste werten.
+                guard horizontal > vertical * 0.85 else { return }
+                if fromEdgeOnly, menuDragStartProgress == nil {
+                    guard value.startLocation.x <= 36 else { return }
+                    guard value.translation.width > 0 else { return }
+                }
+                updateMenuDrag(translationWidth: value.translation.width, panelWidth: panelWidth)
+            }
+            .onEnded { value in
+                guard menuDragStartProgress != nil || menuProgress > 0.02 else { return }
+                endMenuDrag(
+                    translationWidth: value.translation.width,
+                    predictedWidth: value.predictedEndTranslation.width,
+                    panelWidth: panelWidth
+                )
+            }
     }
 
     private var sideMenuPanel: some View {
