@@ -5,26 +5,47 @@ import Photos
 import SwiftUI
 import UIKit
 
-/// Datenschutz-Zentrale — nur belegte Verarbeitungen aus dem App-Code.
+/// Datenschutz — gleiche Sheet-Optik und Accordion-Liste wie FAQ & Wissensbasis.
 struct PrivacyView: View {
     @Environment(\.dismiss) private var dismiss
+    /// Nur ein Thema gleichzeitig geöffnet (wie FAQ-Hauptkategorien).
+    @State private var expandedTopicID: String? = "overview"
+
+    private let overviewID = "overview"
 
     var body: some View {
         NavigationStack {
             ZStack {
                 Theme.bg.ignoresSafeArea()
+
                 ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    VStack(alignment: .leading, spacing: 0) {
                         PageTitle(text: "Datenschutz")
-                        hero
-                        atAGlanceCard
-                        topicList
+                            .padding(.bottom, Theme.Space.md)
+
+                        Text(PrivacyContent.documentVersionLabel)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
+                            .padding(.bottom, Theme.Space.xxl)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            overviewSection
+                            topicDivider
+
+                            ForEach(Array(PrivacyContent.Topic.allCases.enumerated()), id: \.element.id) { index, topic in
+                                topicSection(topic)
+                                if index < PrivacyContent.Topic.allCases.count - 1 {
+                                    topicDivider
+                                }
+                            }
+                        }
+
                         AppCopyrightFooter()
                             .frame(maxWidth: .infinity)
-                            .padding(.top, Theme.Space.sm)
-                            .padding(.bottom, 28)
+                            .padding(.top, Theme.Space.xxl)
+                            .padding(.bottom, Theme.Space.xxl)
                     }
-                    .padding(.horizontal, Theme.Space.xl)
+                    .scootPagePadding()
                     .padding(.top, Theme.Space.sm)
                 }
             }
@@ -36,105 +57,71 @@ struct PrivacyView: View {
         }
     }
 
-    private var hero: some View {
-        VStack(spacing: Theme.Space.md) {
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-                .accessibilityHidden(true)
-            Text(PrivacyContent.hubSubtitle)
-                .font(Theme.sectionTitle)
-                .foregroundStyle(Theme.textPrimary)
-                .multilineTextAlignment(.center)
-            Text(PrivacyContent.documentVersionLabel)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.sm)
+    private var topicDivider: some View {
+        Rectangle()
+            .fill(Theme.line)
+            .frame(height: Theme.Control.hairline)
+            .padding(.leading, Theme.Icon.nav + Theme.Space.md)
     }
 
-    private var atAGlanceCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(PrivacyContent.atAGlanceTitle)
-                .font(Theme.sectionTitle)
-                .foregroundStyle(Theme.textPrimary)
-            Text("Prüfungsdaten werden lokal auf diesem Gerät gespeichert.")
-                .font(Theme.buttonSecondary)
-                .foregroundStyle(Theme.accent)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(PrivacyContent.atAGlanceBody)
-                .font(Theme.body)
-                .foregroundStyle(Theme.textBody)
-                .lineSpacing(5)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .scootCard()
-    }
+    private var overviewSection: some View {
+        let isOpen = expandedTopicID == overviewID
+        return VStack(alignment: .leading, spacing: 0) {
+            topicHeader(
+                title: PrivacyContent.atAGlanceTitle,
+                symbolName: "lock.shield",
+                isOpen: isOpen
+            ) {
+                toggleTopic(overviewID)
+            }
 
-    private var topicList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(PrivacyContent.Topic.allCases.enumerated()), id: \.element.id) { index, topic in
-                NavigationLink {
-                    PrivacyTopicView(topic: topic)
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: topic.symbolName)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                            .frame(width: 28)
-                        Text(topic.title)
-                            .font(Theme.cardTitle)
-                            .foregroundStyle(Theme.textTitle)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.muted)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    .contentShape(Rectangle())
+            PrivacyExpandablePanel(isExpanded: isOpen) {
+                VStack(alignment: .leading, spacing: Theme.Space.md) {
+                    Text("Prüfungsdaten werden lokal auf diesem Gerät gespeichert.")
+                        .font(.system(size: 14.5, weight: .medium))
+                        .foregroundStyle(Theme.accent)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(PrivacyContent.atAGlanceBody)
+                        .font(.system(size: 14.5, weight: .regular))
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(.plain)
-                if index < PrivacyContent.Topic.allCases.count - 1 {
-                    Divider().overlay(Theme.line).padding(.leading, 56)
-                }
+                .padding(.leading, Theme.Space.lg)
+                .padding(.bottom, Theme.Space.md)
+                .padding(.trailing, Theme.Space.sm)
             }
         }
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
-        )
     }
-}
 
-// MARK: - Topic detail
+    @ViewBuilder
+    private func topicSection(_ topic: PrivacyContent.Topic) -> some View {
+        let isOpen = expandedTopicID == topic.id
+        VStack(alignment: .leading, spacing: 0) {
+            topicHeader(
+                title: topic.title,
+                symbolName: topic.symbolName,
+                isOpen: isOpen
+            ) {
+                toggleTopic(topic.id)
+            }
 
-struct PrivacyTopicView: View {
-    let topic: PrivacyContent.Topic
-
-    var body: some View {
-        ZStack {
-            Theme.bg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+            PrivacyExpandablePanel(isExpanded: isOpen) {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
                     ForEach(PrivacyContent.sections(for: topic)) { section in
                         VStack(alignment: .leading, spacing: Theme.Space.sm) {
                             Text(section.title)
-                                .font(Theme.sectionTitle)
+                                .font(.system(size: 15.5, weight: .medium))
                                 .foregroundStyle(Theme.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
                             ForEach(Array(section.paragraphs.enumerated()), id: \.offset) { _, paragraph in
                                 Text(paragraph)
-                                    .font(Theme.body)
-                                    .foregroundStyle(Theme.textBody)
-                                    .lineSpacing(5)
+                                    .font(.system(size: 14.5, weight: .regular))
+                                    .foregroundStyle(Theme.textSecondary)
+                                    .lineSpacing(4)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .scootCard()
                     }
 
                     if topic == .permissions {
@@ -142,66 +129,109 @@ struct PrivacyTopicView: View {
                     }
 
                     if topic == .rights {
-                        privacyRequestCard
+                        privacyRequestBlock
                     }
 
-                    if topic == .externalServices, let url = URL(string: "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement") {
+                    if topic == .externalServices,
+                       let url = URL(string: "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement") {
                         Link(destination: url) {
-                            Label("GitHub-Datenschutzhinweise öffnen", systemImage: "arrow.up.right.square")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(16)
-                                .background(Theme.card)
-                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            HStack(spacing: Theme.Space.sm) {
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.system(size: Theme.Icon.compact, weight: .medium))
+                                Text("GitHub-Datenschutzhinweise öffnen")
+                                    .font(.system(size: 14.5, weight: .medium))
+                            }
+                            .foregroundStyle(Theme.accent)
                         }
                     }
-
-                    Text(PrivacyContent.documentVersionLabel)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
-                        .padding(.bottom, 28)
                 }
-                .padding(.horizontal, Theme.Space.page)
-                .padding(.top, 8)
+                .padding(.leading, Theme.Space.lg)
+                .padding(.bottom, Theme.Space.md)
+                .padding(.trailing, Theme.Space.sm)
             }
         }
-        .navigationTitle(topic.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .preferredColorScheme(.dark)
+        .id(topic.id)
     }
 
-    private var privacyRequestCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func topicHeader(
+        title: String,
+        symbolName: String,
+        isOpen: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Space.md) {
+                Image(systemName: symbolName)
+                    .font(.system(size: Theme.Icon.standard, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: Theme.Icon.nav, alignment: .center)
+
+                Text(title)
+                    .font(.system(size: 16.5, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: Theme.Space.sm)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textMuted)
+                    .rotationEffect(.degrees(isOpen ? 90 : 0))
+            }
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(isOpen ? "Thema zuklappen" : "Thema aufklappen")
+    }
+
+    private func toggleTopic(_ id: String) {
+        withAnimation(.easeInOut(duration: 0.26)) {
+            if expandedTopicID == id {
+                expandedTopicID = nil
+            } else {
+                expandedTopicID = id
+            }
+        }
+    }
+
+    private var privacyRequestBlock: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text("Datenschutzanfrage stellen")
-                .font(Theme.sectionTitle)
+                .font(.system(size: 15.5, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
             Text("In dieser App-Version ist keine Datenschutz-E-Mail hinterlegt. Bitte nutze die Kontaktmöglichkeit des Anbieters im Apple App Store. Es wird keine Anfrage automatisch versendet.")
-                .font(Theme.body)
-                .foregroundStyle(Theme.textBody)
+                .font(.system(size: 14.5, weight: .regular))
+                .foregroundStyle(Theme.textSecondary)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
             if let storeURL = URL(string: "https://apps.apple.com/search?term=ScooterCheck") {
                 Link(destination: storeURL) {
-                    Label("App-Store-Eintrag suchen", systemImage: "bag")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Theme.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    Text("App-Store-Eintrag suchen")
+                        .font(.system(size: 14.5, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
-        )
+    }
+}
+
+// MARK: - Local height accordion (wie FAQ)
+
+private struct PrivacyExpandablePanel<Content: View>: View {
+    let isExpanded: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: isExpanded ? nil : 0, alignment: .top)
+            .clipped()
+            .opacity(isExpanded ? 1 : 0)
+            .allowsHitTesting(isExpanded)
+            .accessibilityHidden(!isExpanded)
     }
 }
 
@@ -214,9 +244,9 @@ private struct PrivacyPermissionsPanel: View {
     @State private var locationLabel = "—"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
             Text("Aktueller Status")
-                .font(Theme.sectionTitle)
+                .font(.system(size: 15.5, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
 
             statusRow(title: "Bluetooth", value: bluetoothLabel)
@@ -230,31 +260,27 @@ private struct PrivacyPermissionsPanel: View {
                     UIApplication.shared.open(url)
                 }
             } label: {
-                Label("In Einstellungen öffnen", systemImage: "gear")
-                    .font(Theme.buttonSecondary)
-                    .foregroundStyle(Theme.ink)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Theme.Space.md)
-                    .background(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                Text("In Einstellungen öffnen")
+                    .font(.system(size: 14.5, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
             }
             .buttonStyle(.plain)
             .padding(.top, Theme.Space.xs)
         }
-        .scootCard()
         .onAppear(perform: refresh)
     }
 
     private func statusRow(title: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(Theme.cardTitle)
-                .foregroundStyle(Theme.textTitle)
-            Spacer()
+                .font(.system(size: 14.5, weight: .regular))
+                .foregroundStyle(Theme.textPrimary)
+            Spacer(minLength: Theme.Space.sm)
             Text(value)
-                .font(Theme.caption.weight(.medium))
+                .font(.system(size: 13.5, weight: .medium))
                 .foregroundStyle(Theme.accent)
                 .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
