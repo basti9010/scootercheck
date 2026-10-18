@@ -122,8 +122,11 @@ final class BLESearchMotionCoreTests: XCTestCase {
     }
 
     func testSurfaceModeLabels() {
-        XCTAssertEqual(BLESearchSurfaceMode.relative.label, "Live")
+        XCTAssertEqual(BLESearchSurfaceMode.live.label, "Live")
+        XCTAssertEqual(BLESearchSurfaceMode.heatmap.label, "Heatmap")
+        XCTAssertEqual(BLESearchSurfaceMode.ar.label, "AR")
         XCTAssertEqual(BLESearchSurfaceMode.map.label, "Karte")
+        XCTAssertEqual(BLESearchSurfaceMode.primaryModes, [.live, .heatmap, .ar])
     }
 
     func testMapRegionFitsTightlyAroundShortPath() {

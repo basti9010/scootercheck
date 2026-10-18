@@ -32,14 +32,23 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var cameraTrackingHealthy = false
 
     // Pfad / Ansicht
-    @Published var surfaceMode: BLESearchSurfaceMode = .relative
+    @Published var surfaceMode: BLESearchSurfaceMode = .heatmap
     @Published private(set) var pathSnapshot = BLESearchPathSnapshot.empty
     @Published private(set) var mapOverlay = BLEMapOverlayModel.empty
     @Published private(set) var pathLengthText: String = "0.00 m"
     @Published private(set) var breadcrumbs: [BLEBreadcrumb] = []
-    @Published private(set) var surfaceHint: String = "Live-Suche – Nutzer zentriert, keine exakte Ortung"
+    @Published private(set) var surfaceHint: String = "Heatmap – Nutzer zentriert, keine exakte Ortung"
+
+    // AR Signal-Finder (gleiche Messsitzung)
+    @Published private(set) var arSpatialSamples: [ARSpatialSample] = []
+    @Published private(set) var arBestZone: ARBestZone?
+    @Published private(set) var arGuidance: ARGuidanceHint = .unclear
+    @Published private(set) var isSearchPaused = false
+    @Published var arSettings = ARSignalFinderSettings.load()
 
     let visualTracker = IndoorVisualTracker()
+    private var bestZoneEstimator = ARBestZoneEstimator()
+    private var guidanceController = ARGuidanceController()
 
     // Analyse / erweiterte Suche
     @Published private(set) var timeline = BLESearchTimeline()
@@ -126,7 +135,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         lostDurationText = nil
         isActive = true
         searchMode = .coarse
-        surfaceMode = .relative
+        surfaceMode = .heatmap
         followViewport = true
         cameraTrackingEnabled = true
         cameraTrackingStatus = "Kamera aus"
@@ -137,7 +146,14 @@ final class BLESearchEngine: NSObject, ObservableObject {
         measurementCount = 0
         signalStatus = "BLE-Suche aktiv"
         positionHint = nil
-        surfaceHint = "Live-Suche – Kamera verbessert Abstände indoor"
+        surfaceHint = "Heatmap – Kamera verbessert Abstände indoor"
+        arSpatialSamples = []
+        arBestZone = nil
+        arGuidance = .unclear
+        isSearchPaused = false
+        bestZoneEstimator.reset()
+        guidanceController.reset()
+        arSettings = ARSignalFinderSettings.load()
         relativeX = 0
         relativeY = 0
         originLocation = nil
@@ -232,10 +248,28 @@ final class BLESearchEngine: NSObject, ObservableObject {
             visualTracker.stop()
             indoorTracker.setVisualPrimary(false)
             syncCameraTrackingStatus()
-            surfaceHint = surfaceMode == .relative
-                ? "Live-Suche – Nutzer zentriert, keine exakte Ortung"
-                : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
+            surfaceHint = hint(for: surfaceMode)
         }
+    }
+
+    func setSearchPaused(_ paused: Bool) {
+        isSearchPaused = paused
+        signalStatus = paused ? "Messung pausiert" : "BLE-Suche aktiv"
+    }
+
+    func saveARSettings() {
+        arSettings.save()
+        // Sync shared feedback toggles
+        hapticsEnabled = arSettings.hapticsEnabled
+        audioEnabled = arSettings.audioEnabled
+    }
+
+    func realignARTracking() {
+        visualTracker.realignTracking()
+        // Neue Epoche: alte AR-Samples behalten, aber Best-Zone neu aufbauen
+        bestZoneEstimator.reset()
+        arBestZone = nil
+        surfaceHint = "AR neu ausgerichtet – weiterlaufen"
     }
 
     private func syncCameraTrackingStatus() {
@@ -268,17 +302,36 @@ final class BLESearchEngine: NSObject, ObservableObject {
     }
 
     private func applySurfaceMode(_ mode: BLESearchSurfaceMode) {
+        let previous = surfaceMode
         surfaceMode = mode
-        surfaceHint = mode == .relative
-            ? "Live-Suche – Nutzer zentriert, keine exakte Ortung"
-            : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
+        surfaceHint = hint(for: mode)
         if var s = session {
-            s.mapType = mode == .map ? "appleMapOverlay" : "relativeHeatmap"
+            switch mode {
+            case .map: s.mapType = "appleMapOverlay"
+            case .ar: s.mapType = "arSignalFinder"
+            case .live: s.mapType = "liveStatus"
+            case .heatmap: s.mapType = "relativeHeatmap"
+            }
             session = s
+        }
+        if mode == .ar {
+            if !cameraTrackingEnabled { setCameraTrackingEnabled(true) }
+            visualTracker.setPlaneDetectionEnabled(true)
+        } else if previous == .ar {
+            visualTracker.setPlaneDetectionEnabled(false)
         }
         pathDirty = true
         heatmapDirty = true
         rebuildPathAndHeatmap(force: true)
+    }
+
+    private func hint(for mode: BLESearchSurfaceMode) -> String {
+        switch mode {
+        case .live: return "Live – aktuelle Signalstärke und Trend, keine exakte Ortung"
+        case .heatmap: return "Heatmap – Nutzer zentriert, keine exakte Ortung"
+        case .ar: return "AR Signal-Finder – Messungen am iPhone-Standort, keine Gerätepeilung"
+        case .map: return "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
+        }
     }
 
     func recenterViewport() {
@@ -540,6 +593,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         pathDirty = true
         rebuildPathAndHeatmap(force: false)
         evaluateMovement()
+        updateARGuidance()
     }
 
     private func syncRelativeFromTracker() {
@@ -670,6 +724,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
 
     private func maybePersistMeasurement(force: Bool) {
         guard isActive,
+              !isSearchPaused,
               let raw = rawRssi,
               let smooth = smoothedRssi,
               signalClass != .lost else { return }
@@ -720,6 +775,49 @@ final class BLESearchEngine: NSObject, ObservableObject {
         lastPersistedRelative = (relativeX, relativeY)
         lastPersistedRssi = smooth
         heatmapDirty = true
+        appendARSpatialSampleIfEligible(
+            raw: Double(raw),
+            smooth: smooth,
+            at: now
+        )
+    }
+
+    /// Nur bei gesundem/brauchbarem Tracking — keine erfundenen AR-Positionen.
+    private func appendARSpatialSampleIfEligible(raw: Double, smooth: Double, at now: Date) {
+        let healthy = visualTracker.state == .tracking
+        // Limited: keine neuen räumlichen AR-Punkte (Anforderung Trackingqualität)
+        guard healthy else { return }
+        // Dichte begrenzen: nicht jeden Frame, nur echte Persist-Events
+        let sample = ARSpatialSample(
+            timestamp: now,
+            x: relativeX,
+            y: relativeY,
+            rawRssi: raw,
+            smoothedRssi: smooth,
+            trackingHealthy: true,
+            sessionEpoch: visualTracker.sessionEpoch
+        )
+        arSpatialSamples.append(sample)
+        if arSpatialSamples.count > 600 {
+            arSpatialSamples.removeFirst(arSpatialSamples.count - 600)
+        }
+        // Bei Stillstand: bestehenden lokalen Punkt verfeinern (letzte Samples gleicher Zelle)
+        bestZoneEstimator.ingest(samples: arSpatialSamples)
+        arBestZone = bestZoneEstimator.confirmed
+    }
+
+    private func updateARGuidance() {
+        let cur = pathSnapshot.current
+        arGuidance = guidanceController.update(
+            trend: trend,
+            signalLost: signalClass == .lost,
+            trackingHealthy: surfaceMode != .ar || visualTracker.state == .tracking,
+            sampleCount: arSpatialSamples.count,
+            bestZone: arBestZone,
+            currentX: cur?.x ?? relativeX,
+            currentY: cur?.y ?? relativeY,
+            headingDegrees: cur?.headingDegrees ?? visualTracker.headingDegrees ?? indoorTracker.headingDegrees
+        )
     }
 
     private func rebuildPathAndHeatmap(force: Bool) {

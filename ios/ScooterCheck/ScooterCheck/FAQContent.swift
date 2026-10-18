@@ -253,12 +253,18 @@ private extension FAQCatalog {
                         "E-Scooter finden → Signal-Finder → Gerät wählen",
                         "E-Scooter auslesen → Gerät → Detail → „Gerät aufspüren“ (soweit verfügbar)",
                     ]),
-                    .paragraph("In der Live-Ansicht bleibst du zentriert. Sichtbar sind u. a. Blickrichtung, Suchpfad und die weiche Signalfläche (Heatmap) — grün stärker, rot schwächer."),
-                    .callout("Keine GPS-Ortung des Scooters und keine exakten Meterangaben — nur relative Signalstufen und Orientierungshilfe."),
+                    .paragraph("Drei Ansichten derselben Messsitzung:"),
+                    .bullets([
+                        "Live — aktuelle Signalstärke, Trend und Kennzahlen",
+                        "Heatmap — zweidimensionale Signalfläche, Nutzer zentriert",
+                        "AR — AR Signal-Finder mit Kamera und bodenverankerten Signalflächen",
+                    ]),
+                    .paragraph("In Heatmap und AR zeigen Farben gemessene Signalstärken entlang deines Weges — mint/grün stärker, rot schwächer. Die AR-Minikarte öffnet per Tippen die Heatmap."),
+                    .callout("Keine GPS-Ortung des Scooters und keine BLE-Peilung — Messungen liegen am iPhone-Standort, nicht am Gerät."),
                 ],
                 keywords: [
-                    "signal-finder", "heatmap", "live", "gerät aufspüren", "rssi", "signalstärke",
-                    "wärmer", "kälter", "richtung", "annäherung", "karte", "andere ble", "filter",
+                    "signal-finder", "heatmap", "live", "ar", "ar signal-finder", "gerät aufspüren", "rssi", "signalstärke",
+                    "wärmer", "kälter", "richtung", "annäherung", "karte", "andere ble", "filter", "minikarte",
                 ]
             ),
             FAQItem(
@@ -272,11 +278,12 @@ private extension FAQCatalog {
                         "Blickrichtung und Wärmer/Kälter nutzen",
                         "Zu den grünen / starken Heatmap-Bereichen zurückkehren, wenn das Signal schwächer wird",
                         "iPhone frei halten (nicht stark mit dem Körper abschirmen)",
-                        "Indoor: Kamera-Tracking in den Optionen kann Abstände verbessern",
+                        "Indoor: AR Signal-Finder oder Kamera-Tracking für räumliche Zuordnung nutzen",
+                        "Bei AR langsam bewegen; bei Tracking-Hinweis neu ausrichten",
                     ]),
                     .callout("Systematisch absuchen ist zuverlässiger als einem einzelnen Pfeil zu folgen. BLE liefert keine exakte Richtung."),
                 ],
-                keywords: ["tipps", "schnell", "suche", "bewegen", "heatmap", "live", "kamera"]
+                keywords: ["tipps", "schnell", "suche", "bewegen", "heatmap", "live", "kamera", "ar"]
             ),
             FAQItem(
                 id: "finden-genauigkeit",
