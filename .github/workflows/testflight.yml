@@ -49,6 +49,7 @@ on:
       - cursor/watcher-card-radius-b100
       - cursor/ar-path-thinner-b100
       - cursor/heading-cone-compass-b100
+      - cursor/ar-path-no-flicker-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
