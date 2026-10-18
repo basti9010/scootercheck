@@ -29,6 +29,7 @@ on:
       - cursor/faq-accordion-polish-b100
       - cursor/menu-full-swipe-open-b100
       - cursor/e-scooter-menu-labels-b100
+      - cursor/signal-finder-ble-filter-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

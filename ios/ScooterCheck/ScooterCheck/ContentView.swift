@@ -371,7 +371,7 @@ struct ContentView: View {
             }
 
             Picker("Suchmodus", selection: $ble.showOnlyLikelyScooters) {
-                Text("Scooter").tag(true)
+                Text("E-Scooter").tag(true)
                 Text("Alle BLE-Geräte").tag(false)
             }
             .pickerStyle(.segmented)
