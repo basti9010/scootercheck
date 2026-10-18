@@ -36,6 +36,7 @@ on:
       - cursor/ui-proportion-redesign-b100
       - cursor/remove-geraetesuche-hub-b100
       - cursor/faq-list-redesign-b100
+      - cursor/signal-finder-no-crosshair-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -62,7 +63,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: FAQ & Wissensbasis als schlanke iOS-Liste — ohne Themenkarten und Themenanzahlen, kompakte Suche, lokale Accordion-Animation' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Signal-Finder Live ohne Fadenkreuz — Orientierung über die Heatmap-Farben' }}"
 
     steps:
       - name: Checkout

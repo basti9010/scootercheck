@@ -253,7 +253,7 @@ private extension FAQCatalog {
                         "E-Scooter finden → Signal-Finder → Gerät wählen",
                         "E-Scooter auslesen → Gerät → Detail → „Gerät aufspüren“ (soweit verfügbar)",
                     ]),
-                    .paragraph("In der Live-Ansicht bleibst du zentriert. Sichtbar sind u. a. Blickrichtung, Suchpfad, weiche Signalfläche (Heatmap) und der bisher stärkste Bereich."),
+                    .paragraph("In der Live-Ansicht bleibst du zentriert. Sichtbar sind u. a. Blickrichtung, Suchpfad und die weiche Signalfläche (Heatmap) — grün stärker, rot schwächer."),
                     .callout("Keine GPS-Ortung des Scooters und keine exakten Meterangaben — nur relative Signalstufen und Orientierungshilfe."),
                 ],
                 keywords: [
@@ -270,7 +270,7 @@ private extension FAQCatalog {
                         "Gerät wählen und Messung starten",
                         "Langsam gehen und Signal + Trend beobachten",
                         "Blickrichtung und Wärmer/Kälter nutzen",
-                        "Zum markierten besten Bereich zurückkehren, wenn das Signal schwächer wird",
+                        "Zu den grünen / starken Heatmap-Bereichen zurückkehren, wenn das Signal schwächer wird",
                         "iPhone frei halten (nicht stark mit dem Körper abschirmen)",
                         "Indoor: Kamera-Tracking in den Optionen kann Abstände verbessern",
                     ]),
