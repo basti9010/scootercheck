@@ -1667,18 +1667,31 @@ struct ContentView: View {
         if menuDragStartProgress == nil {
             menuDragStartProgress = menuProgress
         }
-        let next = base + translationWidth / panelWidth
+        // Beim Öffnen: kleiner Wisch zieht das Panel schon weit auf (nicht erst bei voller Breite).
+        let opening = base < 0.05
+        let gain: CGFloat = opening ? 2.6 : 1.0
+        let next = base + (translationWidth / panelWidth) * gain
         menuProgress = min(1, max(0, next))
     }
 
     private func endMenuDrag(translationWidth: CGFloat, predictedWidth: CGFloat, panelWidth: CGFloat) {
+        let startedClosed = (menuDragStartProgress ?? menuProgress) < 0.05
         defer { menuDragStartProgress = nil }
         guard panelWidth > 1 else {
             setMenuOpen(menuProgress > 0.5)
             return
         }
+        // Vom linken Rand: jedes klare Aufwischen öffnet das Menü vollständig.
+        if startedClosed {
+            let openFully = translationWidth > 18
+                || predictedWidth > 40
+                || menuProgress > 0.12
+            setMenuOpen(openFully)
+            return
+        }
+        // Geöffnetes Menü zuschieben: erst bei klarer Gegenbewegung schließen.
         let projected = menuProgress + (predictedWidth - translationWidth) * 0.35 / panelWidth
-        let shouldOpen = projected > 0.45 || (menuProgress > 0.15 && predictedWidth > 280)
+        let shouldOpen = projected > 0.35 || (menuProgress > 0.55 && predictedWidth > -120)
         setMenuOpen(shouldOpen)
     }
 
@@ -1745,14 +1758,14 @@ struct ContentView: View {
     }
 
     private func menuDragGesture(panelWidth: CGFloat, fromEdgeOnly: Bool) -> some Gesture {
-        DragGesture(minimumDistance: 10, coordinateSpace: .local)
+        DragGesture(minimumDistance: 8, coordinateSpace: .local)
             .onChanged { value in
                 let horizontal = abs(value.translation.width)
                 let vertical = abs(value.translation.height)
                 // Vertikal scrolls nicht als Menü-Geste werten.
-                guard horizontal > vertical * 0.85 else { return }
+                guard horizontal > vertical * 0.75 else { return }
                 if fromEdgeOnly, menuDragStartProgress == nil {
-                    guard value.startLocation.x <= 36 else { return }
+                    guard value.startLocation.x <= 40 else { return }
                     guard value.translation.width > 0 else { return }
                 }
                 updateMenuDrag(translationWidth: value.translation.width, panelWidth: panelWidth)
