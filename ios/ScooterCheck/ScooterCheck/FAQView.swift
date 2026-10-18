@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Native FAQ- & Wissensbasis-Seite (Dark Mode, ruhige Accordion-Hierarchie).
+/// FAQ & Wissensbasis — schlanke iOS-Listenoptik (keine Themen-Kartenstapel).
 struct FAQView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var expandedIDs: Set<String> = []
-    /// Geöffnete Hauptkategorie (nur eine gleichzeitig — außer bei aktiver Suche).
+    /// Nur eine Hauptkategorie gleichzeitig (außer bei Suche: alle Treffer-Gruppen offen).
     @State private var expandedCategoryID: String? = "verstehen"
 
     private var isSearching: Bool {
@@ -22,31 +22,30 @@ struct FAQView: View {
                 Theme.bg.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                            PageTitle(text: "FAQ & Wissensbasis")
-                            Text("Themen aufklappen oder suchen — Antworten erscheinen darunter.")
-                                .font(Theme.secondary)
-                                .foregroundStyle(Theme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                    VStack(alignment: .leading, spacing: 0) {
+                        PageTitle(text: "FAQ & Wissensbasis")
+                            .padding(.bottom, Theme.Space.md)
 
                         searchField
+                            .padding(.bottom, Theme.Space.xxl)
 
                         if categories.isEmpty {
                             emptySearch
+                                .padding(.bottom, Theme.Space.xxl)
                         } else {
-                            VStack(alignment: .leading, spacing: Theme.Space.listGap) {
-                                ForEach(categories) { category in
-                                    categoryBlock(category)
-                                        .id(category.id)
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
+                                    categorySection(category)
+                                    if index < categories.count - 1 {
+                                        categoryDivider
+                                    }
                                 }
                             }
                         }
 
                         AppCopyrightFooter()
                             .frame(maxWidth: .infinity)
-                            .padding(.top, Theme.Space.sm)
+                            .padding(.top, Theme.Space.xxl)
                             .padding(.bottom, Theme.Space.xxl)
                     }
                     .scootPagePadding()
@@ -59,20 +58,23 @@ struct FAQView: View {
             }
             .preferredColorScheme(.dark)
             .onChange(of: query) { _ in
-                if isSearching {
-                    expandedIDs = []
-                } else if expandedCategoryID == nil {
-                    expandedCategoryID = "verstehen"
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    if isSearching {
+                        expandedIDs = []
+                    } else if expandedCategoryID == nil {
+                        expandedCategoryID = "verstehen"
+                    }
                 }
             }
         }
     }
 
     private var searchField: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Space.md) {
             Image(systemName: "magnifyingglass")
+                .font(.system(size: Theme.Icon.standard, weight: .medium))
                 .foregroundStyle(Theme.textMuted)
-            TextField("Suche (z. B. Signal-Finder, Soft Unlock…)", text: $query)
+            TextField("FAQ durchsuchen …", text: $query)
                 .font(Theme.fieldValue)
                 .foregroundStyle(Theme.textPrimary)
                 .autocorrectionDisabled()
@@ -82,19 +84,21 @@ struct FAQView: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: Theme.Icon.standard))
                         .foregroundStyle(Theme.textMuted)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Suche löschen")
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, Theme.Space.md)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+        .padding(.horizontal, Theme.Space.md)
+        .padding(.vertical, 10)
+        .background(Theme.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                .stroke(Theme.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                .stroke(Theme.border, lineWidth: Theme.Control.hairline)
         )
     }
 
@@ -102,23 +106,31 @@ struct FAQView: View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text("Keine Treffer")
                 .font(Theme.cardTitle)
-                .foregroundStyle(Theme.textTitle)
-            Text("Versuche Stichworte wie Signal-Finder, Geräte-Wächter, Soft Unlock, Firmware oder Register.")
-                .font(Theme.body)
+                .foregroundStyle(Theme.textPrimary)
+            Text("Versuche andere Stichworte — die Suche prüft Fragen und Antworten.")
+                .font(Theme.secondary)
                 .foregroundStyle(Theme.textSecondary)
-                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .scootCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, Theme.Space.md)
+    }
+
+    private var categoryDivider: some View {
+        Rectangle()
+            .fill(Theme.line)
+            .frame(height: Theme.Control.hairline)
+            .padding(.leading, Theme.Icon.nav + Theme.Space.md)
     }
 
     @ViewBuilder
-    private func categoryBlock(_ category: FAQCategory) -> some View {
+    private func categorySection(_ category: FAQCategory) -> some View {
         let isOpen = isSearching || expandedCategoryID == category.id
 
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.28)) {
+                guard !isSearching else { return }
+                withAnimation(.easeInOut(duration: 0.26)) {
                     if expandedCategoryID == category.id {
                         expandedCategoryID = nil
                     } else {
@@ -129,55 +141,51 @@ struct FAQView: View {
             } label: {
                 HStack(spacing: Theme.Space.md) {
                     Image(systemName: category.symbolName)
-                        .font(.system(size: Theme.Icon.standard, weight: .semibold))
+                        .font(.system(size: Theme.Icon.standard, weight: .medium))
                         .foregroundStyle(Theme.accent)
-                        .frame(width: Theme.Icon.nav)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(category.title)
-                            .font(Theme.sectionTitle)
-                            .foregroundStyle(Theme.textTitle)
-                        Text("\(category.items.count) Themen")
-                            .font(Theme.meta)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.down")
+                        .frame(width: Theme.Icon.nav, alignment: .center)
+
+                    Text(category.title)
+                        .font(.system(size: 16.5, weight: .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: Theme.Space.sm)
+
+                    Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.textMuted)
-                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                        .rotationEffect(.degrees(isOpen ? 90 : 0))
                 }
-                .padding(Theme.Space.cardPadding)
-                .background(Theme.card)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                        .stroke(Theme.border, lineWidth: Theme.Control.hairline)
-                )
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityHint(isOpen ? "Themen zuklappen" : "Themen aufklappen")
+            .accessibilityHint(isOpen ? "Kategorie zuklappen" : "Kategorie aufklappen")
             .disabled(isSearching)
 
-            // Inhalt bleibt im lokalen Block; Höhe clippt nach oben — kein slide-from-top.
             FAQExpandablePanel(isExpanded: isOpen) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(category.items) { item in
-                        FAQAccordionRow(
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(category.items.enumerated()), id: \.element.id) { index, item in
+                        FAQQuestionRow(
                             item: item,
-                            isExpanded: expandedIDs.contains(item.id)
+                            isExpanded: expandedIDs.contains(item.id),
+                            showDivider: index < category.items.count - 1
                         ) {
                             toggleQuestion(item.id)
                         }
                     }
                 }
                 .padding(.leading, Theme.Space.lg)
-                .padding(.top, Theme.Space.sm)
+                .padding(.bottom, Theme.Space.sm)
             }
         }
+        .id(category.id)
     }
 
     private func toggleQuestion(_ id: String) {
-        withAnimation(.easeInOut(duration: 0.26)) {
+        withAnimation(.easeInOut(duration: 0.24)) {
             if expandedIDs.contains(id) {
                 expandedIDs.remove(id)
             } else {
@@ -187,9 +195,8 @@ struct FAQView: View {
     }
 }
 
-// MARK: - Local height accordion (kein move-from-top)
+// MARK: - Local height accordion
 
-/// Klappt Inhalt lokal unter dem Header auf; clippt von oben nach unten (kein slide-from-top).
 private struct FAQExpandablePanel<Content: View>: View {
     let isExpanded: Bool
     @ViewBuilder let content: Content
@@ -206,11 +213,12 @@ private struct FAQExpandablePanel<Content: View>: View {
     }
 }
 
-// MARK: - Question rows
+// MARK: - Question / answer rows
 
-private struct FAQAccordionRow: View {
+private struct FAQQuestionRow: View {
     let item: FAQItem
     let isExpanded: Bool
+    let showDivider: Bool
     let onToggle: () -> Void
 
     var body: some View {
@@ -218,24 +226,22 @@ private struct FAQAccordionRow: View {
             Button(action: onToggle) {
                 HStack(alignment: .top, spacing: Theme.Space.md) {
                     Text(item.question)
-                        .font(Theme.cardTitle)
-                        .foregroundStyle(Theme.textTitle)
+                        .font(.system(size: 15.5, weight: .regular))
+                        .foregroundStyle(Theme.textPrimary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: Theme.Space.sm)
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .padding(.top, 2)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .padding(.top, 3)
                 }
-                .padding(.horizontal, Theme.Space.lg)
-                .padding(.vertical, 14)
+                .padding(.vertical, 12)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityHint(isExpanded ? "Zuklappen" : "Aufklappen")
+            .accessibilityHint(isExpanded ? "Antwort zuklappen" : "Antwort aufklappen")
 
             FAQExpandablePanel(isExpanded: isExpanded) {
                 VStack(alignment: .leading, spacing: Theme.Space.md) {
@@ -243,16 +249,16 @@ private struct FAQAccordionRow: View {
                         segmentView(segment)
                     }
                 }
-                .padding(.horizontal, Theme.Space.lg)
-                .padding(.bottom, Theme.Space.lg)
+                .padding(.bottom, Theme.Space.md)
+                .padding(.trailing, Theme.Space.sm)
+            }
+
+            if showDivider {
+                Rectangle()
+                    .fill(Theme.line.opacity(0.85))
+                    .frame(height: Theme.Control.hairline)
             }
         }
-        .background(Theme.card.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                .stroke(Theme.border.opacity(0.9), lineWidth: 1)
-        )
     }
 
     @ViewBuilder
@@ -260,51 +266,46 @@ private struct FAQAccordionRow: View {
         switch segment {
         case .paragraph(let text):
             Text(text)
-                .font(Theme.body)
-                .foregroundStyle(Theme.textBody)
-                .lineSpacing(5)
+                .font(.system(size: 14.5, weight: .regular))
+                .foregroundStyle(Theme.textSecondary)
+                .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)
         case .bullets(let items):
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(items, id: \.self) { line in
                     HStack(alignment: .top, spacing: Theme.Space.sm) {
                         Text("•")
+                            .font(.system(size: 14.5, weight: .regular))
                             .foregroundStyle(Theme.accent)
                         Text(line)
-                            .font(Theme.body)
-                            .foregroundStyle(Theme.textBody)
-                            .lineSpacing(4)
+                            .font(.system(size: 14.5, weight: .regular))
+                            .foregroundStyle(Theme.textSecondary)
+                            .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
         case .callout(let text):
-            FAQCalloutBanner(text: text)
+            FAQInlineCallout(text: text)
         }
     }
 }
 
-private struct FAQCalloutBanner: View {
+private struct FAQInlineCallout: View {
     let text: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.circle.fill")
+        HStack(alignment: .top, spacing: Theme.Space.sm) {
+            Image(systemName: "info.circle")
+                .font(.system(size: Theme.Icon.compact, weight: .medium))
                 .foregroundStyle(Theme.accent)
                 .padding(.top, 1)
             Text(text)
-                .font(Theme.body)
-                .foregroundStyle(Theme.textBody)
-                .lineSpacing(4)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(Theme.textSecondary)
+                .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(Theme.Space.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.accent.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Theme.accent.opacity(0.35), lineWidth: 1)
-        )
+        .padding(.vertical, 2)
     }
 }
