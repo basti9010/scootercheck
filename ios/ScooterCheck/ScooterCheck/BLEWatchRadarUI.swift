@@ -144,58 +144,58 @@ struct BLEWatcherSettingsCard: View {
 struct BLEWatchListScreen: View {
     @ObservedObject private var store = BLEWatchStore.shared
     var onSelect: ((BLEWatchTarget) -> Void)?
-    var onClose: (() -> Void)?
+    /// Zurück zur Funktionsübersicht „E-Scooter finden“.
+    var onBack: (() -> Void)?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if store.targets.isEmpty {
-                    VStack(alignment: .leading, spacing: Theme.Space.md) {
-                        Text("Keine Wächter aktiv")
-                            .font(Theme.sectionTitle)
-                            .foregroundStyle(Theme.textPrimary)
-                        Text("Aktiviere den Geräte-Wächter in der Geräte-Detailansicht für einen bekannten Scooter oder ein BLE-Gerät.")
-                            .font(Theme.body)
-                            .foregroundStyle(Theme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text("Maximal \(BLEWatchConfig.maxActiveTargets) gleichzeitig. Manuelles Beenden der App kann die Hintergrundüberwachung stoppen.")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer()
-                    }
-                    .padding(Theme.Space.xl)
-                } else {
-                    List {
-                        ForEach(store.targets) { target in
-                            watchRow(target)
-                                .listRowBackground(Theme.card)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        store.remove(id: target.id)
-                                        BLEWatchService.shared.updateBackgroundScanIfNeeded()
-                                    } label: {
-                                        Label("Entfernen", systemImage: "trash")
-                                    }
+        VStack(alignment: .leading, spacing: 0) {
+            FindSubpageHeader(
+                title: "Geräte-Wächter",
+                subtitle: "Gespeicherte Geräte automatisch wiedererkennen.",
+                onBack: onBack
+            )
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.top, Theme.Space.sm)
+            .padding(.bottom, Theme.Space.md)
+
+            if store.targets.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Space.md) {
+                    Text("Keine Wächter aktiv")
+                        .font(Theme.sectionTitle)
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("Aktiviere den Geräte-Wächter in der Geräte-Detailansicht für einen bekannten Scooter oder ein BLE-Gerät.")
+                        .font(Theme.body)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Maximal \(BLEWatchConfig.maxActiveTargets) gleichzeitig. Manuelles Beenden der App kann die Hintergrundüberwachung stoppen.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, Theme.Space.xl)
+            } else {
+                List {
+                    ForEach(store.targets) { target in
+                        watchRow(target)
+                            .listRowBackground(Theme.card)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    store.remove(id: target.id)
+                                    BLEWatchService.shared.updateBackgroundScanIfNeeded()
+                                } label: {
+                                    Label("Entfernen", systemImage: "trash")
                                 }
-                        }
-                    }
-                    .scrollContentBackground(.hidden)
-                }
-            }
-            .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Geräte-Wächter")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if let onClose {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Schließen", action: onClose)
-                            .foregroundStyle(Theme.accent)
+                            }
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .listStyle(.plain)
             }
-            .preferredColorScheme(.dark)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Theme.bg.ignoresSafeArea())
+        .preferredColorScheme(.dark)
     }
 
     private func watchRow(_ target: BLEWatchTarget) -> some View {

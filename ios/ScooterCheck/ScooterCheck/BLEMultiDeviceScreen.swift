@@ -39,28 +39,16 @@ struct BLEMultiDeviceScreen: View {
     }
 
     private var header: some View {
-        HStack {
-            Button {
+        FindSubpageHeader(
+            title: "Geräte beobachten",
+            subtitle: "\(monitor.observed.count) ausgewählt",
+            onBack: {
                 monitor.stop()
                 onClose()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 44, height: 44)
             }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Geräte beobachten")
-                    .font(Theme.cardTitle)
-                    .foregroundStyle(Theme.textPrimary)
-                Text("\(monitor.observed.count) ausgewählt")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, Theme.Space.lg)
-        .frame(height: Theme.Chrome.headerHeight)
+        )
+        .padding(.horizontal, Theme.Space.xl)
+        .padding(.vertical, Theme.Space.sm)
     }
 
     private var emptyState: some View {
