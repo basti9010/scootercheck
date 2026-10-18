@@ -34,6 +34,7 @@ on:
       - cursor/ble-list-sort-filter-b100
       - cursor/menu-edge-swipe-fix-b100
       - cursor/ui-proportion-redesign-b100
+      - cursor/remove-geraetesuche-hub-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

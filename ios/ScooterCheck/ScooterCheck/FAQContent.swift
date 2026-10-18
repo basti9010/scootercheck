@@ -197,15 +197,14 @@ private extension FAQCatalog {
                 id: "finden-was",
                 question: "Was ist „E-Scooter finden“?",
                 segments: [
-                    .paragraph("„E-Scooter finden“ ist der zentrale Bereich für Suche, Radar, Überwachung und signalbasierte Annäherung."),
-                    .paragraph("Im Hauptmenü öffnest du eine Übersicht mit vier Funktionen:"),
+                    .paragraph("„E-Scooter finden“ ist der zentrale Bereich für Radar, Überwachung und signalbasierte Annäherung."),
+                    .paragraph("Im Hauptmenü öffnest du eine Übersicht mit drei Funktionen:"),
                     .bullets([
-                        "Gerätesuche — Bluetooth-Geräte entdecken und auslesen",
                         "E-Scooter-Radar — erkennt automatisch plausible E-Scooter in der Nähe",
                         "Geräte-Wächter — benachrichtigt dich, wenn gespeicherte Geräte wieder erkannt werden",
                         "Signal-Finder — untersucht Signalstärken, um dich einem Gerät anzunähern",
                     ]),
-                    .paragraph("Das technische Diagnose-Auslesen liegt zusätzlich unter „E-Scooter auslesen“."),
+                    .paragraph("Zum technischen Auslesen nutzt du „E-Scooter auslesen“."),
                     .callout("ScooterCheck bestimmt keinen exakten Standort und ersetzt keine GPS-Ortung. Alle Suchfunktionen arbeiten mit Bluetooth-Signalen."),
                 ],
                 keywords: [
@@ -802,9 +801,8 @@ private extension FAQCatalog {
                 id: "scooter-finden",
                 question: "Was macht „E-Scooter finden“?",
                 segments: [
-                    .paragraph("„E-Scooter finden“ bündelt Gerätesuche, E-Scooter-Radar, Geräte-Wächter und Signal-Finder. Diagnose-Auslesen liegt unter „E-Scooter auslesen“."),
+                    .paragraph("„E-Scooter finden“ bündelt E-Scooter-Radar, Geräte-Wächter und Signal-Finder. Diagnose-Auslesen liegt unter „E-Scooter auslesen“."),
                     .bullets([
-                        "Gerätesuche",
                         "Automatisches Radar",
                         "Hintergrund-Wächter mit Benachrichtigung",
                         "Signal-Finder mit Live-Heatmap zur Annäherung",
