@@ -2154,20 +2154,13 @@ struct ContentView: View {
 
     @ViewBuilder
     private func historySwipeActions(for entry: ProtocolHistoryStore.Entry) -> some View {
-        // Reihenfolge links→rechts nach Wisch: Öffnen · Teilen · Archiv/Restore · Löschen
-        Button {
-            openHistoryEntry(entry)
+        // Trailing swipeActions: first declared sits at the trailing edge (rechts).
+        // Gewünschte Sicht links→rechts: Öffnen · Teilen · Archiv/Restore · Löschen
+        Button(role: .destructive) {
+            requestHistoryDelete(ids: Set([entry.id]))
         } label: {
-            Label("Öffnen", systemImage: "doc.text.magnifyingglass")
+            Label("Löschen", systemImage: "trash")
         }
-        .tint(Theme.accent)
-
-        Button {
-            shareHistory(ids: Set([entry.id]))
-        } label: {
-            Label("Teilen", systemImage: "square.and.arrow.up")
-        }
-        .tint(.gray)
 
         if historyShelf == .archive {
             Button {
@@ -2185,11 +2178,19 @@ struct ContentView: View {
             .tint(Color.white.opacity(0.55))
         }
 
-        Button(role: .destructive) {
-            requestHistoryDelete(ids: Set([entry.id]))
+        Button {
+            shareHistory(ids: Set([entry.id]))
         } label: {
-            Label("Löschen", systemImage: "trash")
+            Label("Teilen", systemImage: "square.and.arrow.up")
         }
+        .tint(.gray)
+
+        Button {
+            openHistoryEntry(entry)
+        } label: {
+            Label("Öffnen", systemImage: "doc.text.magnifyingglass")
+        }
+        .tint(Theme.accent)
     }
 
     @ViewBuilder
@@ -2265,7 +2266,20 @@ struct ContentView: View {
     }
 
     private var historySelectionActionBar: some View {
+        // Links→rechts: Öffnen (nur Einzelwahl) · Teilen · Archiv/Restore · Löschen
         HStack(spacing: 0) {
+            if selectedHistoryIds.count == 1,
+               let id = selectedHistoryIds.first,
+               let entry = visibleHistoryEntries.first(where: { $0.id == id }) {
+                historyActionButton(
+                    title: "Öffnen",
+                    systemImage: "doc.text.magnifyingglass",
+                    tint: Theme.accent,
+                    enabled: true
+                ) {
+                    openHistoryEntry(entry)
+                }
+            }
             historyActionButton(
                 title: "Teilen",
                 systemImage: "square.and.arrow.up",
