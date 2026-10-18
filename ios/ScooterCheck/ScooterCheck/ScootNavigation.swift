@@ -68,28 +68,3 @@ extension View {
         animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.page, value: value)
     }
 }
-
-// MARK: - Find routes (Hashable für NavigationPath)
-
-enum ScooterFindRoute: String, Hashable, CaseIterable {
-    case radar
-    case watch
-    case signalFinder
-
-    init?(destination: ScooterFindDestination) {
-        switch destination {
-        case .hub: return nil
-        case .radar: self = .radar
-        case .watch: self = .watch
-        case .signalFinder: self = .signalFinder
-        }
-    }
-
-    var destination: ScooterFindDestination {
-        switch self {
-        case .radar: return .radar
-        case .watch: return .watch
-        case .signalFinder: return .signalFinder
-        }
-    }
-}

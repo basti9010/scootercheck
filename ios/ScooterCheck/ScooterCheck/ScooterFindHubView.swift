@@ -9,45 +9,44 @@ enum ScooterFindDestination: Equatable {
 }
 
 /// Zentrale Übersicht: E-Scooter-Radar, Geräte-Wächter, Signal-Finder.
-/// Unterseiten per nativem `NavigationStack` (Slide + Edge-Swipe-Zurück).
+///
+/// Unterseiten gleiten lokal im Inhaltsbereich — **ohne** verschachtelten
+/// `NavigationStack`, damit App-Header / ScooterCheck-Wordmark und Side-Menü
+/// fest bleiben und nicht mitrutschen.
 struct ScooterFindHubView: View {
     @ObservedObject var ble: BleClient
     @Binding var destination: ScooterFindDestination
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var path = NavigationPath()
-    /// Verhindert Ping-Pong zwischen Path und Destination.
-    @State private var isApplyingDestination = false
-    @State private var presentedRoute: ScooterFindRoute?
-
     var body: some View {
-        NavigationStack(path: $path) {
+        ZStack {
+            // Hub bleibt gemountet unter den Unterseiten → Zurückwischen zeigt ihn,
+            // Chrome darüber (ContentView) wird nicht mitanimiert.
             hubContent
-                .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(for: ScooterFindRoute.self) { route in
-                    findRouteView(route)
-                        .toolbar(.hidden, for: .navigationBar)
-                        .scootInteractivePopGesture()
-                }
-        }
-        .onAppear { syncPath(from: destination, animated: false) }
-        .onChange(of: destination) { newValue in
-            syncPath(from: newValue, animated: true)
-        }
-        .onChange(of: path.count) { count in
-            guard !isApplyingDestination else { return }
-            if count == 0 {
-                presentedRoute = nil
-                if destination != .hub {
-                    destination = .hub
-                }
+                .opacity(destination == .hub ? 1 : 0)
+                .allowsHitTesting(destination == .hub)
+                .accessibilityHidden(destination != .hub)
+
+            if destination != .hub {
+                findDestinationContent
+                    .scootPushTransition(reduceMotion: reduceMotion)
+                    .scootEdgeBackGesture {
+                        destination = .hub
+                    }
+                    .zIndex(1)
             }
         }
+        .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.page, value: destination)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Kein Überlaufen unter Header/Menü während der Slide-Animation.
+        .clipped()
     }
 
     @ViewBuilder
-    private func findRouteView(_ route: ScooterFindRoute) -> some View {
-        switch route {
+    private var findDestinationContent: some View {
+        switch destination {
+        case .hub:
+            EmptyView()
         case .radar:
             ScooterFinderView(
                 ble: ble,
@@ -110,46 +109,6 @@ struct ScooterFindHubView: View {
             }
             .scootPagePadding()
             .padding(.top, Theme.Space.sm)
-        }
-    }
-
-    private func syncPath(from destination: ScooterFindDestination, animated: Bool) {
-        let target = ScooterFindRoute(destination: destination)
-        if target == presentedRoute {
-            // Bereits sichtbar — kein erneuter Push (verhindert Doppelanimation).
-            if target == nil, !path.isEmpty {
-                // Inkonsistenz bereinigen
-            } else {
-                return
-            }
-        }
-
-        isApplyingDestination = true
-        let anim: Animation? = animated
-            ? (reduceMotion ? Theme.Motion.reduced : Theme.Motion.page)
-            : nil
-
-        if let target {
-            var next = NavigationPath()
-            next.append(target)
-            if let anim {
-                withAnimation(anim) { path = next }
-            } else {
-                path = next
-            }
-            presentedRoute = target
-        } else {
-            if let anim {
-                withAnimation(anim) { path = NavigationPath() }
-            } else {
-                path = NavigationPath()
-            }
-            presentedRoute = nil
-        }
-
-        // Nach Path-Update wieder freigeben (nächster RunLoop).
-        DispatchQueue.main.async {
-            isApplyingDestination = false
         }
     }
 }
