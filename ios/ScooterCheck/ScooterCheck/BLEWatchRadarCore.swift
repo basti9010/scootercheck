@@ -692,7 +692,7 @@ final class BLERadarService: ObservableObject {
         isEnabled = on
         let event = BLESearchEvent(
             type: on ? .coarseMode : .searchEnded,
-            title: on ? "Scooter-Radar aktiviert" : "Scooter-Radar deaktiviert"
+            title: on ? "E-Scooter-Radar aktiviert" : "E-Scooter-Radar deaktiviert"
         )
         timelineEvents.append(event)
         if timelineEvents.count > 100 {

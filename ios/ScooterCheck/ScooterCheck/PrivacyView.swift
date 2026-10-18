@@ -223,7 +223,7 @@ private struct PrivacyPermissionsPanel: View {
             statusRow(title: "Kamera", value: cameraLabel)
             statusRow(title: "Fotos", value: photosLabel)
             statusRow(title: "Standort", value: locationLabel)
-            statusRow(title: "Bewegung", value: "Vom System bei Nutzung von „Scooter finden“ angefragt")
+            statusRow(title: "Bewegung", value: "Vom System bei Nutzung von „E-Scooter finden“ angefragt")
 
             Button {
                 if let url = URL(string: UIApplication.openSettingsURLString) {

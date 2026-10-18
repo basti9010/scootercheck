@@ -185,42 +185,42 @@ private extension FAQCatalog {
     )
 }
 
-// MARK: - 3. Scooter finden
+// MARK: - 3. E-Scooter finden
 
 private extension FAQCatalog {
     static let finden = FAQCategory(
         id: "finden",
-        title: "Scooter finden",
+        title: "E-Scooter finden",
         symbolName: "magnifyingglass",
         items: [
             FAQItem(
                 id: "finden-was",
-                question: "Was ist „Scooter finden“?",
+                question: "Was ist „E-Scooter finden“?",
                 segments: [
-                    .paragraph("„Scooter finden“ ist der zentrale Bereich für Radar, Überwachung und signalbasierte Annäherung."),
+                    .paragraph("„E-Scooter finden“ ist der zentrale Bereich für Radar, Überwachung und signalbasierte Annäherung."),
                     .paragraph("Im Hauptmenü öffnest du eine Übersicht mit drei Funktionen:"),
                     .bullets([
-                        "Scooter-Radar — erkennt automatisch plausible E-Scooter in der Nähe",
+                        "E-Scooter-Radar — erkennt automatisch plausible E-Scooter in der Nähe",
                         "Geräte-Wächter — benachrichtigt dich, wenn gespeicherte Geräte wieder erkannt werden",
                         "Signal-Finder — untersucht Signalstärken, um dich einem Gerät anzunähern",
                     ]),
-                    .paragraph("Zum technischen Auslesen eines Scooters nutzt du im Menü „E Scooter auslesen“."),
+                    .paragraph("Zum technischen Auslesen nutzt du im Menü „E-Scooter auslesen“."),
                     .callout("ScooterCheck bestimmt keinen exakten Standort und ersetzt keine GPS-Ortung. Alle Suchfunktionen arbeiten mit Bluetooth-Signalen."),
                 ],
                 keywords: [
-                    "scooter finden", "scooter suchen", "finden", "suche", "hub", "übersicht",
-                    "e scooter auslesen", "auslesen", "radar", "wächter", "signal-finder", "ortung", "standort",
+                    "e-scooter finden", "scooter finden", "scooter suchen", "finden", "suche", "hub", "übersicht",
+                    "e-scooter auslesen", "auslesen", "radar", "wächter", "signal-finder", "ortung", "standort",
                 ]
             ),
             FAQItem(
                 id: "finden-radar",
-                question: "Was ist der Scooter-Radar?",
+                question: "Was ist der E-Scooter-Radar?",
                 segments: [
-                    .paragraph("Der Scooter-Radar sucht automatisch nach Bluetooth-Signalen, die zu unterstützten E-Scootern passen können."),
+                    .paragraph("Der E-Scooter-Radar sucht automatisch nach Bluetooth-Signalen, die zu unterstützten E-Scootern passen können."),
                     .paragraph("Bei plausiblen Treffern mit ausreichendem Signal kann eine Benachrichtigung erscheinen. Du brauchst kein Zielgerät vorzuwählen."),
-                    .callout("Ein beliebiges BLE-Gerät (z. B. Smart-Home) wird nicht allein wegen eines Namensfragments als Scooter erkannt."),
+                    .callout("Ein beliebiges BLE-Gerät (z. B. Smart-Home) wird nicht allein wegen eines Namensfragments als E-Scooter erkannt."),
                 ],
-                keywords: ["radar", "scooter-radar", "automatisch", "benachrichtigung", "alarm"]
+                keywords: ["radar", "scooter-radar", "e-scooter-radar", "automatisch", "benachrichtigung", "alarm"]
             ),
             FAQItem(
                 id: "finden-waechter",
@@ -232,7 +232,7 @@ private extension FAQCatalog {
                         "Benachrichtigung, wenn das Gerät später wieder erkannt wird",
                         "Einstellungen zu Ton, Haptik, Mindestsignal und Abklingzeit",
                     ]),
-                    .paragraph("Unter „Scooter finden → Geräte-Wächter“ siehst du alle aktiven Wächter. Manuelles Beenden der App kann die Hintergrundüberwachung stoppen."),
+                    .paragraph("Unter „E-Scooter finden → Geräte-Wächter“ siehst du alle aktiven Wächter. Manuelles Beenden der App kann die Hintergrundüberwachung stoppen."),
                 ],
                 keywords: ["wächter", "geräte-wächter", "ble-wächter", "benachrichtigung", "hintergrund", "überwachung"]
             ),
@@ -243,8 +243,8 @@ private extension FAQCatalog {
                     .paragraph("Der Signal-Finder hilft bei der Annäherung an ein gewähltes Gerät anhand der Bluetooth-Signalstärke (RSSI) und deiner Bewegung."),
                     .paragraph("Zwei Zugangswege:"),
                     .bullets([
-                        "Scooter finden → Signal-Finder → Gerät wählen",
-                        "E Scooter auslesen → Gerät → Detail → „Gerät aufspüren“ (soweit verfügbar)",
+                        "E-Scooter finden → Signal-Finder → Gerät wählen",
+                        "E-Scooter auslesen → Gerät → Detail → „Gerät aufspüren“ (soweit verfügbar)",
                     ]),
                     .paragraph("In der Live-Ansicht bleibst du zentriert. Sichtbar sind u. a. Blickrichtung, Suchpfad, weiche Signalfläche (Heatmap) und der bisher stärkste Bereich."),
                     .callout("Keine GPS-Ortung des Scooters und keine exakten Meterangaben — nur relative Signalstufen und Orientierungshilfe."),
@@ -792,17 +792,17 @@ private extension FAQCatalog {
             ),
             FAQItem(
                 id: "scooter-finden",
-                question: "Was macht „Scooter finden“?",
+                question: "Was macht „E-Scooter finden“?",
                 segments: [
-                    .paragraph("„Scooter finden“ bündelt Scooter-Radar, Geräte-Wächter und Signal-Finder. Das Auslesen selbst liegt unter „E Scooter auslesen“."),
+                    .paragraph("„E-Scooter finden“ bündelt E-Scooter-Radar, Geräte-Wächter und Signal-Finder. Das Auslesen selbst liegt unter „E-Scooter auslesen“."),
                     .bullets([
                         "Automatisches Radar",
                         "Hintergrund-Wächter mit Benachrichtigung",
                         "Signal-Finder mit Live-Heatmap zur Annäherung",
                     ]),
-                    .callout("Details stehen im FAQ-Kapitel „Scooter finden“. Keine GPS-Ortung — nur Bluetooth-Signalhilfe."),
+                    .callout("Details stehen im FAQ-Kapitel „E-Scooter finden“. Keine GPS-Ortung — nur Bluetooth-Signalhilfe."),
                 ],
-                keywords: ["finden", "richtung", "rssi", "signal", "nähe", "wächter", "radar", "signal-finder", "auslesen"]
+                keywords: ["finden", "e-scooter finden", "richtung", "rssi", "signal", "nähe", "wächter", "radar", "signal-finder", "auslesen"]
             ),
         ]
     )

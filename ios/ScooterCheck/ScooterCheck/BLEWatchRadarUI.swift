@@ -259,7 +259,7 @@ struct BLERadarControlsCard: View {
         VStack(alignment: .leading, spacing: Theme.Space.md) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Scooter-Radar")
+                    Text("E-Scooter-Radar")
                         .font(Theme.secondary.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
                     Text("Meldet E-Scooter mit ausreichend starkem BLE-Signal.")
@@ -274,7 +274,7 @@ struct BLERadarControlsCard: View {
                 ))
                 .labelsHidden()
                 .tint(Theme.accent)
-                .accessibilityLabel("Scooter-Radar")
+                .accessibilityLabel("E-Scooter-Radar")
             }
 
             if radar.isEnabled {
