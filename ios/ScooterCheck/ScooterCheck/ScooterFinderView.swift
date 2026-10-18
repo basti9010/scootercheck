@@ -79,8 +79,16 @@ struct ScooterFinderView: View {
             Group {
                 if isRadarBrowsing {
                     radarBrowseContent
+                        .scootEdgeBackGesture {
+                            radar.endSession()
+                            radarBrowseMode = false
+                            onBackToHub?()
+                        }
                 } else {
                     selectionContent
+                        .scootEdgeBackGesture {
+                            onBackToHub?()
+                        }
                 }
             }
 
@@ -96,16 +104,12 @@ struct ScooterFinderView: View {
             }
 
             if isFinding {
+                // Edge-Zurück liegt in BLESearchScreen (Speichern-Dialog), nicht hier —
+                // sonst würde die Hub-Geste Messungen still verwerfen.
                 BLESearchScreen(engine: searchEngine) {
                     endFinding()
                 }
                 .scootPushTransition(reduceMotion: reduceMotion)
-                .scootEdgeBackGesture {
-                    if searchEngine.isActive {
-                        searchEngine.stop(discardSession: true)
-                    }
-                    endFinding()
-                }
                 .zIndex(2)
             }
         }

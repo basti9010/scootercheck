@@ -29,6 +29,10 @@ struct BLESearchScreen: View {
             }
         }
         .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade, value: engine.surfaceMode)
+        .scootEdgeBackGesture {
+            // Wie Zurück-Button: Speichern-/Verwerfen-Dialog, kein stilles Verwerfen.
+            showEndDialog = true
+        }
         .onAppear {
             radar.startSession(enableRadar: radar.isEnabled)
             BLESearchLiveActivityController.shared.start(deviceName: engine.deviceName)

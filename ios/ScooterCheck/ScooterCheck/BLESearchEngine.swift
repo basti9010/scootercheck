@@ -807,18 +807,21 @@ final class BLESearchEngine: NSObject, ObservableObject {
         if arSpatialSamples.count > 600 {
             arSpatialSamples.removeFirst(arSpatialSamples.count - 600)
         }
-        // Bei Stillstand: bestehenden lokalen Punkt verfeinern (letzte Samples gleicher Zelle)
-        bestZoneEstimator.ingest(samples: arSpatialSamples)
+        // Nur aktuelle Tracking-Epoche — nach Neuausrichten keine alten Koordinaten mischen.
+        let epoch = visualTracker.sessionEpoch
+        let epochSamples = arSpatialSamples.filter { $0.sessionEpoch == epoch }
+        bestZoneEstimator.ingest(samples: epochSamples)
         arBestZone = bestZoneEstimator.confirmed
     }
 
     private func updateARGuidance() {
         let cur = pathSnapshot.current
+        let epochCount = arSpatialSamples.filter { $0.sessionEpoch == visualTracker.sessionEpoch }.count
         arGuidance = guidanceController.update(
             trend: trend,
             signalLost: signalClass == .lost,
             trackingHealthy: surfaceMode != .ar || visualTracker.state == .tracking,
-            sampleCount: arSpatialSamples.count,
+            sampleCount: epochCount,
             bestZone: arBestZone,
             currentX: cur?.x ?? relativeX,
             currentY: cur?.y ?? relativeY,
