@@ -32,6 +32,7 @@ on:
       - cursor/signal-finder-ble-filter-b100
       - cursor/find-subpage-header-b100
       - cursor/ble-list-sort-filter-b100
+      - cursor/menu-edge-swipe-fix-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

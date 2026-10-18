@@ -11,6 +11,8 @@ struct ContentView: View {
     @State private var menuProgress: CGFloat = 0
     /// Basis-Progress zu Beginn einer Menü-Wischgeste (nil = kein Drag aktiv).
     @State private var menuDragStartProgress: CGFloat?
+    /// Edge-Open-Geste aktiv — Streifen darf mittendrin nicht verschwinden.
+    @State private var isEdgeOpeningMenu = false
     @State private var showFAQ = false
     @State private var showPrivacy = false
     @State private var auslesenListSort: BleDeviceListSort = .signal
@@ -1670,42 +1672,57 @@ struct ContentView: View {
 
     private func setMenuOpen(_ open: Bool) {
         menuDragStartProgress = nil
+        isEdgeOpeningMenu = false
         withAnimation(Theme.Motion.drawer) {
             menuProgress = open ? 1 : 0
         }
     }
 
-    private func updateMenuDrag(translationWidth: CGFloat, panelWidth: CGFloat) {
-        guard panelWidth > 1 else { return }
-        let base = menuDragStartProgress ?? menuProgress
+    private func beginMenuDrag() {
         if menuDragStartProgress == nil {
             menuDragStartProgress = menuProgress
         }
-        // Beim Öffnen: kleiner Wisch zieht das Panel schon weit auf (nicht erst bei voller Breite).
-        let opening = base < 0.05
-        let gain: CGFloat = opening ? 2.6 : 1.0
+    }
+
+    private func updateMenuDrag(translationWidth: CGFloat, panelWidth: CGFloat) {
+        guard panelWidth > 1 else { return }
+        beginMenuDrag()
+        let base = menuDragStartProgress ?? 0
+        // Beim Öffnen: kleiner Wisch zieht das Panel schon weit auf.
+        let opening = base < 0.05 || isEdgeOpeningMenu
+        let gain: CGFloat = opening ? 3.2 : 1.0
         let next = base + (translationWidth / panelWidth) * gain
         menuProgress = min(1, max(0, next))
     }
 
-    private func endMenuDrag(translationWidth: CGFloat, predictedWidth: CGFloat, panelWidth: CGFloat) {
-        let startedClosed = (menuDragStartProgress ?? menuProgress) < 0.05
-        defer { menuDragStartProgress = nil }
+    private func endMenuDrag(
+        translationWidth: CGFloat,
+        predictedWidth: CGFloat,
+        panelWidth: CGFloat,
+        velocityX: CGFloat = 0
+    ) {
+        let startedClosed = isEdgeOpeningMenu || (menuDragStartProgress ?? menuProgress) < 0.05
+        defer {
+            menuDragStartProgress = nil
+            isEdgeOpeningMenu = false
+        }
         guard panelWidth > 1 else {
             setMenuOpen(menuProgress > 0.5)
             return
         }
-        // Vom linken Rand: jedes klare Aufwischen öffnet das Menü vollständig.
+        // Vom linken Rand: jeder klare Rechtswisch öffnet vollständig.
         if startedClosed {
-            let openFully = translationWidth > 18
-                || predictedWidth > 40
-                || menuProgress > 0.12
+            let openFully = translationWidth > 12
+                || velocityX > 280
+                || predictedWidth > 24
+                || menuProgress > 0.08
             setMenuOpen(openFully)
             return
         }
-        // Geöffnetes Menü zuschieben: erst bei klarer Gegenbewegung schließen.
+        // Geöffnetes Menü zuschieben.
         let projected = menuProgress + (predictedWidth - translationWidth) * 0.35 / panelWidth
-        let shouldOpen = projected > 0.35 || (menuProgress > 0.55 && predictedWidth > -120)
+        let shouldOpen = projected > 0.35
+            || (menuProgress > 0.55 && predictedWidth > -120 && velocityX > -400)
         setMenuOpen(shouldOpen)
     }
 
@@ -1738,13 +1755,13 @@ struct ContentView: View {
             let panelWidth = Theme.Chrome.drawerPanelWidth(screenWidth: geo.size.width)
             // Nie 0 melden lassen — sonst rutscht der Drawer-Header in die Statusleiste.
             let safeTop = Theme.Chrome.resolvedSafeAreaTop(geo.safeAreaInsets.top)
-            let edgeWidth: CGFloat = 28
+            let edgeOpenEnabled = screen != .result && (menuProgress < 0.02 || isEdgeOpeningMenu)
             ZStack(alignment: .leading) {
                 Color.black.opacity(0.55 * Double(menuProgress))
                     .ignoresSafeArea()
                     .onTapGesture { setMenuOpen(false) }
                     .allowsHitTesting(menuProgress > 0.05)
-                    .gesture(menuDragGesture(panelWidth: panelWidth, fromEdgeOnly: false))
+                    .gesture(menuCloseDragGesture(panelWidth: panelWidth))
 
                 sideMenuPanel
                     .padding(.top, safeTop)
@@ -1754,42 +1771,52 @@ struct ContentView: View {
                     // Gleicher Progress wie die Wordmark — nur X, gleiche Y.
                     .offset(x: -panelWidth * (1 - menuProgress))
                     .allowsHitTesting(menuProgress > 0.5)
-                    .gesture(menuDragGesture(panelWidth: panelWidth, fromEdgeOnly: false))
+                    .gesture(menuCloseDragGesture(panelWidth: panelWidth))
 
-                // Linker Rand: Menü aufziehen, auch wenn der Drawer noch geschlossen ist.
-                // Nur dieser Streifen fängt Touches — der restliche Overlay bleibt durchlässig.
-                if menuProgress < 0.05, screen != .result {
-                    Color.clear
-                        .frame(width: edgeWidth)
-                        .frame(maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                        .gesture(menuDragGesture(panelWidth: panelWidth, fromEdgeOnly: true))
-                        .accessibilityLabel("Menü aufziehen")
-                }
+                // UIKit-Edge-Pan: bleibt während des Öffnens aktiv (kein Destroy bei Progress > 0).
+                MenuLeftEdgeOpenBridge(
+                    isEnabled: edgeOpenEnabled,
+                    edgeWidth: 56,
+                    onBegan: {
+                        isEdgeOpeningMenu = true
+                        beginMenuDrag()
+                    },
+                    onChanged: { translationX in
+                        updateMenuDrag(translationWidth: translationX, panelWidth: panelWidth)
+                    },
+                    onEnded: { translationX, velocityX in
+                        endMenuDrag(
+                            translationWidth: translationX,
+                            predictedWidth: translationX + velocityX * 0.18,
+                            panelWidth: panelWidth,
+                            velocityX: velocityX
+                        )
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .allowsHitTesting(edgeOpenEnabled)
+                .accessibilityLabel("Menü aufziehen")
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea()
     }
 
-    private func menuDragGesture(panelWidth: CGFloat, fromEdgeOnly: Bool) -> some Gesture {
-        DragGesture(minimumDistance: 8, coordinateSpace: .local)
+    private func menuCloseDragGesture(panelWidth: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .local)
             .onChanged { value in
+                guard menuProgress > 0.05 || menuDragStartProgress != nil else { return }
                 let horizontal = abs(value.translation.width)
                 let vertical = abs(value.translation.height)
-                // Vertikal scrolls nicht als Menü-Geste werten.
-                guard horizontal > vertical * 0.75 else { return }
-                if fromEdgeOnly, menuDragStartProgress == nil {
-                    guard value.startLocation.x <= 40 else { return }
-                    guard value.translation.width > 0 else { return }
-                }
+                guard horizontal > vertical * 0.7 else { return }
                 updateMenuDrag(translationWidth: value.translation.width, panelWidth: panelWidth)
             }
             .onEnded { value in
-                guard menuDragStartProgress != nil || menuProgress > 0.02 else { return }
+                guard menuDragStartProgress != nil || menuProgress > 0.05 else { return }
                 endMenuDrag(
                     translationWidth: value.translation.width,
                     predictedWidth: value.predictedEndTranslation.width,
-                    panelWidth: panelWidth
+                    panelWidth: panelWidth,
+                    velocityX: 0
                 )
             }
     }

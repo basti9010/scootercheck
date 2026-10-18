@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Branding
 
@@ -724,5 +725,101 @@ struct AppCopyrightFooter: View {
             .font(Theme.caption)
             .foregroundStyle(Theme.textMuted)
             .accessibilityLabel(line)
+    }
+}
+
+// MARK: - Side menu left-edge open (UIKit — zuverlässiger als SwiftUI-Clear-Strip)
+
+/// Schmaler linker Rand: Touches außerhalb gehen durch; Edge-Pan öffnet das Menü.
+struct MenuLeftEdgeOpenBridge: UIViewRepresentable {
+    var isEnabled: Bool
+    var edgeWidth: CGFloat = 52
+    var onBegan: () -> Void
+    var onChanged: (_ translationX: CGFloat) -> Void
+    var onEnded: (_ translationX: CGFloat, _ velocityX: CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onBegan: onBegan, onChanged: onChanged, onEnded: onEnded)
+    }
+
+    func makeUIView(context: Context) -> MenuLeftEdgeHitView {
+        let view = MenuLeftEdgeHitView()
+        view.backgroundColor = .clear
+        view.isMultipleTouchEnabled = false
+        view.edgeWidth = edgeWidth
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
+        pan.cancelsTouchesInView = false
+        pan.maximumNumberOfTouches = 1
+        view.addGestureRecognizer(pan)
+        context.coordinator.pan = pan
+        return view
+    }
+
+    func updateUIView(_ uiView: MenuLeftEdgeHitView, context: Context) {
+        uiView.edgeWidth = edgeWidth
+        uiView.isUserInteractionEnabled = isEnabled
+        context.coordinator.pan?.isEnabled = isEnabled
+        context.coordinator.onBegan = onBegan
+        context.coordinator.onChanged = onChanged
+        context.coordinator.onEnded = onEnded
+    }
+
+    final class Coordinator: NSObject {
+        var onBegan: () -> Void
+        var onChanged: (CGFloat) -> Void
+        var onEnded: (CGFloat, CGFloat) -> Void
+        var pan: UIPanGestureRecognizer?
+        private var didBegin = false
+
+        init(
+            onBegan: @escaping () -> Void,
+            onChanged: @escaping (CGFloat) -> Void,
+            onEnded: @escaping (CGFloat, CGFloat) -> Void
+        ) {
+            self.onBegan = onBegan
+            self.onChanged = onChanged
+            self.onEnded = onEnded
+        }
+
+        @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
+            guard let view = gesture.view else { return }
+            let t = gesture.translation(in: view)
+            let v = gesture.velocity(in: view)
+
+            switch gesture.state {
+            case .began:
+                didBegin = false
+                // Nur nach rechts vom linken Rand starten.
+                guard t.x >= 0 || abs(v.x) > abs(v.y) else { return }
+            case .changed:
+                guard t.x > 0 || didBegin else { return }
+                if !didBegin {
+                    // Vertikal-Scroll nicht stehlen.
+                    guard abs(t.x) >= abs(t.y) * 0.55, t.x > 4 else { return }
+                    didBegin = true
+                    onBegan()
+                }
+                onChanged(t.x)
+            case .ended, .cancelled, .failed:
+                if didBegin {
+                    onEnded(t.x, v.x)
+                }
+                didBegin = false
+            default:
+                break
+            }
+        }
+    }
+}
+
+final class MenuLeftEdgeHitView: UIView {
+    var edgeWidth: CGFloat = 52
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard isUserInteractionEnabled, !isHidden, alpha > 0.01 else { return nil }
+        guard point.x >= 0, point.x <= edgeWidth, point.y >= 0, point.y <= bounds.height else {
+            return nil
+        }
+        return self
     }
 }
