@@ -1,0 +1,126 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+  padding: calc(var(--header-h) + 1.5rem) 0 3rem;
+  overflow: clip;
+  display: grid;
+  align-items: center;
+}
+
+.hero__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(ellipse 70% 50% at 70% 40%, rgba(107, 219, 194, 0.12), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 15% 80%, rgba(57, 205, 189, 0.06), transparent 50%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 55%, #141a22 100%);
+}
+
+.hero__glow {
+  position: absolute;
+  z-index: -1;
+  width: min(70vw, 520px);
+  height: min(70vw, 520px);
+  left: 55%;
+  top: 42%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107, 219, 194, 0.22), transparent 68%);
+  filter: blur(10px);
+  pointer-events: none;
+  animation: hero-glow 3.6s ease-in-out infinite;
+}
+
+@keyframes hero-glow {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.hero__layout {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.hero__brand {
+  margin: 0 0 0.85rem;
+  font-size: clamp(2.1rem, 7vw, 3.6rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.hero__brand span {
+  color: var(--accent);
+}
+
+.hero h1 {
+  margin: 0 0 1.1rem;
+  font-size: clamp(1.55rem, 3.8vw, 2.45rem);
+  font-weight: 500;
+  max-width: 16ch;
+}
+
+.hero__lede {
+  margin: 0 0 1.75rem;
+  max-width: 34rem;
+  color: var(--text-muted);
+  font-size: clamp(1rem, 1.8vw, 1.125rem);
+  font-weight: 400;
+}
+
+.hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.hero__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: min(58vw, 420px);
+  will-change: transform;
+}
+
+.hero__radar-wrap {
+  position: absolute;
+  inset: -4% -8%;
+  z-index: 0;
+}
+
+.hero__stage .scooter-visual {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+}
+
+@media (min-width: 960px) {
+  .hero__layout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 1.5rem 2rem;
+  }
+
+  .hero__stage {
+    min-height: min(70vh, 560px);
+  }
+
+  .hero__stage .scooter-visual {
+    width: min(100%, 600px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__glow {
+    animation: none;
+  }
+}

@@ -1,0 +1,57 @@
+.scooter-visual {
+  position: relative;
+  width: min(100%, 640px);
+  margin-inline: auto;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.scooter-visual__float {
+  position: relative;
+  width: 100%;
+  will-change: transform;
+}
+
+.scooter-visual__img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 28px 60px rgba(0, 0, 0, 0.55));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.scooter-visual__sheen {
+  pointer-events: none;
+  position: absolute;
+  inset: 18% 22% 28%;
+  background: linear-gradient(
+    115deg,
+    transparent 40%,
+    rgba(107, 219, 194, 0.07) 48%,
+    transparent 58%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.65;
+  animation: sheen-drift 9s ease-in-out infinite;
+}
+
+@keyframes sheen-drift {
+  0%,
+  100% {
+    transform: translateX(-4%);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateX(4%);
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scooter-visual__sheen {
+    animation: none;
+    opacity: 0.35;
+  }
+}

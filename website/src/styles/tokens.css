@@ -1,0 +1,19 @@
+:root {
+  --bg: #12161c;
+  --bg-deep: #080c10;
+  --bg-elevated: #1a2028;
+  --accent: #6bdbc2;
+  --accent-strong: #39cdbd;
+  --text: #f5f7fa;
+  --text-muted: #9ca9b5;
+  --line: rgba(255, 255, 255, 0.08);
+  --warn: #fac747;
+  --danger: #f25959;
+  --ink: #0a0e12;
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --header-h: 4.25rem;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --max: 72rem;
+  --pad: clamp(1.25rem, 4vw, 3rem);
+}

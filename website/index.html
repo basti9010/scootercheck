@@ -1,261 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ScooterCheck — E-Scooter Diagnose, nur lesen</title>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/assets/app-icon.png" />
+    <link rel="apple-touch-icon" href="/assets/app-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="ScooterCheck prüft Ninebot- und Xiaomi-E-Scooter per Bluetooth: Manipulation erkennen, Bericht speichern. Keine Limit-Änderungen, kein Unlock."
+      content="ScooterCheck — Intelligente Bluetooth-Diagnose für E-Scooter. Technische Auffälligkeiten erkennen und nachvollziehbar dokumentieren."
     />
-    <meta name="theme-color" content="#12171C" />
-    <link rel="icon" type="image/png" href="assets/app-icon.png" />
-    <link rel="apple-touch-icon" href="assets/app-icon.png" />
+    <meta property="og:title" content="ScooterCheck" />
+    <meta
+      property="og:description"
+      content="Technologie erkennen. Manipulationen sichtbar machen."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/assets/scooter-cutout.webp" />
+    <meta name="theme-color" content="#12161C" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <title>ScooterCheck — Technologie erkennen. Manipulationen sichtbar machen.</title>
   </head>
   <body>
-    <a class="skip-link" href="#inhalt">Zum Inhalt</a>
-
-    <header class="site-header">
-      <a class="brand" href="#top" aria-label="ScooterCheck Start">
-        <img src="assets/logo.png" alt="" width="36" height="36" class="brand__mark" />
-        <span class="brand__word"><span>Scooter</span>Check</span>
-      </a>
-      <nav class="site-nav" aria-label="Hauptnavigation">
-        <a href="#ablauf">Ablauf</a>
-        <a href="#pruefung">Prüfung</a>
-        <a href="#modelle">Modelle</a>
-        <a href="#faq">FAQ</a>
-      </nav>
-      <a class="btn btn--ghost btn--sm" href="#download">App holen</a>
-    </header>
-
-    <main id="inhalt">
-      <section class="hero" id="top" aria-labelledby="hero-title">
-        <div class="hero__atmosphere" aria-hidden="true"></div>
-        <div class="hero__grid" aria-hidden="true"></div>
-
-        <div class="hero__visual">
-          <div class="hero__glow" aria-hidden="true"></div>
-          <img
-            class="hero__logo"
-            src="assets/logo.png"
-            alt="ScooterCheck Logo: E-Scooter mit Haken und Signal"
-            width="420"
-            height="420"
-          />
-        </div>
-
-        <div class="hero__copy">
-          <p class="brand-lockup" aria-hidden="true">
-            <span class="brand-lockup__mark"></span>
-            <span class="brand-lockup__word"><span>Scooter</span>Check</span>
-          </p>
-          <h1 id="hero-title">E-Scooter prüfen.<br />Nur lesen — nie ändern.</h1>
-          <p class="hero__lede">
-            Bluetooth-Diagnose für Ninebot und Xiaomi: Manipulation erkennen,
-            PDF-Protokoll speichern. Kein Tuning, kein Unlock, kein Flash.
-          </p>
-          <div class="hero__cta">
-            <a class="btn btn--primary" href="#download">Zur iOS-App</a>
-            <a class="btn btn--ghost" href="#ablauf">So funktioniert’s</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section--flow" id="ablauf" aria-labelledby="ablauf-title">
-        <div class="section__intro">
-          <h2 id="ablauf-title">Drei Schritte. Fertig.</h2>
-          <p>Vom BLE-Scan bis zum Protokoll — alles bleibt auf dem Gerät.</p>
-        </div>
-
-        <ol class="flow">
-          <li class="flow__step" style="--i: 0">
-            <span class="flow__num">01</span>
-            <h3>Scooter suchen</h3>
-            <p>
-              ScooterCheck listet BLE-Geräte in Reichweite — auch solche, die
-              unter iPhone-Einstellungen → Bluetooth nicht auftauchen.
-            </p>
-          </li>
-          <li class="flow__step" style="--i: 1">
-            <span class="flow__num">02</span>
-            <h3>Manipulation prüfen</h3>
-            <p>
-              Nach dem Handshake liest die App Register aus und vergleicht
-              Auslesewerte mit den Sollwerten des gewählten Profils.
-            </p>
-          </li>
-          <li class="flow__step" style="--i: 2">
-            <span class="flow__num">03</span>
-            <h3>Bericht speichern</h3>
-            <p>
-              Ergebnis als PDF und JSON exportieren — für Akte, Händler oder
-              die eigene Dokumentation. Offline auf dem iPhone.
-            </p>
-          </li>
-        </ol>
-      </section>
-
-      <section class="section section--check" id="pruefung" aria-labelledby="pruefung-title">
-        <div class="section__intro">
-          <h2 id="pruefung-title">Was die App bewertet</h2>
-          <p>
-            Jeder Fakt zeigt Auslesewert, Sollwert, Bewertung und Erläuterung —
-            im gleichen Teal-Dark-Look wie die App.
-          </p>
-        </div>
-
-        <div class="verdict-strip" role="list">
-          <div class="verdict" role="listitem" data-tone="stock">
-            <span class="verdict__dot"></span>
-            <span class="verdict__label">Regelkonform</span>
-            <span class="verdict__hint">Stock / Sollbereich</span>
-          </div>
-          <div class="verdict" role="listitem" data-tone="watch">
-            <span class="verdict__dot"></span>
-            <span class="verdict__label">Abweichend</span>
-            <span class="verdict__hint">Beobachten</span>
-          </div>
-          <div class="verdict" role="listitem" data-tone="tuned">
-            <span class="verdict__dot"></span>
-            <span class="verdict__label">Erheblich abweichend</span>
-            <span class="verdict__hint">Tuning-Verdacht</span>
-          </div>
-        </div>
-
-        <ul class="fact-list">
-          <li>
-            <strong>Geschwindigkeitslimit</strong>
-            <span>Soll D 20 / E 25&nbsp;km/h je Marktvariante</span>
-          </li>
-          <li>
-            <strong>Seriennummer &amp; Profil</strong>
-            <span>Zuordnung zu werkseitigen Präfixen und Modellfamilie</span>
-          </li>
-          <li>
-            <strong>Firmware-Hinweise</strong>
-            <span>Auffälligkeiten gegenüber typischen Stock-Ständen</span>
-          </li>
-          <li>
-            <strong>Protokoll-Export</strong>
-            <span>PDF-Bericht plus maschinenlesbares JSON</span>
-          </li>
-        </ul>
-      </section>
-
-      <section class="section section--models" id="modelle" aria-labelledby="modelle-title">
-        <div class="section__intro">
-          <h2 id="modelle-title">Unterstützte Modelle</h2>
-          <p>
-            BLE-Stack wird automatisch erkannt (Ninebot Enc2 / Xiaomi). Das Profil
-            steuert Sollwerte und Versuch-Reihenfolge.
-          </p>
-        </div>
-
-        <ul class="model-grid">
-          <li>Ninebot ZT3 Pro</li>
-          <li>Ninebot Max G30</li>
-          <li>Ninebot Max G3 / MAX3</li>
-          <li>Ninebot F-Serie</li>
-          <li>Ninebot D-Serie</li>
-          <li>Xiaomi M365 / Pro&nbsp;2</li>
-          <li>Xiaomi Scooter 3 / 4</li>
-        </ul>
-        <p class="section__note">
-          Hinweis: Neuere Xiaomi-Modelle mit 55&nbsp;AB sind ggf. nicht auslesbar.
-        </p>
-      </section>
-
-      <section class="section section--promise" aria-labelledby="promise-title">
-        <div class="promise">
-          <h2 id="promise-title">Nur Diagnose. Nie Eingriff.</h2>
-          <p>
-            ScooterCheck ändert keine Limits, flasht keine Firmware und kennt
-            keine Unlock-Kombos. Die Verbindung dient ausschließlich dem
-            Auslesen und Dokumentieren.
-          </p>
-        </div>
-      </section>
-
-      <section class="section section--faq" id="faq" aria-labelledby="faq-title">
-        <div class="section__intro">
-          <h2 id="faq-title">Kurz erklärt</h2>
-          <p>Die wichtigsten Punkte zur Infoseite und zur App.</p>
-        </div>
-
-        <div class="faq">
-          <details>
-            <summary>Brauche ich einen Mac?</summary>
-            <p>
-              Nein. Die App läuft nativ auf dem iPhone. TestFlight-Builds kommen
-              aus der Cloud (GitHub Actions / Codemagic).
-            </p>
-          </details>
-          <details>
-            <summary>Wo werden Protokolle gespeichert?</summary>
-            <p>
-              Offline auf dem Gerät. Du kannst PDF und JSON per AirDrop oder
-              Teilen weitergeben.
-            </p>
-          </details>
-          <details>
-            <summary>Warum sehe ich den Scooter nicht unter Bluetooth?</summary>
-            <p>
-              Viele Scooter erscheinen nicht in den iOS-Bluetooth-Einstellungen.
-              Tippe in der App auf „Scooter suchen“ — ScooterCheck listet BLE-Geräte
-              direkt.
-            </p>
-          </details>
-          <details>
-            <summary>Ändert die App etwas am Scooter?</summary>
-            <p>
-              Nein. Es gibt keine Limit-Änderungen, kein Firmware-Flash und keine
-              Unlock-Funktionen.
-            </p>
-          </details>
-        </div>
-      </section>
-
-      <section class="section section--download" id="download" aria-labelledby="download-title">
-        <div class="download">
-          <img
-            class="download__icon"
-            src="assets/app-icon.png"
-            alt=""
-            width="88"
-            height="88"
-          />
-          <h2 id="download-title">ScooterCheck auf dem iPhone</h2>
-          <p>
-            Native SwiftUI-App mit Core Bluetooth. Bundle-ID
-            <code>com.scootercheck.app</code>.
-          </p>
-          <a
-            class="btn btn--primary"
-            href="https://github.com/basti9010/scootercheck"
-            rel="noopener noreferrer"
-          >
-            Projekt auf GitHub
-          </a>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <a class="brand brand--footer" href="#top">
-        <img src="assets/logo.png" alt="" width="28" height="28" class="brand__mark" />
-        <span class="brand__word"><span>Scooter</span>Check</span>
-      </a>
-      <p>Nur lesende E-Scooter-Diagnose · iOS</p>
-    </footer>
-
-    <script src="script.js" defer></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
