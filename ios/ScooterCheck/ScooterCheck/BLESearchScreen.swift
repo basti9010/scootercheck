@@ -12,9 +12,10 @@ struct BLESearchScreen: View {
     @State private var showEndDialog = false
     @State private var expandSignalHistory = false
     @State private var expandTimeline = false
-    @State private var expandAnalyse = true
+    @State private var expandAnalyse = false
     @State private var expandWhyFingerprint = false
     @State private var showRawRssi = false
+    @State private var showOptions = false
 
     var body: some View {
         ScrollView {
@@ -31,6 +32,12 @@ struct BLESearchScreen: View {
                         .padding(.top, Theme.Space.sm)
                 }
                 heatmapCard
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.sm)
+                liveStatusCard
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.md)
+                compactStatsRow
                     .padding(.horizontal, Theme.Space.xl)
                     .padding(.top, Theme.Space.sm)
                 bottomPanel
@@ -57,6 +64,9 @@ struct BLESearchScreen: View {
             BLESearchLiveActivityController.shared.end()
         }
         .background(Theme.bg.ignoresSafeArea())
+        .sheet(isPresented: $showOptions) {
+            searchOptionsSheet
+        }
         .confirmationDialog(
             "Suchverlauf speichern?",
             isPresented: $showEndDialog,
@@ -98,9 +108,15 @@ struct BLESearchScreen: View {
                     .foregroundStyle(Theme.accent)
             }
             Spacer(minLength: 0)
-            Text(engine.durationText)
-                .font(Theme.caption.monospacedDigit())
-                .foregroundStyle(Theme.textMuted)
+            Button {
+                showOptions = true
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Optionen")
         }
         .padding(.horizontal, Theme.Space.lg)
         .frame(height: Theme.Chrome.headerHeight)
@@ -133,7 +149,20 @@ struct BLESearchScreen: View {
 
     private var heatmapCard: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            surfaceModePicker
+            HStack(spacing: Theme.Space.sm) {
+                surfaceModePicker
+                Spacer(minLength: 0)
+                HStack(spacing: 4) {
+                    Text("Stark")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.accent)
+                    heatmapLegendBar
+                        .frame(width: 72)
+                    Text("Schwach")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.hintOrange)
+                }
+            }
 
             ZStack(alignment: .topTrailing) {
                 Group {
@@ -143,22 +172,16 @@ struct BLESearchScreen: View {
                             heatmap: engine.heatmap
                         )
                     } else {
-                        ZStack {
-                            SignalHeatmapView(
-                                snapshot: engine.heatmap,
-                                pathSnapshot: engine.pathSnapshot,
-                                breadcrumbs: engine.breadcrumbs,
-                                showMeasurementDots: true
-                            )
-                            if engine.searchGrid.area?.isMeaningful == true {
-                                SearchGridOverlay(grid: engine.searchGrid)
-                                    .allowsHitTesting(false)
-                            }
-                        }
+                        SignalHeatmapView(
+                            snapshot: engine.heatmap,
+                            pathSnapshot: engine.pathSnapshot,
+                            breadcrumbs: engine.breadcrumbs,
+                            showMeasurementDots: false
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 340)
+                .frame(height: 380)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
@@ -183,54 +206,161 @@ struct BLESearchScreen: View {
                 .padding(10)
             }
 
-            HStack(spacing: Theme.Space.md) {
-                metricChip(title: "Messungen", value: "\(engine.measurementCount)")
-                metricChip(title: "Strecke", value: engine.pathLengthText)
-                metricChip(title: "Dauer", value: engine.durationText)
-            }
-
-            Text(engine.surfaceHint)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let coverage = engine.searchGrid.coveragePercentText {
-                Text(coverage)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
-            HStack {
-                Text("Stark")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.accent)
-                heatmapLegendBar
-                Text("Schwach")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.hintOrange)
-            }
-
-            HStack {
-                Label("Stärkster Bereich bisher", systemImage: "scope")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                Spacer()
-                Text(engine.strongestLabel)
-                    .font(Theme.caption.weight(.medium))
-                    .foregroundStyle(Theme.textPrimary)
-                if let rssi = engine.strongestRssi {
-                    Text("\(Int(rssi.rounded())) dBm")
-                        .font(Theme.caption.monospacedDigit())
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-
             if let hint = engine.positionHint {
                 Text(hint)
                     .font(Theme.caption)
                     .foregroundStyle(Theme.warn)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private var liveStatusCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Signal")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                Spacer()
+                Text("\(engine.signalClass.label) · \(rssiText)")
+                    .font(Theme.secondary.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            HStack(alignment: .firstTextBaseline) {
+                Text("Trend")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                Spacer()
+                Label(engine.trend.label, systemImage: engine.trend.symbol)
+                    .font(Theme.secondary.weight(.medium))
+                    .foregroundStyle(Theme.accent)
+            }
+
+            HStack(alignment: .firstTextBaseline) {
+                Text("Bester Bereich")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                Spacer()
+                Text(bestAreaText)
+                    .font(Theme.secondary.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+
+            if let guide = relativeDirectionGuide {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Richtung")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                    Spacer()
+                    Text(guide)
+                        .font(Theme.secondary.weight(.medium))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.08))
+                    Capsule()
+                        .fill(Theme.accent)
+                        .frame(width: max(8, geo.size.width * engine.signalClass.barLevel))
+                }
+            }
+            .frame(height: 8)
+        }
+        .padding(Theme.Space.lg)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+    }
+
+    private var compactStatsRow: some View {
+        HStack(spacing: 0) {
+            compactStat("Messungen", "\(engine.measurementCount)")
+            compactStatDivider
+            compactStat("Strecke", engine.pathLengthText)
+            compactStatDivider
+            compactStat("Dauer", engine.durationText)
+            if let ratio = engine.searchGrid.coverageRatio, engine.searchGrid.area?.isMeaningful == true {
+                compactStatDivider
+                compactStat("Fläche", String(format: "%.0f %%", ratio * 100))
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 6)
+        .background(Theme.card.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                .stroke(Theme.border, lineWidth: 1)
+        )
+    }
+
+    private var compactStatDivider: some View {
+        Rectangle()
+            .fill(Theme.border)
+            .frame(width: 1, height: 28)
+            .padding(.horizontal, 4)
+    }
+
+    private func compactStat(_ title: String, _ value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.system(size: 11, weight: .regular))
+                .foregroundStyle(Theme.textMuted)
+                .lineLimit(1)
+            Text(value)
+                .font(Theme.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var rssiText: String {
+        if let rssi = engine.smoothedRssi, engine.signalClass != .lost {
+            return "\(Int(rssi.rounded())) dBm"
+        }
+        return "—"
+    }
+
+    private var bestAreaText: String {
+        if let rssi = engine.strongestRssi {
+            return "\(engine.strongestLabel) · \(Int(rssi.rounded())) dBm"
+        }
+        return engine.strongestLabel
+    }
+
+    /// Grobe relative Richtung zum bisher stärksten Bereich (keine GPS-Ortung).
+    private var relativeDirectionGuide: String? {
+        guard let current = engine.pathSnapshot.current,
+              let heading = current.headingDegrees,
+              let cell = engine.heatmap.strongestCell else { return nil }
+        let snap = engine.heatmap
+        let tx = snap.originEast + (Double(cell.col) + 0.5) * snap.cellSize
+        let ty = snap.originNorth + (Double(cell.row) + 0.5) * snap.cellSize
+        let dx = tx - current.x
+        let dy = ty - current.y
+        guard hypot(dx, dy) >= 1.2 else { return "in der Nähe" }
+        var bearing = atan2(dx, dy) * 180 / .pi
+        if bearing < 0 { bearing += 360 }
+        var rel = bearing - heading
+        while rel < -180 { rel += 360 }
+        while rel > 180 { rel -= 360 }
+        switch rel {
+        case -22..<22: return "geradeaus"
+        case 22..<67: return "rechts vorne"
+        case 67..<112: return "rechts"
+        case 112..<157: return "rechts hinten"
+        case -67 ..< -22: return "links vorne"
+        case -112 ..< -67: return "links"
+        case -157 ..< -112: return "links hinten"
+        default: return "hinten"
         }
     }
 
@@ -246,26 +376,6 @@ struct BLESearchScreen: View {
         .pickerStyle(.segmented)
         .font(Theme.segment)
         .accessibilityLabel("Relativ oder Karte")
-    }
-
-    private func metricChip(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-            Text(value)
-                .font(Theme.secondary.weight(.semibold).monospacedDigit())
-                .foregroundStyle(Theme.textPrimary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
-                .stroke(Theme.border, lineWidth: 1)
-        )
     }
 
     private var heatmapLegendBar: some View {
@@ -285,75 +395,47 @@ struct BLESearchScreen: View {
 
     private var bottomPanel: some View {
         VStack(spacing: Theme.Space.md) {
-            SignalTrendIndicator(
-                signalClass: engine.signalClass,
-                trend: engine.trend,
-                smoothedRssi: engine.smoothedRssi,
-                barLevel: engine.signalClass.barLevel
-            )
-
-            HStack(spacing: Theme.Space.lg) {
-                Toggle(isOn: $engine.hapticsEnabled) {
-                    Text("Haptik")
-                        .font(Theme.secondary)
-                }
-                .tint(Theme.accent)
-                Toggle(isOn: $engine.audioEnabled) {
-                    Text("Ton")
-                        .font(Theme.secondary)
-                }
-                .tint(Theme.accent)
-            }
-            .foregroundStyle(Theme.textSecondary)
-
-            Toggle(isOn: Binding(
-                get: { engine.cameraTrackingEnabled },
-                set: { engine.setCameraTrackingEnabled($0) }
-            )) {
-                HStack(spacing: Theme.Space.sm) {
+            Button {
+                showOptions = true
+            } label: {
+                HStack {
+                    Label("Optionen", systemImage: "slider.horizontal.3")
+                        .font(Theme.secondary.weight(.medium))
+                    Spacer()
                     if engine.cameraTrackingEnabled {
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(
                                 engine.cameraTrackingHealthy
                                     ? Color(red: 0.32, green: 0.82, blue: 0.45)
                                     : Theme.danger
                             )
-                            .accessibilityLabel(
-                                engine.cameraTrackingHealthy
-                                    ? "Kamera-Tracking aktiv"
-                                    : "Kamera-Tracking inaktiv"
-                            )
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Kamera-Tracking")
-                            .font(Theme.secondary)
-                        Text(engine.cameraTrackingStatus)
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
                 }
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Theme.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+                        .stroke(Theme.border, lineWidth: 1)
+                )
             }
-            .tint(Theme.accent)
-            .foregroundStyle(Theme.textSecondary)
-
-            BLERadarControlsCard(radar: radar)
+            .buttonStyle(.plain)
 
             collapsibleSection(
                 title: "Signalverlauf",
                 expanded: $expandSignalHistory
             ) {
-                VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                    BLELiveRssiGraph(
-                        history: engine.signalHistory,
-                        showRaw: showRawRssi
-                    )
-                    .frame(height: 110)
-                    Toggle("Raw-RSSI anzeigen", isOn: $showRawRssi)
-                        .font(Theme.caption)
-                        .tint(Theme.accent)
-                        .foregroundStyle(Theme.textSecondary)
-                }
+                BLELiveRssiGraph(
+                    history: engine.signalHistory,
+                    showRaw: showRawRssi
+                )
+                .frame(height: 110)
             }
 
             collapsibleSection(
@@ -370,7 +452,7 @@ struct BLESearchScreen: View {
                 analyseContent
             }
 
-            Text("Messungen: \(engine.measurementCount) · Strecke: \(engine.pathLengthText) · keine exakte Ortung")
+            Text("Relative Signalfläche · keine exakte Ortung")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -383,6 +465,71 @@ struct BLESearchScreen: View {
         .padding(.top, Theme.Space.md)
         .padding(.bottom, Theme.Space.lg)
         .background(Theme.card.opacity(0.55))
+    }
+
+    private var searchOptionsSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    Toggle(isOn: $engine.hapticsEnabled) {
+                        Text("Haptik").font(Theme.secondary)
+                    }
+                    .tint(Theme.accent)
+
+                    Toggle(isOn: $engine.audioEnabled) {
+                        Text("Ton").font(Theme.secondary)
+                    }
+                    .tint(Theme.accent)
+
+                    Toggle(isOn: Binding(
+                        get: { engine.cameraTrackingEnabled },
+                        set: { engine.setCameraTrackingEnabled($0) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: Theme.Space.sm) {
+                                Text("Kamera-Tracking").font(Theme.secondary)
+                                if engine.cameraTrackingEnabled {
+                                    Image(systemName: "camera.fill")
+                                        .foregroundStyle(
+                                            engine.cameraTrackingHealthy
+                                                ? Color(red: 0.32, green: 0.82, blue: 0.45)
+                                                : Theme.danger
+                                        )
+                                }
+                            }
+                            Text(engine.cameraTrackingStatus)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .tint(Theme.accent)
+
+                    Toggle("Raw-RSSI im Signalverlauf", isOn: $showRawRssi)
+                        .font(Theme.secondary)
+                        .tint(Theme.accent)
+
+                    BLERadarControlsCard(radar: radar)
+
+                    Text(engine.surfaceHint)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(Theme.textSecondary)
+                .padding(Theme.Space.xl)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle("Optionen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Fertig") { showOptions = false }
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            .preferredColorScheme(.dark)
+        }
+        .presentationDetents([.medium, .large])
     }
 
     private var analyseContent: some View {
@@ -698,12 +845,12 @@ struct SearchGridOverlay: View {
     }
 }
 
-// MARK: - Heatmap canvas
+// MARK: - Heatmap canvas (weiche Signalfläche, kein Kachelraster)
 
 struct SignalHeatmapView: View {
     let snapshot: BLEHeatmapSnapshot
     var pathSnapshot: BLESearchPathSnapshot = .empty
-    /// Eingefrorene Messpunkte (RSSI zum Aufnahmezeitpunkt) — wie WLAN-Analyzer-Breadcrumbs.
+    /// Eingefrorene Messpunkte (RSSI zum Aufnahmezeitpunkt).
     var breadcrumbs: [BLEBreadcrumb] = []
     var showMeasurementDots: Bool = false
 
@@ -712,26 +859,20 @@ struct SignalHeatmapView: View {
             let bg = Path(CGRect(origin: .zero, size: size))
             context.fill(bg, with: .color(Theme.bg))
 
-            let cols = max(snapshot.cols, 1)
-            let rows = max(snapshot.rows, 1)
-            let cw = size.width / CGFloat(cols)
-            let rh = size.height / CGFloat(rows)
-
-            // Weiche Heatmap-Schicht zurückgenommen — Breadcrumbs sind die Hauptlesart
-            for r in 0..<rows {
-                for c in 0..<cols {
-                    let idx = r * cols + c
-                    guard idx < snapshot.cells.count, let cell = snapshot.cells[idx] else { continue }
-                    let conf = cell.samples > 0 ? cell.confidence * 0.55 : max(0.08, cell.confidence * 0.35)
-                    guard let color = BLEHeatmapProcessor.color(forRssi: cell.rssi, confidence: conf) else { continue }
-                    let rect = CGRect(
-                        x: CGFloat(c) * cw,
-                        y: size.height - CGFloat(r + 1) * rh,
-                        width: cw + 0.6,
-                        height: rh + 0.6
-                    )
-                    context.fill(Path(roundedRect: rect, cornerRadius: 1.2), with: .color(color.opacity(0.55)))
-                }
+            let paintPoints = Self.softPaintPoints(
+                breadcrumbs: breadcrumbs,
+                snapshot: snapshot
+            )
+            // Schwache Flächen zuerst, starke zuletzt → Hotspots bleiben lesbar
+            let ordered = paintPoints.sorted { $0.rssi < $1.rssi }
+            for point in ordered {
+                Self.drawSoftBlob(
+                    at: project(x: point.x, y: point.y, in: size, snapshot: snapshot),
+                    rssi: point.rssi,
+                    meters: snapshot.boundsMeters,
+                    size: size,
+                    context: &context
+                )
             }
 
             let poly: [(x: Double, y: Double)] = {
@@ -749,59 +890,165 @@ struct SignalHeatmapView: View {
                 }
                 context.stroke(
                     path,
-                    with: .color(Color.white.opacity(0.16)),
-                    style: StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round)
+                    with: .color(Color.white.opacity(0.14)),
+                    style: StrokeStyle(lineWidth: 4.0, lineCap: .round, lineJoin: .round)
                 )
                 context.stroke(
                     path,
-                    with: .color(Theme.accent.opacity(0.55)),
-                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+                    with: .color(Theme.accent.opacity(0.5)),
+                    style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)
                 )
             }
 
             if showMeasurementDots {
-                let dots: [BLEBreadcrumb] = {
-                    if !breadcrumbs.isEmpty { return Self.decimateBreadcrumbs(breadcrumbs, maxCount: 90) }
-                    // Fallback: Pfadpunkte ohne RSSI
-                    return poly.map { BLEBreadcrumb(x: $0.x, y: $0.y, rssi: -70) }
-                }()
-                for b in dots {
+                for b in Self.decimateBreadcrumbs(breadcrumbs, maxCount: 40) {
                     let pt = project(x: b.x, y: b.y, in: size, snapshot: snapshot)
-                    let fill = BLEHeatmapProcessor.color(forRssi: b.rssi, confidence: 0.92)
-                        ?? Theme.accent.opacity(0.55)
-                    let r: CGFloat = 7
-                    let oval = Path(ellipseIn: CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2))
-                    context.fill(oval, with: .color(fill.opacity(0.42)))
-                    let inner = Path(ellipseIn: CGRect(x: pt.x - 2.4, y: pt.y - 2.4, width: 4.8, height: 4.8))
-                    context.fill(inner, with: .color(fill.opacity(0.95)))
+                    let fill = Self.softColor(forRssi: b.rssi)
+                    let oval = Path(ellipseIn: CGRect(x: pt.x - 2.2, y: pt.y - 2.2, width: 4.4, height: 4.4))
+                    context.fill(oval, with: .color(fill.opacity(0.85)))
                 }
             }
 
-            if let last = pathSnapshot.current ?? poly.last.map({ BLEPathPoint(x: $0.x, y: $0.y) }) {
-                let pt = project(x: last.x, y: last.y, in: size, snapshot: snapshot)
-                var ring = Path()
-                ring.addEllipse(in: CGRect(x: pt.x - 11, y: pt.y - 11, width: 22, height: 22))
-                context.stroke(ring, with: .color(Theme.accent.opacity(0.45)), lineWidth: 1.5)
-                let dot = Path(ellipseIn: CGRect(x: pt.x - 4.5, y: pt.y - 4.5, width: 9, height: 9))
-                context.fill(dot, with: .color(Theme.accent))
+            // Stärkster Bereich — Fadenkreuz / Zielring
+            if let s = snapshot.strongestCell {
+                let wx = snapshot.originEast + (Double(s.col) + 0.5) * snapshot.cellSize
+                let wy = snapshot.originNorth + (Double(s.row) + 0.5) * snapshot.cellSize
+                let hot = project(x: wx, y: wy, in: size, snapshot: snapshot)
+                var outer = Path()
+                outer.addEllipse(in: CGRect(x: hot.x - 16, y: hot.y - 16, width: 32, height: 32))
+                context.stroke(outer, with: .color(Color.white.opacity(0.55)), lineWidth: 1.5)
+                var inner = Path()
+                inner.addEllipse(in: CGRect(x: hot.x - 7, y: hot.y - 7, width: 14, height: 14))
+                context.stroke(inner, with: .color(Theme.accent.opacity(0.95)), lineWidth: 1.6)
+                var cross = Path()
+                cross.move(to: CGPoint(x: hot.x - 11, y: hot.y))
+                cross.addLine(to: CGPoint(x: hot.x + 11, y: hot.y))
+                cross.move(to: CGPoint(x: hot.x, y: hot.y - 11))
+                cross.addLine(to: CGPoint(x: hot.x, y: hot.y + 11))
+                context.stroke(cross, with: .color(Color.white.opacity(0.7)), lineWidth: 1.1)
             }
 
-            if let s = snapshot.strongestCell {
-                let cx = (CGFloat(s.col) + 0.5) * cw
-                let cy = size.height - (CGFloat(s.row) + 0.5) * rh
+            // Standort + Blickrichtung
+            if let last = pathSnapshot.current ?? poly.last.map({ BLEPathPoint(x: $0.x, y: $0.y) }) {
+                let pt = project(x: last.x, y: last.y, in: size, snapshot: snapshot)
+                if let heading = last.headingDegrees ?? pathSnapshot.current?.headingDegrees {
+                    Self.drawHeadingCone(at: pt, headingDegrees: heading, context: &context)
+                }
                 var ring = Path()
-                ring.addEllipse(in: CGRect(x: cx - 11, y: cy - 11, width: 22, height: 22))
-                context.stroke(ring, with: .color(Color.white.opacity(0.75)), lineWidth: 1.5)
-                var cross = Path()
-                cross.move(to: CGPoint(x: cx - 7, y: cy))
-                cross.addLine(to: CGPoint(x: cx + 7, y: cy))
-                cross.move(to: CGPoint(x: cx, y: cy - 7))
-                cross.addLine(to: CGPoint(x: cx, y: cy + 7))
-                context.stroke(cross, with: .color(Color.white.opacity(0.65)), lineWidth: 1)
+                ring.addEllipse(in: CGRect(x: pt.x - 12, y: pt.y - 12, width: 24, height: 24))
+                context.stroke(ring, with: .color(Theme.accent.opacity(0.4)), lineWidth: 1.5)
+                let dot = Path(ellipseIn: CGRect(x: pt.x - 5, y: pt.y - 5, width: 10, height: 10))
+                context.fill(dot, with: .color(Theme.accent))
+                let core = Path(ellipseIn: CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4))
+                context.fill(core, with: .color(Color.white.opacity(0.9)))
             }
         }
-        .accessibilityLabel("Signal-Heatmap")
-        .accessibilityHint("Farben bleiben am Ort, bis dort neu gemessen wird. Pfad ist relative Bewegung — keine exakte Ortung.")
+        .accessibilityLabel("Signal-Finder Heatmap")
+        .accessibilityHint("Weiche Signalfläche. Farben bleiben am Ort, bis dort neu gemessen wird. Keine exakte Ortung.")
+    }
+
+    private struct SoftPaintPoint {
+        var x: Double
+        var y: Double
+        var rssi: Double
+    }
+
+    /// Frozen Breadcrumbs zuerst; sonst nur gemessene Zellen (kein Soft-Fill-Flackern).
+    private static func softPaintPoints(
+        breadcrumbs: [BLEBreadcrumb],
+        snapshot: BLEHeatmapSnapshot
+    ) -> [SoftPaintPoint] {
+        if !breadcrumbs.isEmpty {
+            return decimateBreadcrumbs(breadcrumbs, maxCount: 70).map {
+                SoftPaintPoint(x: $0.x, y: $0.y, rssi: $0.rssi)
+            }
+        }
+        var points: [SoftPaintPoint] = []
+        for r in 0..<snapshot.rows {
+            for c in 0..<snapshot.cols {
+                let idx = r * snapshot.cols + c
+                guard idx < snapshot.cells.count, let cell = snapshot.cells[idx], cell.samples > 0 else { continue }
+                let x = snapshot.originEast + (Double(c) + 0.5) * snapshot.cellSize
+                let y = snapshot.originNorth + (Double(r) + 0.5) * snapshot.cellSize
+                points.append(SoftPaintPoint(x: x, y: y, rssi: cell.rssi))
+            }
+        }
+        return points
+    }
+
+    private static func drawSoftBlob(
+        at center: CGPoint,
+        rssi: Double,
+        meters: Double,
+        size: CGSize,
+        context: inout GraphicsContext
+    ) {
+        let color = softColor(forRssi: rssi)
+        // Radius skaliert mit Zoom (~2,5–4 m weiche Ausstrahlung)
+        let metersPerPoint = max(meters, 1) / max(Double(size.width), 1)
+        let baseRadius = CGFloat(3.2 / metersPerPoint)
+        let rings: [(scale: CGFloat, alpha: Double)] = [
+            (1.00, 0.05),
+            (0.78, 0.08),
+            (0.58, 0.12),
+            (0.40, 0.18),
+            (0.24, 0.28),
+            (0.12, 0.42)
+        ]
+        for ring in rings {
+            let r = max(4, baseRadius * ring.scale)
+            let oval = Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
+            context.fill(oval, with: .color(color.opacity(ring.alpha)))
+        }
+    }
+
+    private static func drawHeadingCone(
+        at center: CGPoint,
+        headingDegrees: Double,
+        context: inout GraphicsContext
+    ) {
+        // Canvas Y zeigt nach unten; Heading 0 = Nord = negativ Y auf dem Canvas
+        let rad = (headingDegrees - 90) * .pi / 180
+        let length: CGFloat = 34
+        let tip = CGPoint(
+            x: center.x + CGFloat(cos(rad)) * length,
+            y: center.y + CGFloat(sin(rad)) * length
+        )
+        let leftRad = rad - 0.38
+        let rightRad = rad + 0.38
+        let left = CGPoint(
+            x: center.x + CGFloat(cos(leftRad)) * length * 0.72,
+            y: center.y + CGFloat(sin(leftRad)) * length * 0.72
+        )
+        let right = CGPoint(
+            x: center.x + CGFloat(cos(rightRad)) * length * 0.72,
+            y: center.y + CGFloat(sin(rightRad)) * length * 0.72
+        )
+        var cone = Path()
+        cone.move(to: center)
+        cone.addLine(to: left)
+        cone.addLine(to: tip)
+        cone.addLine(to: right)
+        cone.closeSubpath()
+        context.fill(cone, with: .color(Theme.accent.opacity(0.22)))
+        context.stroke(cone, with: .color(Theme.accent.opacity(0.55)), lineWidth: 1)
+    }
+
+    /// Mint → Gelb → Orange → Rot (stark → schwach).
+    private static func softColor(forRssi rssi: Double) -> Color {
+        let t = BLEHeatmapProcessor.normalizedStrength(rssi)
+        switch t {
+        case 0.72...1.0:
+            return Theme.accent
+        case 0.52..<0.72:
+            return Color(red: 0.48, green: 0.88, blue: 0.52)
+        case 0.36..<0.52:
+            return Color(red: 0.92, green: 0.82, blue: 0.28)
+        case 0.20..<0.36:
+            return Theme.hintOrange
+        default:
+            return Color(red: 0.78, green: 0.32, blue: 0.30)
+        }
     }
 
     private static func decimateBreadcrumbs(_ samples: [BLEBreadcrumb], maxCount: Int) -> [BLEBreadcrumb] {
