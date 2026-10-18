@@ -48,38 +48,38 @@ struct ScooterFindHubView: View {
 
     private var hubContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.md) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                VStack(alignment: .leading, spacing: Theme.Space.sm) {
                     PageTitle(text: "E-Scooter finden")
                     Text("Wähle eine Such- oder Analysefunktion")
-                        .font(Theme.body)
-                        .foregroundStyle(Theme.textBody)
+                        .font(Theme.secondary)
+                        .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                VStack(spacing: Theme.Space.sm) {
-                    findFunctionCard(
+                VStack(spacing: Theme.Space.listGap) {
+                    ScootFunctionCard(
                         title: "Gerätesuche",
                         subtitle: "Bluetooth-Geräte entdecken und auslesen.",
                         systemImage: "antenna.radiowaves.left.and.right"
                     ) {
                         destination = .deviceSearch
                     }
-                    findFunctionCard(
+                    ScootFunctionCard(
                         title: "E-Scooter-Radar",
                         subtitle: "Erkennt automatisch E-Scooter in deiner Nähe.",
                         systemImage: "dot.radiowaves.left.and.right"
                     ) {
                         destination = .radar
                     }
-                    findFunctionCard(
+                    ScootFunctionCard(
                         title: "Geräte-Wächter",
                         subtitle: "Benachrichtigt dich, wenn gespeicherte Geräte wieder erkannt werden.",
                         systemImage: "bell.badge"
                     ) {
                         destination = .watch
                     }
-                    findFunctionCard(
+                    ScootFunctionCard(
                         title: "Signal-Finder",
                         subtitle: "Untersuche Signalstärken, um dich einem Gerät anzunähern.",
                         systemImage: "viewfinder"
@@ -91,55 +91,10 @@ struct ScooterFindHubView: View {
                 AppCopyrightFooter()
                     .frame(maxWidth: .infinity)
                     .padding(.top, Theme.Space.sm)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, Theme.Space.xxl)
             }
-            .padding(.horizontal, Theme.Space.xl)
+            .scootPagePadding()
             .padding(.top, Theme.Space.sm)
         }
-    }
-
-    private func findFunctionCard(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: Theme.Space.md) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 28, height: 28)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                    Text(subtitle)
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.textMuted)
-            }
-            .padding(.horizontal, Theme.Space.lg)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                    .stroke(Theme.border, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
     }
 }

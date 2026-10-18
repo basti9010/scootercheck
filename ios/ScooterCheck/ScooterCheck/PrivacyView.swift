@@ -162,7 +162,7 @@ struct PrivacyTopicView: View {
                         .foregroundStyle(Theme.muted)
                         .padding(.bottom, 28)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Space.page)
                 .padding(.top, 8)
             }
         }

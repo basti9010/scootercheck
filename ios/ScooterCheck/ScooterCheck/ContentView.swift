@@ -156,7 +156,7 @@ struct ContentView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .scootPagePadding()
                         .padding(.top, 8)
                         .padding(.bottom, scrollBottomPadding)
                     }
@@ -747,7 +747,7 @@ struct ContentView: View {
                     Spacer()
                     AppCopyrightFooter()
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Space.page)
                 .padding(.vertical, 10)
             }
             .interactiveDismissDisabled(true)
@@ -1003,7 +1003,7 @@ struct ContentView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Space.page)
                 .padding(.top, 12)
                 .padding(.bottom, 16)
                 .background(.ultraThinMaterial)
@@ -1924,7 +1924,7 @@ struct ContentView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 24)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Space.page)
             }
         }
         .preferredColorScheme(.dark)
