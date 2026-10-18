@@ -22,6 +22,7 @@
 		A10000000000000000000039 /* PrivacyContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000039 /* PrivacyContentTests.swift */; };
 		A1000000000000000000002C /* ScooterFinderEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000002C /* ScooterFinderEngine.swift */; };
 		A1000000000000000000002D /* ScooterFinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000002D /* ScooterFinderView.swift */; };
+		A1000000000000000000004E /* ScooterFindHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004E /* ScooterFindHubView.swift */; };
 		A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000002E /* ScooterFinderMathTests.swift */; };
 		A1000000000000000000002F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000002F /* CoreLocation.framework */; };
 		A10000000000000000000030 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B10000000000000000000030 /* CoreMotion.framework */; };
@@ -96,6 +97,7 @@
 		B10000000000000000000039 /* PrivacyContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyContentTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000002C /* ScooterFinderEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterFinderEngine.swift; sourceTree = "<group>"; };
 		B1000000000000000000002D /* ScooterFinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterFinderView.swift; sourceTree = "<group>"; };
+		B1000000000000000000004E /* ScooterFindHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterFindHubView.swift; sourceTree = "<group>"; };
 		B1000000000000000000002E /* ScooterFinderMathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterFinderMathTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000002F /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		B10000000000000000000030 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
@@ -204,6 +206,7 @@
 				B10000000000000000000038 /* PrivacyInfo.xcprivacy */,
 				B1000000000000000000002C /* ScooterFinderEngine.swift */,
 				B1000000000000000000002D /* ScooterFinderView.swift */,
+				B1000000000000000000004E /* ScooterFindHubView.swift */,
 				B10000000000000000000040 /* BLESearchCore.swift */,
 				B10000000000000000000041 /* BLESearchEngine.swift */,
 				B10000000000000000000042 /* BLESearchScreen.swift */,
@@ -408,6 +411,7 @@
 				A10000000000000000000037 /* PrivacyView.swift in Sources */,
 				A1000000000000000000002C /* ScooterFinderEngine.swift in Sources */,
 				A1000000000000000000002D /* ScooterFinderView.swift in Sources */,
+				A1000000000000000000004E /* ScooterFindHubView.swift in Sources */,
 				A10000000000000000000040 /* BLESearchCore.swift in Sources */,
 				A10000000000000000000041 /* BLESearchEngine.swift in Sources */,
 				A10000000000000000000042 /* BLESearchScreen.swift in Sources */,

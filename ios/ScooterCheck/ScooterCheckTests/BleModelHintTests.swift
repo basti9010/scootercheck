@@ -89,6 +89,14 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertTrue(BleClient.isLikelyScooterName("Ninebot E45"))
         XCTAssertTrue(BleClient.isLikelyScooterName("F3 Pro"))
         XCTAssertFalse(BleClient.isLikelyScooterName("Nuki Smart Lock"))
+        XCTAssertFalse(BleClient.isLikelyScooterName("Shelly2PMG3-28372F3CFA5C"))
+    }
+
+    func testShellyHexF3IsNotNinebotF3() {
+        let hint = BleModelHint.recognize(bleName: "Shelly2PMG3-28372F3CFA5C")
+        XCTAssertNil(hint)
+        XCTAssertEqual(BleModelHint.recognize(bleName: "Ninebot F3")?.profile.family, .ninebotF3)
+        XCTAssertEqual(BleModelHint.recognize(bleName: "F3 Pro")?.profile.family, .ninebotF3)
     }
 
     func testMaxG3USStockRegionNotFlaggedOnUSProfile() {

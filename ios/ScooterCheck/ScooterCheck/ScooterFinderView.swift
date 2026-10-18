@@ -1,8 +1,21 @@
 import SwiftUI
 
-/// Geräteauswahl + professionelle BLE-Heatmap-Suche („Scooter finden“).
+/// Einstieg in Gerätesuche / Radar / Signal-Finder (gemeinsame BLE-Basis).
+enum ScooterFinderMode: Equatable {
+    /// Bluetooth-Geräte entdecken, Details, Wächter, Gerät aufspüren.
+    case deviceSearch
+    /// Automatische Scooter-Erkennung (Radar).
+    case radar
+    /// Gerät wählen → Signal-Finder (Heatmap).
+    case signalPicker
+}
+
+/// Geräteauswahl + Signal-Finder / Radar innerhalb von „Scooter finden“.
 struct ScooterFinderView: View {
     @ObservedObject var ble: BleClient
+    var mode: ScooterFinderMode = .deviceSearch
+    var onBackToHub: (() -> Void)?
+
     @StateObject private var searchEngine = BLESearchEngine()
     @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
     @ObservedObject private var radar = BLERadarService.shared
@@ -53,6 +66,12 @@ struct ScooterFinderView: View {
                 ble.startScan()
             }
             BLERadarService.shared.attach(ble: ble)
+            if mode == .radar, !radarBrowseMode, !isFinding {
+                startRadarBrowse()
+            }
+            if mode == .signalPicker {
+                showOnlyScooters = false
+            }
             reconcileStableOrder(force: true)
         }
         .onDisappear {
@@ -125,26 +144,19 @@ struct ScooterFinderView: View {
     private var selectionContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    PageTitle(text: "Scooter finden")
-                    Text(showOnlyScooters
-                         ? "Wähle einen Scooter. ScooterCheck baut während du gehst eine Signal-Heatmap auf — ohne falsche Richtungsversprechen."
-                         : "Wähle ein BLE-Signal. Die Suche speichert das Gerät nicht als Scooter und zeigt relative Signalstärke als Heatmap.")
-                        .font(Theme.body)
-                        .foregroundStyle(Theme.textBody)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
+                findSectionHeader
+
+                if mode != .signalPicker {
+                    Picker("Suchmodus", selection: $showOnlyScooters) {
+                        Text("Scooter").tag(true)
+                        Text("Alle BLE-Geräte").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .font(Theme.segment)
                 }
 
-                Picker("Suchmodus", selection: $showOnlyScooters) {
-                    Text("Scooter").tag(true)
-                    Text("Alle BLE-Geräte").tag(false)
-                }
-                .pickerStyle(.segmented)
-                .font(Theme.segment)
-
-                if !showOnlyScooters {
-                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an für Details, BLE-Wächter oder Heatmap-Suche.")
+                if mode == .deviceSearch, !showOnlyScooters {
+                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an für Details, Geräte-Wächter oder Signal-Finder.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -152,7 +164,9 @@ struct ScooterFinderView: View {
 
                 HStack {
                     Label(
-                        ble.phase == .scanning ? "Gerätesuche aktiv" : "Gerätesuche pausiert",
+                        ble.phase == .scanning
+                            ? (mode == .signalPicker ? "Signal-Finder · Suche aktiv" : "Gerätesuche aktiv")
+                            : (mode == .signalPicker ? "Signal-Finder · pausiert" : "Gerätesuche pausiert"),
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                     .font(Theme.secondary.weight(.medium))
@@ -164,29 +178,10 @@ struct ScooterFinderView: View {
                         Image(systemName: "info.circle")
                             .foregroundStyle(Theme.muted)
                     }
-                    .accessibilityLabel("Hinweise zur Heatmap-Suche")
+                    .accessibilityLabel("Hinweise zum Signal-Finder")
                 }
 
-                Button {
-                    startRadarBrowse()
-                } label: {
-                    Label("Radar starten", systemImage: "dot.radiowaves.left.and.right")
-                        .font(Theme.secondary.weight(.medium))
-                        .foregroundStyle(Theme.accent)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 14)
-                        .background(Theme.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Theme.line, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Startet die BLE-Suche und meldet plausible E-Scooter mit ausreichendem Signal.")
-
-                if listedDevices.count >= BLEMultiDeviceMonitor.minDevices {
+                if mode == .deviceSearch, listedDevices.count >= BLEMultiDeviceMonitor.minDevices {
                     Button {
                         multiSelectedIds = []
                         showMultiPicker = true
@@ -214,7 +209,11 @@ struct ScooterFinderView: View {
                     VStack(spacing: 10) {
                         ForEach(listedDevices) { device in
                             Button {
-                                detailDevice = device
+                                if mode == .signalPicker {
+                                    startFinding(device)
+                                } else {
+                                    detailDevice = device
+                                }
                             } label: {
                                 finderDeviceRow(device)
                                     .overlay(alignment: .topTrailing) {
@@ -226,7 +225,11 @@ struct ScooterFinderView: View {
                             }
                             .buttonStyle(.plain)
                             .opacity(device.isStale ? 0.45 : 1)
-                            .accessibilityHint("Öffnet Details mit BLE-Wächter und Heatmap-Suche")
+                            .accessibilityHint(
+                                mode == .signalPicker
+                                    ? "Startet den Signal-Finder für dieses Gerät"
+                                    : "Öffnet Details mit Geräte-Wächter und Signal-Finder"
+                            )
                         }
                     }
                 }
@@ -238,6 +241,43 @@ struct ScooterFinderView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
+        }
+    }
+
+    private var findSectionHeader: some View {
+        HStack(alignment: .top, spacing: Theme.Space.sm) {
+            if let onBackToHub {
+                Button(action: onBackToHub) {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Zurück")
+                .padding(.top, -6)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                PageTitle(text: mode == .signalPicker ? "Signal-Finder" : "Gerätesuche")
+                Text(selectionSubtitle)
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textBody)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var selectionSubtitle: String {
+        switch mode {
+        case .signalPicker:
+            return "Wähle ein Bluetooth-Gerät. Der Signal-Finder zeigt relative Signalstärke und Heatmap — keine GPS-Ortung."
+        case .deviceSearch:
+            return showOnlyScooters
+                ? "Wähle einen Scooter zum Auslesen oder Aufspüren."
+                : "Wähle ein BLE-Gerät. Speichert nichts automatisch als Scooter."
+        case .radar:
+            return "Erkennt automatisch E-Scooter in deiner Nähe."
         }
     }
 
@@ -329,22 +369,29 @@ struct ScooterFinderView: View {
 
     // MARK: - Actions
 
-    /// Startet Heatmap-Suche — speichert das Gerät nie als bekannten Scooter.
+    /// Startet Signal-Finder — speichert das Gerät nie als bekannten Scooter.
     private func startFinding(_ device: ScannedDevice) {
-        radarBrowseMode = false
+        if mode != .radar {
+            radarBrowseMode = false
+        }
         selected = device
         if ble.phase != .scanning {
             ble.startScan()
         }
-        radar.startSession(enableRadar: radar.isEnabled)
+        radar.startSession(enableRadar: mode == .radar || radar.isEnabled)
         searchEngine.start(device: device, ble: ble)
         BLESearchLiveActivityController.shared.start(deviceName: device.bleListDisplayName)
     }
 
     private func endFinding() {
         selected = nil
-        radar.endSession()
         BLESearchLiveActivityController.shared.end()
+        if mode == .radar {
+            radarBrowseMode = true
+            radar.startSession(enableRadar: true)
+        } else {
+            radar.endSession()
+        }
         if ble.phase != .scanning {
             ble.startScan()
         }
@@ -368,12 +415,14 @@ struct ScooterFinderView: View {
                     Button {
                         radar.endSession()
                         radarBrowseMode = false
+                        onBackToHub?()
                     } label: {
                         Image(systemName: "chevron.left")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(Theme.accent)
                             .frame(width: 44, height: 44)
                     }
+                    .accessibilityLabel("Zurück")
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Scooter-Radar")
                             .font(Theme.cardTitle)
@@ -420,6 +469,7 @@ struct ScooterFinderView: View {
                 ScootOutlineButton(title: "Radar beenden", systemImage: "xmark") {
                     radar.endSession()
                     radarBrowseMode = false
+                    onBackToHub?()
                 }
             }
             .padding(.horizontal, Theme.Space.xl)
@@ -456,11 +506,11 @@ struct ScooterFinderView: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Unter „Alle BLE-Geräte“ öffnest du die Detailansicht: dort kannst du den BLE-Wächter aktivieren oder die Heatmap-Suche starten. Das speichert das Gerät nicht als Scooter.")
+                    Text("Unter „Alle BLE-Geräte“ öffnest du die Detailansicht: dort kannst du den Geräte-Wächter aktivieren oder den Signal-Finder starten. Das speichert das Gerät nicht als Scooter.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("„Geräte beobachten“ erlaubt 1–5 Signale parallel in der aktiven Sitzung. Auch hier erfolgt keine Scooter-Speicherung. BLE-Wächter ist davon getrennt (Hintergrundüberwachung einzelner bekannter Geräte).")
+                    Text("„Geräte beobachten“ erlaubt 1–5 Signale parallel in der aktiven Sitzung. Auch hier erfolgt keine Scooter-Speicherung. Der Geräte-Wächter ist davon getrennt (Hintergrundüberwachung einzelner bekannter Geräte).")
                         .font(.subheadline)
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -481,7 +531,7 @@ struct ScooterFinderView: View {
     }
 }
 
-/// Detail aus „Scooter finden“: BLE-Wächter + Einstieg in die Heatmap-Suche.
+/// Detail aus Gerätesuche: Geräte-Wächter + Signal-Finder („Gerät aufspüren“).
 struct FinderDeviceDetailSheet: View {
     let device: ScannedDevice
     var onStartSearch: () -> Void
@@ -502,7 +552,7 @@ struct FinderDeviceDetailSheet: View {
                         Text(device.bleListDisplayName)
                             .font(Theme.sectionTitle)
                             .foregroundStyle(Theme.textPrimary)
-                        Text("Allgemeines BLE-Gerät. Du kannst es beobachten (Wächter) oder die Heatmap-Suche starten — ohne Speicherung als Scooter.")
+                        Text("Bluetooth-Gerät. Du kannst den Geräte-Wächter aktivieren oder es mit dem Signal-Finder aufspüren — ohne Speicherung als Scooter.")
                             .font(Theme.body)
                             .foregroundStyle(Theme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -512,6 +562,10 @@ struct FinderDeviceDetailSheet: View {
                         detailRow("RSSI", "\(device.rssi) dBm · \(device.finderSignalLabel)")
                         detailRow("BLE-ID", device.bleIdentifierShort)
                         detailRow("Zuletzt gesehen", lastSeenText)
+                        detailRow(
+                            "Typ",
+                            device.looksLikeScooter ? "Möglicher E-Scooter" : "Unbekanntes BLE-Gerät"
+                        )
                     }
                     .padding(Theme.Space.lg)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -525,8 +579,8 @@ struct FinderDeviceDetailSheet: View {
                     BLEWatcherSettingsCard(device: device, isKnownScooter: false)
 
                     ScootPrimaryButton(
-                        title: "Heatmap-Suche starten",
-                        systemImage: "dot.radiowaves.left.and.right"
+                        title: "Gerät aufspüren",
+                        systemImage: "viewfinder"
                     ) {
                         onStartSearch()
                     }
