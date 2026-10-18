@@ -242,10 +242,12 @@ private extension FAQCatalog {
                 question: "Was ist der Signal-Finder?",
                 segments: [
                     .paragraph("Der Signal-Finder hilft bei der Annäherung an ein gewähltes Gerät anhand der Bluetooth-Signalstärke (RSSI) und deiner Bewegung."),
-                    .paragraph("Vor der Auswahl kannst du filtern:"),
+                    .paragraph("Vor der Auswahl kannst du filtern und sortieren:"),
                     .bullets([
                         "E-Scooter — nur als E-Scooter erkennbare Signale",
                         "Andere BLE-Geräte — alle übrigen Bluetooth-Signale",
+                        "Sortierung nach Signalstärke oder Name",
+                        "Optional: Geräte ohne Advertisement-Namen ausblenden",
                     ]),
                     .paragraph("Zwei Zugangswege:"),
                     .bullets([

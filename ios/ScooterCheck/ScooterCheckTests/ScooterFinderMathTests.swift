@@ -151,4 +151,12 @@ final class ScooterFinderMathTests: XCTestCase {
         )
         XCTAssertEqual(reordered.order, [b, a])
     }
+
+    func testAdvertisedNameFilter() {
+        XCTAssertTrue(BleDeviceListOrdering.hasAdvertisedName(cryptoName: "NBScooter", name: ""))
+        XCTAssertTrue(BleDeviceListOrdering.hasAdvertisedName(cryptoName: "", name: "Headphones"))
+        XCTAssertFalse(BleDeviceListOrdering.hasAdvertisedName(cryptoName: "", name: ""))
+        XCTAssertFalse(BleDeviceListOrdering.hasAdvertisedName(cryptoName: "", name: "Ohne Namen (A1B2)"))
+        XCTAssertFalse(BleDeviceListOrdering.hasAdvertisedName(cryptoName: "", name: "Unbekanntes BLE-Gerät"))
+    }
 }

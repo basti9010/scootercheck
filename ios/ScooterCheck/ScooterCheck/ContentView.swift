@@ -13,6 +13,8 @@ struct ContentView: View {
     @State private var menuDragStartProgress: CGFloat?
     @State private var showFAQ = false
     @State private var showPrivacy = false
+    @State private var auslesenListSort: BleDeviceListSort = .signal
+    @State private var auslesenHideNameless = false
     @State private var showShare = false
     @State private var historyShareItems: [Any] = []
     @State private var showHistoryShare = false
@@ -383,6 +385,12 @@ struct ContentView: View {
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            BleDeviceListSortFilterBar(
+                sort: $auslesenListSort,
+                hideNameless: $auslesenHideNameless,
+                showsHideNameless: !ble.showOnlyLikelyScooters
+            )
         }
     }
 
@@ -509,14 +517,20 @@ struct ContentView: View {
 
     private var deviceSection: some View {
         let listed: [ScannedDevice] = {
+            let base: [ScannedDevice]
             if ble.showOnlyLikelyScooters {
-                return history.sortForScanList(ble.visibleDevices)
+                base = history.sortForScanList(ble.visibleDevices)
+                // Bekannte zuerst beibehalten, dann gewählte Sortierung innerhalb.
+                if auslesenListSort == .name {
+                    return BleDeviceListOrdering.prepare(base, sort: .name, hideNameless: false)
+                }
+                return base
             }
-            // Alle BLE: stärkstes Signal zuerst; stale nach hinten.
-            return ble.visibleDevices.sorted { a, b in
-                if a.isStale != b.isStale { return !a.isStale && b.isStale }
-                return a.rssi > b.rssi
-            }
+            return BleDeviceListOrdering.prepare(
+                ble.visibleDevices,
+                sort: auslesenListSort,
+                hideNameless: auslesenHideNameless
+            )
         }()
         return VStack(spacing: 10) {
             ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
@@ -526,7 +540,7 @@ struct ContentView: View {
                     ScooterDeviceCard(
                         device: item,
                         knownAlias: history.knownAlias(for: item),
-                        isNearest: index == 0 && listed.count > 1,
+                        isNearest: auslesenListSort == .signal && index == 0 && listed.count > 1,
                         showsExtendedBleInfo: !ble.showOnlyLikelyScooters
                     )
                 }

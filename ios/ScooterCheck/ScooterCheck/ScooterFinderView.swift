@@ -27,7 +27,9 @@ struct ScooterFinderView: View {
     @State private var radarBrowseMode = false
     /// Eigenständiger Modus — speichert kein Gerät als Scooter.
     @State private var showOnlyScooters = true
-    /// Stabile Listenreihenfolge (RSSI darf zucken, Zeilen nicht dauernd tauschen).
+    @State private var listSort: BleDeviceListSort = .signal
+    @State private var hideNamelessDevices = false
+    /// Stabile Listenreihenfolge nur bei Sortierung nach Signal (weniger Zucken).
     @State private var stableOrderIds: [UUID] = []
     @State private var lastStableReorderAt = Date.distantPast
 
@@ -35,20 +37,39 @@ struct ScooterFinderView: View {
     private var isObserving: Bool { multiMonitor.isActive }
     private var isRadarBrowsing: Bool { radarBrowseMode && radar.isEnabled && !isFinding && !isObserving }
 
+    private var showsHideNamelessFilter: Bool {
+        !showOnlyScooters
+    }
+
     private var filteredDevices: [ScannedDevice] {
+        let base: [ScannedDevice]
         if mode == .signalPicker {
             // Explizite Wahl: E-Scooter ODER andere BLE-Geräte (nicht alles gemischt).
-            return showOnlyScooters
+            base = showOnlyScooters
                 ? ble.devices.filter(\.looksLikeScooter)
                 : ble.devices.filter { !$0.looksLikeScooter }
+        } else {
+            base = showOnlyScooters
+                ? ble.devices.filter(\.looksLikeScooter)
+                : ble.devices
         }
-        return showOnlyScooters
-            ? ble.devices.filter(\.looksLikeScooter)
-            : ble.devices
+        if showsHideNamelessFilter, hideNamelessDevices {
+            return base.filter(BleDeviceListOrdering.hasAdvertisedName)
+        }
+        return base
     }
 
     private var listedDevices: [ScannedDevice] {
-        BleScanListStabilizer.apply(order: stableOrderIds, to: filteredDevices)
+        switch listSort {
+        case .name:
+            return BleDeviceListOrdering.prepare(
+                filteredDevices,
+                sort: .name,
+                hideNameless: false
+            )
+        case .signal:
+            return BleScanListStabilizer.apply(order: stableOrderIds, to: filteredDevices)
+        }
     }
 
     var body: some View {
@@ -97,6 +118,16 @@ struct ScooterFinderView: View {
             reconcileStableOrder(force: false)
         }
         .onChange(of: showOnlyScooters) { _ in
+            stableOrderIds = []
+            lastStableReorderAt = .distantPast
+            reconcileStableOrder(force: true)
+        }
+        .onChange(of: hideNamelessDevices) { _ in
+            stableOrderIds = []
+            lastStableReorderAt = .distantPast
+            reconcileStableOrder(force: true)
+        }
+        .onChange(of: listSort) { _ in
             stableOrderIds = []
             lastStableReorderAt = .distantPast
             reconcileStableOrder(force: true)
@@ -175,6 +206,12 @@ struct ScooterFinderView: View {
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                BleDeviceListSortFilterBar(
+                    sort: $listSort,
+                    hideNameless: $hideNamelessDevices,
+                    showsHideNameless: showsHideNamelessFilter
+                )
 
                 HStack {
                     Label(
@@ -445,6 +482,12 @@ struct ScooterFinderView: View {
                         radarBrowseMode = false
                         onBackToHub?()
                     }
+                )
+
+                BleDeviceListSortFilterBar(
+                    sort: $listSort,
+                    hideNameless: $hideNamelessDevices,
+                    showsHideNameless: false
                 )
 
                 if let banner = radar.banner {

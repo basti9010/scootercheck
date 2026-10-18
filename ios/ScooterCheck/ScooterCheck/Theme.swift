@@ -205,6 +205,42 @@ struct PageTitle: View {
     }
 }
 
+/// Sortieren (Signal/Name) + optional namenlose BLE-Geräte ausblenden.
+struct BleDeviceListSortFilterBar: View {
+    @Binding var sort: BleDeviceListSort
+    @Binding var hideNameless: Bool
+    var showsHideNameless: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            HStack(spacing: Theme.Space.md) {
+                Text("Sortieren")
+                    .font(Theme.caption.weight(.medium))
+                    .foregroundStyle(Theme.textMuted)
+                    .frame(width: 64, alignment: .leading)
+                Picker("Sortieren", selection: $sort) {
+                    ForEach(BleDeviceListSort.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .font(Theme.segment)
+            }
+
+            if showsHideNameless {
+                Toggle(isOn: $hideNameless) {
+                    Text("Geräte ohne Namen ausblenden")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .tint(Theme.accent)
+                .accessibilityHint("Blendet sonstige BLE-Geräte ohne Advertisement-Namen aus.")
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
 /// Einheitliche Unterseiten-Navigation (Zurück + Titel + optional Untertitel).
 /// Nur die Titelzeile sitzt neben dem Pfeil — übrige Seiteninhalte behalten normale Ränder.
 struct FindSubpageHeader<Trailing: View>: View {
