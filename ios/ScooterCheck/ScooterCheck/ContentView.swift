@@ -1756,11 +1756,14 @@ struct ContentView: View {
             // Nie 0 melden lassen — sonst rutscht der Drawer-Header in die Statusleiste.
             let safeTop = Theme.Chrome.resolvedSafeAreaTop(geo.safeAreaInsets.top)
             let edgeOpenEnabled = screen != .result && (menuProgress < 0.02 || isEdgeOpeningMenu)
+            // Header inkl. Safe Area freilassen — sonst blockiert der Edge-Pan den Hamburger.
+            let edgeExcludedTop = safeTop + Theme.Chrome.headerHeight
             ZStack(alignment: .leading) {
                 Color.black.opacity(0.55 * Double(menuProgress))
                     .ignoresSafeArea()
                     .onTapGesture { setMenuOpen(false) }
                     .allowsHitTesting(menuProgress > 0.05)
+                    // Nur Dimmer zum Zuwischen — nicht das Panel (sonst fressen Gesten die Menü-Taps).
                     .gesture(menuCloseDragGesture(panelWidth: panelWidth))
 
                 sideMenuPanel
@@ -1771,12 +1774,12 @@ struct ContentView: View {
                     // Gleicher Progress wie die Wordmark — nur X, gleiche Y.
                     .offset(x: -panelWidth * (1 - menuProgress))
                     .allowsHitTesting(menuProgress > 0.5)
-                    .gesture(menuCloseDragGesture(panelWidth: panelWidth))
 
-                // UIKit-Edge-Pan: bleibt während des Öffnens aktiv (kein Destroy bei Progress > 0).
+                // UIKit-Edge-Pan unterhalb des Headers; schmale Hit-Breite.
                 MenuLeftEdgeOpenBridge(
                     isEnabled: edgeOpenEnabled,
-                    edgeWidth: 56,
+                    edgeWidth: 44,
+                    excludedTop: edgeExcludedTop,
                     onBegan: {
                         isEdgeOpeningMenu = true
                         beginMenuDrag()
@@ -1793,7 +1796,8 @@ struct ContentView: View {
                         )
                     }
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(width: 44)
+                .frame(maxHeight: .infinity, alignment: .leading)
                 .allowsHitTesting(edgeOpenEnabled)
                 .accessibilityLabel("Menü aufziehen")
             }

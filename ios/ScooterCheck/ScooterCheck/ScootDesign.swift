@@ -730,10 +730,12 @@ struct AppCopyrightFooter: View {
 
 // MARK: - Side menu left-edge open (UIKit — zuverlässiger als SwiftUI-Clear-Strip)
 
-/// Schmaler linker Rand: Touches außerhalb gehen durch; Edge-Pan öffnet das Menü.
+/// Schmaler linker Rand unterhalb des App-Headers: Touches außerhalb + Header gehen durch.
 struct MenuLeftEdgeOpenBridge: UIViewRepresentable {
     var isEnabled: Bool
     var edgeWidth: CGFloat = 52
+    /// Safe Area + Header — Hamburger-Button darf nicht vom Edge-Pan blockiert werden.
+    var excludedTop: CGFloat = 0
     var onBegan: () -> Void
     var onChanged: (_ translationX: CGFloat) -> Void
     var onEnded: (_ translationX: CGFloat, _ velocityX: CGFloat) -> Void
@@ -747,6 +749,7 @@ struct MenuLeftEdgeOpenBridge: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isMultipleTouchEnabled = false
         view.edgeWidth = edgeWidth
+        view.excludedTop = excludedTop
         let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
         pan.cancelsTouchesInView = false
         pan.maximumNumberOfTouches = 1
@@ -757,6 +760,7 @@ struct MenuLeftEdgeOpenBridge: UIViewRepresentable {
 
     func updateUIView(_ uiView: MenuLeftEdgeHitView, context: Context) {
         uiView.edgeWidth = edgeWidth
+        uiView.excludedTop = excludedTop
         uiView.isUserInteractionEnabled = isEnabled
         context.coordinator.pan?.isEnabled = isEnabled
         context.coordinator.onBegan = onBegan
@@ -814,12 +818,12 @@ struct MenuLeftEdgeOpenBridge: UIViewRepresentable {
 
 final class MenuLeftEdgeHitView: UIView {
     var edgeWidth: CGFloat = 52
+    var excludedTop: CGFloat = 0
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard isUserInteractionEnabled, !isHidden, alpha > 0.01 else { return nil }
-        guard point.x >= 0, point.x <= edgeWidth, point.y >= 0, point.y <= bounds.height else {
-            return nil
-        }
+        guard point.x >= 0, point.x <= edgeWidth else { return nil }
+        guard point.y >= excludedTop, point.y <= bounds.height else { return nil }
         return self
     }
 }
