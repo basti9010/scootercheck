@@ -18,30 +18,11 @@ struct BLESearchScreen: View {
     @State private var showOptions = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                header
-                if let banner = engine.refoundBanner {
-                    refoundBannerView(banner)
-                        .padding(.horizontal, Theme.Space.xl)
-                        .padding(.top, Theme.Space.sm)
-                }
-                if let radarBanner = radar.banner {
-                    BLERadarBannerView(text: radarBanner)
-                        .padding(.horizontal, Theme.Space.xl)
-                        .padding(.top, Theme.Space.sm)
-                }
-                heatmapCard
-                    .padding(.horizontal, Theme.Space.xl)
-                    .padding(.top, Theme.Space.sm)
-                liveStatusCard
-                    .padding(.horizontal, Theme.Space.xl)
-                    .padding(.top, Theme.Space.md)
-                compactStatsRow
-                    .padding(.horizontal, Theme.Space.xl)
-                    .padding(.top, Theme.Space.sm)
-                bottomPanel
-                    .padding(.top, Theme.Space.md)
+        Group {
+            if engine.surfaceMode == .ar {
+                arModeRoot
+            } else {
+                standardModeRoot
             }
         }
         .onAppear {
@@ -63,7 +44,6 @@ struct BLESearchScreen: View {
         .onDisappear {
             BLESearchLiveActivityController.shared.end()
         }
-        .background(Theme.bg.ignoresSafeArea())
         .sheet(isPresented: $showOptions) {
             searchOptionsSheet
         }
@@ -86,10 +66,84 @@ struct BLESearchScreen: View {
         }
     }
 
+    private var standardModeRoot: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                header
+                surfaceModePicker
+                    .padding(.horizontal, Theme.Space.xl)
+                    .padding(.top, Theme.Space.sm)
+
+                if let banner = engine.refoundBanner {
+                    refoundBannerView(banner)
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.sm)
+                }
+                if let radarBanner = radar.banner {
+                    BLERadarBannerView(text: radarBanner)
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.sm)
+                }
+
+                switch engine.surfaceMode {
+                case .live:
+                    liveStatusCard
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.md)
+                    compactStatsRow
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.sm)
+                case .heatmap, .map:
+                    heatmapCard
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.sm)
+                    liveStatusCard
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.md)
+                    compactStatsRow
+                        .padding(.horizontal, Theme.Space.xl)
+                        .padding(.top, Theme.Space.sm)
+                case .ar:
+                    EmptyView()
+                }
+
+                bottomPanel
+                    .padding(.top, Theme.Space.md)
+            }
+        }
+        .background(Theme.bg.ignoresSafeArea())
+    }
+
+    private var arModeRoot: some View {
+        ZStack(alignment: .top) {
+            BLESearchARContainer(
+                engine: engine,
+                settings: $engine.arSettings,
+                onOpenHeatmap: { engine.setSurfaceMode(.heatmap) },
+                onShowOptions: { showOptions = true },
+                onEnd: { showEndDialog = true }
+            )
+
+            VStack(spacing: Theme.Space.sm) {
+                header
+                surfaceModePicker
+                    .padding(.horizontal, Theme.Space.xl)
+            }
+            .background(
+                LinearGradient(
+                    colors: [Theme.bg.opacity(0.92), Theme.bg.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        }
+        .background(Theme.bg.ignoresSafeArea())
+    }
+
     private var header: some View {
         FindSubpageHeader(
-            title: engine.deviceName,
-            subtitle: engine.signalStatus,
+            title: engine.surfaceMode == .ar ? "AR Signal-Finder" : engine.deviceName,
+            subtitle: engine.surfaceMode == .ar ? engine.deviceName : engine.signalStatus,
             subtitleColor: Theme.accent,
             titleFont: Theme.cardTitle,
             onBack: { showEndDialog = true }
@@ -138,7 +192,6 @@ struct BLESearchScreen: View {
     private var heatmapCard: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             HStack(spacing: Theme.Space.sm) {
-                surfaceModePicker
                 Spacer(minLength: 0)
                 HStack(spacing: 4) {
                     Text("Stark")
@@ -354,16 +407,22 @@ struct BLESearchScreen: View {
 
     private var surfaceModePicker: some View {
         Picker("Ansicht", selection: Binding(
-            get: { engine.surfaceMode },
+            get: {
+                // Outdoor-Karte läuft unter Heatmap-Segment mit Karten-Inhalt
+                switch engine.surfaceMode {
+                case .map: return BLESearchSurfaceMode.heatmap
+                default: return engine.surfaceMode
+                }
+            },
             set: { engine.setSurfaceMode($0) }
         )) {
-            ForEach(BLESearchSurfaceMode.allCases, id: \.self) { mode in
+            ForEach(BLESearchSurfaceMode.primaryModes, id: \.self) { mode in
                 Text(mode.label).tag(mode)
             }
         }
         .pickerStyle(.segmented)
         .font(Theme.segment)
-        .accessibilityLabel("Live oder Karte")
+        .accessibilityLabel("Live, Heatmap oder AR")
     }
 
     private var heatmapLegendBar: some View {
@@ -463,11 +522,19 @@ struct BLESearchScreen: View {
                         Text("Haptik").font(Theme.secondary)
                     }
                     .tint(Theme.accent)
+                    .onChange(of: engine.hapticsEnabled) { v in
+                        engine.arSettings.hapticsEnabled = v
+                        engine.saveARSettings()
+                    }
 
                     Toggle(isOn: $engine.audioEnabled) {
                         Text("Ton").font(Theme.secondary)
                     }
                     .tint(Theme.accent)
+                    .onChange(of: engine.audioEnabled) { v in
+                        engine.arSettings.audioEnabled = v
+                        engine.saveARSettings()
+                    }
 
                     Toggle(isOn: Binding(
                         get: { engine.cameraTrackingEnabled },
@@ -496,6 +563,58 @@ struct BLESearchScreen: View {
                         .font(Theme.secondary)
                         .tint(Theme.accent)
 
+                    Toggle(isOn: Binding(
+                        get: { engine.surfaceMode == .map },
+                        set: { on in
+                            engine.setSurfaceMode(on ? .map : .heatmap)
+                        }
+                    )) {
+                        Text("Outdoor-Karte").font(Theme.secondary)
+                    }
+                    .tint(Theme.accent)
+
+                    Group {
+                        Divider().overlay(Theme.line)
+                        Text("AR Signal-Finder")
+                            .font(Theme.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textMuted)
+
+                        Toggle("Heatmap einblenden", isOn: $engine.arSettings.showHeatmap)
+                            .font(Theme.secondary)
+                            .tint(Theme.accent)
+                        Toggle("Suchpfad einblenden", isOn: $engine.arSettings.showPath)
+                            .font(Theme.secondary)
+                            .tint(Theme.accent)
+                        Toggle("Bester Messbereich", isOn: $engine.arSettings.showBestZone)
+                            .font(Theme.secondary)
+                            .tint(Theme.accent)
+                        Toggle("AR-Minikarte", isOn: $engine.arSettings.showMinimap)
+                            .font(Theme.secondary)
+                            .tint(Theme.accent)
+                        Toggle("Rohwerte in AR", isOn: $engine.arSettings.showRawRssi)
+                            .font(Theme.secondary)
+                            .tint(Theme.accent)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Heatmap-Transparenz")
+                                .font(Theme.secondary)
+                            Slider(value: $engine.arSettings.heatmapOpacity, in: 0.25...0.85)
+                                .tint(Theme.accent)
+                        }
+
+                        Button {
+                            engine.realignARTracking()
+                        } label: {
+                            Label("AR-Tracking neu ausrichten", systemImage: "arrow.triangle.2.circlepath")
+                                .font(Theme.secondary.weight(.medium))
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .onChange(of: engine.arSettings) { _ in
+                            engine.saveARSettings()
+                        }
+                    }
+
                     BLERadarControlsCard(radar: radar)
 
                     Text(engine.surfaceHint)
@@ -511,8 +630,11 @@ struct BLESearchScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Fertig") { showOptions = false }
-                        .foregroundStyle(Theme.accent)
+                    Button("Fertig") {
+                        engine.saveARSettings()
+                        showOptions = false
+                    }
+                    .foregroundStyle(Theme.accent)
                 }
             }
             .preferredColorScheme(.dark)

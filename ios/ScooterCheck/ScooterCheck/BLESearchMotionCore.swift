@@ -7,22 +7,35 @@ import MapKit
 // MARK: - View / surface mode
 
 enum BLESearchSurfaceMode: String, Sendable, CaseIterable {
-    case relative
+    /// Live-Signalstatus (RSSI, Trend, Kennzahlen).
+    case live
+    /// Bisherige 2D-Heatmap (Nutzer zentriert).
+    case heatmap
+    /// AR Signal-Finder (Kamera + bodenverankerte Signalflächen).
+    case ar
+    /// Outdoor Apple-Karte (optional, über Optionen).
     case map
 
     var label: String {
         switch self {
-        case .relative: return "Live"
+        case .live: return "Live"
+        case .heatmap: return "Heatmap"
+        case .ar: return "AR"
         case .map: return "Karte"
         }
     }
 
     var detailLabel: String {
         switch self {
-        case .relative: return "Live · Nutzer zentriert"
+        case .live: return "Live · Signal & Trend"
+        case .heatmap: return "Heatmap · Nutzer zentriert"
+        case .ar: return "AR Signal-Finder"
         case .map: return "Outdoor · Apple-Karte"
         }
     }
+
+    /// Segmentierte Hauptauswahl: Live | Heatmap | AR
+    static var primaryModes: [BLESearchSurfaceMode] { [.live, .heatmap, .ar] }
 }
 
 // MARK: - Path point
