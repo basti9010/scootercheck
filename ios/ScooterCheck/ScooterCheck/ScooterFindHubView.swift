@@ -3,12 +3,13 @@ import SwiftUI
 /// Unterziele innerhalb von „E-Scooter finden“.
 enum ScooterFindDestination: Equatable {
     case hub
+    case deviceSearch
     case radar
     case watch
     case signalFinder
 }
 
-/// Zentrale Übersicht: E-Scooter-Radar, Geräte-Wächter, Signal-Finder.
+/// Zentrale Übersicht: Gerätesuche, E-Scooter-Radar, Geräte-Wächter, Signal-Finder.
 struct ScooterFindHubView: View {
     @ObservedObject var ble: BleClient
     @Binding var destination: ScooterFindDestination
@@ -18,6 +19,12 @@ struct ScooterFindHubView: View {
             switch destination {
             case .hub:
                 hubContent
+            case .deviceSearch:
+                ScooterFinderView(
+                    ble: ble,
+                    mode: .deviceSearch,
+                    onBackToHub: { destination = .hub }
+                )
             case .radar:
                 ScooterFinderView(
                     ble: ble,
@@ -27,7 +34,7 @@ struct ScooterFindHubView: View {
             case .watch:
                 BLEWatchListScreen(
                     onSelect: nil,
-                    onClose: { destination = .hub }
+                    onBack: { destination = .hub }
                 )
             case .signalFinder:
                 ScooterFinderView(
@@ -51,6 +58,13 @@ struct ScooterFindHubView: View {
                 }
 
                 VStack(spacing: Theme.Space.sm) {
+                    findFunctionCard(
+                        title: "Gerätesuche",
+                        subtitle: "Bluetooth-Geräte entdecken und auslesen.",
+                        systemImage: "antenna.radiowaves.left.and.right"
+                    ) {
+                        destination = .deviceSearch
+                    }
                     findFunctionCard(
                         title: "E-Scooter-Radar",
                         subtitle: "Erkennt automatisch E-Scooter in deiner Nähe.",

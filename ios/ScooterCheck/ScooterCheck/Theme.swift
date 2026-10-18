@@ -205,6 +205,69 @@ struct PageTitle: View {
     }
 }
 
+/// Einheitliche Unterseiten-Navigation (Zurück + Titel + optional Untertitel).
+/// Nur die Titelzeile sitzt neben dem Pfeil — übrige Seiteninhalte behalten normale Ränder.
+struct FindSubpageHeader<Trailing: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    var subtitleColor: Color = Theme.textSecondary
+    var titleFont: Font = Theme.pageTitle
+    var onBack: (() -> Void)? = nil
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        subtitleColor: Color = Theme.textSecondary,
+        titleFont: Font = Theme.pageTitle,
+        onBack: (() -> Void)? = nil,
+        @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.subtitleColor = subtitleColor
+        self.titleFont = titleFont
+        self.onBack = onBack
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Space.sm) {
+            if let onBack {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Zurück")
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(titleFont)
+                    .foregroundStyle(Theme.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(Theme.body)
+                        .foregroundStyle(subtitleColor)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            trailing()
+        }
+    }
+}
+
 struct SectionHeader: View {
     let title: String
     var systemImage: String? = nil

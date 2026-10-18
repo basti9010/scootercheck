@@ -253,45 +253,35 @@ struct ScooterFinderView: View {
                     .padding(.top, 8)
                     .padding(.bottom, 24)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.top, Theme.Space.sm)
         }
     }
 
     private var findSectionHeader: some View {
-        HStack(alignment: .top, spacing: Theme.Space.sm) {
-            if let onBackToHub {
-                Button(action: onBackToHub) {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("Zurück")
-                .padding(.top, -6)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                PageTitle(text: mode == .signalPicker ? "Signal-Finder" : "Gerätesuche")
-                Text(selectionSubtitle)
-                    .font(Theme.body)
-                    .foregroundStyle(Theme.textBody)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        FindSubpageHeader(
+            title: selectionTitle,
+            subtitle: selectionSubtitle,
+            onBack: onBackToHub
+        )
+    }
+
+    private var selectionTitle: String {
+        switch mode {
+        case .signalPicker: return "Signal-Finder"
+        case .deviceSearch: return "Gerätesuche"
+        case .radar: return "E-Scooter-Radar"
         }
     }
 
     private var selectionSubtitle: String {
         switch mode {
         case .signalPicker:
-            return "Wähle E-Scooter oder andere BLE-Geräte. Der Signal-Finder zeigt relative Signalstärke und Heatmap — keine GPS-Ortung."
+            return "Bluetooth-Signalstärken untersuchen."
         case .deviceSearch:
-            return showOnlyScooters
-                ? "Wähle einen E-Scooter zum Auslesen oder Aufspüren."
-                : "Wähle ein BLE-Gerät. Speichert nichts automatisch als Scooter."
+            return "Bluetooth-Geräte entdecken und auslesen."
         case .radar:
-            return "Erkennt automatisch E-Scooter in deiner Nähe."
+            return "Aktive Suche · kein Zielgerät nötig"
         }
     }
 
@@ -447,28 +437,15 @@ struct ScooterFinderView: View {
     private var radarBrowseContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
-                HStack {
-                    Button {
+                FindSubpageHeader(
+                    title: "E-Scooter-Radar",
+                    subtitle: "Aktive Suche · kein Zielgerät nötig",
+                    onBack: {
                         radar.endSession()
                         radarBrowseMode = false
                         onBackToHub?()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                            .frame(width: 44, height: 44)
                     }
-                    .accessibilityLabel("Zurück")
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("E-Scooter-Radar")
-                            .font(Theme.cardTitle)
-                            .foregroundStyle(Theme.textPrimary)
-                        Text("Aktive Suche · kein Zielgerät nötig")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                    Spacer()
-                }
+                )
 
                 if let banner = radar.banner {
                     BLERadarBannerView(text: banner)
@@ -509,6 +486,7 @@ struct ScooterFinderView: View {
                 }
             }
             .padding(.horizontal, Theme.Space.xl)
+            .padding(.top, Theme.Space.sm)
             .padding(.bottom, Theme.Space.xl)
         }
     }

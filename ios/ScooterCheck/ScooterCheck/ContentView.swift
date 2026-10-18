@@ -61,7 +61,7 @@ struct ContentView: View {
         case find
     }
 
-    /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
+    /// Unterziel in „E-Scooter finden“ (Hub / Gerätesuche / Radar / Wächter / Signal-Finder).
     @State private var findDestination: ScooterFindDestination = .hub
 
     private enum HistoryShelf: Equatable {

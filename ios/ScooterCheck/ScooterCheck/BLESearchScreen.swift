@@ -87,27 +87,13 @@ struct BLESearchScreen: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: Theme.Space.md) {
-            Button {
-                showEndDialog = true
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Zurück")
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(engine.deviceName)
-                    .font(Theme.cardTitle)
-                    .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-                Text(engine.signalStatus)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.accent)
-            }
-            Spacer(minLength: 0)
+        FindSubpageHeader(
+            title: engine.deviceName,
+            subtitle: engine.signalStatus,
+            subtitleColor: Theme.accent,
+            titleFont: Theme.cardTitle,
+            onBack: { showEndDialog = true }
+        ) {
             Button {
                 showOptions = true
             } label: {
@@ -115,11 +101,13 @@ struct BLESearchScreen: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.accent)
                     .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Optionen")
         }
-        .padding(.horizontal, Theme.Space.lg)
-        .frame(height: Theme.Chrome.headerHeight)
+        .padding(.horizontal, Theme.Space.xl)
+        .padding(.vertical, Theme.Space.sm)
         .background(Theme.bg)
     }
 
