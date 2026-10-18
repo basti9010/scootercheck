@@ -122,18 +122,18 @@ struct ScootPrimaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.md) {
                 if busy {
                     ProgressView().tint(Theme.ink)
                 } else if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: Theme.Icon.standard, weight: .semibold))
                 }
                 Text(title)
                     .font(Theme.button)
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 54)
+            .frame(minHeight: Theme.Control.buttonMinHeight)
             .foregroundStyle(Theme.ink)
             .background(Theme.accent.opacity(enabled ? 1 : 0.35))
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
@@ -151,10 +151,10 @@ struct ScootSecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.md) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.body.weight(.medium))
+                        .font(.system(size: Theme.Icon.standard, weight: .medium))
                 }
                 Text(title)
                     .font(Theme.buttonSecondary)
@@ -166,14 +166,14 @@ struct ScootSecondaryButton: View {
                 }
             }
             .foregroundStyle(Theme.textPrimary)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, Theme.Space.cardPadding)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 52)
+            .frame(minHeight: Theme.Control.secondaryMinHeight)
             .background(Theme.card)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                    .stroke(Theme.border, lineWidth: 1)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
             )
         }
         .buttonStyle(.plain)
@@ -187,22 +187,22 @@ struct ScootOutlineButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.md) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.body.weight(.medium))
+                        .font(.system(size: Theme.Icon.standard, weight: .medium))
                 }
                 Text(title)
                     .font(Theme.buttonSecondary)
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 52)
+            .frame(minHeight: Theme.Control.secondaryMinHeight)
             .foregroundStyle(Theme.accent)
-            .background(Theme.bg.opacity(0.55))
+            .background(Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                    .stroke(Theme.accent.opacity(0.85), lineWidth: 1.5)
+                    .stroke(Theme.accent.opacity(0.7), lineWidth: Theme.Control.hairline)
             )
         }
         .buttonStyle(.plain)

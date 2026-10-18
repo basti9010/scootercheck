@@ -252,64 +252,70 @@ struct BLEWatchListScreen: View {
 
 // MARK: - Radar controls
 
+/// Kompakte Statuszeile + Einstellungs-Menü (Radar bleibt minimalistisch).
 struct BLERadarControlsCard: View {
     @ObservedObject var radar: BLERadarService
+    @State private var showSettings = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.md) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("E-Scooter-Radar")
-                        .font(Theme.secondary.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                    Text("Meldet E-Scooter mit ausreichend starkem BLE-Signal.")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { radar.isEnabled },
-                    set: { radar.setEnabled($0) }
-                ))
-                .labelsHidden()
-                .tint(Theme.accent)
-                .accessibilityLabel("E-Scooter-Radar")
+        HStack(spacing: Theme.Space.md) {
+            Circle()
+                .fill(radar.isEnabled ? Theme.accent : Theme.textMuted.opacity(0.45))
+                .frame(width: 8, height: 8)
+            Text(radar.isEnabled ? "Radar aktiv" : "Radar pausiert")
+                .font(Theme.caption.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+            Spacer(minLength: 0)
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: Theme.Icon.standard, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: Theme.Control.backHit, height: Theme.Control.backHit)
+                    .contentShape(Rectangle())
             }
-
-            if radar.isEnabled {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Alarm ab Signalstärke")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                    Picker("Alarm ab", selection: $radar.minimumSignalClass) {
-                        Text("Mittel").tag(BLESignalClass.medium)
-                        Text("Stark").tag(BLESignalClass.strong)
-                        Text("Sehr stark").tag(BLESignalClass.veryStrong)
-                    }
-                    .pickerStyle(.segmented)
-                    .font(Theme.segment)
-                }
-
-                Toggle(isOn: $radar.soundEnabled) {
-                    Text("Ton").font(Theme.secondary)
-                }
-                .tint(Theme.accent)
-                Toggle(isOn: $radar.hapticsEnabled) {
-                    Text("Haptik").font(Theme.secondary)
-                }
-                .tint(Theme.accent)
-            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Radar-Einstellungen")
         }
-        .foregroundStyle(Theme.textSecondary)
-        .padding(Theme.Space.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                .stroke(Theme.border, lineWidth: 1)
-        )
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                Form {
+                    Section {
+                        Toggle("Radar aktiv", isOn: Binding(
+                            get: { radar.isEnabled },
+                            set: { radar.setEnabled($0) }
+                        ))
+                    }
+                    if radar.isEnabled {
+                        Section("Alarm ab Signalstärke") {
+                            Picker("Signal", selection: $radar.minimumSignalClass) {
+                                Text("Mittel").tag(BLESignalClass.medium)
+                                Text("Stark").tag(BLESignalClass.strong)
+                                Text("Sehr stark").tag(BLESignalClass.veryStrong)
+                            }
+                            .pickerStyle(.inline)
+                        }
+                        Section {
+                            Toggle("Ton", isOn: $radar.soundEnabled)
+                            Toggle("Haptik", isOn: $radar.hapticsEnabled)
+                        }
+                    }
+                }
+                .scrollContentBackground(.hidden)
+                .background(Theme.bg)
+                .navigationTitle("Radar-Optionen")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Fertig") { showSettings = false }
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+                .preferredColorScheme(.dark)
+            }
+            .presentationDetents([.medium])
+        }
     }
 }
 
@@ -317,29 +323,27 @@ struct BLERadarBannerView: View {
     let text: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.sm) {
+        HStack(alignment: .top, spacing: Theme.Space.md) {
             Image(systemName: "dot.radiowaves.left.and.right")
+                .font(.system(size: Theme.Icon.standard, weight: .medium))
                 .foregroundStyle(Theme.accent)
             Text(text)
-                .font(Theme.secondary.weight(.medium))
+                .font(Theme.caption.weight(.medium))
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
-        .padding(Theme.Space.md)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                .stroke(Theme.accent.opacity(0.5), lineWidth: 1)
-        )
+        .padding(.horizontal, Theme.Space.md)
+        .padding(.vertical, 10)
+        .background(Theme.accent.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
     }
 }
 
 struct BLERadarHitBadge: View {
     var body: some View {
-        Text("Radar-Treffer")
-            .font(.caption2.weight(.bold))
+        Text("Treffer")
+            .font(Theme.badgeFont)
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)

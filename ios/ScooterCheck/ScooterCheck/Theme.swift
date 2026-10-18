@@ -35,57 +35,83 @@ enum Theme {
     static let muted = textMuted
     static let secondaryText = textSecondary
 
-    // MARK: - Typography (System / Dynamic Type–freundlich)
+    // MARK: - Typography (ruhig, Apple-ähnlich; System / Dynamic Type)
 
-    /// App-Header Wordmark ~22–24 Semibold
+    /// App-Header Wordmark — Marke unverändert
     static let brandWordmark = Font.system(size: 23, weight: .semibold)
-    /// Seitentitel im Content ~22–24 Semibold
-    static let pageTitle = Font.system(size: 23, weight: .semibold)
+    /// Seitenüberschrift ~24–26 Semibold
+    static let pageTitle = Font.system(size: 25, weight: .semibold)
     /// Abschnittsüberschrift ~18–20 Semibold
-    static let sectionTitle = Font.system(size: 19, weight: .semibold)
-    /// Card-/Listenüberschrift ~17–18 Medium
-    static let cardTitle = Font.system(size: 17, weight: .medium)
+    static let sectionTitle = Font.system(size: 18, weight: .semibold)
+    /// Kartentitel ~16–18 Medium
+    static let cardTitle = Font.system(size: 16.5, weight: .medium)
     /// Fließtext ~15–16 Regular
     static let body = Font.system(size: 15.5, weight: .regular)
-    /// Sekundärtext ~14–15 Regular
-    static let secondary = Font.system(size: 14.5, weight: .regular)
-    /// Meta / Caption ~13–14 Regular
-    static let caption = Font.system(size: 13.5, weight: .regular)
+    /// Beschreibung / sekundär ~13–14 Regular
+    static let secondary = Font.system(size: 14, weight: .regular)
+    /// Caption / Meta ~12–13 Regular
+    static let caption = Font.system(size: 13, weight: .regular)
     /// Meta klein (Badge, Copyright)
-    static let meta = Font.system(size: 13, weight: .regular)
-    static let badgeFont = Font.system(size: 12, weight: .semibold)
-    /// Primär-Button ~17–18 Semibold
-    static let button = Font.system(size: 17, weight: .semibold)
-    /// Sekundär-/Textbutton ~16–17 Medium
-    static let buttonSecondary = Font.system(size: 16.5, weight: .medium)
-    /// Segment ~15–16 Medium
-    static let segment = Font.system(size: 15.5, weight: .medium)
+    static let meta = Font.system(size: 12, weight: .regular)
+    static let badgeFont = Font.system(size: 11.5, weight: .semibold)
+    /// Primär-Button ~16 Medium (weniger laut)
+    static let button = Font.system(size: 16, weight: .semibold)
+    /// Sekundär-/Textbutton ~15 Medium
+    static let buttonSecondary = Font.system(size: 15, weight: .medium)
+    /// Segment ~14–15 Medium
+    static let segment = Font.system(size: 14.5, weight: .medium)
     /// Form-Label
-    static let fieldLabel = Font.system(size: 14.5, weight: .medium)
+    static let fieldLabel = Font.system(size: 13.5, weight: .medium)
     /// Form-Wert
-    static let fieldValue = Font.system(size: 16.5, weight: .regular)
+    static let fieldValue = Font.system(size: 15.5, weight: .regular)
 
-    // MARK: - Spacing
+    // MARK: - Spacing (appweit)
 
     enum Space {
         static let xs: CGFloat = 4
         static let sm: CGFloat = 8
+        /// Icon ↔ Text / enge Gruppen
         static let md: CGFloat = 12
+        /// Karten-Innenabstand
         static let lg: CGFloat = 16
+        /// Horizontaler Seitenabstand
         static let xl: CGFloat = 20
+        /// Abstand zwischen Abschnitten
         static let xxl: CGFloat = 24
-        static let section: CGFloat = 32
-        static let hero: CGFloat = 40
+        static let section: CGFloat = 24
+        static let hero: CGFloat = 32
+        /// Alias für Seitenrand
+        static let page: CGFloat = xl
+        /// Alias für Karten-Innen
+        static let cardPadding: CGFloat = lg
+        /// Abstand zwischen Listenzeilen / Karten
+        static let listGap: CGFloat = 10
     }
 
-    // MARK: - Radius
+    // MARK: - Radius (~14–18)
 
     enum Radius {
         static let small: CGFloat = 12
-        static let medium: CGFloat = 18
-        static let large: CGFloat = 22
-        static let button: CGFloat = 26
+        static let medium: CGFloat = 16
+        static let large: CGFloat = 18
+        static let button: CGFloat = 16
         static let pill: CGFloat = 999
+    }
+
+    // MARK: - Icons / Controls
+
+    enum Icon {
+        static let compact: CGFloat = 18
+        static let standard: CGFloat = 20
+        static let nav: CGFloat = 22
+        static let function: CGFloat = 24
+    }
+
+    enum Control {
+        static let buttonMinHeight: CGFloat = 48
+        static let secondaryMinHeight: CGFloat = 44
+        static let backHit: CGFloat = 44
+        static let hairline: CGFloat = 1
     }
 
     // MARK: - Motion
@@ -205,39 +231,44 @@ struct PageTitle: View {
     }
 }
 
-/// Sortieren (Signal/Name) + optional namenlose BLE-Geräte ausblenden.
+/// Kompakte Sortier-/Filter-Aktionen (Menu statt großer Segment-Leiste).
 struct BleDeviceListSortFilterBar: View {
     @Binding var sort: BleDeviceListSort
     @Binding var hideNameless: Bool
     var showsHideNameless: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            HStack(spacing: Theme.Space.md) {
-                Text("Sortieren")
-                    .font(Theme.caption.weight(.medium))
-                    .foregroundStyle(Theme.textMuted)
-                    .frame(width: 64, alignment: .leading)
+        HStack(spacing: Theme.Space.sm) {
+            Menu {
                 Picker("Sortieren", selection: $sort) {
                     ForEach(BleDeviceListSort.allCases) { option in
                         Text(option.title).tag(option)
                     }
                 }
-                .pickerStyle(.segmented)
-                .font(Theme.segment)
-            }
-
-            if showsHideNameless {
-                Toggle(isOn: $hideNameless) {
-                    Text("Geräte ohne Namen ausblenden")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textSecondary)
+                if showsHideNameless {
+                    Toggle("Ohne Namen ausblenden", isOn: $hideNameless)
                 }
-                .tint(Theme.accent)
-                .accessibilityHint("Blendet sonstige BLE-Geräte ohne Advertisement-Namen aus.")
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.system(size: Theme.Icon.standard, weight: .medium))
+                    Text(sort == .signal ? "Signal" : "Name")
+                        .font(Theme.caption.weight(.medium))
+                    if showsHideNameless, hideNameless {
+                        Image(systemName: "eye.slash")
+                            .font(.system(size: Theme.Icon.compact, weight: .medium))
+                    }
+                }
+                .foregroundStyle(Theme.accent)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Theme.surfaceSecondary)
+                .clipShape(Capsule())
             }
+            .accessibilityLabel("Sortieren und filtern")
+
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 2)
     }
 }
 
@@ -272,16 +303,16 @@ struct FindSubpageHeader<Trailing: View>: View {
             if let onBack {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: Theme.Icon.nav, weight: .semibold))
                         .foregroundStyle(Theme.accent)
-                        .frame(width: 44, height: 44)
+                        .frame(width: Theme.Control.backHit, height: Theme.Control.backHit)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Zurück")
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(titleFont)
                     .foregroundStyle(Theme.textPrimary)
@@ -291,16 +322,65 @@ struct FindSubpageHeader<Trailing: View>: View {
                     .accessibilityAddTraits(.isHeader)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(Theme.body)
+                        .font(Theme.caption)
                         .foregroundStyle(subtitleColor)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, onBack == nil ? 0 : 10)
 
             trailing()
         }
+    }
+}
+
+/// Einheitliche Funktionskarte (Icon · Titel · Beschreibung · Chevron).
+struct ScootFunctionCard: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: Theme.Space.md) {
+                Image(systemName: systemImage)
+                    .font(.system(size: Theme.Icon.function, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: Theme.Icon.function + 4, height: Theme.Icon.function + 4)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(Theme.cardTitle)
+                        .foregroundStyle(Theme.textPrimary)
+                    Text(subtitle)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: Theme.Space.sm)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -323,16 +403,17 @@ struct SectionHeader: View {
 }
 
 extension View {
+    /// Standard-Kartenfläche (Innen 16, Radius 16).
     func scootCard() -> some View {
         self
-            .padding(.horizontal, Theme.Space.xl)
-            .padding(.vertical, Theme.Space.lg)
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, Theme.Space.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous)
-                    .stroke(Theme.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
             )
     }
 
@@ -344,5 +425,10 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
             .foregroundStyle(Theme.textPrimary)
             .font(Theme.fieldValue)
+    }
+
+    /// Einheitlicher horizontaler Seitenrand.
+    func scootPagePadding() -> some View {
+        self.padding(.horizontal, Theme.Space.page)
     }
 }

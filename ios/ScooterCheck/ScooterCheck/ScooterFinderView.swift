@@ -181,55 +181,38 @@ struct ScooterFinderView: View {
 
     private var selectionContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Space.md) {
                 findSectionHeader
 
                 if mode != .radar {
                     Picker("Suchmodus", selection: $showOnlyScooters) {
                         Text("E-Scooter").tag(true)
-                        Text(mode == .signalPicker ? "Andere BLE-Geräte" : "Alle BLE-Geräte").tag(false)
+                        Text(mode == .signalPicker ? "Andere BLE" : "Alle BLE").tag(false)
                     }
                     .pickerStyle(.segmented)
                     .font(Theme.segment)
                 }
 
-                if mode == .signalPicker {
-                    Text(showOnlyScooters
-                         ? "Nur als E-Scooter erkennbare Signale. Tippe ein Gerät an, um den Signal-Finder zu starten."
-                         : "Nur sonstige BLE-Geräte (keine E-Scooter-Treffer). Tippe ein Gerät an, um den Signal-Finder zu starten.")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else if mode == .deviceSearch, !showOnlyScooters {
-                    Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an für Details, Geräte-Wächter oder Signal-Finder.")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                BleDeviceListSortFilterBar(
-                    sort: $listSort,
-                    hideNameless: $hideNamelessDevices,
-                    showsHideNameless: showsHideNamelessFilter
-                )
-
-                HStack {
-                    Label(
-                        ble.phase == .scanning
-                            ? (mode == .signalPicker ? "Signal-Finder · Suche aktiv" : "Gerätesuche aktiv")
-                            : (mode == .signalPicker ? "Signal-Finder · pausiert" : "Gerätesuche pausiert"),
-                        systemImage: "dot.radiowaves.left.and.right"
+                HStack(alignment: .center, spacing: Theme.Space.sm) {
+                    BleDeviceListSortFilterBar(
+                        sort: $listSort,
+                        hideNameless: $hideNamelessDevices,
+                        showsHideNameless: showsHideNamelessFilter
                     )
-                    .font(Theme.secondary.weight(.medium))
-                    .foregroundStyle(Theme.accent)
-                    Spacer()
+
+                    Text(ble.phase == .scanning ? "Suche" : "Pausiert")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+
                     Button {
                         showInfo = true
                     } label: {
                         Image(systemName: "info.circle")
-                            .foregroundStyle(Theme.muted)
+                            .font(.system(size: Theme.Icon.standard, weight: .medium))
+                            .foregroundStyle(Theme.textMuted)
+                            .frame(width: 36, height: 36)
                     }
-                    .accessibilityLabel("Hinweise zum Signal-Finder")
+                    .accessibilityLabel("Hinweise")
                 }
 
                 if mode == .deviceSearch, listedDevices.count >= BLEMultiDeviceMonitor.minDevices {
@@ -238,17 +221,8 @@ struct ScooterFinderView: View {
                         showMultiPicker = true
                     } label: {
                         Label("Geräte beobachten", systemImage: "eyeglasses")
-                            .font(Theme.secondary.weight(.medium))
+                            .font(Theme.caption.weight(.medium))
                             .foregroundStyle(Theme.accent)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 14)
-                            .background(Theme.card)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Theme.line, lineWidth: 1)
-                            )
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Ein oder mehrere BLE-Geräte in der Sitzung beobachten, ohne sie als Scooter zu speichern.")
@@ -257,7 +231,7 @@ struct ScooterFinderView: View {
                 if listedDevices.isEmpty {
                     emptySelectionCard
                 } else {
-                    VStack(spacing: 10) {
+                    VStack(spacing: Theme.Space.listGap) {
                         ForEach(listedDevices) { device in
                             Button {
                                 if mode == .signalPicker {
@@ -287,10 +261,10 @@ struct ScooterFinderView: View {
 
                 AppCopyrightFooter()
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
-                    .padding(.bottom, 24)
+                    .padding(.top, Theme.Space.sm)
+                    .padding(.bottom, Theme.Space.xxl)
             }
-            .padding(.horizontal, Theme.Space.xl)
+            .scootPagePadding()
             .padding(.top, Theme.Space.sm)
         }
     }
@@ -370,57 +344,45 @@ struct ScooterFinderView: View {
     }
 
     private func finderDeviceRow(_ device: ScannedDevice) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: Theme.Space.md) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(rowTitle(device))
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .font(Theme.cardTitle)
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                 Text(finderDisplayId(device))
-                    .font(.caption.monospaced())
-                    .foregroundStyle(Theme.muted)
+                    .font(Theme.meta.monospaced())
+                    .foregroundStyle(Theme.textMuted)
                     .lineLimit(1)
-                HStack(spacing: 8) {
-                    Text("\(device.rssi) dBm")
-                        .font(.caption.weight(.semibold))
+                HStack(spacing: Theme.Space.sm) {
+                    Text(device.finderSignalLabel)
+                        .font(Theme.caption.weight(.medium))
                         .foregroundStyle(Theme.accent)
-                    Text("Signal: \(device.finderSignalLabel)")
-                        .font(.caption)
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                if !showOnlyScooters {
-                    Text("ID \(device.bleIdentifierShort) · \(lastSeenLabel(device.lastSeen))")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
-                        .lineLimit(1)
-                } else {
+                    Text("·")
+                        .foregroundStyle(Theme.textMuted)
                     Text(lastSeenLabel(device.lastSeen))
-                        .font(.caption2)
-                        .foregroundStyle(Theme.muted)
-                }
-                if device.looksLikeScooter, !showOnlyScooters {
-                    Text("Möglicherweise Scooter")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Theme.accent.opacity(0.9))
-                        .clipShape(Capsule())
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.textMuted)
+                    if device.looksLikeScooter, !showOnlyScooters {
+                        Text("E-Scooter?")
+                            .font(Theme.badgeFont)
+                            .foregroundStyle(Theme.accent)
+                    }
                 }
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: Theme.Space.sm)
             SignalStrengthView(rssi: device.rssi, style: .shu)
             Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Theme.muted)
-                .padding(.top, 4)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textMuted)
         }
-        .padding(14)
+        .padding(.horizontal, Theme.Space.cardPadding)
+        .padding(.vertical, 12)
         .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Theme.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: Theme.Control.hairline)
         )
     }
 
@@ -482,55 +444,68 @@ struct ScooterFinderView: View {
                         radarBrowseMode = false
                         onBackToHub?()
                     }
-                )
+                ) {
+                    Menu {
+                        Picker("Sortieren", selection: $listSort) {
+                            ForEach(BleDeviceListSort.allCases) { option in
+                                Text(option.title).tag(option)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: Theme.Icon.standard, weight: .medium))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: Theme.Control.backHit, height: Theme.Control.backHit)
+                    }
+                    .accessibilityLabel("Sortieren")
+                }
 
-                BleDeviceListSortFilterBar(
-                    sort: $listSort,
-                    hideNameless: $hideNamelessDevices,
-                    showsHideNameless: false
-                )
+                BLERadarControlsCard(radar: radar)
 
                 if let banner = radar.banner {
                     BLERadarBannerView(text: banner)
                 }
 
-                BLERadarControlsCard(radar: radar)
-
-                Text("Nur hinreichend plausible E-Scooter lösen einen Alarm aus — nicht jedes BLE-Gerät.")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 if listedDevices.isEmpty {
                     Text("Warte auf Scooter-Signale…")
-                        .font(Theme.secondary)
-                        .foregroundStyle(Theme.textSecondary)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .padding(.top, Theme.Space.sm)
                 } else {
-                    ForEach(listedDevices) { device in
-                        Button {
-                            startFinding(device)
-                        } label: {
-                            finderDeviceRow(device)
-                                .overlay(alignment: .topTrailing) {
-                                    if radar.highlightDeviceIds.contains(device.id) {
-                                        BLERadarHitBadge()
-                                            .padding(10)
+                    VStack(spacing: Theme.Space.listGap) {
+                        ForEach(listedDevices) { device in
+                            Button {
+                                startFinding(device)
+                            } label: {
+                                finderDeviceRow(device)
+                                    .overlay(alignment: .topTrailing) {
+                                        if radar.highlightDeviceIds.contains(device.id) {
+                                            BLERadarHitBadge()
+                                                .padding(10)
+                                        }
                                     }
-                                }
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
 
-                ScootOutlineButton(title: "Radar beenden", systemImage: "xmark") {
+                Button {
                     radar.endSession()
                     radarBrowseMode = false
                     onBackToHub?()
+                } label: {
+                    Text("Radar beenden")
+                        .font(Theme.caption.weight(.medium))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Space.md)
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, Theme.Space.xl)
+            .scootPagePadding()
             .padding(.top, Theme.Space.sm)
-            .padding(.bottom, Theme.Space.xl)
+            .padding(.bottom, Theme.Space.xxl)
         }
     }
 

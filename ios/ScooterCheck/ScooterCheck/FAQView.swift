@@ -22,11 +22,11 @@ struct FAQView: View {
                 Theme.bg.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.lg) {
-                        VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
                             PageTitle(text: "FAQ & Wissensbasis")
                             Text("Themen aufklappen oder suchen — Antworten erscheinen darunter.")
-                                .font(Theme.body)
+                                .font(Theme.secondary)
                                 .foregroundStyle(Theme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -36,7 +36,7 @@ struct FAQView: View {
                         if categories.isEmpty {
                             emptySearch
                         } else {
-                            VStack(alignment: .leading, spacing: Theme.Space.md) {
+                            VStack(alignment: .leading, spacing: Theme.Space.listGap) {
                                 ForEach(categories) { category in
                                     categoryBlock(category)
                                         .id(category.id)
@@ -47,9 +47,9 @@ struct FAQView: View {
                         AppCopyrightFooter()
                             .frame(maxWidth: .infinity)
                             .padding(.top, Theme.Space.sm)
-                            .padding(.bottom, 28)
+                            .padding(.bottom, Theme.Space.xxl)
                     }
-                    .padding(.horizontal, Theme.Space.xl)
+                    .scootPagePadding()
                     .padding(.top, Theme.Space.sm)
                 }
             }
@@ -129,29 +129,29 @@ struct FAQView: View {
             } label: {
                 HStack(spacing: Theme.Space.md) {
                     Image(systemName: category.symbolName)
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: Theme.Icon.standard, weight: .semibold))
                         .foregroundStyle(Theme.accent)
-                        .frame(width: 22)
+                        .frame(width: Theme.Icon.nav)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(category.title)
                             .font(Theme.sectionTitle)
                             .foregroundStyle(Theme.textTitle)
                         Text("\(category.items.count) Themen")
-                            .font(Theme.caption)
+                            .font(Theme.meta)
                             .foregroundStyle(Theme.textMuted)
                     }
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.down")
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.textMuted)
                         .rotationEffect(.degrees(isOpen ? 180 : 0))
                 }
-                .padding(Theme.Space.lg)
+                .padding(Theme.Space.cardPadding)
                 .background(Theme.card)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                        .stroke(Theme.border, lineWidth: 1)
+                        .stroke(Theme.border, lineWidth: Theme.Control.hairline)
                 )
             }
             .buttonStyle(.plain)
@@ -170,8 +170,8 @@ struct FAQView: View {
                         }
                     }
                 }
-                .padding(.leading, 16)
-                .padding(.top, 10)
+                .padding(.leading, Theme.Space.lg)
+                .padding(.top, Theme.Space.sm)
             }
         }
     }
@@ -218,7 +218,7 @@ private struct FAQAccordionRow: View {
             Button(action: onToggle) {
                 HStack(alignment: .top, spacing: Theme.Space.md) {
                     Text(item.question)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(Theme.cardTitle)
                         .foregroundStyle(Theme.textTitle)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
