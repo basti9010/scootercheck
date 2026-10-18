@@ -22,7 +22,7 @@ final class FAQCatalogTests: XCTestCase {
         for query in [
             "Scooter finden", "finden", "Suche", "Ortung", "Standort", "Entfernung",
             "Signal", "RSSI", "Radar", "Signal-Finder", "Geräte-Wächter", "Wächter",
-            "Gerätesuche", "Gerät aufspüren", "Heatmap", "Live", "Shelly",
+            "Gerät aufspüren", "Heatmap", "Live", "Shelly", "auslesen",
             "Scooter suchen", "Alle BLE", "nicht gefunden",
         ] {
             let hits = FAQCatalog.filtered(query: query)
@@ -33,15 +33,16 @@ final class FAQCatalogTests: XCTestCase {
             )
         }
         let finden = FAQCatalog.categories.first { $0.id == "finden" }
-        XCTAssertEqual(finden?.items.count, 10)
+        XCTAssertEqual(finden?.items.count, 9)
         XCTAssertEqual(finden?.symbolName, "magnifyingglass")
         let ids = Set(finden?.items.map(\.id) ?? [])
         for needed in [
-            "finden-was", "finden-geraetesuche", "finden-radar",
+            "finden-was", "finden-radar",
             "finden-waechter", "finden-signal-finder",
         ] {
             XCTAssertTrue(ids.contains(needed), "missing \(needed)")
         }
+        XCTAssertFalse(ids.contains("finden-geraetesuche"))
     }
 
     func testItemsHaveContent() {

@@ -161,7 +161,7 @@ enum PrivacyContent {
         Section(
             title: "Pflicht zur Bereitstellung",
             paragraphs: [
-                "Die App ist ohne Konto nutzbar. Bluetooth ist für Auslese und Gerätesuche erforderlich; Kamera/Fotos nur für Bildfunktionen; Standort/Bewegung nur für „Scooter finden“.",
+                "Die App ist ohne Konto nutzbar. Bluetooth ist für „E Scooter auslesen“ und „Scooter finden“ erforderlich; Kamera/Fotos nur für Bildfunktionen; Standort/Bewegung nur für die Find-Funktionen.",
                 "Ohne die jeweilige Berechtigung funktionieren andere Bereiche der App weiter, soweit sie die Berechtigung nicht benötigen."
             ]
         ),
