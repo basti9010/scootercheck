@@ -82,6 +82,8 @@
 		A10000000000000000000050 /* BLESearchARView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000050 /* BLESearchARView.swift */; };
 		A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000051 /* BLESearchARCoreTests.swift */; };
 		A10000000000000000000052 /* SceneKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B10000000000000000000052 /* SceneKit.framework */; };
+		A10000000000000000000053 /* ScootNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000053 /* ScootNavigation.swift */; };
+		A10000000000000000000054 /* ScootEdgeBackGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000054 /* ScootEdgeBackGesture.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -158,6 +160,8 @@
 		B10000000000000000000050 /* BLESearchARView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchARView.swift; sourceTree = "<group>"; };
 		B10000000000000000000051 /* BLESearchARCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchARCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000052 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
+		B10000000000000000000053 /* ScootNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScootNavigation.swift; sourceTree = "<group>"; };
+		B10000000000000000000054 /* ScootEdgeBackGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScootEdgeBackGesture.swift; sourceTree = "<group>"; };
 		B10000000000000000000045 /* BLEMultiDeviceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEMultiDeviceScreen.swift; sourceTree = "<group>"; };
 		B10000000000000000000046 /* BLEAnalysisCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEAnalysisCoreTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000049 /* BLEWatchRadarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarTests.swift; sourceTree = "<group>"; };
@@ -223,6 +227,8 @@
 				B1000000000000000000004C /* BLESearchVisualTracker.swift */,
 				B1000000000000000000004F /* BLESearchARCore.swift */,
 				B10000000000000000000050 /* BLESearchARView.swift */,
+				B10000000000000000000053 /* ScootNavigation.swift */,
+				B10000000000000000000054 /* ScootEdgeBackGesture.swift */,
 				B10000000000000000000045 /* BLEMultiDeviceScreen.swift */,
 				B10000000000000000000044 /* BLEAnalysisCore.swift */,
 				B10000000000000000000048 /* BLEWatchRadarUI.swift */,
@@ -432,6 +438,8 @@
 				A1000000000000000000004C /* BLESearchVisualTracker.swift in Sources */,
 				A1000000000000000000004F /* BLESearchARCore.swift in Sources */,
 				A10000000000000000000050 /* BLESearchARView.swift in Sources */,
+				A10000000000000000000053 /* ScootNavigation.swift in Sources */,
+				A10000000000000000000054 /* ScootEdgeBackGesture.swift in Sources */,
 				A10000000000000000000045 /* BLEMultiDeviceScreen.swift in Sources */,
 				A10000000000000000000044 /* BLEAnalysisCore.swift in Sources */,
 				A10000000000000000000048 /* BLEWatchRadarUI.swift in Sources */,

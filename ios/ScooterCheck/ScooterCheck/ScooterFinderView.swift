@@ -32,6 +32,7 @@ struct ScooterFinderView: View {
     /// Stabile Listenreihenfolge nur bei Sortierung nach Signal (weniger Zucken).
     @State private var stableOrderIds: [UUID] = []
     @State private var lastStableReorderAt = Date.distantPast
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isFinding: Bool { selected != nil && searchEngine.isActive }
     private var isObserving: Bool { multiMonitor.isActive }
@@ -73,21 +74,43 @@ struct ScooterFinderView: View {
     }
 
     var body: some View {
-        Group {
+        ZStack {
+            // Basis bleibt gemountet → Zurückwischen zeigt die vorherige Seite (State bleibt erhalten).
+            Group {
+                if isRadarBrowsing {
+                    radarBrowseContent
+                } else {
+                    selectionContent
+                }
+            }
+
+            if isObserving {
+                BLEMultiDeviceScreen(monitor: multiMonitor) {
+                    endMultiObserve()
+                }
+                .scootPushTransition(reduceMotion: reduceMotion)
+                .scootEdgeBackGesture {
+                    endMultiObserve()
+                }
+                .zIndex(1)
+            }
+
             if isFinding {
                 BLESearchScreen(engine: searchEngine) {
                     endFinding()
                 }
-            } else if isObserving {
-                BLEMultiDeviceScreen(monitor: multiMonitor) {
-                    multiSelectedIds = []
+                .scootPushTransition(reduceMotion: reduceMotion)
+                .scootEdgeBackGesture {
+                    if searchEngine.isActive {
+                        searchEngine.stop(discardSession: true)
+                    }
+                    endFinding()
                 }
-            } else if isRadarBrowsing {
-                radarBrowseContent
-            } else {
-                selectionContent
+                .zIndex(2)
             }
         }
+        .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.page, value: isFinding)
+        .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.page, value: isObserving)
         .onAppear {
             if ble.phase != .scanning {
                 ble.startScan()
@@ -419,6 +442,13 @@ struct ScooterFinderView: View {
         }
         if ble.phase != .scanning {
             ble.startScan()
+        }
+    }
+
+    private func endMultiObserve() {
+        multiSelectedIds = []
+        if multiMonitor.isActive {
+            multiMonitor.stop()
         }
     }
 
