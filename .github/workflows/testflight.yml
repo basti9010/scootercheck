@@ -47,6 +47,7 @@ on:
       - cursor/pruefungen-swipe-order-b100
       - cursor/ar-path-screen-awake-b100
       - cursor/watcher-card-radius-b100
+      - cursor/ar-path-thinner-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
