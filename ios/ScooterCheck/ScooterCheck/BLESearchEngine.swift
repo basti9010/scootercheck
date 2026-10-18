@@ -190,6 +190,9 @@ final class BLESearchEngine: NSObject, ObservableObject {
         recordEvent(type: .coarseMode, title: "Suche aktiviert", minInterval: 0)
 
         startSensors()
+        indoorTracker.onHeadingUpdated = { [weak self] _ in
+            self?.publishLiveHeading()
+        }
         indoorTracker.start()
         if cameraTrackingEnabled {
             startCameraTracking()
@@ -217,6 +220,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         bleCancellable?.cancel()
         bleCancellable = nil
         stopSensors()
+        indoorTracker.onHeadingUpdated = nil
         indoorTracker.stop()
         visualTracker.stop()
         syncCameraTrackingStatus()
@@ -297,6 +301,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
             self.syncCameraTrackingStatus()
             self.pathDirty = true
             self.heatmapDirty = true
+            self.publishLiveHeading()
             if authoritative {
                 self.surfaceHint = "Kamera-Tracking aktiv – relative Meter, keine exakte Ortung"
             } else if self.visualTracker.state == .limited {
@@ -620,12 +625,43 @@ final class BLESearchEngine: NSObject, ObservableObject {
         let h = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
         guard h >= 0 else { return }
         let accuracy = heading.headingAccuracy
-        // Gyro führt Indoor; Kompass nur Initial + weiche Ankerung bei brauchbarer Genauigkeit
+        // Gyro führt Indoor; Kompass ankert absolut — im Stillstand stärker für den Sichtkegel
         indoorTracker.ingestExternalHeading(
             h,
             fromCompass: accuracy >= 0 && accuracy <= BLEPathConfig.compassMaxAccuracyDegrees,
             accuracy: accuracy
         )
+    }
+
+    /// Frisches Heading für Sichtkegel (Heatmap + AR-Minikarte), auch ohne neuen Pfadpunkt.
+    private func liveHeadingDegrees() -> Double? {
+        if cameraTrackingEnabled,
+           visualTracker.state.isHealthy,
+           let h = visualTracker.headingDegrees {
+            return h
+        }
+        return indoorTracker.headingDegrees ?? visualTracker.headingDegrees
+    }
+
+    private func publishLiveHeading() {
+        guard isActive, let heading = liveHeadingDegrees() else { return }
+        var snap = pathSnapshot
+        var cur = snap.current ?? BLEPathPoint(
+            x: relativeX,
+            y: relativeY,
+            headingDegrees: heading
+        )
+        if let prev = cur.headingDegrees {
+            var d = heading - prev
+            while d > 180 { d -= 360 }
+            while d < -180 { d += 360 }
+            if abs(d) < 1.0 { return }
+        }
+        cur.headingDegrees = heading
+        cur.x = relativeX
+        cur.y = relativeY
+        snap.current = cur
+        pathSnapshot = snap
     }
 
     private func updateDuration() {
@@ -832,11 +868,16 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private func rebuildPathAndHeatmap(force: Bool) {
         guard isActive else { return }
         if pathDirty || force {
-            let snap = SearchPathReconstructor.snapshot(
+            var snap = SearchPathReconstructor.snapshot(
                 from: indoorTracker.path,
                 previousViewport: followViewport ? pathSnapshot.viewport : nil,
                 followSoftly: followViewport
             )
+            if let heading = liveHeadingDegrees() {
+                var cur = snap.current ?? BLEPathPoint(x: relativeX, y: relativeY)
+                cur.headingDegrees = heading
+                snap.current = cur
+            }
             pathSnapshot = snap
             // Kamera-Distanz > Pedometer > Polyline
             let meters = max(
