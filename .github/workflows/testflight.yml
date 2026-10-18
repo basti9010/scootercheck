@@ -40,6 +40,7 @@ on:
       - cursor/ar-signal-finder-b100
       - cursor/nav-transitions-b100
       - cursor/privacy-faq-parity-b100
+      - cursor/map-accurate-location-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -66,7 +67,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Datenschutz wie FAQ — gleicher Sheet-Header, schlanke Accordion-Liste' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Apple-Karte im Signal-Finder erst bei genauer Position — kein Springen bei ungenauem GPS' }}"
 
     steps:
       - name: Checkout

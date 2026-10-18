@@ -38,6 +38,8 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var pathLengthText: String = "0.00 m"
     @Published private(set) var breadcrumbs: [BLEBreadcrumb] = []
     @Published private(set) var surfaceHint: String = "Heatmap – Nutzer zentriert, keine exakte Ortung"
+    /// Apple-Karte nur bei ausreichend genauer Position (sonst Heatmap / eingefrorene Karte).
+    @Published private(set) var isMapLocationReliable = false
 
     // AR Signal-Finder (gleiche Messsitzung)
     @Published private(set) var arSpatialSamples: [ARSpatialSample] = []
@@ -102,6 +104,8 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private var lastPersistedRelative: (x: Double, y: Double)?
     private var userPickedSurfaceMode = false
     private var didAutoPickSurfaceMode = false
+    /// Aufeinanderfolgende GPS-Fixes mit guter Genauigkeit.
+    private var accurateFixStreak = 0
 
     func start(device: ScannedDevice, ble: BleClient) {
         stop(discardSession: true)
@@ -140,6 +144,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         cameraTrackingEnabled = true
         cameraTrackingStatus = "Kamera aus"
         cameraTrackingHealthy = false
+        isMapLocationReliable = false
         heatmap = .empty
         strongestRssi = nil
         strongestLabel = "—"
@@ -172,6 +177,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         lastPersistedRelative = nil
         userPickedSurfaceMode = false
         didAutoPickSurfaceMode = false
+        accurateFixStreak = 0
         lastAdvSignature = advSignature(device)
         lastFingerprintCompareAt = .distantPast
 
@@ -347,9 +353,9 @@ final class BLESearchEngine: NSObject, ObservableObject {
             heatmapDirty = true
             rebuildPathAndHeatmap(force: true)
         }
-        if surfaceMode == .map {
+        if surfaceMode == .map, isMapLocationReliable, let origin = originLocation {
             mapOverlay = OutdoorMapTracker.model(
-                origin: originLocation,
+                origin: origin,
                 path: pathSnapshot.points,
                 smoothedPolyline: pathSnapshot.smoothedPolyline,
                 measurements: session?.measurements ?? [],
@@ -851,15 +857,18 @@ final class BLESearchEngine: NSObject, ObservableObject {
             return BLEBreadcrumb(x: x, y: y, rssi: m.smoothedRssi)
         }
         searchGrid = BLESearchGrid.build(from: s.measurements, userArea: userSearchArea)
-        mapOverlay = OutdoorMapTracker.model(
-            origin: originLocation,
-            path: pathSnapshot.points,
-            smoothedPolyline: pathSnapshot.smoothedPolyline,
-            measurements: s.measurements,
-            lastGPS: lastLocation,
-            previousRegion: followViewport ? mapOverlay.region : nil,
-            softFollow: followViewport
-        )
+        // Karte nur mit stabilem, genauem Standort aktualisieren — sonst kein Springen.
+        if isMapLocationReliable, let origin = originLocation {
+            mapOverlay = OutdoorMapTracker.model(
+                origin: origin,
+                path: pathSnapshot.points,
+                smoothedPolyline: pathSnapshot.smoothedPolyline,
+                measurements: s.measurements,
+                lastGPS: lastLocation,
+                previousRegion: followViewport ? mapOverlay.region : nil,
+                softFollow: followViewport
+            )
+        }
         heatmapDirty = false
     }
 
@@ -920,30 +929,47 @@ extension BLESearchEngine: CLLocationManagerDelegate {
         guard let loc = locations.last else { return }
         Task { @MainActor in
             self.lastLocation = loc
-            if self.originLocation == nil, loc.horizontalAccuracy > 0, loc.horizontalAccuracy < 40 {
-                self.originLocation = loc
+            let accurate = loc.horizontalAccuracy > 0
+                && loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy
+
+            if accurate {
+                self.accurateFixStreak += 1
+            } else {
+                self.accurateFixStreak = 0
+                if self.isMapLocationReliable {
+                    self.isMapLocationReliable = false
+                    self.surfaceHint = "Standort ungenau — Karte pausiert, Heatmap bleibt"
+                }
             }
-            // Nur bei wirklich gutem Outdoor-GPS Karte vorschlagen (Indoor oft 10–25 m „ok“ aber unbrauchbar)
-            if !self.userPickedSurfaceMode,
-               !self.didAutoPickSurfaceMode,
-               loc.horizontalAccuracy > 0,
-               loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy {
-                self.didAutoPickSurfaceMode = true
-                self.applySurfaceMode(.map)
-            }
-            if let origin = self.originLocation,
-               loc.horizontalAccuracy > 0,
-               loc.horizontalAccuracy <= BLEPathConfig.gpsFusionMaxAccuracy {
-                let (e, n) = ScooterFinderMath.enuDeltaMeters(
-                    lat0: origin.coordinate.latitude,
-                    lon0: origin.coordinate.longitude,
-                    latA: origin.coordinate.latitude,
-                    lonA: origin.coordinate.longitude,
-                    latB: loc.coordinate.latitude,
-                    lonB: loc.coordinate.longitude
-                )
-                self.indoorTracker.ingestGPSDelta(east: e, north: n, accuracy: loc.horizontalAccuracy)
-                self.pathDirty = true
+
+            let ready = self.accurateFixStreak >= BLEPathConfig.mapAccuracyStreakRequired
+            if ready {
+                if !self.isMapLocationReliable {
+                    self.isMapLocationReliable = true
+                    self.surfaceHint = "Standort genau — Karte verfügbar"
+                }
+                // Karten-Ursprung erst mit stabilem Fix — verhindert Hin-und-Her.
+                if self.originLocation == nil {
+                    self.originLocation = loc
+                }
+                // Automatisch nur umschalten, wenn der Standort wirklich steht.
+                if !self.userPickedSurfaceMode, !self.didAutoPickSurfaceMode {
+                    self.didAutoPickSurfaceMode = true
+                    self.applySurfaceMode(.map)
+                }
+                if let origin = self.originLocation {
+                    let (e, n) = ScooterFinderMath.enuDeltaMeters(
+                        lat0: origin.coordinate.latitude,
+                        lon0: origin.coordinate.longitude,
+                        latA: origin.coordinate.latitude,
+                        lonA: origin.coordinate.longitude,
+                        latB: loc.coordinate.latitude,
+                        lonB: loc.coordinate.longitude
+                    )
+                    self.indoorTracker.ingestGPSDelta(east: e, north: n, accuracy: loc.horizontalAccuracy)
+                    self.pathDirty = true
+                    self.heatmapDirty = true
+                }
             }
         }
     }

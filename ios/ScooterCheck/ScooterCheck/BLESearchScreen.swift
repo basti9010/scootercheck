@@ -211,7 +211,8 @@ struct BLESearchScreen: View {
 
             ZStack(alignment: .topTrailing) {
                 Group {
-                    if engine.surfaceMode == .map {
+                    // Apple-Karte erst bei genauem Standort — sonst Heatmap (kein Springen).
+                    if engine.surfaceMode == .map, engine.isMapLocationReliable {
                         BLESearchMapCanvas(
                             overlay: engine.mapOverlay,
                             heatmap: engine.heatmap
@@ -249,6 +250,13 @@ struct BLESearchScreen: View {
                 }
                 .accessibilityLabel("Zentrieren")
                 .padding(10)
+            }
+
+            if engine.surfaceMode == .map, !engine.isMapLocationReliable {
+                Text("Standort wird präzisiert … Apple-Karte erscheint bei genauer Position.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let hint = engine.positionHint {
