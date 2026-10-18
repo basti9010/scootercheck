@@ -227,8 +227,10 @@ struct BLESearchARSceneRepresentable: UIViewRepresentable {
         private var lastTextureAt: Date = .distantPast
         private var lastSampleCount = 0
         private var lastEpoch = -1
-        private var lastPathCount = -1
-        private var lastPathAt: Date = .distantPast
+        /// Letzter ENU-Punkt, für den schon ein AR-Segment gezeichnet wurde (kein Voll-Rebuild → kein Flackern).
+        private var lastPathENU: (x: Double, y: Double)?
+        private var lastPathEpoch = -1
+        private var pathTipNode: SCNNode?
 
         func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
             // Leichtgewichtig — schwere Texture nur in refreshContent
@@ -318,97 +320,137 @@ struct BLESearchARSceneRepresentable: UIViewRepresentable {
             guard let pathNode else { return }
             pathNode.isHidden = !settings.showPath
             guard settings.showPath else {
-                pathNode.enumerateChildNodes { child, _ in child.removeFromParentNode() }
-                lastPathCount = -1
+                clearPathNodes(in: pathNode)
                 return
             }
 
+            let epoch = engine.visualTracker.sessionEpoch
             let raw: [(x: Double, y: Double)] = {
                 let p = engine.pathSnapshot.smoothedPolyline
                 if p.count >= 2 { return p }
                 return engine.pathSnapshot.points.map { ($0.x, $0.y) }
             }()
-            let poly = Self.decimatePath(raw, maxPoints: 90)
-            let now = Date()
-            let pathDirty = poly.count != lastPathCount
-                || now.timeIntervalSince(lastPathAt) > 0.45
-            guard pathDirty else { return }
-            lastPathCount = poly.count
-            lastPathAt = now
+            let poly = Self.samplePathByDistance(raw, minSpacing: 0.32)
 
-            pathNode.enumerateChildNodes { child, _ in child.removeFromParentNode() }
-            guard poly.count >= 2 else { return }
-
-            var positions: [SCNVector3] = []
-            positions.reserveCapacity(poly.count)
-            for p in poly {
-                if let w = engine.visualTracker.worldPosition(east: p.x, north: p.y) {
-                    positions.append(SCNVector3(w.x, w.y + 0.05, w.z))
+            // Neuausrichten / erster Aufbau: einmal aufbauen, danach nur anhängen (kein Flackern).
+            if epoch != lastPathEpoch || lastPathENU == nil {
+                clearPathNodes(in: pathNode)
+                lastPathEpoch = epoch
+                lastPathENU = nil
+                guard poly.count >= 2 else { return }
+                for i in 0..<(poly.count - 1) {
+                    appendPathSegment(from: poly[i], to: poly[i + 1], engine: engine, into: pathNode)
                 }
+                if let tip = poly.last {
+                    lastPathENU = tip
+                    updatePathTip(at: tip, engine: engine, into: pathNode)
+                }
+                return
             }
-            guard positions.count >= 2 else { return }
 
-            // SCN line primitives are ~1px — cylinders keep the walked path readable.
+            guard let tip = poly.last else { return }
+            guard let prev = lastPathENU else {
+                lastPathENU = tip
+                updatePathTip(at: tip, engine: engine, into: pathNode)
+                return
+            }
+            let step = hypot(tip.x - prev.x, tip.y - prev.y)
+            if step >= 0.28 {
+                appendPathSegment(from: prev, to: tip, engine: engine, into: pathNode)
+                lastPathENU = tip
+            }
+            // Endpunkt nur verschieben — Segment-Geometrie bleibt stehen.
+            updatePathTip(at: tip, engine: engine, into: pathNode)
+        }
+
+        @MainActor
+        private func clearPathNodes(in pathNode: SCNNode) {
+            pathNode.enumerateChildNodes { child, _ in child.removeFromParentNode() }
+            pathTipNode = nil
+            lastPathENU = nil
+            lastPathEpoch = -1
+        }
+
+        @MainActor
+        private func appendPathSegment(
+            from aENU: (x: Double, y: Double),
+            to bENU: (x: Double, y: Double),
+            engine: BLESearchEngine,
+            into pathNode: SCNNode
+        ) {
+            guard let aw = engine.visualTracker.worldPosition(east: aENU.x, north: aENU.y),
+                  let bw = engine.visualTracker.worldPosition(east: bENU.x, north: bENU.y) else { return }
+            let a = SCNVector3(aw.x, aw.y + 0.05, aw.z)
+            let b = SCNVector3(bw.x, bw.y + 0.05, bw.z)
+            let dx = b.x - a.x
+            let dy = b.y - a.y
+            let dz = b.z - a.z
+            let length = CGFloat(sqrt(dx * dx + dy * dy + dz * dz))
+            guard length > 0.02 else { return }
+
+            let mid = SCNVector3((a.x + b.x) * 0.5, (a.y + b.y) * 0.5, (a.z + b.z) * 0.5)
             let accent = UIColor(Theme.accent)
             let underlay = UIColor.black.withAlphaComponent(0.55)
             let core = accent.withAlphaComponent(0.95)
-            // ~2 cm Kern — lesbar, ohne den Boden zu verdecken
-            let underRadius: CGFloat = 0.028
-            let coreRadius: CGFloat = 0.018
             let up = SCNVector3(0, 1, 0)
 
-            for i in 0..<(positions.count - 1) {
-                let a = positions[i]
-                let b = positions[i + 1]
-                let dx = b.x - a.x
-                let dy = b.y - a.y
-                let dz = b.z - a.z
-                let length = CGFloat(sqrt(dx * dx + dy * dy + dz * dz))
-                guard length > 0.02 else { continue }
-
-                let mid = SCNVector3((a.x + b.x) * 0.5, (a.y + b.y) * 0.5, (a.z + b.z) * 0.5)
-
-                func segment(radius: CGFloat, color: UIColor) -> SCNNode {
-                    let cyl = SCNCylinder(radius: radius, height: length)
-                    let mat = SCNMaterial()
-                    mat.diffuse.contents = color
-                    mat.lightingModel = .constant
-                    mat.writesToDepthBuffer = false
-                    cyl.materials = [mat]
-                    let node = SCNNode(geometry: cyl)
-                    node.position = mid
-                    node.look(at: b, up: up, localFront: SCNVector3(0, 1, 0))
-                    return node
-                }
-
-                pathNode.addChildNode(segment(radius: underRadius, color: underlay))
-                pathNode.addChildNode(segment(radius: coreRadius, color: core))
+            func segment(radius: CGFloat, color: UIColor) -> SCNNode {
+                let cyl = SCNCylinder(radius: radius, height: length)
+                let mat = SCNMaterial()
+                mat.diffuse.contents = color
+                mat.lightingModel = .constant
+                mat.writesToDepthBuffer = false
+                cyl.materials = [mat]
+                let node = SCNNode(geometry: cyl)
+                node.position = mid
+                node.look(at: b, up: up, localFront: SCNVector3(0, 1, 0))
+                return node
             }
 
-            if let last = positions.last {
-                let tip = SCNSphere(radius: 0.028)
-                let tipMat = SCNMaterial()
-                tipMat.diffuse.contents = accent
-                tipMat.lightingModel = .constant
-                tip.materials = [tipMat]
-                let tipNode = SCNNode(geometry: tip)
-                tipNode.position = last
-                pathNode.addChildNode(tipNode)
-            }
+            pathNode.addChildNode(segment(radius: 0.028, color: underlay))
+            pathNode.addChildNode(segment(radius: 0.018, color: core))
         }
 
-        /// Gleichmäßig ausdünnen, damit der AR-Pfad flüssig bleibt.
-        private static func decimatePath(
+        @MainActor
+        private func updatePathTip(
+            at enu: (x: Double, y: Double),
+            engine: BLESearchEngine,
+            into pathNode: SCNNode
+        ) {
+            guard let w = engine.visualTracker.worldPosition(east: enu.x, north: enu.y) else { return }
+            let pos = SCNVector3(w.x, w.y + 0.05, w.z)
+            if let tip = pathTipNode {
+                tip.position = pos
+                return
+            }
+            let sphere = SCNSphere(radius: 0.028)
+            let mat = SCNMaterial()
+            mat.diffuse.contents = UIColor(Theme.accent)
+            mat.lightingModel = .constant
+            sphere.materials = [mat]
+            let tip = SCNNode(geometry: sphere)
+            tip.name = "arPathTip"
+            tip.position = pos
+            pathNode.addChildNode(tip)
+            pathTipNode = tip
+        }
+
+        /// Abstandsbasiert ausdünnen — frühere Punkte bleiben stabil (kein Neu-Sampling).
+        private static func samplePathByDistance(
             _ pts: [(x: Double, y: Double)],
-            maxPoints: Int
+            minSpacing: Double
         ) -> [(x: Double, y: Double)] {
-            guard pts.count > maxPoints, maxPoints >= 2 else { return pts }
-            let step = Double(pts.count - 1) / Double(maxPoints - 1)
-            var out: [(x: Double, y: Double)] = []
-            out.reserveCapacity(maxPoints)
-            for i in 0..<maxPoints {
-                let idx = min(pts.count - 1, Int((Double(i) * step).rounded()))
-                out.append(pts[idx])
+            guard let first = pts.first else { return [] }
+            var out: [(x: Double, y: Double)] = [first]
+            for p in pts.dropFirst() {
+                guard let last = out.last else { continue }
+                if hypot(p.x - last.x, p.y - last.y) >= minSpacing {
+                    out.append(p)
+                }
+            }
+            if let last = pts.last, let tip = out.last,
+               hypot(last.x - tip.x, last.y - tip.y) > 0.05 {
+                out.append(last)
             }
             return out
         }
