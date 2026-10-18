@@ -171,14 +171,23 @@ struct BLEWatchListScreen: View {
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .scootCard()
                 .padding(.horizontal, Theme.Space.xl)
+                Spacer(minLength: 0)
             } else {
                 List {
                     ForEach(store.targets) { target in
                         watchRow(target)
-                            .listRowBackground(Theme.card)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(
+                                top: Theme.Space.listGap / 2,
+                                leading: Theme.Space.xl,
+                                bottom: Theme.Space.listGap / 2,
+                                trailing: Theme.Space.xl
+                            ))
+                            .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     store.remove(id: target.id)
@@ -191,6 +200,7 @@ struct BLEWatchListScreen: View {
                 }
                 .scrollContentBackground(.hidden)
                 .listStyle(.plain)
+                .environment(\.defaultMinListRowHeight, 1)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -202,34 +212,43 @@ struct BLEWatchListScreen: View {
         Button {
             onSelect?(target)
         } label: {
-            HStack(alignment: .top, spacing: Theme.Space.md) {
+            HStack(alignment: .center, spacing: Theme.Space.md) {
                 Circle()
                     .fill(target.enabled ? Theme.accent : Theme.textMuted.opacity(0.5))
                     .frame(width: 8, height: 8)
-                    .padding(.top, 6)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(target.deviceName)
-                        .font(Theme.secondary.weight(.semibold))
+                        .font(Theme.cardTitle)
                         .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(1)
                     Text(target.watchStatus.label)
-                        .font(Theme.caption)
+                        .font(Theme.caption.weight(.medium))
                         .foregroundStyle(Theme.accent)
-                    if let last = target.lastSeenAt {
-                        Text("zuletzt \(relative(last))")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                    if let rssi = target.lastRSSI {
-                        let cls = BLESignalClass.from(smoothedRssi: target.lastSmoothedRssi ?? Double(rssi), lost: false)
-                        Text("Signal: \(cls.label) · \(rssi) dBm")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                    HStack(spacing: Theme.Space.sm) {
+                        if let last = target.lastSeenAt {
+                            Text("zuletzt \(relative(last))")
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        if let rssi = target.lastRSSI {
+                            let cls = BLESignalClass.from(
+                                smoothedRssi: target.lastSmoothedRssi ?? Double(rssi),
+                                lost: false
+                            )
+                            if target.lastSeenAt != nil {
+                                Text("·")
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            Text("\(cls.label) · \(rssi) dBm")
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.textMuted)
+                        }
                     }
                     Text(target.enabled ? "Wächter aktiv" : "Pausiert")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
-                Spacer()
+                Spacer(minLength: Theme.Space.sm)
                 Toggle("", isOn: Binding(
                     get: { target.enabled },
                     set: { store.setEnabled(id: target.id, enabled: $0); BLEWatchService.shared.updateBackgroundScanIfNeeded() }
@@ -237,7 +256,16 @@ struct BLEWatchListScreen: View {
                 .labelsHidden()
                 .tint(Theme.accent)
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
