@@ -142,7 +142,10 @@ enum BLEPathConfig {
     static let mapMaxSpanMeters: Double = 100
     static let mapPadding: Double = 1.55
     static let mapSoftFollow: Double = 0.28
+    /// GPS darf nur bei dieser Horizontalgenauigkeit (Meter) die Karte/PDR führen.
     static let gpsFusionMaxAccuracy: Double = 8
+    /// So viele aufeinanderfolgende gute Fixes, bevor die Apple-Karte erscheint.
+    static let mapAccuracyStreakRequired = 3
     static let maxPathPoints = 800
 }
 
@@ -782,18 +785,7 @@ enum OutdoorMapTracker {
         softFollow: Bool
     ) -> BLEMapOverlayModel {
         guard let origin else {
-            if let gps = lastGPS {
-                return BLEMapOverlayModel(
-                    coordinates: [],
-                    heatSamples: [],
-                    current: gps.coordinate,
-                    region: MKCoordinateRegion(
-                        center: gps.coordinate,
-                        latitudinalMeters: BLEPathConfig.mapMinSpanMeters,
-                        longitudinalMeters: BLEPathConfig.mapMinSpanMeters
-                    )
-                )
-            }
+            // Kein stabiler Ursprung → keine Karte mit springendem Roh-GPS.
             return .empty
         }
 

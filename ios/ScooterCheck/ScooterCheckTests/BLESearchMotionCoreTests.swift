@@ -183,6 +183,28 @@ final class BLESearchMotionCoreTests: XCTestCase {
         XCTAssertLessThan(abs(heat.longitude - origin.coordinate.longitude), 0.00005)
     }
 
+    func testMapModelWithoutOriginDoesNotFollowNoisyGPS() {
+        let noisy = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 52.53, longitude: 13.42),
+            altitude: 0,
+            horizontalAccuracy: 35,
+            verticalAccuracy: -1,
+            timestamp: Date()
+        )
+        let model = OutdoorMapTracker.model(
+            origin: nil,
+            path: [],
+            smoothedPolyline: [],
+            measurements: [],
+            lastGPS: noisy,
+            previousRegion: nil,
+            softFollow: false
+        )
+        XCTAssertTrue(model.coordinates.isEmpty)
+        XCTAssertNil(model.current)
+        XCTAssertEqual(BLEPathConfig.mapAccuracyStreakRequired, 3)
+    }
+
     func testGPSFusionIgnoredWhenAccuracyPoor() {
         let tracker = IndoorMotionTracker()
         tracker.reset()
