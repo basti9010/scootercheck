@@ -68,6 +68,72 @@ struct FinderSample: Equatable, Sendable {
 }
 
 /// Stabile Scan-Listen-Reihenfolge: RSSI-Werte dürfen zucken, die Zeilen nicht dauernd tauschen.
+/// Sortierung für BLE-Gerätelisten (Gerätesuche, Signal-Finder, Auslesen).
+enum BleDeviceListSort: String, CaseIterable, Identifiable, Sendable {
+    case signal
+    case name
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .signal: return "Signal"
+        case .name: return "Name"
+        }
+    }
+}
+
+enum BleDeviceListOrdering {
+    /// Gerät hat einen nutzbaren Advertisement-Namen (nicht nur UUID-/Platzhalter).
+    static func hasAdvertisedName(cryptoName: String, name: String) -> Bool {
+        let crypto = cryptoName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !crypto.isEmpty { return true }
+        let ui = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if ui.isEmpty { return false }
+        if ui.hasPrefix("Ohne Namen") { return false }
+        if ui.hasPrefix("Verbunden (") { return false }
+        if ui.localizedCaseInsensitiveContains("Unbekannt") { return false }
+        return true
+    }
+
+    static func hasAdvertisedName(_ device: ScannedDevice) -> Bool {
+        hasAdvertisedName(cryptoName: device.cryptoName, name: device.name)
+    }
+
+    static func displaySortName(_ device: ScannedDevice) -> String {
+        if let label = device.modelLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty {
+            return label
+        }
+        return device.bleListDisplayName
+    }
+
+    static func prepare(
+        _ devices: [ScannedDevice],
+        sort: BleDeviceListSort,
+        hideNameless: Bool
+    ) -> [ScannedDevice] {
+        var list = devices
+        if hideNameless {
+            list = list.filter(hasAdvertisedName)
+        }
+        switch sort {
+        case .signal:
+            return list.sorted { a, b in
+                if a.isStale != b.isStale { return !a.isStale && b.isStale }
+                if a.rssi != b.rssi { return a.rssi > b.rssi }
+                return displaySortName(a).localizedCaseInsensitiveCompare(displaySortName(b)) == .orderedAscending
+            }
+        case .name:
+            return list.sorted { a, b in
+                let cmp = displaySortName(a).localizedCaseInsensitiveCompare(displaySortName(b))
+                if cmp != .orderedSame { return cmp == .orderedAscending }
+                if a.isStale != b.isStale { return !a.isStale && b.isStale }
+                return a.rssi > b.rssi
+            }
+        }
+    }
+}
+
 enum BleScanListStabilizer {
     /// Erst umsortieren, wenn der Nachbar klar stärker ist (dBm).
     static let hysteresisDb = 8
