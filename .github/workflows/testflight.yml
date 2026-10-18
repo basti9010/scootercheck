@@ -24,6 +24,7 @@ on:
       - cursor/signal-finder-soft-heatmap-b100
       - cursor/signal-finder-live-center-b100
       - cursor/faq-finden-hub-b100
+      - cursor/menu-edge-swipe-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
