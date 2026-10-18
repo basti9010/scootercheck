@@ -30,7 +30,9 @@ struct ScooterFindHubView: View {
             if destination != .hub {
                 findDestinationContent
                     .scootPushTransition(reduceMotion: reduceMotion)
-                    .scootEdgeBackGesture {
+                    // Edge-Zurück nur für Wächter. Radar/Signal-Finder haben eigene Geste —
+                    // sonst springt ein Wisch über die Live-Suche direkt zum Hub und verwirft Daten.
+                    .scootEdgeBackGesture(isEnabled: destination == .watch) {
                         destination = .hub
                     }
                     .zIndex(1)
