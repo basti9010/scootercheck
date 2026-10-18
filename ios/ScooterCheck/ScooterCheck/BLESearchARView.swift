@@ -352,8 +352,9 @@ struct BLESearchARSceneRepresentable: UIViewRepresentable {
             let accent = UIColor(Theme.accent)
             let underlay = UIColor.black.withAlphaComponent(0.55)
             let core = accent.withAlphaComponent(0.95)
-            let underRadius: CGFloat = 0.055
-            let coreRadius: CGFloat = 0.038
+            // ~2 cm Kern — lesbar, ohne den Boden zu verdecken
+            let underRadius: CGFloat = 0.028
+            let coreRadius: CGFloat = 0.018
             let up = SCNVector3(0, 1, 0)
 
             for i in 0..<(positions.count - 1) {
@@ -385,7 +386,7 @@ struct BLESearchARSceneRepresentable: UIViewRepresentable {
             }
 
             if let last = positions.last {
-                let tip = SCNSphere(radius: 0.05)
+                let tip = SCNSphere(radius: 0.028)
                 let tipMat = SCNMaterial()
                 tipMat.diffuse.contents = accent
                 tipMat.lightingModel = .constant
@@ -518,13 +519,13 @@ struct ARMinimapView: View {
                     }
                     context.stroke(
                         path,
-                        with: .color(Color.black.opacity(0.55)),
-                        style: StrokeStyle(lineWidth: 4.2, lineCap: .round, lineJoin: .round)
+                        with: .color(Color.black.opacity(0.45)),
+                        style: StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round)
                     )
                     context.stroke(
                         path,
-                        with: .color(Theme.accent.opacity(0.95)),
-                        style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round)
+                        with: .color(Theme.accent.opacity(0.9)),
+                        style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round)
                     )
                 }
 
