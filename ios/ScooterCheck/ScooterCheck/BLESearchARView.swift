@@ -60,8 +60,8 @@ struct BLESearchARContainer: View {
                         pathSnapshot: engine.pathSnapshot,
                         breadcrumbs: engine.breadcrumbs,
                         bestZone: engine.arBestZone,
-                        headingDegrees: engine.pathSnapshot.current?.headingDegrees
-                            ?? engine.visualTracker.headingDegrees
+                        headingDegrees: engine.visualTracker.headingDegrees
+                            ?? engine.pathSnapshot.current?.headingDegrees
                     )
                     .frame(width: 112, height: 112)
                 }

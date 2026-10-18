@@ -102,7 +102,10 @@ struct BLESearchPathSnapshot: Equatable, Sendable {
         guard lhs.pathLengthMeters == rhs.pathLengthMeters,
               lhs.viewport == rhs.viewport,
               lhs.points.count == rhs.points.count,
-              lhs.smoothedPolyline.count == rhs.smoothedPolyline.count else { return false }
+              lhs.smoothedPolyline.count == rhs.smoothedPolyline.count,
+              lhs.current?.headingDegrees == rhs.current?.headingDegrees,
+              lhs.current?.x == rhs.current?.x,
+              lhs.current?.y == rhs.current?.y else { return false }
         for i in lhs.smoothedPolyline.indices {
             if lhs.smoothedPolyline[i].x != rhs.smoothedPolyline[i].x
                 || lhs.smoothedPolyline[i].y != rhs.smoothedPolyline[i].y {
@@ -124,9 +127,14 @@ enum BLEPathConfig {
     static let minHeadingChangeDegrees: Double = 6
     /// Gyro-first: Drehungen aus Device-Motion übernehmen.
     static let gyroHeadingAlpha: Double = 0.72
-    /// Kompass nur als weiche Absolut-Ankerung (nicht primär indoor).
+    /// Kompass nur als weiche Absolut-Ankerung beim Laufen.
     static let compassAnchorAlpha: Double = 0.07
+    /// Drehung auf der Stelle: Kompass stärker → Sichtkegel/Radar reagiert sofort.
+    static let compassTurnAlpha: Double = 0.38
     static let compassMaxAccuracyDegrees: Double = 28
+    /// Gyro-Mindestwinkel im Stillstand (rad) — niedrig genug für Handydrehung.
+    static let gyroStandstillMinRadians: Double = 0.016
+    static let gyroWalkingMinRadians: Double = 0.012
     static let minMoveForSample: Double = 0.28
     static let standstillAccelMax: Double = 0.11
     static let walkingAccelMin: Double = 0.16
@@ -185,6 +193,8 @@ final class IndoorMotionTracker {
     var currentY: Double { y }
     var headingDegrees: Double? { smoothedHeading }
     var stepLengthMeters: Double { calibratedStepLength }
+    /// Live-Heading für Sichtkegel (Heatmap/AR), auch ohne neuen Pfadpunkt.
+    var onHeadingUpdated: ((Double) -> Void)?
 
     func reset() {
         stop()
@@ -240,7 +250,7 @@ final class IndoorMotionTracker {
         pedometer.stopUpdates()
     }
 
-    /// Kompass: nur Initial-Heading + weiche Ankerung — Gyro führt Indoor-Drehungen.
+    /// Kompass: Initial-Heading, weiche Ankerung beim Laufen, stärkere Drehung im Stillstand (Sichtkegel).
     func ingestExternalHeading(_ degrees: Double?, fromCompass: Bool = false, accuracy: Double? = nil) {
         guard let degrees else { return }
         if smoothedHeading == nil {
@@ -250,9 +260,14 @@ final class IndoorMotionTracker {
         guard fromCompass else { return }
         let acc = accuracy ?? 999
         guard acc >= 0, acc <= BLEPathConfig.compassMaxAccuracyDegrees else { return }
-        // Indoor oft magnetisch gestört: nur leicht und vor allem beim Laufen nachziehen
-        guard isWalking || Date().timeIntervalSince(lastWalkAt) < 1.2 else { return }
-        applyHeading(degrees, alpha: BLEPathConfig.compassAnchorAlpha, minDeltaScale: 0.15)
+        let recentlyWalking = isWalking || Date().timeIntervalSince(lastWalkAt) < 1.2
+        if recentlyWalking {
+            // Indoor oft magnetisch gestört: beim Laufen nur leicht nachziehen
+            applyHeading(degrees, alpha: BLEPathConfig.compassAnchorAlpha, minDeltaScale: 0.15)
+        } else {
+            // Drehung auf der Stelle → Sichtkegel/Radar sofort mit Kompass
+            applyHeading(degrees, alpha: BLEPathConfig.compassTurnAlpha, minDeltaScale: 0.06)
+        }
     }
 
     func ingestGPSDelta(east: Double, north: Double, accuracy: Double) {
@@ -310,14 +325,16 @@ final class IndoorMotionTracker {
         while dyaw > .pi { dyaw -= 2 * .pi }
         while dyaw < -.pi { dyaw += 2 * .pi }
 
-        // Stillstand: Drift unterdrücken; beim Laufen Drehungen reagibel übernehmen
-        let minRad = isWalking ? 0.012 : 0.045
+        // Stillstand: leichter Driftfilter; Drehung am Handy trotzdem reagibel für den Sichtkegel
+        let minRad = isWalking
+            ? BLEPathConfig.gyroWalkingMinRadians
+            : BLEPathConfig.gyroStandstillMinRadians
         guard abs(dyaw) >= minRad else { return }
 
         let ddeg = dyaw * 180 / .pi
         // CMAttitude.yaw: Zunahme ≈ Linksdrehung von oben → Heading verringern (Kompass-Konvention)
         let next = (smoothedHeading ?? 0) - ddeg
-        applyHeading(next, alpha: BLEPathConfig.gyroHeadingAlpha, minDeltaScale: 0.05)
+        applyHeading(next, alpha: BLEPathConfig.gyroHeadingAlpha, minDeltaScale: 0.04)
     }
 
     private func updateWalkState(_ accel: CMAcceleration) {
@@ -346,7 +363,8 @@ final class IndoorMotionTracker {
     private func applyHeading(_ raw: Double, alpha: Double, minDeltaScale: Double) {
         var h = raw.truncatingRemainder(dividingBy: 360)
         if h < 0 { h += 360 }
-        if let prev = smoothedHeading {
+        let previous = smoothedHeading
+        if let prev = previous {
             var delta = h - prev
             while delta > 180 { delta -= 360 }
             while delta < -180 { delta += 360 }
@@ -356,6 +374,18 @@ final class IndoorMotionTracker {
             smoothedHeading = normalize(prev + delta * alpha)
         } else {
             smoothedHeading = h
+        }
+        if let next = smoothedHeading {
+            let changed: Bool = {
+                guard let previous else { return true }
+                var d = next - previous
+                while d > 180 { d -= 360 }
+                while d < -180 { d += 360 }
+                return abs(d) >= 0.8
+            }()
+            if changed {
+                onHeadingUpdated?(next)
+            }
         }
     }
 

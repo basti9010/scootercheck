@@ -57,6 +57,24 @@ final class BLESearchMotionCoreTests: XCTestCase {
         XCTAssertEqual(tracker.currentY, y, accuracy: 0.001)
     }
 
+    func testStandstillCompassTurnsHeadingWithoutPathGrowth() {
+        let tracker = IndoorMotionTracker()
+        tracker.reset()
+        tracker.debugAdvance(steps: 2, headingDegrees: 0)
+        let before = tracker.path.count
+        var live: [Double] = []
+        tracker.onHeadingUpdated = { live.append($0) }
+
+        // Drehung auf der Stelle: Kompass mit brauchbarer Genauigkeit
+        tracker.ingestExternalHeading(90, fromCompass: true, accuracy: 8)
+        tracker.ingestExternalHeading(95, fromCompass: true, accuracy: 8)
+        tracker.ingestExternalHeading(100, fromCompass: true, accuracy: 8)
+
+        XCTAssertEqual(tracker.path.count, before)
+        XCTAssertGreaterThan(tracker.headingDegrees ?? -1, 40)
+        XCTAssertFalse(live.isEmpty)
+    }
+
     func testHeatmapFollowsReconstructedPath() {
         let tracker = IndoorMotionTracker()
         tracker.reset()
