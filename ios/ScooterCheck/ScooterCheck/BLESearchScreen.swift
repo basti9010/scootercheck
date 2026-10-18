@@ -34,6 +34,7 @@ struct BLESearchScreen: View {
             showEndDialog = true
         }
         .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
             radar.startSession(enableRadar: radar.isEnabled)
             BLESearchLiveActivityController.shared.start(deviceName: engine.deviceName)
         }
@@ -50,6 +51,7 @@ struct BLESearchScreen: View {
             )
         }
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             BLESearchLiveActivityController.shared.end()
         }
         .sheet(isPresented: $showOptions) {
