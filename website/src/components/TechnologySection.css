@@ -1,0 +1,89 @@
+.tech {
+  background: linear-gradient(180deg, #141a22 0%, var(--bg) 40%, var(--bg-deep) 100%);
+  border-top: 1px solid var(--line);
+}
+
+.tech__stage {
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.tech__scooter {
+  position: relative;
+  width: min(100%, 420px);
+  margin-inline: auto;
+}
+
+.tech__scooter img {
+  width: 100%;
+  opacity: 0.92;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.45));
+}
+
+.tech__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.tech__lines path {
+  stroke: rgba(107, 219, 194, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.tech__points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  max-width: 28rem;
+}
+
+.tech__points li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  padding: 1.15rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.tech__points li:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.tech__dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(107, 219, 194, 0.45);
+}
+
+.tech__points strong {
+  display: block;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.tech__points span {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+@media (min-width: 900px) {
+  .tech__stage {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 3rem;
+  }
+
+  .tech__scooter {
+    margin: 0;
+  }
+}

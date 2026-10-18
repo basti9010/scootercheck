@@ -1,0 +1,45 @@
+.how {
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 40% 30% at 10% 20%, rgba(107, 219, 194, 0.06), transparent 50%),
+    var(--bg);
+}
+
+.how__list {
+  list-style: none;
+  margin: clamp(2rem, 4vw, 3rem) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  max-width: 44rem;
+}
+
+.how__list li {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: 1rem;
+  padding: 1.35rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.how__list li:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.how__num {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.how__list h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.12rem;
+  font-weight: 500;
+}
+
+.how__list p {
+  margin: 0;
+  color: var(--text-muted);
+}

@@ -1,0 +1,45 @@
+.app-cta {
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 45% 60% at 20% 80%, rgba(107, 219, 194, 0.1), transparent 55%),
+    linear-gradient(180deg, var(--bg), var(--bg-deep));
+}
+
+.app-cta__inner {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+  max-width: 40rem;
+}
+
+.app-cta__icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.app-cta h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 500;
+}
+
+.app-cta p {
+  margin: 0 0 1.35rem;
+  color: var(--text-muted);
+}
+
+.app-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (min-width: 720px) {
+  .app-cta__inner {
+    grid-template-columns: auto 1fr;
+    gap: 2rem;
+    max-width: 48rem;
+  }
+}

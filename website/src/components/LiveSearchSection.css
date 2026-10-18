@@ -1,0 +1,59 @@
+.live {
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 50% 40% at 80% 30%, rgba(107, 219, 194, 0.07), transparent 55%),
+    var(--bg);
+}
+
+.live__grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.live__panel {
+  width: 100%;
+}
+
+.live__radar {
+  position: relative;
+  aspect-ratio: 1;
+  width: min(100%, 420px);
+  margin-inline: auto;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(26, 32, 40, 0.9), rgba(8, 12, 16, 0.95));
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.live__radar .radar-canvas {
+  inset: 6%;
+  width: auto;
+  height: auto;
+}
+
+.live__caption {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1rem;
+  translate: -50% 0;
+  width: max-content;
+  max-width: 90%;
+  text-align: center;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  z-index: 2;
+}
+
+@media (min-width: 900px) {
+  .live__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+
+  .live__radar {
+    margin: 0 0 0 auto;
+  }
+}
