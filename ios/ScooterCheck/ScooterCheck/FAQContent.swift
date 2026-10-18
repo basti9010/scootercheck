@@ -191,78 +191,135 @@ private extension FAQCatalog {
     static let finden = FAQCategory(
         id: "finden",
         title: "Scooter finden",
-        symbolName: "location.magnifyingglass",
+        symbolName: "magnifyingglass",
         items: [
             FAQItem(
                 id: "finden-was",
-                question: "Was ist die Funktion „Scooter finden“?",
+                question: "Was ist „Scooter finden“?",
                 segments: [
-                    .paragraph("„Scooter finden“ hilft dabei, Bluetooth-Signale kompatibler bzw. potenziell relevanter E-Scooter in der Umgebung zu erkennen und deren ungefähre Signalstärke darzustellen."),
-                    .paragraph("Du wählst ein erkanntes Gerät aus der Gerätesuche und bewegst dich. ScooterCheck vergleicht die Bluetooth-Signalstärke (RSSI) während deiner Bewegung und schätzt daraus eine bessere Näherungsrichtung — soweit Standort- und Bewegungsdaten freigegeben sind."),
-                    .callout("ScooterCheck bestimmt keinen exakten Standort des Scooters und ersetzt keine GPS-Ortung. Die Funktion dient der Annäherung anhand verfügbarer BLE-Signale."),
+                    .paragraph("„Scooter finden“ ist der zentrale Bereich für Suche, Radar, Überwachung und signalbasierte Annäherung."),
+                    .paragraph("Im Hauptmenü öffnest du eine Übersicht mit vier Funktionen:"),
+                    .bullets([
+                        "Gerätesuche — Bluetooth-Geräte entdecken und auslesen",
+                        "Scooter-Radar — erkennt automatisch plausible E-Scooter in der Nähe",
+                        "Geräte-Wächter — benachrichtigt dich, wenn gespeicherte Geräte wieder erkannt werden",
+                        "Signal-Finder — untersucht Signalstärken, um dich einem Gerät anzunähern",
+                    ]),
+                    .callout("ScooterCheck bestimmt keinen exakten Standort und ersetzt keine GPS-Ortung. Alle Suchfunktionen arbeiten mit Bluetooth-Signalen."),
                 ],
                 keywords: [
-                    "scooter finden", "scooter suchen", "finden", "suche", "ortung", "standort",
-                    "radar", "signal", "signalstärke", "rssi", "annäherung", "richtung", "nähe",
+                    "scooter finden", "scooter suchen", "finden", "suche", "hub", "übersicht",
+                    "gerätesuche", "radar", "wächter", "signal-finder", "ortung", "standort",
                 ]
             ),
             FAQItem(
-                id: "finden-wie",
-                question: "Wie funktioniert „Scooter finden“?",
+                id: "finden-geraetesuche",
+                question: "Was macht die Gerätesuche?",
                 segments: [
-                    .paragraph("Ablauf in der App:"),
+                    .paragraph("Die Gerätesuche listet erkannte Bluetooth-Geräte und erlaubt den Einstieg in Auslesen, Geräte-Wächter und Signal-Finder."),
                     .bullets([
-                        "ScooterCheck sucht nach BLE-Signalen in der Umgebung",
-                        "Du wählst einen Treffer aus der Liste",
-                        "Während du dich bewegst, speichert die App geglättete Signalstärken mit Positionsbezug",
-                        "Daraus entsteht eine Signal-Heatmap: untersuchte Bereiche färben sich nach relativer Stärke",
-                        "Ungemessene Bereiche bleiben dunkel — das ist Absicht, keine „tote Zone“",
-                        "Signalstärke und Trend (wärmer / kälter) helfen bei der Annäherung",
+                        "Filter „Scooter“: nur hinreichend plausible Treffer",
+                        "Filter „Alle BLE-Geräte“: alle erkannten Signale",
+                        "Gerät tippen → Details, Wächter, „Gerät aufspüren“",
                     ]),
-                    .paragraph("Es gibt keinen Richtungs-Pfeil als Hauptversprechen. Dargestellt werden relative Signalstufen, ein Bewegungs-Pfad und eine Heatmap ohne künstliche Präzision."),
+                    .paragraph("Optional kannst du in der Sitzung mehrere Signale parallel beobachten — ohne Speicherung als Scooter."),
                 ],
-                keywords: ["rssi", "bluetooth", "ble", "signalstärke", "entfernung", "nähe", "heatmap", "wärmer", "bewegung"]
+                keywords: ["gerätesuche", "liste", "auslesen", "alle ble", "scooter", "gerät aufspüren"]
             ),
             FAQItem(
-                id: "finden-genauigkeit",
-                question: "Wie genau ist die Entfernung?",
+                id: "finden-radar",
+                question: "Was ist der Scooter-Radar?",
                 segments: [
-                    .paragraph("Die Entfernung ist nicht exakt bestimmbar. Bluetooth-Signalstärken werden unter anderem beeinflusst durch:"),
-                    .bullets([
-                        "Mauern, Fahrzeuge, Personen, Vegetation und Metall",
-                        "Ausrichtung des Scooters und Position des iPhones",
-                        "Sendeleistung des Geräts",
-                        "Reflexionen und Funkstörungen",
-                    ]),
-                    .paragraph("Deshalb verwendet ScooterCheck Signalstufen wie Schwach, Mittel, Stark, Sehr stark oder Sehr nah — keine vermeintlich präzisen Meterangaben."),
+                    .paragraph("Der Scooter-Radar sucht automatisch nach Bluetooth-Signalen, die zu unterstützten E-Scootern passen können."),
+                    .paragraph("Bei plausiblen Treffern mit ausreichendem Signal kann eine Benachrichtigung erscheinen. Du brauchst kein Zielgerät vorzuwählen."),
+                    .callout("Ein beliebiges BLE-Gerät (z. B. Smart-Home) wird nicht allein wegen eines Namensfragments als Scooter erkannt."),
                 ],
-                keywords: ["entfernung", "genauigkeit", "meter", "reichweite", "schwankung", "abschirmung", "sehr nah"]
+                keywords: ["radar", "scooter-radar", "automatisch", "benachrichtigung", "alarm"]
+            ),
+            FAQItem(
+                id: "finden-waechter",
+                question: "Was ist der Geräte-Wächter?",
+                segments: [
+                    .paragraph("Der Geräte-Wächter (früher „BLE-Wächter“) überwacht ausgewählte Geräte im Hintergrund, soweit iOS das zulässt."),
+                    .bullets([
+                        "In der Geräte-Detailansicht aktivieren",
+                        "Benachrichtigung, wenn das Gerät später wieder erkannt wird",
+                        "Einstellungen zu Ton, Haptik, Mindestsignal und Abklingzeit",
+                    ]),
+                    .paragraph("Unter „Scooter finden → Geräte-Wächter“ siehst du alle aktiven Wächter. Manuelles Beenden der App kann die Hintergrundüberwachung stoppen."),
+                ],
+                keywords: ["wächter", "geräte-wächter", "ble-wächter", "benachrichtigung", "hintergrund", "überwachung"]
+            ),
+            FAQItem(
+                id: "finden-signal-finder",
+                question: "Was ist der Signal-Finder?",
+                segments: [
+                    .paragraph("Der Signal-Finder hilft bei der Annäherung an ein gewähltes Gerät anhand der Bluetooth-Signalstärke (RSSI) und deiner Bewegung."),
+                    .paragraph("Zwei Zugangswege:"),
+                    .bullets([
+                        "Scooter finden → Signal-Finder → Gerät wählen",
+                        "Gerätesuche → Gerät → „Gerät aufspüren“",
+                    ]),
+                    .paragraph("In der Live-Ansicht bleibst du zentriert. Sichtbar sind u. a. Blickrichtung, Suchpfad, weiche Signalfläche (Heatmap) und der bisher stärkste Bereich."),
+                    .callout("Keine GPS-Ortung des Scooters und keine exakten Meterangaben — nur relative Signalstufen und Orientierungshilfe."),
+                ],
+                keywords: [
+                    "signal-finder", "heatmap", "live", "gerät aufspüren", "rssi", "signalstärke",
+                    "wärmer", "kälter", "richtung", "annäherung", "karte",
+                ]
             ),
             FAQItem(
                 id: "finden-tipps",
-                question: "Wie finde ich einen Scooter am schnellsten?",
+                question: "Wie nutze ich den Signal-Finder am besten?",
                 segments: [
                     .paragraph("Praktische Vorgehensweise:"),
                     .bullets([
-                        "Suche starten und einen Treffer wählen",
-                        "Langsam bewegen und die Signalstärke beobachten",
-                        "Bei stärker werdendem Signal in diese Richtung weitergehen",
-                        "iPhone möglichst frei halten (nicht stark mit dem Körper abschirmen)",
-                        "Suche aus verschiedenen Richtungen wiederholen",
+                        "Gerät wählen und Messung starten",
+                        "Langsam gehen und Signal + Trend beobachten",
+                        "Blickrichtung und Wärmer/Kälter nutzen",
+                        "Zum markierten besten Bereich zurückkehren, wenn das Signal schwächer wird",
+                        "iPhone frei halten (nicht stark mit dem Körper abschirmen)",
+                        "Indoor: Kamera-Tracking in den Optionen kann Abstände verbessern",
                     ]),
-                    .callout("Systematisch absuchen und die Heatmap lesen ist zuverlässiger als einem einzelnen Pfeil zu folgen. BLE liefert keine exakte Richtung."),
+                    .callout("Systematisch absuchen ist zuverlässiger als einem einzelnen Pfeil zu folgen. BLE liefert keine exakte Richtung."),
                 ],
-                keywords: ["tipps", "schnell", "nähe", "suche", "bewegen", "signal", "heatmap"]
+                keywords: ["tipps", "schnell", "suche", "bewegen", "heatmap", "live", "kamera"]
+            ),
+            FAQItem(
+                id: "finden-genauigkeit",
+                question: "Wie genau sind Entfernung und Standort?",
+                segments: [
+                    .paragraph("Entfernung und Standort sind nicht exakt bestimmbar. Bluetooth-Signalstärken werden beeinflusst durch:"),
+                    .bullets([
+                        "Mauern, Fahrzeuge, Personen und Metall",
+                        "Ausrichtung von Scooter und iPhone",
+                        "Sendeleistung, Reflexionen und Funkstörungen",
+                    ]),
+                    .paragraph("Deshalb zeigt ScooterCheck Signalstufen (z. B. Schwach, Mittel, Stark) — keine vermeintlich präzisen Meter."),
+                    .paragraph("Ein ausgeschalteter Scooter ohne BLE-Werbung kann nicht gefunden werden. Signale durch Wände sind möglich, aber oft stark abgeschwächt."),
+                ],
+                keywords: [
+                    "entfernung", "genauigkeit", "meter", "gps", "exakt", "standort", "ortung",
+                    "ausgeschaltet", "wand", "hindernis", "reichweite",
+                ]
             ),
             FAQItem(
                 id: "finden-erkennung",
-                question: "Kann ScooterCheck erkennen, welcher Scooter das ist?",
+                question: "Warum erscheint ein Fremdgerät als Scooter?",
                 segments: [
-                    .paragraph("Das hängt von den ausgesendeten BLE-Daten und dem Advertisement-Namen ab."),
-                    .paragraph("ScooterCheck kann Geräte anhand bekannter Merkmale (Name, Dienste, Modellhinweise) als wahrscheinlich kompatiblen Scooter einstufen. Absolute Sicherheit gibt es dabei nicht."),
-                    .paragraph("Unsichere Treffer erscheinen eher unter „Alle BLE“ bzw. ohne klare Scooter-Zuordnung. Erst nach erfolgreicher technischer Auslese und Validierung wird ein Gerät als bekannter Scooter gespeichert."),
+                    .paragraph("ScooterCheck stuft Geräte nur anhand nachvollziehbarer Merkmale ein (Name, Dienste, Serien-/Modellmuster)."),
+                    .paragraph("Zufällige Buchstaben in Geräte-IDs (z. B. „F3“ in einer Shelly-Hex-ID) reichen nicht für eine Scooter-Zuordnung."),
+                    .bullets([
+                        "Unbekanntes BLE-Gerät",
+                        "Möglicher E-Scooter (Hinweis, keine Sicherheit)",
+                        "Bestätigter Scooter erst nach erfolgreicher technischer Validierung",
+                    ]),
+                    .callout("Unter „Alle BLE-Geräte“ siehst du den echten Bluetooth-Namen. Dauerhaft gespeichert wird nur ein validierter Scooter."),
                 ],
-                keywords: ["erkennung", "identität", "modell", "name", "kompatibel", "unsicher", "möglicher scooter"]
+                keywords: [
+                    "erkennung", "shelly", "fremdgerät", "falsch", "ninebot f3", "heuristik",
+                    "möglicher scooter", "alle ble", "filter",
+                ]
             ),
             FAQItem(
                 id: "finden-nicht-gefunden",
@@ -270,94 +327,23 @@ private extension FAQCatalog {
                 segments: [
                     .paragraph("Häufige Ursachen:"),
                     .bullets([
-                        "Scooter ausgeschaltet oder sendet aktuell kein BLE-Signal",
-                        "Bluetooth am iPhone nicht aktiv bzw. Berechtigung fehlt",
-                        "zu große Entfernung oder starke Abschirmung",
-                        "Modell wird noch nicht unterstützt bzw. Advertisement weicht ab",
-                        "Firmware-/Zustandsabhängige BLE-Werbung",
-                        "Filter „Scooter“ blendet unsichere Treffer aus — prüfe ggf. „Alle BLE-Geräte“",
+                        "Scooter ausgeschaltet oder sendet kein BLE",
+                        "Bluetooth-Berechtigung fehlt",
+                        "zu große Entfernung oder Abschirmung",
+                        "Modell / Advertisement weicht ab",
+                        "Filter „Scooter“ blendet unsichere Treffer aus — prüfe „Alle BLE-Geräte“",
                     ]),
                 ],
                 keywords: ["nicht gefunden", "fehlt", "reichweite", "ausgeschaltet", "berechtigung", "filter"]
             ),
             FAQItem(
-                id: "finden-andere-ble",
-                question: "Warum sehe ich andere Bluetooth-Geräte?",
-                segments: [
-                    .paragraph("Unter „Alle BLE-Geräte“ kann ScooterCheck auch andere Bluetooth-Low-Energy-Geräte erkennen, zum Beispiel:"),
-                    .bullets([
-                        "Fernseher",
-                        "Kopfhörer",
-                        "Smartwatches",
-                        "Sensoren und Smart-Home-Geräte",
-                        "Smartphones bzw. Zubehör",
-                    ]),
-                    .paragraph("Diese Geräte sind nicht automatisch Scooter."),
-                    .callout("Ein fremdes BLE-Gerät wird nicht allein durch Auswahl oder einen fehlgeschlagenen Scan dauerhaft als „bekannter Scooter“ gespeichert. Das geschieht erst nach erfolgreicher technischer Scooter-Validierung."),
-                ],
-                keywords: ["alle ble", "alle ble-geräte", "fernseher", "kopfhörer", "smartwatch", "fremdgerät", "bekannter scooter"]
-            ),
-            FAQItem(
-                id: "finden-nur-scooter",
-                question: "Was bedeutet „Scooter“ (Suchmodus)?",
-                segments: [
-                    .paragraph("In diesem Modus versucht ScooterCheck, erkannte BLE-Geräte anhand bekannter Merkmale zu filtern."),
-                    .paragraph("Nur ausreichend plausible Treffer sollen hier erscheinen. Unsichere oder unbekannte BLE-Geräte gehören in „Alle BLE-Geräte“."),
-                ],
-                keywords: ["nur scooter", "scooter", "filter", "heuristik", "plausibel"]
-            ),
-            FAQItem(
-                id: "finden-alle-ble",
-                question: "Was bedeutet „Alle BLE-Geräte“?",
-                segments: [
-                    .paragraph("Hier werden alle erkannten Bluetooth-Low-Energy-Geräte angezeigt, unabhängig davon, ob ScooterCheck sie als Scooter einordnen kann."),
-                    .paragraph("Die Ansicht ist eher technisch und dient der erweiterten Suche bzw. Analyse — nicht jeder Eintrag ist ein Scooter. Dauerhaft gespeichert wird nur ein technisch validierter Scooter."),
-                ],
-                keywords: ["alle ble", "alle ble-geräte", "bluetooth", "liste", "technisch", "analyse"]
-            ),
-            FAQItem(
-                id: "finden-ausgeschaltet",
-                question: "Kann ScooterCheck einen ausgeschalteten Scooter finden?",
-                segments: [
-                    .paragraph("Nur wenn das Gerät weiterhin Bluetooth-Signale aussendet."),
-                    .paragraph("Ohne aktives BLE-Signal kann ScooterCheck den Scooter nicht erkennen."),
-                ],
-                keywords: ["ausgeschaltet", "power", "kein signal", "ble"]
-            ),
-            FAQItem(
-                id: "finden-exakt",
-                question: "Kann ScooterCheck den exakten Standort bestimmen?",
-                segments: [
-                    .paragraph("Nein."),
-                    .paragraph("Die App kann anhand der Bluetooth-Signalstärke und — während der aktiven Suche — mit Standort-/Bewegungsdaten bei der Annäherung helfen. Sie bestimmt keinen exakten Standort und ersetzt keine GPS-Ortung."),
-                ],
-                keywords: ["standort", "gps", "exakt", "ortung", "position"]
-            ),
-            FAQItem(
-                id: "finden-waende",
-                question: "Funktioniert die Suche durch Wände oder Fahrzeuge?",
-                segments: [
-                    .paragraph("BLE-Signale können teilweise durch Hindernisse empfangen werden, werden aber deutlich abgeschwächt oder gestört."),
-                    .paragraph("Die angezeigte Signalstärke kann dadurch stark schwanken — das ist normal und keine exakte Entfernungsmessung."),
-                ],
-                keywords: ["wand", "fahrzeug", "hindernis", "abschirmung", "durchdringen"]
-            ),
-            FAQItem(
                 id: "finden-schwankt",
                 question: "Warum schwankt die Signalstärke?",
                 segments: [
-                    .paragraph("RSSI ist naturgemäß schwankend. Einflussfaktoren sind unter anderem:"),
-                    .bullets([
-                        "Bewegung von Person und Gerät",
-                        "Körperabschirmung",
-                        "Reflexionen",
-                        "Hindernisse",
-                        "Antennenausrichtung",
-                        "Funkumgebung",
-                    ]),
-                    .paragraph("ScooterCheck glättet Messwerte intern, soweit sinnvoll. Schwankungen bleiben trotzdem normal und schließen eine exakte Distanzangabe aus."),
+                    .paragraph("RSSI schwankt naturgemäß — durch Bewegung, Körperabschirmung, Reflexionen und Hindernisse."),
+                    .paragraph("ScooterCheck glättet Messwerte, soweit sinnvoll. Im Signal-Finder bleiben bereits gemessene Bereiche möglichst farbstabil; neue Messungen ergänzen lokal."),
                 ],
-                keywords: ["schwankt", "rssi", "glättung", "reflexion", "störung", "signal"]
+                keywords: ["schwankt", "rssi", "glättung", "reflexion", "störung", "signal", "farbe"]
             ),
         ]
     )
@@ -822,15 +808,16 @@ private extension FAQCatalog {
                 id: "scooter-finden",
                 question: "Was macht „Scooter finden“?",
                 segments: [
-                    .paragraph("Unter „Scooter finden“ wählst du einen erkannten Scooter aus der Gerätesuche. ScooterCheck schätzt anschließend eine bessere Signalrichtung, indem es Bluetooth-Signalstärke mit deiner Bewegung, Kompass und Standort während der aktiven Suche vergleicht."),
+                    .paragraph("„Scooter finden“ bündelt Gerätesuche, Scooter-Radar, Geräte-Wächter und Signal-Finder in einer Übersicht."),
                     .bullets([
-                        "Kein Meter-Abstand — nur Signalstufen wie Schwach, Mittel, Stark, Sehr nah",
-                        "Richtung ist eine Schätzung, keine direkte BLE-Ortung",
-                        "Standort und Bewegung nur während der aktiven Suche",
+                        "Gerätesuche & Auslesen",
+                        "Automatisches Radar",
+                        "Hintergrund-Wächter mit Benachrichtigung",
+                        "Signal-Finder mit Live-Heatmap zur Annäherung",
                     ]),
-                    .callout("Die angezeigte Richtung wird aus Bluetooth-Signalstärke, Bewegung und Sensordaten geschätzt. Bluetooth liefert keine direkte Richtungsinformation."),
+                    .callout("Details stehen im FAQ-Kapitel „Scooter finden“. Keine GPS-Ortung — nur Bluetooth-Signalhilfe."),
                 ],
-                keywords: ["finden", "richtung", "rssi", "signal", "nähe", "gerätesuche"]
+                keywords: ["finden", "richtung", "rssi", "signal", "nähe", "gerätesuche", "wächter", "radar", "signal-finder"]
             ),
         ]
     )

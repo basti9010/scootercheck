@@ -23,6 +23,7 @@ on:
       - cursor/find-hub-nav-b100
       - cursor/signal-finder-soft-heatmap-b100
       - cursor/signal-finder-live-center-b100
+      - cursor/faq-finden-hub-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
