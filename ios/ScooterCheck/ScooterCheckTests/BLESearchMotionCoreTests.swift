@@ -90,12 +90,15 @@ final class BLESearchMotionCoreTests: XCTestCase {
         }
     }
 
-    func testViewportKeepsPathInViewWithoutJumping() {
+    func testViewportKeepsUserCentered() {
         var pts: [BLEPathPoint] = []
         for i in 0..<12 {
             pts.append(BLEPathPoint(x: Double(i) * 0.8, y: Double(i) * 0.1, headingDegrees: 80))
         }
         let first = SearchPathReconstructor.snapshot(from: pts, previousViewport: nil, followSoftly: false)
+        XCTAssertEqual(first.viewport.centerX, pts.last!.x, accuracy: 0.05)
+        XCTAssertEqual(first.viewport.centerY, pts.last!.y, accuracy: 0.05)
+
         var extended = pts
         extended.append(BLEPathPoint(x: 10.5, y: 1.4, headingDegrees: 80))
         let second = SearchPathReconstructor.snapshot(
@@ -103,12 +106,10 @@ final class BLESearchMotionCoreTests: XCTestCase {
             previousViewport: first.viewport,
             followSoftly: true
         )
-        let dx = abs(second.viewport.centerX - first.viewport.centerX)
-        let dy = abs(second.viewport.centerY - first.viewport.centerY)
-        // Soft-follow: kleine Bewegung, kein harter Sprung über die gesamte Strecke
-        XCTAssertLessThan(dx, 4)
-        XCTAssertLessThan(dy, 4)
-        XCTAssertGreaterThan(second.viewport.spanMeters, 8)
+        // Soft-follow bleibt nah am aktuellen Nutzerpunkt
+        XCTAssertEqual(second.viewport.centerX, 10.5, accuracy: 1.5)
+        XCTAssertEqual(second.viewport.centerY, 1.4, accuracy: 1.5)
+        XCTAssertGreaterThanOrEqual(second.viewport.spanMeters, BLEPathConfig.liveCenterSpanMeters * 0.85)
     }
 
     func testPathLengthMatchesWalkedDistanceRoughly() {
@@ -121,7 +122,7 @@ final class BLESearchMotionCoreTests: XCTestCase {
     }
 
     func testSurfaceModeLabels() {
-        XCTAssertEqual(BLESearchSurfaceMode.relative.label, "Relativ")
+        XCTAssertEqual(BLESearchSurfaceMode.relative.label, "Live")
         XCTAssertEqual(BLESearchSurfaceMode.map.label, "Karte")
     }
 

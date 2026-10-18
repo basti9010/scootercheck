@@ -375,7 +375,7 @@ struct BLESearchScreen: View {
         }
         .pickerStyle(.segmented)
         .font(Theme.segment)
-        .accessibilityLabel("Relativ oder Karte")
+        .accessibilityLabel("Live oder Karte")
     }
 
     private var heatmapLegendBar: some View {
@@ -854,26 +854,26 @@ struct SignalHeatmapView: View {
     var breadcrumbs: [BLEBreadcrumb] = []
     var showMeasurementDots: Bool = false
 
+    /// Apple-Maps-ähnliches Blau für Standort-Puck.
+    private static let locationBlue = Color(red: 0.04, green: 0.52, blue: 1.0)
+
     var body: some View {
         Canvas { context, size in
             let bg = Path(CGRect(origin: .zero, size: size))
             context.fill(bg, with: .color(Theme.bg))
 
-            let paintPoints = Self.softPaintPoints(
-                breadcrumbs: breadcrumbs,
-                snapshot: snapshot
+            let center = liveCenter
+            let span = liveSpan
+            let samples = Self.frozenSamples(breadcrumbs: breadcrumbs, snapshot: snapshot)
+
+            // Zusammenhängende Signalwolke (kein Blob-Raster, kein Kachelraster)
+            Self.drawContinuousField(
+                samples: samples,
+                center: center,
+                span: span,
+                size: size,
+                context: &context
             )
-            // Schwache Flächen zuerst, starke zuletzt → Hotspots bleiben lesbar
-            let ordered = paintPoints.sorted { $0.rssi < $1.rssi }
-            for point in ordered {
-                Self.drawSoftBlob(
-                    at: project(x: point.x, y: point.y, in: size, snapshot: snapshot),
-                    rssi: point.rssi,
-                    meters: snapshot.boundsMeters,
-                    size: size,
-                    context: &context
-                )
-            }
 
             let poly: [(x: Double, y: Double)] = {
                 if pathSnapshot.smoothedPolyline.count >= 2 {
@@ -885,66 +885,67 @@ struct SignalHeatmapView: View {
             if poly.count >= 2 {
                 var path = Path()
                 for (i, p) in poly.enumerated() {
-                    let pt = project(x: p.x, y: p.y, in: size, snapshot: snapshot)
+                    let pt = project(x: p.x, y: p.y, center: center, span: span, in: size)
                     if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
                 }
+                // Ältere Spur dezenter: durchgehende dünne Linie
                 context.stroke(
                     path,
-                    with: .color(Color.white.opacity(0.14)),
-                    style: StrokeStyle(lineWidth: 4.0, lineCap: .round, lineJoin: .round)
+                    with: .color(Color.white.opacity(0.12)),
+                    style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round)
                 )
                 context.stroke(
                     path,
-                    with: .color(Theme.accent.opacity(0.5)),
-                    style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)
+                    with: .color(Theme.accent.opacity(0.42)),
+                    style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
                 )
             }
 
-            if showMeasurementDots {
-                for b in Self.decimateBreadcrumbs(breadcrumbs, maxCount: 40) {
-                    let pt = project(x: b.x, y: b.y, in: size, snapshot: snapshot)
-                    let fill = Self.softColor(forRssi: b.rssi)
-                    let oval = Path(ellipseIn: CGRect(x: pt.x - 2.2, y: pt.y - 2.2, width: 4.4, height: 4.4))
-                    context.fill(oval, with: .color(fill.opacity(0.85)))
+            // Stärkster Bereich — Zielring
+            if let hotWorld = Self.strongestWorldPoint(snapshot: snapshot, samples: samples) {
+                let hot = project(x: hotWorld.x, y: hotWorld.y, center: center, span: span, in: size)
+                if hot.x > -40, hot.x < size.width + 40, hot.y > -40, hot.y < size.height + 40 {
+                    var glow = Path()
+                    glow.addEllipse(in: CGRect(x: hot.x - 22, y: hot.y - 22, width: 44, height: 44))
+                    context.fill(glow, with: .color(Theme.accent.opacity(0.10)))
+                    var outer = Path()
+                    outer.addEllipse(in: CGRect(x: hot.x - 15, y: hot.y - 15, width: 30, height: 30))
+                    context.stroke(outer, with: .color(Color.white.opacity(0.65)), lineWidth: 1.6)
+                    var inner = Path()
+                    inner.addEllipse(in: CGRect(x: hot.x - 6, y: hot.y - 6, width: 12, height: 12))
+                    context.stroke(inner, with: .color(Theme.accent), lineWidth: 1.8)
+                    var cross = Path()
+                    cross.move(to: CGPoint(x: hot.x - 10, y: hot.y))
+                    cross.addLine(to: CGPoint(x: hot.x + 10, y: hot.y))
+                    cross.move(to: CGPoint(x: hot.x, y: hot.y - 10))
+                    cross.addLine(to: CGPoint(x: hot.x, y: hot.y + 10))
+                    context.stroke(cross, with: .color(Color.white.opacity(0.75)), lineWidth: 1.1)
                 }
             }
 
-            // Stärkster Bereich — Fadenkreuz / Zielring
-            if let s = snapshot.strongestCell {
-                let wx = snapshot.originEast + (Double(s.col) + 0.5) * snapshot.cellSize
-                let wy = snapshot.originNorth + (Double(s.row) + 0.5) * snapshot.cellSize
-                let hot = project(x: wx, y: wy, in: size, snapshot: snapshot)
-                var outer = Path()
-                outer.addEllipse(in: CGRect(x: hot.x - 16, y: hot.y - 16, width: 32, height: 32))
-                context.stroke(outer, with: .color(Color.white.opacity(0.55)), lineWidth: 1.5)
-                var inner = Path()
-                inner.addEllipse(in: CGRect(x: hot.x - 7, y: hot.y - 7, width: 14, height: 14))
-                context.stroke(inner, with: .color(Theme.accent.opacity(0.95)), lineWidth: 1.6)
-                var cross = Path()
-                cross.move(to: CGPoint(x: hot.x - 11, y: hot.y))
-                cross.addLine(to: CGPoint(x: hot.x + 11, y: hot.y))
-                cross.move(to: CGPoint(x: hot.x, y: hot.y - 11))
-                cross.addLine(to: CGPoint(x: hot.x, y: hot.y + 11))
-                context.stroke(cross, with: .color(Color.white.opacity(0.7)), lineWidth: 1.1)
-            }
-
-            // Standort + Blickrichtung
-            if let last = pathSnapshot.current ?? poly.last.map({ BLEPathPoint(x: $0.x, y: $0.y) }) {
-                let pt = project(x: last.x, y: last.y, in: size, snapshot: snapshot)
-                if let heading = last.headingDegrees ?? pathSnapshot.current?.headingDegrees {
-                    Self.drawHeadingCone(at: pt, headingDegrees: heading, context: &context)
+            // Nutzer immer mittig + Apple-ähnlicher Heading-Kegel
+            let user = pathSnapshot.current ?? poly.last.map { BLEPathPoint(x: $0.x, y: $0.y) }
+            if let user {
+                let pt = project(x: user.x, y: user.y, center: center, span: span, in: size)
+                if let heading = user.headingDegrees ?? pathSnapshot.current?.headingDegrees {
+                    Self.drawAppleHeadingCone(at: pt, headingDegrees: heading, context: &context)
                 }
-                var ring = Path()
-                ring.addEllipse(in: CGRect(x: pt.x - 12, y: pt.y - 12, width: 24, height: 24))
-                context.stroke(ring, with: .color(Theme.accent.opacity(0.4)), lineWidth: 1.5)
-                let dot = Path(ellipseIn: CGRect(x: pt.x - 5, y: pt.y - 5, width: 10, height: 10))
-                context.fill(dot, with: .color(Theme.accent))
-                let core = Path(ellipseIn: CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4))
-                context.fill(core, with: .color(Color.white.opacity(0.9)))
+                Self.drawLocationPuck(at: pt, context: &context)
             }
         }
-        .accessibilityLabel("Signal-Finder Heatmap")
-        .accessibilityHint("Weiche Signalfläche. Farben bleiben am Ort, bis dort neu gemessen wird. Keine exakte Ortung.")
+        .accessibilityLabel("Signal-Finder Live")
+        .accessibilityHint("Nutzer zentriert. Weiche Signalfläche. Farben bleiben am Ort, bis dort neu gemessen wird.")
+    }
+
+    private var liveCenter: (x: Double, y: Double) {
+        if let c = pathSnapshot.current {
+            return (c.x, c.y)
+        }
+        return (pathSnapshot.viewport.centerX, pathSnapshot.viewport.centerY)
+    }
+
+    private var liveSpan: Double {
+        max(pathSnapshot.viewport.spanMeters, BLEPathConfig.liveCenterSpanMeters)
     }
 
     private struct SoftPaintPoint {
@@ -953,13 +954,13 @@ struct SignalHeatmapView: View {
         var rssi: Double
     }
 
-    /// Frozen Breadcrumbs zuerst; sonst nur gemessene Zellen (kein Soft-Fill-Flackern).
-    private static func softPaintPoints(
+    /// Nur eingefrorene Messwerte — keine Soft-Fill-Zellen, die bei jedem Rebuild wandern.
+    private static func frozenSamples(
         breadcrumbs: [BLEBreadcrumb],
         snapshot: BLEHeatmapSnapshot
     ) -> [SoftPaintPoint] {
         if !breadcrumbs.isEmpty {
-            return decimateBreadcrumbs(breadcrumbs, maxCount: 70).map {
+            return decimateBreadcrumbs(breadcrumbs, maxCount: 90).map {
                 SoftPaintPoint(x: $0.x, y: $0.y, rssi: $0.rssi)
             }
         }
@@ -976,79 +977,152 @@ struct SignalHeatmapView: View {
         return points
     }
 
-    private static func drawSoftBlob(
-        at center: CGPoint,
-        rssi: Double,
-        meters: Double,
+    private static func strongestWorldPoint(
+        snapshot: BLEHeatmapSnapshot,
+        samples: [SoftPaintPoint]
+    ) -> (x: Double, y: Double)? {
+        if let s = snapshot.strongestCell {
+            return (
+                snapshot.originEast + (Double(s.col) + 0.5) * snapshot.cellSize,
+                snapshot.originNorth + (Double(s.row) + 0.5) * snapshot.cellSize
+            )
+        }
+        guard let best = samples.max(by: { $0.rssi < $1.rssi }) else { return nil }
+        return (best.x, best.y)
+    }
+
+    /// Feines Abtastgitter → weiche, zusammenhängende Fläche (keine sichtbaren Einzelkreise).
+    private static func drawContinuousField(
+        samples: [SoftPaintPoint],
+        center: (x: Double, y: Double),
+        span: Double,
         size: CGSize,
         context: inout GraphicsContext
     ) {
-        let color = softColor(forRssi: rssi)
-        // Radius skaliert mit Zoom (~2,5–4 m weiche Ausstrahlung)
-        let metersPerPoint = max(meters, 1) / max(Double(size.width), 1)
-        let baseRadius = CGFloat(3.2 / metersPerPoint)
-        let rings: [(scale: CGFloat, alpha: Double)] = [
-            (1.00, 0.05),
-            (0.78, 0.08),
-            (0.58, 0.12),
-            (0.40, 0.18),
-            (0.24, 0.28),
-            (0.12, 0.42)
-        ]
-        for ring in rings {
-            let r = max(4, baseRadius * ring.scale)
-            let oval = Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
-            context.fill(oval, with: .color(color.opacity(ring.alpha)))
+        guard !samples.isEmpty else { return }
+        let res = 52
+        let sigma = 2.15 // Meter — überlappende Gaußkerne = Wolke statt Punkte
+        let sigma2 = 2 * sigma * sigma
+        let cellW = size.width / CGFloat(res)
+        let cellH = size.height / CGFloat(res)
+        let half = span / 2
+
+        for iy in 0..<res {
+            for ix in 0..<res {
+                let wx = center.x + (Double(ix) + 0.5) / Double(res) * span - half
+                // Canvas Y nach unten; Welt-Nord nach oben
+                let wy = center.y + half - (Double(iy) + 0.5) / Double(res) * span
+                var num = 0.0
+                var den = 0.0
+                for s in samples {
+                    let dx = wx - s.x
+                    let dy = wy - s.y
+                    let d2 = dx * dx + dy * dy
+                    if d2 > 64 { continue } // >8 m vernachlässigen
+                    let w = exp(-d2 / sigma2)
+                    num += s.rssi * w
+                    den += w
+                }
+                guard den > 0.18 else { continue }
+                let rssi = num / den
+                let coverage = min(1.0, den / 1.35)
+                let alpha = 0.10 + 0.42 * coverage
+                let color = softColor(forRssi: rssi)
+                let rect = CGRect(
+                    x: CGFloat(ix) * cellW - 0.4,
+                    y: CGFloat(iy) * cellH - 0.4,
+                    width: cellW + 0.8,
+                    height: cellH + 0.8
+                )
+                context.fill(Path(rect), with: .color(color.opacity(alpha)))
+            }
         }
     }
 
-    private static func drawHeadingCone(
+    /// Apple-Maps-ähnlicher Heading-Fächer.
+    private static func drawAppleHeadingCone(
         at center: CGPoint,
         headingDegrees: Double,
         context: inout GraphicsContext
     ) {
-        // Canvas Y zeigt nach unten; Heading 0 = Nord = negativ Y auf dem Canvas
         let rad = (headingDegrees - 90) * .pi / 180
-        let length: CGFloat = 34
-        let tip = CGPoint(
-            x: center.x + CGFloat(cos(rad)) * length,
-            y: center.y + CGFloat(sin(rad)) * length
-        )
-        let leftRad = rad - 0.38
-        let rightRad = rad + 0.38
-        let left = CGPoint(
-            x: center.x + CGFloat(cos(leftRad)) * length * 0.72,
-            y: center.y + CGFloat(sin(leftRad)) * length * 0.72
-        )
-        let right = CGPoint(
-            x: center.x + CGFloat(cos(rightRad)) * length * 0.72,
-            y: center.y + CGFloat(sin(rightRad)) * length * 0.72
-        )
-        var cone = Path()
-        cone.move(to: center)
-        cone.addLine(to: left)
-        cone.addLine(to: tip)
-        cone.addLine(to: right)
-        cone.closeSubpath()
-        context.fill(cone, with: .color(Theme.accent.opacity(0.22)))
-        context.stroke(cone, with: .color(Theme.accent.opacity(0.55)), lineWidth: 1)
+        let length: CGFloat = 46
+        let halfAngle = 0.55 // ~63° Öffnung
+        let layers: [(scale: CGFloat, alpha: Double)] = [
+            (1.00, 0.10),
+            (0.78, 0.14),
+            (0.55, 0.18)
+        ]
+        for layer in layers {
+            let len = length * layer.scale
+            let left = CGPoint(
+                x: center.x + CGFloat(cos(rad - halfAngle)) * len,
+                y: center.y + CGFloat(sin(rad - halfAngle)) * len
+            )
+            let tip = CGPoint(
+                x: center.x + CGFloat(cos(rad)) * len,
+                y: center.y + CGFloat(sin(rad)) * len
+            )
+            let right = CGPoint(
+                x: center.x + CGFloat(cos(rad + halfAngle)) * len,
+                y: center.y + CGFloat(sin(rad + halfAngle)) * len
+            )
+            var cone = Path()
+            cone.move(to: center)
+            cone.addLine(to: left)
+            cone.addQuadCurve(to: right, control: tip)
+            cone.closeSubpath()
+            context.fill(cone, with: .color(locationBlue.opacity(layer.alpha)))
+        }
     }
 
-    /// Mint → Gelb → Orange → Rot (stark → schwach).
+    private static func drawLocationPuck(at center: CGPoint, context: inout GraphicsContext) {
+        var halo = Path()
+        halo.addEllipse(in: CGRect(x: center.x - 14, y: center.y - 14, width: 28, height: 28))
+        context.fill(halo, with: .color(locationBlue.opacity(0.18)))
+        var ring = Path()
+        ring.addEllipse(in: CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18))
+        context.fill(ring, with: .color(Color.white))
+        let dot = Path(ellipseIn: CGRect(x: center.x - 6.5, y: center.y - 6.5, width: 13, height: 13))
+        context.fill(dot, with: .color(locationBlue))
+    }
+
+    /// Mint → Gelb → Orange → Rot (stark → schwach), weiche Stufen.
     private static func softColor(forRssi rssi: Double) -> Color {
         let t = BLEHeatmapProcessor.normalizedStrength(rssi)
-        switch t {
-        case 0.72...1.0:
-            return Theme.accent
-        case 0.52..<0.72:
-            return Color(red: 0.48, green: 0.88, blue: 0.52)
-        case 0.36..<0.52:
-            return Color(red: 0.92, green: 0.82, blue: 0.28)
-        case 0.20..<0.36:
-            return Theme.hintOrange
-        default:
-            return Color(red: 0.78, green: 0.32, blue: 0.30)
+        // Kontinuierliche Interpolation statt harter Bänder
+        let stops: [(Double, Color)] = [
+            (0.00, Color(red: 0.78, green: 0.30, blue: 0.28)),
+            (0.28, Theme.hintOrange),
+            (0.48, Color(red: 0.92, green: 0.82, blue: 0.28)),
+            (0.68, Color(red: 0.48, green: 0.88, blue: 0.52)),
+            (1.00, Theme.accent)
+        ]
+        for i in 0..<(stops.count - 1) {
+            let a = stops[i]
+            let b = stops[i + 1]
+            if t <= b.0 {
+                let u = (t - a.0) / max(b.0 - a.0, 0.001)
+                return blend(a.1, b.1, t: u)
+            }
         }
+        return Theme.accent
+    }
+
+    private static func blend(_ a: Color, _ b: Color, t: Double) -> Color {
+        // Approximation über UIColor
+        let ua = UIColor(a)
+        let ub = UIColor(b)
+        var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        ua.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+        ub.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+        let u = CGFloat(min(1, max(0, t)))
+        return Color(
+            red: Double(ar + (br - ar) * u),
+            green: Double(ag + (bg - ag) * u),
+            blue: Double(ab + (bb - ab) * u)
+        )
     }
 
     private static func decimateBreadcrumbs(_ samples: [BLEBreadcrumb], maxCount: Int) -> [BLEBreadcrumb] {
@@ -1062,9 +1136,17 @@ struct SignalHeatmapView: View {
         return out
     }
 
-    private func project(x: Double, y: Double, in size: CGSize, snapshot: BLEHeatmapSnapshot) -> CGPoint {
-        let nx = (x - snapshot.originEast) / max(snapshot.boundsMeters, 1)
-        let ny = (y - snapshot.originNorth) / max(snapshot.boundsMeters, 1)
+    /// Nutzer bleibt Bildschirmmitte — Welt bewegt sich relativ dazu.
+    private func project(
+        x: Double,
+        y: Double,
+        center: (x: Double, y: Double),
+        span: Double,
+        in size: CGSize
+    ) -> CGPoint {
+        let s = max(span, 1)
+        let nx = (x - center.x) / s + 0.5
+        let ny = (y - center.y) / s + 0.5
         return CGPoint(
             x: CGFloat(nx) * size.width,
             y: size.height - CGFloat(ny) * size.height

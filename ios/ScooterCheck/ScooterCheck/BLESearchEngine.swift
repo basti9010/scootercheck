@@ -37,7 +37,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
     @Published private(set) var mapOverlay = BLEMapOverlayModel.empty
     @Published private(set) var pathLengthText: String = "0.00 m"
     @Published private(set) var breadcrumbs: [BLEBreadcrumb] = []
-    @Published private(set) var surfaceHint: String = "Relative Suchfläche – keine exakte Ortung"
+    @Published private(set) var surfaceHint: String = "Live-Suche – Nutzer zentriert, keine exakte Ortung"
 
     let visualTracker = IndoorVisualTracker()
 
@@ -137,7 +137,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
         measurementCount = 0
         signalStatus = "BLE-Suche aktiv"
         positionHint = nil
-        surfaceHint = "Relative Suchfläche – Kamera verbessert Abstände indoor"
+        surfaceHint = "Live-Suche – Kamera verbessert Abstände indoor"
         relativeX = 0
         relativeY = 0
         originLocation = nil
@@ -233,7 +233,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
             indoorTracker.setVisualPrimary(false)
             syncCameraTrackingStatus()
             surfaceHint = surfaceMode == .relative
-                ? "Relative Suchfläche – keine exakte Ortung"
+                ? "Live-Suche – Nutzer zentriert, keine exakte Ortung"
                 : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
         }
     }
@@ -270,7 +270,7 @@ final class BLESearchEngine: NSObject, ObservableObject {
     private func applySurfaceMode(_ mode: BLESearchSurfaceMode) {
         surfaceMode = mode
         surfaceHint = mode == .relative
-            ? "Relative Suchfläche – keine exakte Ortung"
+            ? "Live-Suche – Nutzer zentriert, keine exakte Ortung"
             : "Kartenansicht – Heatmap bleibt Orientierung, keine exakte Ortung"
         if var s = session {
             s.mapType = mode == .map ? "appleMapOverlay" : "relativeHeatmap"

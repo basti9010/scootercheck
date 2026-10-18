@@ -12,14 +12,14 @@ enum BLESearchSurfaceMode: String, Sendable, CaseIterable {
 
     var label: String {
         switch self {
-        case .relative: return "Relativ"
+        case .relative: return "Live"
         case .map: return "Karte"
         }
     }
 
     var detailLabel: String {
         switch self {
-        case .relative: return "Indoor · relative Suchfläche"
+        case .relative: return "Live · Nutzer zentriert"
         case .map: return "Outdoor · Apple-Karte"
         }
     }
@@ -121,6 +121,10 @@ enum BLEPathConfig {
     static let viewportMinSpan: Double = 10
     static let viewportMaxSpan: Double = 80
     static let viewportSoftFollow: Double = 0.22
+    /// Live-Ansicht: fester Suchradius um den Nutzer (Karte bewegt sich, Nutzer bleibt mittig).
+    static let liveCenterSpanMeters: Double = 22
+    static let liveCenterSpanMaxMeters: Double = 36
+    static let liveCenterFollow: Double = 0.55
     static let mapMinSpanMeters: Double = 16
     static let mapMaxSpanMeters: Double = 100
     static let mapPadding: Double = 1.55
@@ -531,43 +535,39 @@ enum SearchPathReconstructor {
 // MARK: - Viewport
 
 enum SearchViewportController {
+    /// Live-Suche: Viewport immer um den Nutzer; Span bleibt ruhig (kein Pfad-Bounding-Box-Zoom).
     static func make(
         points: [(x: Double, y: Double)],
         current: (x: Double, y: Double)?,
         previous: BLESearchViewport?,
         softFollow: Bool
     ) -> BLESearchViewport {
-        guard !points.isEmpty else { return previous ?? .empty }
-        let xs = points.map(\.x)
-        let ys = points.map(\.y)
-        var minX = xs.min()!
-        var maxX = xs.max()!
-        var minY = ys.min()!
-        var maxY = ys.max()!
-        if let c = current {
-            minX = min(minX, c.x)
-            maxX = max(maxX, c.x)
-            minY = min(minY, c.y)
-            maxY = max(maxY, c.y)
+        let focus = current ?? points.last
+        guard let focus else { return previous ?? .empty }
+
+        // Span nur leicht wachsen, wenn der Pfad den Standardradius sprengt
+        var span = BLEPathConfig.liveCenterSpanMeters
+        if points.count >= 2 {
+            let xs = points.map(\.x)
+            let ys = points.map(\.y)
+            let reach = max(
+                abs((xs.max() ?? focus.x) - focus.x),
+                abs((xs.min() ?? focus.x) - focus.x),
+                abs((ys.max() ?? focus.y) - focus.y),
+                abs((ys.min() ?? focus.y) - focus.y)
+            )
+            if reach > span * 0.42 {
+                span = min(BLEPathConfig.liveCenterSpanMaxMeters, max(span, reach * 2.2))
+            }
         }
-        let width = max(maxX - minX, 4)
-        let height = max(maxY - minY, 4)
-        let span = min(
-            BLEPathConfig.viewportMaxSpan,
-            max(BLEPathConfig.viewportMinSpan, max(width, height) * BLEPathConfig.viewportPadding)
-        )
-        var cx = (minX + maxX) / 2
-        var cy = (minY + maxY) / 2
-        // Aktuellen Punkt leicht bevorzugen, ohne hektisch zu springen
-        if let c = current {
-            cx = cx * 0.55 + c.x * 0.45
-            cy = cy * 0.55 + c.y * 0.45
-        }
+
+        var cx = focus.x
+        var cy = focus.y
         if softFollow, let prev = previous {
-            cx = prev.centerX * (1 - BLEPathConfig.viewportSoftFollow) + cx * BLEPathConfig.viewportSoftFollow
-            cy = prev.centerY * (1 - BLEPathConfig.viewportSoftFollow) + cy * BLEPathConfig.viewportSoftFollow
-            let softSpan = prev.spanMeters * (1 - BLEPathConfig.viewportSoftFollow) + span * BLEPathConfig.viewportSoftFollow
-            return BLESearchViewport(centerX: cx, centerY: cy, spanMeters: softSpan)
+            let a = BLEPathConfig.liveCenterFollow
+            cx = prev.centerX * (1 - a) + cx * a
+            cy = prev.centerY * (1 - a) + cy * a
+            span = prev.spanMeters * (1 - a * 0.45) + span * (a * 0.45)
         }
         return BLESearchViewport(centerX: cx, centerY: cy, spanMeters: span)
     }
@@ -576,7 +576,7 @@ enum SearchViewportController {
         BLESearchViewport(
             centerX: point.x,
             centerY: point.y,
-            spanMeters: span ?? BLEPathConfig.viewportMinSpan * 1.4
+            spanMeters: span ?? BLEPathConfig.liveCenterSpanMeters
         )
     }
 }
