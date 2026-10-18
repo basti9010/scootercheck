@@ -889,28 +889,6 @@ struct SignalHeatmapView: View {
                 )
             }
 
-            // Stärkster Bereich — Zielring
-            if let hotWorld = Self.strongestWorldPoint(snapshot: snapshot, samples: samples) {
-                let hot = project(x: hotWorld.x, y: hotWorld.y, center: center, span: span, in: size)
-                if hot.x > -40, hot.x < size.width + 40, hot.y > -40, hot.y < size.height + 40 {
-                    var glow = Path()
-                    glow.addEllipse(in: CGRect(x: hot.x - 22, y: hot.y - 22, width: 44, height: 44))
-                    context.fill(glow, with: .color(Theme.accent.opacity(0.10)))
-                    var outer = Path()
-                    outer.addEllipse(in: CGRect(x: hot.x - 15, y: hot.y - 15, width: 30, height: 30))
-                    context.stroke(outer, with: .color(Color.white.opacity(0.65)), lineWidth: 1.6)
-                    var inner = Path()
-                    inner.addEllipse(in: CGRect(x: hot.x - 6, y: hot.y - 6, width: 12, height: 12))
-                    context.stroke(inner, with: .color(Theme.accent), lineWidth: 1.8)
-                    var cross = Path()
-                    cross.move(to: CGPoint(x: hot.x - 10, y: hot.y))
-                    cross.addLine(to: CGPoint(x: hot.x + 10, y: hot.y))
-                    cross.move(to: CGPoint(x: hot.x, y: hot.y - 10))
-                    cross.addLine(to: CGPoint(x: hot.x, y: hot.y + 10))
-                    context.stroke(cross, with: .color(Color.white.opacity(0.75)), lineWidth: 1.1)
-                }
-            }
-
             // Nutzer immer mittig + Apple-ähnlicher Heading-Kegel
             let user = pathSnapshot.current ?? poly.last.map { BLEPathPoint(x: $0.x, y: $0.y) }
             if let user {
@@ -922,7 +900,7 @@ struct SignalHeatmapView: View {
             }
         }
         .accessibilityLabel("Signal-Finder Live")
-        .accessibilityHint("Nutzer zentriert. Weiche Signalfläche. Farben bleiben am Ort, bis dort neu gemessen wird.")
+        .accessibilityHint("Nutzer zentriert. Weiche Signalfläche — grün stärker, rot schwächer. Farben bleiben am Ort, bis dort neu gemessen wird.")
     }
 
     private var liveCenter: (x: Double, y: Double) {
@@ -963,20 +941,6 @@ struct SignalHeatmapView: View {
             }
         }
         return points
-    }
-
-    private static func strongestWorldPoint(
-        snapshot: BLEHeatmapSnapshot,
-        samples: [SoftPaintPoint]
-    ) -> (x: Double, y: Double)? {
-        if let s = snapshot.strongestCell {
-            return (
-                snapshot.originEast + (Double(s.col) + 0.5) * snapshot.cellSize,
-                snapshot.originNorth + (Double(s.row) + 0.5) * snapshot.cellSize
-            )
-        }
-        guard let best = samples.max(by: { $0.rssi < $1.rssi }) else { return nil }
-        return (best.x, best.y)
     }
 
     /// Feines Abtastgitter → weiche, zusammenhängende Fläche (keine sichtbaren Einzelkreise).
