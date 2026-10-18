@@ -28,7 +28,8 @@ Funktionale Überarbeitung der Indoor-/Outdoor-Suchdarstellung. Visuell bleibt d
 4. **CMPedometer.distance** kalibriert Schrittlänge; bei aktivem Kamera-Tracking keine Doppelzählung
 5. **Stillstand** → kein Drift; GPS-Fusion nur outdoor ≤ 8 m
 
-UI: Toggle **Kamera-Tracking** mit Kamerasymbol (grün = aktiv, rot = inaktiv z. B. zu dunkel).  
+UI: Signal-Finder mit weicher Farbflächen-Heatmap (keine Kacheln), Standort/Blickrichtung/Hotspot;
+Optionen (Haptik, Ton, Kamera-Tracking) im Sheet. Kamerasymbol grün/rot.
 Messpunkte (`BLEBreadcrumb`) behalten RSSI vom Aufnahmezeitpunkt.
 
 Neue Datei: `BLESearchVisualTracker.swift`
