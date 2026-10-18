@@ -9,33 +9,62 @@ enum ScooterFindDestination: Equatable {
 }
 
 /// Zentrale Übersicht: E-Scooter-Radar, Geräte-Wächter, Signal-Finder.
+/// Unterseiten per nativem `NavigationStack` (Slide + Edge-Swipe-Zurück).
 struct ScooterFindHubView: View {
     @ObservedObject var ble: BleClient
     @Binding var destination: ScooterFindDestination
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var path = NavigationPath()
+    /// Verhindert Ping-Pong zwischen Path und Destination.
+    @State private var isApplyingDestination = false
+    @State private var presentedRoute: ScooterFindRoute?
 
     var body: some View {
-        Group {
-            switch destination {
-            case .hub:
-                hubContent
-            case .radar:
-                ScooterFinderView(
-                    ble: ble,
-                    mode: .radar,
-                    onBackToHub: { destination = .hub }
-                )
-            case .watch:
-                BLEWatchListScreen(
-                    onSelect: nil,
-                    onBack: { destination = .hub }
-                )
-            case .signalFinder:
-                ScooterFinderView(
-                    ble: ble,
-                    mode: .signalPicker,
-                    onBackToHub: { destination = .hub }
-                )
+        NavigationStack(path: $path) {
+            hubContent
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: ScooterFindRoute.self) { route in
+                    findRouteView(route)
+                        .toolbar(.hidden, for: .navigationBar)
+                        .scootInteractivePopGesture()
+                }
+        }
+        .onAppear { syncPath(from: destination, animated: false) }
+        .onChange(of: destination) { newValue in
+            syncPath(from: newValue, animated: true)
+        }
+        .onChange(of: path.count) { count in
+            guard !isApplyingDestination else { return }
+            if count == 0 {
+                presentedRoute = nil
+                if destination != .hub {
+                    destination = .hub
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func findRouteView(_ route: ScooterFindRoute) -> some View {
+        switch route {
+        case .radar:
+            ScooterFinderView(
+                ble: ble,
+                mode: .radar,
+                onBackToHub: { destination = .hub }
+            )
+        case .watch:
+            BLEWatchListScreen(
+                onSelect: nil,
+                onBack: { destination = .hub }
+            )
+        case .signalFinder:
+            ScooterFinderView(
+                ble: ble,
+                mode: .signalPicker,
+                onBackToHub: { destination = .hub }
+            )
         }
     }
 
@@ -81,6 +110,46 @@ struct ScooterFindHubView: View {
             }
             .scootPagePadding()
             .padding(.top, Theme.Space.sm)
+        }
+    }
+
+    private func syncPath(from destination: ScooterFindDestination, animated: Bool) {
+        let target = ScooterFindRoute(destination: destination)
+        if target == presentedRoute {
+            // Bereits sichtbar — kein erneuter Push (verhindert Doppelanimation).
+            if target == nil, !path.isEmpty {
+                // Inkonsistenz bereinigen
+            } else {
+                return
+            }
+        }
+
+        isApplyingDestination = true
+        let anim: Animation? = animated
+            ? (reduceMotion ? Theme.Motion.reduced : Theme.Motion.page)
+            : nil
+
+        if let target {
+            var next = NavigationPath()
+            next.append(target)
+            if let anim {
+                withAnimation(anim) { path = next }
+            } else {
+                path = next
+            }
+            presentedRoute = target
+        } else {
+            if let anim {
+                withAnimation(anim) { path = NavigationPath() }
+            } else {
+                path = NavigationPath()
+            }
+            presentedRoute = nil
+        }
+
+        // Nach Path-Update wieder freigeben (nächster RunLoop).
+        DispatchQueue.main.async {
+            isApplyingDestination = false
         }
     }
 }

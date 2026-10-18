@@ -56,6 +56,7 @@ struct ContentView: View {
     /// Detailansicht für allgemeine BLE-Geräte (kein Scooter-Persistieren).
     @State private var bleDetailDevice: ScannedDevice? = nil
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var watchService = BLEWatchService.shared
 
     private enum AppScreen: Equatable {
@@ -118,49 +119,58 @@ struct ContentView: View {
             && ble.visibleDevices.isEmpty
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 Theme.bg.ignoresSafeArea()
 
-                if screen == .find {
-                    ScooterFindHubView(ble: ble, destination: $findDestination)
-                } else if screen == .overview {
-                    controlsOverview
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            if let err = ble.lastError, ble.phase == .failed {
-                                errorBanner(err)
-                            }
-                            switch screen {
-                            case .overview, .find:
-                                EmptyView()
-                            case .result:
-                                if let result {
-                                    resultCard(result)
+                // Wurzelbereiche (Menü): dezenter Crossfade — keine konkurrierende Slide zum Header/Logo.
+                Group {
+                    if screen == .find {
+                        ScooterFindHubView(ble: ble, destination: $findDestination)
+                            .transition(.opacity)
+                    } else if screen == .overview {
+                        controlsOverview
+                            .transition(.opacity)
+                    } else {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 20) {
+                                if let err = ble.lastError, ble.phase == .failed {
+                                    errorBanner(err)
                                 }
-                            case .home:
-                                if isBusyPhase {
-                                    connectingCard
-                                } else if showsStartLanding {
-                                    startLanding
-                                } else {
-                                    devicesSearchHeader
-                                    devicesSonarStage
-                                    if ble.visibleDevices.isEmpty {
-                                        searchEmptyCopy
+                                switch screen {
+                                case .overview, .find:
+                                    EmptyView()
+                                case .result:
+                                    if let result {
+                                        resultCard(result)
+                                    }
+                                case .home:
+                                    if isBusyPhase {
+                                        connectingCard
+                                    } else if showsStartLanding {
+                                        startLanding
                                     } else {
-                                        deviceSection
+                                        devicesSearchHeader
+                                        devicesSonarStage
+                                        if ble.visibleDevices.isEmpty {
+                                            searchEmptyCopy
+                                        } else {
+                                            deviceSection
+                                        }
                                     }
                                 }
                             }
+                            .scootPagePadding()
+                            .padding(.top, 8)
+                            .padding(.bottom, scrollBottomPadding)
                         }
-                        .scootPagePadding()
-                        .padding(.top, 8)
-                        .padding(.bottom, scrollBottomPadding)
+                        .transition(.opacity)
                     }
                 }
+                .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade, value: screen)
 
                 if showsStartLanding {
                     AnimatedSignalWaves()
@@ -1755,7 +1765,10 @@ struct ContentView: View {
             let panelWidth = Theme.Chrome.drawerPanelWidth(screenWidth: geo.size.width)
             // Nie 0 melden lassen — sonst rutscht der Drawer-Header in die Statusleiste.
             let safeTop = Theme.Chrome.resolvedSafeAreaTop(geo.safeAreaInsets.top)
-            let edgeOpenEnabled = screen != .result && (menuProgress < 0.02 || isEdgeOpeningMenu)
+            // Unterseiten (Find-Stack): Edge-Swipe = Zurück, nicht Menü.
+            let edgeOpenEnabled = screen != .result
+                && (screen != .find || findDestination == .hub)
+                && (menuProgress < 0.02 || isEdgeOpeningMenu)
             // Header inkl. Safe Area freilassen — sonst blockiert der Edge-Pan den Hamburger.
             let edgeExcludedTop = safeTop + Theme.Chrome.headerHeight
             ZStack(alignment: .leading) {
@@ -1970,30 +1983,35 @@ struct ContentView: View {
 
     private func navigateFromMenu(to target: AppScreen) {
         setMenuOpen(false)
-        switch target {
-        case .home:
-            if screen == .result { persistCurrentSession() }
-            screen = .home
-            if ble.phase != .scanning, !isBusyPhase {
-                ble.startScan()
+        let apply = {
+            switch target {
+            case .home:
+                if screen == .result { persistCurrentSession() }
+                screen = .home
+                if ble.phase != .scanning, !isBusyPhase {
+                    ble.startScan()
+                }
+            case .overview:
+                if screen == .result { persistCurrentSession() }
+                goToOverview()
+            case .result:
+                guard result != nil else { return }
+                screen = .result
+            case .find:
+                if screen == .result { persistCurrentSession() }
+                // Finder nutzt Scan-only — aktive Diagnoseverbindung trennen.
+                if ble.isConnectedToScooter {
+                    ble.disconnect()
+                }
+                findDestination = .hub
+                screen = .find
+                if ble.phase != .scanning {
+                    ble.startScan()
+                }
             }
-        case .overview:
-            if screen == .result { persistCurrentSession() }
-            goToOverview()
-        case .result:
-            guard result != nil else { return }
-            screen = .result
-        case .find:
-            if screen == .result { persistCurrentSession() }
-            // Finder nutzt Scan-only — aktive Diagnoseverbindung trennen.
-            if ble.isConnectedToScooter {
-                ble.disconnect()
-            }
-            findDestination = .hub
-            screen = .find
-            if ble.phase != .scanning {
-                ble.startScan()
-            }
+        }
+        withAnimation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade) {
+            apply()
         }
     }
 

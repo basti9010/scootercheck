@@ -16,15 +16,19 @@ struct BLESearchScreen: View {
     @State private var expandWhyFingerprint = false
     @State private var showRawRssi = false
     @State private var showOptions = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
             if engine.surfaceMode == .ar {
                 arModeRoot
+                    .transition(reduceMotion ? .opacity : .opacity)
             } else {
                 standardModeRoot
+                    .transition(reduceMotion ? .opacity : .opacity)
             }
         }
+        .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade, value: engine.surfaceMode)
         .onAppear {
             radar.startSession(enableRadar: radar.isEnabled)
             BLESearchLiveActivityController.shared.start(deviceName: engine.deviceName)
