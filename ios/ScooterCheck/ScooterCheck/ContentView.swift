@@ -61,7 +61,7 @@ struct ContentView: View {
         case find
     }
 
-    /// Unterziel in „Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
+    /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
     @State private var findDestination: ScooterFindDestination = .hub
 
     private enum HistoryShelf: Equatable {
@@ -356,7 +356,7 @@ struct ContentView: View {
     private var devicesSearchHeader: some View {
         VStack(alignment: .leading, spacing: Theme.Space.md) {
             HStack(alignment: .firstTextBaseline) {
-                PageTitle(text: "E Scooter auslesen")
+                PageTitle(text: "E-Scooter auslesen")
                 Spacer(minLength: Theme.Space.sm)
                 if ble.phase == .scanning {
                     HStack(spacing: Theme.Space.sm) {
@@ -1808,7 +1808,7 @@ struct ContentView: View {
 
             VStack(spacing: 4) {
                 sideNavRow(
-                    title: "E Scooter auslesen",
+                    title: "E-Scooter auslesen",
                     systemImage: "antenna.radiowaves.left.and.right",
                     selected: screen == .home
                 ) {
@@ -1833,7 +1833,7 @@ struct ContentView: View {
                     }
                 }
                 sideNavRow(
-                    title: "Scooter finden",
+                    title: "E-Scooter finden",
                     systemImage: "magnifyingglass",
                     selected: screen == .find
                 ) {

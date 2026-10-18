@@ -10,7 +10,7 @@ enum ScooterFinderMode: Equatable {
     case signalPicker
 }
 
-/// Geräteauswahl + Signal-Finder / Radar innerhalb von „Scooter finden“.
+/// Geräteauswahl + Signal-Finder / Radar innerhalb von „E-Scooter finden“.
 struct ScooterFinderView: View {
     @ObservedObject var ble: BleClient
     var mode: ScooterFinderMode = .deviceSearch
@@ -424,7 +424,7 @@ struct ScooterFinderView: View {
                     }
                     .accessibilityLabel("Zurück")
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Scooter-Radar")
+                        Text("E-Scooter-Radar")
                             .font(Theme.cardTitle)
                             .foregroundStyle(Theme.textPrimary)
                         Text("Aktive Suche · kein Zielgerät nötig")

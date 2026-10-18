@@ -24,7 +24,7 @@ enum PrivacyContent {
 
     Einzige vom Code ausgehende Netzwerkabfrage: optionaler Download einer öffentlichen Firmware-Sollkatalog-Datei von GitHub (raw.githubusercontent.com). Dabei werden keine Prüfungs- oder Fotodaten hochgeladen.
 
-    Standort- und Bewegungsdaten werden nur während „Scooter finden“ im Arbeitsspeicher ausgewertet und nicht in die Prüfungsablage geschrieben.
+    Standort- und Bewegungsdaten werden nur während „E-Scooter finden“ im Arbeitsspeicher ausgewertet und nicht in die Prüfungsablage geschrieben.
     """
 
     // MARK: - Hub navigation
@@ -117,7 +117,7 @@ enum PrivacyContent {
                 "Auslesen und Bewerten technischer Daten kompatibler E-Scooter per Bluetooth (nur lesend).",
                 "Lokale Speicherung von Prüfberichten (PDF/JSON), optionaler Zuordnung (z. B. Kennzeichen/Name) und Fotos zur Dokumentation und Wiedererkennung.",
                 "Wiedererkennung zuvor geprüfter Scooter über lokal gespeicherte Serien-/Advertisement- und BLE-Peripheral-Kennungen.",
-                "Optionale Richtungsschätzung unter „Scooter finden“ anhand von Bluetooth-Signalstärke sowie Standort-/Bewegungssensoren während der aktiven Suche.",
+                "Optionale Richtungsschätzung unter „E-Scooter finden“ anhand von Bluetooth-Signalstärke sowie Standort-/Bewegungssensoren während der aktiven Suche.",
                 "Optionaler Abruf eines öffentlichen Firmware-Sollkatalogs zur Aktualisierung von Vergleichsdaten."
             ]
         ),
@@ -128,7 +128,7 @@ enum PrivacyContent {
                 "Optionale Subject-Angaben, die du eingibst (Kennzeichen, Name, Geburtsdatum).",
                 "Fotos, die du einer Prüfung zuordnest (Kamera oder Mediathek).",
                 "App-Einstellungen und lokal gespeicherte Notizen zu Soft-Unlock-Kombinationen (UserDefaults), sofern genutzt.",
-                "Während „Scooter finden“: Standort-, Heading- und Bewegungsdaten nur im Arbeitsspeicher der laufenden Sitzung.",
+                "Während „E-Scooter finden“: Standort-, Heading- und Bewegungsdaten nur im Arbeitsspeicher der laufenden Sitzung.",
                 "Keine Benutzerkonten; keine serverseitigen Profil-/Account-Daten in dieser App-Version."
             ]
         ),
@@ -161,7 +161,7 @@ enum PrivacyContent {
         Section(
             title: "Pflicht zur Bereitstellung",
             paragraphs: [
-                "Die App ist ohne Konto nutzbar. Bluetooth ist für „E Scooter auslesen“ und „Scooter finden“ erforderlich; Kamera/Fotos nur für Bildfunktionen; Standort/Bewegung nur für die Find-Funktionen.",
+                "Die App ist ohne Konto nutzbar. Bluetooth ist für „E-Scooter auslesen“ und „E-Scooter finden“ erforderlich; Kamera/Fotos nur für Bildfunktionen; Standort/Bewegung nur für die Find-Funktionen.",
                 "Ohne die jeweilige Berechtigung funktionieren andere Bereiche der App weiter, soweit sie die Berechtigung nicht benötigen."
             ]
         ),
@@ -215,7 +215,7 @@ enum PrivacyContent {
         Section(
             title: "Standort & Bewegung",
             paragraphs: [
-                "Während „Scooter finden“: genauer Standort (When-In-Use), Heading, Schritt-/Motion-Daten zur Richtungsschätzung.",
+                "Während „E-Scooter finden“: genauer Standort (When-In-Use), Heading, Schritt-/Motion-Daten zur Richtungsschätzung.",
                 "Zweck: Signalstärke-Änderung während deiner Bewegung auswerten.",
                 "Speicherung: nur flüchtig während der aktiven Suche — nicht als Teil der Prüfungsablage.",
                 "Keine Übertragung an App-Server."
@@ -286,7 +286,7 @@ enum PrivacyContent {
         Section(
             title: "Wann wird Standort genutzt?",
             paragraphs: [
-                "Nur während der Funktion „Scooter finden“ (When In Use), mit hoher Genauigkeit zur Auswertung von Positions-/Heading-Änderungen zusammen mit RSSI.",
+                "Nur während der Funktion „E-Scooter finden“ (When In Use), mit hoher Genauigkeit zur Auswertung von Positions-/Heading-Änderungen zusammen mit RSSI.",
                 "Ohne Standortfreigabe ist die Richtungsschätzung eingeschränkt; die übrige App bleibt nutzbar.",
                 "Standortdaten werden nicht in die Prüfungsablage geschrieben und nicht an App-Server gesendet."
             ]
@@ -362,13 +362,13 @@ enum PrivacyContent {
         Section(
             title: "Standort (When In Use)",
             paragraphs: [
-                "Zweck: nur „Scooter finden“ — Signaländerungen während der Bewegung auswerten."
+                "Zweck: nur „E-Scooter finden“ — Signaländerungen während der Bewegung auswerten."
             ]
         ),
         Section(
             title: "Bewegung / Motion",
             paragraphs: [
-                "Zweck: Richtungsschätzung während „Scooter finden“ robuster machen."
+                "Zweck: Richtungsschätzung während „E-Scooter finden“ robuster machen."
             ]
         )
     ]

@@ -20,9 +20,9 @@ final class FAQCatalogTests: XCTestCase {
 
     func testScooterFindenSearchHits() {
         for query in [
-            "Scooter finden", "finden", "Suche", "Ortung", "Standort", "Entfernung",
+            "E-Scooter finden", "Scooter finden", "finden", "Suche", "Ortung", "Standort", "Entfernung",
             "Signal", "RSSI", "Radar", "Signal-Finder", "Geräte-Wächter", "Wächter",
-            "Gerät aufspüren", "Heatmap", "Live", "Shelly", "auslesen",
+            "Gerät aufspüren", "Heatmap", "Live", "Shelly", "auslesen", "E-Scooter auslesen",
             "Scooter suchen", "Alle BLE", "nicht gefunden",
         ] {
             let hits = FAQCatalog.filtered(query: query)

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Unterziele innerhalb von „Scooter finden“.
+/// Unterziele innerhalb von „E-Scooter finden“.
 enum ScooterFindDestination: Equatable {
     case hub
     case radar
@@ -8,7 +8,7 @@ enum ScooterFindDestination: Equatable {
     case signalFinder
 }
 
-/// Zentrale Übersicht: Scooter-Radar, Geräte-Wächter, Signal-Finder.
+/// Zentrale Übersicht: E-Scooter-Radar, Geräte-Wächter, Signal-Finder.
 struct ScooterFindHubView: View {
     @ObservedObject var ble: BleClient
     @Binding var destination: ScooterFindDestination
@@ -43,7 +43,7 @@ struct ScooterFindHubView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
                 VStack(alignment: .leading, spacing: 6) {
-                    PageTitle(text: "Scooter finden")
+                    PageTitle(text: "E-Scooter finden")
                     Text("Wähle eine Such- oder Analysefunktion")
                         .font(Theme.body)
                         .foregroundStyle(Theme.textBody)
@@ -52,7 +52,7 @@ struct ScooterFindHubView: View {
 
                 VStack(spacing: Theme.Space.sm) {
                     findFunctionCard(
-                        title: "Scooter-Radar",
+                        title: "E-Scooter-Radar",
                         subtitle: "Erkennt automatisch E-Scooter in deiner Nähe.",
                         systemImage: "dot.radiowaves.left.and.right"
                     ) {
