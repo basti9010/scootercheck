@@ -36,7 +36,13 @@ struct ScooterFinderView: View {
     private var isRadarBrowsing: Bool { radarBrowseMode && radar.isEnabled && !isFinding && !isObserving }
 
     private var filteredDevices: [ScannedDevice] {
-        showOnlyScooters
+        if mode == .signalPicker {
+            // Explizite Wahl: E-Scooter ODER andere BLE-Geräte (nicht alles gemischt).
+            return showOnlyScooters
+                ? ble.devices.filter(\.looksLikeScooter)
+                : ble.devices.filter { !$0.looksLikeScooter }
+        }
+        return showOnlyScooters
             ? ble.devices.filter(\.looksLikeScooter)
             : ble.devices
     }
@@ -70,7 +76,8 @@ struct ScooterFinderView: View {
                 startRadarBrowse()
             }
             if mode == .signalPicker {
-                showOnlyScooters = false
+                // Signal-Finder startet bei E-Scootern; Umschalten auf andere BLE möglich.
+                showOnlyScooters = true
             }
             reconcileStableOrder(force: true)
         }
@@ -146,16 +153,23 @@ struct ScooterFinderView: View {
             VStack(alignment: .leading, spacing: 16) {
                 findSectionHeader
 
-                if mode != .signalPicker {
+                if mode != .radar {
                     Picker("Suchmodus", selection: $showOnlyScooters) {
-                        Text("Scooter").tag(true)
-                        Text("Alle BLE-Geräte").tag(false)
+                        Text("E-Scooter").tag(true)
+                        Text(mode == .signalPicker ? "Andere BLE-Geräte" : "Alle BLE-Geräte").tag(false)
                     }
                     .pickerStyle(.segmented)
                     .font(Theme.segment)
                 }
 
-                if mode == .deviceSearch, !showOnlyScooters {
+                if mode == .signalPicker {
+                    Text(showOnlyScooters
+                         ? "Nur als E-Scooter erkennbare Signale. Tippe ein Gerät an, um den Signal-Finder zu starten."
+                         : "Nur sonstige BLE-Geräte (keine E-Scooter-Treffer). Tippe ein Gerät an, um den Signal-Finder zu starten.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if mode == .deviceSearch, !showOnlyScooters {
                     Text("Zeigt alle erkannten BLE-Signale. Tippe ein Gerät an für Details, Geräte-Wächter oder Signal-Finder.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
@@ -271,10 +285,10 @@ struct ScooterFinderView: View {
     private var selectionSubtitle: String {
         switch mode {
         case .signalPicker:
-            return "Wähle ein Bluetooth-Gerät. Der Signal-Finder zeigt relative Signalstärke und Heatmap — keine GPS-Ortung."
+            return "Wähle E-Scooter oder andere BLE-Geräte. Der Signal-Finder zeigt relative Signalstärke und Heatmap — keine GPS-Ortung."
         case .deviceSearch:
             return showOnlyScooters
-                ? "Wähle einen Scooter zum Auslesen oder Aufspüren."
+                ? "Wähle einen E-Scooter zum Auslesen oder Aufspüren."
                 : "Wähle ein BLE-Gerät. Speichert nichts automatisch als Scooter."
         case .radar:
             return "Erkennt automatisch E-Scooter in deiner Nähe."
@@ -283,20 +297,24 @@ struct ScooterFinderView: View {
 
     private var emptySelectionCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(showOnlyScooters
-                 ? "Keine Scooter in Reichweite"
-                 : "Keine BLE-Geräte in Reichweite")
+            Text(emptySelectionTitle)
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.white)
-            Text(showOnlyScooters
-                 ? "Halte das iPhone in der Nähe — oder wechsle zu „Alle BLE-Geräte“, falls die Erkennung unsicher ist."
-                 : "Stelle sicher, dass Bluetooth aktiv ist und Geräte in der Nähe werben.")
+            Text(emptySelectionBody)
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
             if showOnlyScooters {
-                ScootPrimaryButton(title: "Alle BLE-Geräte anzeigen", systemImage: "list.bullet") {
+                ScootPrimaryButton(
+                    title: mode == .signalPicker ? "Andere BLE-Geräte anzeigen" : "Alle BLE-Geräte anzeigen",
+                    systemImage: "list.bullet"
+                ) {
                     showOnlyScooters = false
+                }
+                .padding(.top, 4)
+            } else if mode == .signalPicker {
+                ScootPrimaryButton(title: "E-Scooter anzeigen", systemImage: "antenna.radiowaves.left.and.right") {
+                    showOnlyScooters = true
                 }
                 .padding(.top, 4)
             }
@@ -304,6 +322,24 @@ struct ScooterFinderView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .scootCard()
+    }
+
+    private var emptySelectionTitle: String {
+        if mode == .signalPicker {
+            return showOnlyScooters ? "Keine E-Scooter in Reichweite" : "Keine anderen BLE-Geräte in Reichweite"
+        }
+        return showOnlyScooters ? "Keine E-Scooter in Reichweite" : "Keine BLE-Geräte in Reichweite"
+    }
+
+    private var emptySelectionBody: String {
+        if mode == .signalPicker {
+            return showOnlyScooters
+                ? "Halte das iPhone in der Nähe — oder wechsle zu „Andere BLE-Geräte“, falls die Erkennung unsicher ist."
+                : "Hier erscheinen BLE-Signale, die nicht als E-Scooter eingestuft sind. Wechsle zu „E-Scooter“, um Scooter-Treffer zu sehen."
+        }
+        return showOnlyScooters
+            ? "Halte das iPhone in der Nähe — oder wechsle zu „Alle BLE-Geräte“, falls die Erkennung unsicher ist."
+            : "Stelle sicher, dass Bluetooth aktiv ist und Geräte in der Nähe werben."
     }
 
     private func finderDeviceRow(_ device: ScannedDevice) -> some View {
