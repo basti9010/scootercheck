@@ -14,7 +14,7 @@ struct BLEWatcherSettingsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.md) {
             HStack {
-                Text("BLE-Wächter")
+                Text("Geräte-Wächter")
                     .font(Theme.secondary.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                 Spacer()
@@ -39,7 +39,7 @@ struct BLEWatcherSettingsCard: View {
                 ))
                 .labelsHidden()
                 .tint(Theme.accent)
-                .accessibilityLabel("BLE-Wächter aktiv")
+                .accessibilityLabel("Geräte-Wächter aktiv")
             }
 
             if let t = target, t.enabled {
@@ -154,7 +154,7 @@ struct BLEWatchListScreen: View {
                         Text("Keine Wächter aktiv")
                             .font(Theme.sectionTitle)
                             .foregroundStyle(Theme.textPrimary)
-                        Text("Aktiviere den BLE-Wächter in der Geräte-Detailansicht für einen bekannten Scooter oder ein BLE-Gerät.")
+                        Text("Aktiviere den Geräte-Wächter in der Geräte-Detailansicht für einen bekannten Scooter oder ein BLE-Gerät.")
                             .font(Theme.body)
                             .foregroundStyle(Theme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -184,7 +184,7 @@ struct BLEWatchListScreen: View {
                 }
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("BLE-Wächter")
+            .navigationTitle("Geräte-Wächter")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onClose {

@@ -245,6 +245,12 @@ struct BleModelHint: Equatable, Sendable {
         let hay = rawParts.map { $0.uppercased() }.joined(separator: " ")
         let compact = String(hay.filter { $0.isLetter || $0.isNumber })
 
+        // Fremdgeräte: keine Modellzuordnung nur wegen zufälliger Teilstrings (z. B. Shelly …F3…)
+        let foreignBlock = ["SHELLY", "NUKI", "SONOS", "THERMOSTAT", "IPHONE", "IPAD", "AIRPOD"]
+        if foreignBlock.contains(where: { hay.contains($0) || compact.contains($0) }) {
+            return nil
+        }
+
         // Max G3 / MAX3 — BLE-IDs wie „1CGBF2531C0230“ (ohne „G3“ im Klartext)
         if compact.hasPrefix("1CGB") {
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3D)
@@ -298,9 +304,10 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        // F3 vor generischem F2
-        if hay.contains("F3") || hay.range(of: #"\bF3(\s|/|-)?(PRO|PLUS|D|E)?\b"#, options: .regularExpression) != nil {
-            let eu = hay.contains("F3E") || hay.contains("25")
+        // F3 vor generischem F2 — nicht in Hex-Fragmenten (z. B. Shelly …F3CF…)
+        if hay.range(of: #"(?<![0-9A-F])F3(?![0-9A-F])"#, options: .regularExpression) != nil
+            || hay.contains("NINEBOT F3") || hay.contains("SEGWAY F3") {
+            let eu = hay.contains("F3E") || hay.contains("25 KM") || hay.contains("25KM")
             return BleModelHint(
                 title: "Ninebot F3",
                 shortBadge: "F3",
@@ -308,8 +315,9 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        if hay.contains("F2") || hay.range(of: #"\bF[24]0\b"#, options: .regularExpression) != nil
-            || hay.range(of: #"\bF2(\s|/|-)?(PRO|PLUS|D|E)?\b"#, options: .regularExpression) != nil {
+        if hay.range(of: #"\bF[24]0\b"#, options: .regularExpression) != nil
+            || hay.range(of: #"(?<![0-9A-F])F2(?![0-9A-F])"#, options: .regularExpression) != nil
+            || hay.contains("NINEBOT F2") || hay.contains("SEGWAY F2") {
             let eu = hay.contains("F25") || hay.contains("F2E") || hay.contains("25")
             return BleModelHint(
                 title: "Ninebot F2 / F-Serie",

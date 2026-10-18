@@ -57,8 +57,10 @@ struct ContentView: View {
         case result
         case overview
         case find
-        case watchList
     }
+
+    /// Unterziel in „Scooter finden“ (Hub / Gerätesuche / Radar / Wächter / Signal-Finder).
+    @State private var findDestination: ScooterFindDestination = .hub
 
     private enum HistoryShelf: Equatable {
         case active
@@ -116,16 +118,7 @@ struct ContentView: View {
                 Theme.bg.ignoresSafeArea()
 
                 if screen == .find {
-                    ScooterFinderView(ble: ble)
-                } else if screen == .watchList {
-                    BLEWatchListScreen(
-                        onSelect: { target in
-                            if let device = ble.devices.first(where: { $0.id == target.deviceId }) {
-                                bleDetailDevice = device
-                            }
-                        },
-                        onClose: { screen = .home }
-                    )
+                    ScooterFindHubView(ble: ble, destination: $findDestination)
                 } else if screen == .overview {
                     controlsOverview
                 } else {
@@ -135,7 +128,7 @@ struct ContentView: View {
                                 errorBanner(err)
                             }
                             switch screen {
-                            case .overview, .find, .watchList:
+                            case .overview, .find:
                                 EmptyView()
                             case .result:
                                 if let result {
@@ -253,7 +246,7 @@ struct ContentView: View {
                 }
             }
             .overlay(alignment: .top) {
-                if let banner = watchService.lastBanner, screen != .find {
+                if let banner = watchService.lastBanner, screen != .find || findDestination == .hub {
                     BLERadarBannerView(text: banner)
                         .padding(.horizontal, Theme.Space.xl)
                         .padding(.top, Theme.Chrome.headerHeight + 8)
@@ -287,14 +280,22 @@ struct ContentView: View {
         guard let link = BLEDeepLink.parse(url) else { return }
         switch link {
         case .watch(let targetId):
-            screen = .watchList
+            if ble.isConnectedToScooter { ble.disconnect() }
+            findDestination = .watch
+            screen = .find
             if let target = BLEWatchStore.shared.targets.first(where: { $0.id == targetId }),
                let device = ble.devices.first(where: { $0.id == target.deviceId }) {
                 bleDetailDevice = device
             }
             BLEWatchService.shared.updateBackgroundScanIfNeeded()
-        case .radar, .find:
+        case .radar:
             if ble.isConnectedToScooter { ble.disconnect() }
+            findDestination = .radar
+            screen = .find
+            if ble.phase != .scanning { ble.startScan() }
+        case .find:
+            if ble.isConnectedToScooter { ble.disconnect() }
+            findDestination = .hub
             screen = .find
             if ble.phase != .scanning { ble.startScan() }
         }
@@ -947,8 +948,8 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            // find / watchList: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
-            if showsStartLanding || screen == .find || screen == .watchList {
+            // find: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
+            if showsStartLanding || screen == .find {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
@@ -1092,7 +1093,7 @@ struct ContentView: View {
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview, .find, .watchList: return true
+        case .overview, .find: return true
         case .result: return result != nil
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
@@ -1106,7 +1107,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find, .watchList:
+        case .find:
             break
         case .home:
             if ble.phase == .scanning {
@@ -1744,7 +1745,7 @@ struct ContentView: View {
                     title: history.activeCount == 0
                         ? "Prüfungen"
                         : "Prüfungen (\(history.activeCount))",
-                    systemImage: "list.bullet.rectangle",
+                    systemImage: "list.clipboard",
                     selected: screen == .overview
                 ) {
                     navigateFromMenu(to: .overview)
@@ -1760,19 +1761,10 @@ struct ContentView: View {
                 }
                 sideNavRow(
                     title: "Scooter finden",
-                    systemImage: "location.magnifyingglass",
+                    systemImage: "magnifyingglass",
                     selected: screen == .find
                 ) {
                     navigateFromMenu(to: .find)
-                }
-                sideNavRow(
-                    title: BLEWatchStore.shared.activeCount == 0
-                        ? "BLE-Wächter"
-                        : "BLE-Wächter (\(BLEWatchStore.shared.activeCount))",
-                    systemImage: "bell.badge",
-                    selected: screen == .watchList
-                ) {
-                    navigateFromMenu(to: .watchList)
                 }
                 sideNavRow(
                     title: "FAQ & Wissensbasis",
@@ -1783,7 +1775,7 @@ struct ContentView: View {
                 }
                 sideNavRow(
                     title: "Datenschutz",
-                    systemImage: "lock.shield",
+                    systemImage: "checkmark.shield",
                     selected: false
                 ) {
                     openPrivacyFromMenu()
@@ -1879,14 +1871,11 @@ struct ContentView: View {
             if ble.isConnectedToScooter {
                 ble.disconnect()
             }
+            findDestination = .hub
             screen = .find
             if ble.phase != .scanning {
                 ble.startScan()
             }
-        case .watchList:
-            if screen == .result { persistCurrentSession() }
-            screen = .watchList
-            BLEWatchService.shared.updateBackgroundScanIfNeeded()
         }
     }
 

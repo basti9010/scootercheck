@@ -418,7 +418,7 @@ final class BleClient: NSObject, ObservableObject {
         guard phase == .idle || phase == .failed || phase == .done else { return }
         watchScanOnly = true
         phase = .scanning
-        statusMessage = "BLE-Wächter aktiv"
+        statusMessage = "Geräte-Wächter aktiv"
         central.scanForPeripherals(
             withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
@@ -1998,7 +1998,7 @@ final class BleClient: NSObject, ObservableObject {
             "PIXEL", "HUAWEI", "SONOS", "BOSE", "JBL", "HEADPHONE", "SPEAKER",
             "TV", "LG ", "SONY", "XBOX", "PLAYSTATION", "SWITCH", "FITBIT",
             "GARMIN", "COROS", "WHOOP", "THERMOSTAT", "HUE ", "NEST", "RING",
-            "CORE300", "Q-SERIES", "QSERIES"
+            "CORE300", "Q-SERIES", "QSERIES", "SHELLY"
         ]
         if blocklist.contains(where: { upper.contains($0) || compact.contains($0.replacingOccurrences(of: " ", with: "")) }) {
             return false
