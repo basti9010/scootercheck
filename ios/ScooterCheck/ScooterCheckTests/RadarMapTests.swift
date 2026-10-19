@@ -178,6 +178,32 @@ final class RadarMapTests: XCTestCase {
         XCTAssertEqual(store.hidden.first?.identityBound, false)
     }
 
+    func testRetentionManualChoicePersistsAndSkipsPrune() {
+        let store = RadarMapStore.shared
+        var settings = store.settings
+        settings.retentionChoice = .untilManualDeletion
+        store.settings = settings
+        XCTAssertNil(store.settings.retentionHours)
+        XCTAssertEqual(store.settings.retentionChoice, .untilManualDeletion)
+
+        // Round-trip über UserDefaults
+        store.settings.save()
+        let loaded = RadarMapSettings.load()
+        XCTAssertNil(loaded.retentionHours)
+        XCTAssertEqual(loaded.retentionChoice, .untilManualDeletion)
+
+        let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
+        let old = Date().addingTimeInterval(-40 * 24 * 3600)
+        store.upsertSighting(makeSighting(session: session.id, identity: UUID(), peripheral: UUID(), at: old))
+        let before = store.sightings.count
+        store.pruneRetentionIfNeeded(now: Date())
+        XCTAssertEqual(store.sightings.count, before, "Manual retention must not auto-delete")
+
+        settings.retentionChoice = .hours48
+        store.settings = settings
+        XCTAssertEqual(store.settings.retentionHours, 48)
+    }
+
     func testSuppressAlertsForHidden() {
         let store = RadarMapStore.shared
         let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
