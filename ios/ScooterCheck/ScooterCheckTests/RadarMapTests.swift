@@ -124,6 +124,18 @@ final class RadarMapTests: XCTestCase {
         XCTAssertEqual(store.sightings(forIdentity: identityId).first?.id, b.id)
     }
 
+    func testDeleteEntireHistoryByIdentity() {
+        let store = RadarMapStore.shared
+        let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
+        let identityId = UUID()
+        let peripheral = UUID()
+        store.upsertSighting(makeSighting(session: session.id, identity: identityId, peripheral: peripheral, at: Date()))
+        store.upsertSighting(makeSighting(session: session.id, identity: identityId, peripheral: peripheral, at: Date().addingTimeInterval(3600)))
+        XCTAssertEqual(store.sightingCount(for: store.sightings.first!), 2)
+        store.deleteHistory(forIdentity: identityId)
+        XCTAssertTrue(store.sightings(forIdentity: identityId).isEmpty)
+    }
+
     func testHideDoesNotDeleteSightings() {
         let store = RadarMapStore.shared
         let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))

@@ -27,7 +27,10 @@ Zusammenhängende Empfänge innerhalb von `sightingGapMinutes` (Default 15) = **
 
 ## Löschen vs. Ausblenden
 
-- Löschen entfernt Radar-Sichtungsdaten (nicht Prüfberichte / bekannte Scooter / Wächter).
+- Im Geräte-Sheet: dezentes **Papierkorb**-Icon → Action Sheet „Einzelne Sichtung“ / „Gesamte Gerätehistorie“ + Bestätigung.
+- ⋯-Menü: dieselben Löschoptionen plus Ausblenden.
+- Löschen entfernt nur Radar-Sichtungsdaten (nicht Prüfberichte / bekannte Scooter / Wächter).
+- Erneute Erkennung nach Löschen ist erlaubt (keine Sperre).
 - Ausblenden behält Historie, unterdrückt Kartenanzeige und normale Radar-Alarme; BLE-Scan bleibt aktiv.
 
 ## Hub
