@@ -57,6 +57,7 @@ on:
       - cursor/radar-ui-compact-b100
       - cursor/radar-single-menu-b100
       - cursor/radar-map-menus-compact-b100
+      - cursor/ui-proportion-global-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
