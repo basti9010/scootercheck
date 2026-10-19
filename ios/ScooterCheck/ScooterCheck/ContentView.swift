@@ -2129,6 +2129,17 @@ struct ContentView: View {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.md) {
                 PageTitle(text: historyShelfTitle)
                 Spacer(minLength: Theme.Space.sm)
+                if !historySelecting {
+                    Button {
+                        primaryAction()
+                    } label: {
+                        Text("Neue Prüfung")
+                            .font(Theme.buttonSecondary)
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Neue Prüfung")
+                }
                 Button {
                     toggleHistorySelecting()
                 } label: {
@@ -2149,29 +2160,6 @@ struct ContentView: View {
             .onChange(of: historyShelf) { _ in
                 selectedHistoryIds = []
                 historySelecting = false
-            }
-
-            if !historySelecting {
-                // Schlanker Text-CTA statt voller Mint-Button im grauen Material-Fuß.
-                Button {
-                    primaryAction()
-                } label: {
-                    HStack(spacing: Theme.Space.sm) {
-                        Image(systemName: "plus")
-                            .font(.system(size: Theme.Icon.compact, weight: .semibold))
-                        Text("Neue Prüfung")
-                            .font(Theme.buttonSecondary)
-                    }
-                    .foregroundStyle(Theme.accent)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: Theme.Control.secondaryMinHeight)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                            .stroke(Theme.accent.opacity(0.55), lineWidth: Theme.Control.hairline)
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Neue Prüfung")
             }
 
             if historySelecting {
