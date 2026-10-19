@@ -77,7 +77,10 @@ struct RadarMapKitCanvas: UIViewRepresentable {
         for (idx, s) in ordered.enumerated() {
             guard s.hasLocation else { continue }
             let n = s.deviceIdentityId.flatMap { counts[$0] } ?? 1
-            let hidden = false // caller filters; annotation flag from settings sheet path
+            let hidden = RadarMapStore.shared.isHidden(
+                identityId: s.deviceIdentityId,
+                peripheralId: s.peripheralId
+            )
             if present.contains(s.id) {
                 if let old = existing.first(where: { $0.sighting.id == s.id }) {
                     map.removeAnnotation(old)

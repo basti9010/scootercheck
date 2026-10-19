@@ -27,11 +27,20 @@ Zusammenhängende Empfänge innerhalb von `sightingGapMinutes` (Default 15) = **
 
 ## Löschen vs. Ausblenden
 
-- Im Geräte-Sheet: dezentes **Papierkorb**-Icon → Action Sheet „Einzelne Sichtung“ / „Gesamte Gerätehistorie“ + Bestätigung.
-- ⋯-Menü: dieselben Löschoptionen plus Ausblenden.
-- Löschen entfernt nur Radar-Sichtungsdaten (nicht Prüfberichte / bekannte Scooter / Wächter).
-- Erneute Erkennung nach Löschen ist erlaubt (keine Sperre).
-- Ausblenden behält Historie, unterdrückt Kartenanzeige und normale Radar-Alarme; BLE-Scan bleibt aktiv.
+Getrennte Funktionen — nie vermischt.
+
+### Löschen
+- ⋯-Menü → „Einzelne Sichtung“ / „Gesamte Gerätehistorie“ + Bestätigung.
+- Entfernt nur Radar-Sichtungsdaten (nicht Prüfberichte / bekannte Scooter / Wächter).
+- Erneute Erkennung danach ist erlaubt.
+
+### Ausblenden
+- ⋯ → „Gerät dauerhaft ausblenden“.
+- Historie bleibt; Karte und normale Radar-Alarme unterdrückt; BLE-Scan + Wächter unverändert.
+- **Identity-bound** nur bei `confirmed` Match; sonst **nur Peripheral-ID** (Hinweis im UI).
+- Setting „Sichtungen ausgeblendeter Geräte weiterhin speichern“ (Default aus).
+- Liste unter Radar-Karten-Einstellungen → „Ausgeblendete Geräte“ (Einblenden / Sichtungen löschen).
+- Filter „Ausgeblendete Geräte anzeigen“ → graue Marker.
 
 ## Hub
 

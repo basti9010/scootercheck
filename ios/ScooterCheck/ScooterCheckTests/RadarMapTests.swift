@@ -7,7 +7,7 @@ final class RadarMapTests: XCTestCase {
     override func setUp() async throws {
         RadarMapStore.shared.deleteAllSightings()
         for h in RadarMapStore.shared.hidden {
-            RadarMapStore.shared.unhideDevice(identityId: h.deviceIdentityId)
+            RadarMapStore.shared.unhideDevice(hiddenId: h.id)
         }
         var s = RadarMapSettings.default
         s.storeSightings = true
@@ -141,22 +141,53 @@ final class RadarMapTests: XCTestCase {
         let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
         let identityId = UUID()
         let peripheral = UUID()
-        store.upsertSighting(makeSighting(session: session.id, identity: identityId, peripheral: peripheral, at: Date()))
-        store.hideDevice(
-            identityId: identityId,
-            peripheralId: peripheral,
-            displayName: "Hidden",
-            manufacturer: nil,
-            model: nil
-        )
+        var s = makeSighting(session: session.id, identity: identityId, peripheral: peripheral, at: Date())
+        s.identityMatchConfidence = .confirmed
+        store.upsertSighting(s)
+        store.hideDevice(from: s)
         var filter = RadarMapFilter()
         filter.showHidden = false
         XCTAssertTrue(store.filteredSightings(filter: filter).isEmpty)
         filter.showHidden = true
         XCTAssertEqual(store.filteredSightings(filter: filter).count, 1)
-        store.unhideDevice(identityId: identityId)
+        XCTAssertEqual(store.sightings.count, 1)
+        if let entry = store.hiddenEntry(identityId: identityId, peripheralId: peripheral) {
+            store.unhideDevice(hiddenId: entry.id)
+        }
         filter.showHidden = false
         XCTAssertEqual(store.filteredSightings(filter: filter).count, 1)
+    }
+
+    func testUncertainIdentityHidesOnlyPeripheral() {
+        let store = RadarMapStore.shared
+        let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
+        let peripheralA = UUID()
+        let peripheralB = UUID()
+        var a = makeSighting(session: session.id, identity: nil, peripheral: peripheralA, at: Date())
+        a.identityMatchConfidence = .possible
+        a.deviceIdentityId = nil
+        var b = makeSighting(session: session.id, identity: nil, peripheral: peripheralB, at: Date())
+        b.identityMatchConfidence = .possible
+        b.deviceIdentityId = nil
+        b.manufacturer = a.manufacturer
+        store.upsertSighting(a)
+        store.upsertSighting(b)
+        store.hideDevice(from: a)
+        XCTAssertTrue(store.isHidden(identityId: nil, peripheralId: peripheralA))
+        XCTAssertFalse(store.isHidden(identityId: nil, peripheralId: peripheralB))
+        XCTAssertEqual(store.hidden.first?.identityBound, false)
+    }
+
+    func testSuppressAlertsForHidden() {
+        let store = RadarMapStore.shared
+        let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
+        let identityId = UUID()
+        let peripheral = UUID()
+        var s = makeSighting(session: session.id, identity: identityId, peripheral: peripheral, at: Date())
+        s.identityMatchConfidence = .confirmed
+        store.upsertSighting(s)
+        store.hideDevice(from: s)
+        XCTAssertTrue(store.shouldSuppressRadarAlerts(identityId: identityId, peripheralId: peripheral))
     }
 
     func testPossibleMatchDoesNotCountAsRepeat() {
@@ -198,7 +229,7 @@ final class RadarMapTests: XCTestCase {
 
     private func makeSighting(
         session: UUID,
-        identity: UUID,
+        identity: UUID?,
         peripheral: UUID,
         at: Date
     ) -> RadarSighting {

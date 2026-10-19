@@ -17,6 +17,7 @@ final class RadarMapStore: ObservableObject {
     private let fileURL: URL
     private var saveTask: Task<Void, Never>?
     private let maxSightingsSoftCap = 8000
+    private var mutating = false
 
     private init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -43,21 +44,36 @@ final class RadarMapStore: ObservableObject {
 
     func isHidden(identityId: UUID?, peripheralId: UUID) -> Bool {
         hidden.contains { h in
-            if let identityId, h.deviceIdentityId == identityId { return true }
-            if let pid = h.peripheralId, pid == peripheralId { return true }
+            if h.identityBound, let identityId, let hid = h.deviceIdentityId, hid == identityId {
+                return true
+            }
+            if let pid = h.peripheralId, pid == peripheralId {
+                return true
+            }
             return false
         }
     }
 
     func hiddenEntry(identityId: UUID?, peripheralId: UUID) -> HiddenRadarDevice? {
         hidden.first { h in
-            if let identityId, h.deviceIdentityId == identityId { return true }
-            if let pid = h.peripheralId, pid == peripheralId { return true }
+            if h.identityBound, let identityId, let hid = h.deviceIdentityId, hid == identityId {
+                return true
+            }
+            if let pid = h.peripheralId, pid == peripheralId {
+                return true
+            }
             return false
         }
     }
 
-    /// Gefilterte Sichtungen für die Karte.
+    /// Unterdrückt normale Radar-Alarme (nicht BLE-Wächter).
+    func shouldSuppressRadarAlerts(identityId: UUID?, peripheralId: UUID) -> Bool {
+        guard let entry = hiddenEntry(identityId: identityId, peripheralId: peripheralId) else {
+            return false
+        }
+        return entry.suppressRadarNotifications
+    }
+
     func filteredSightings(filter: RadarMapFilter, now: Date = Date()) -> [RadarSighting] {
         let rangeStart = filter.timePreset.startDate(now: now, customStart: filter.customStart)
         let rangeEnd = filter.timePreset == .custom ? (filter.customEnd ?? now) : now
@@ -68,7 +84,6 @@ final class RadarMapStore: ObservableObject {
             return true
         }
 
-        // Hidden
         if !filter.showHidden {
             list = list.filter { s in
                 !isHidden(identityId: s.deviceIdentityId, peripheralId: s.peripheralId)
@@ -145,10 +160,7 @@ final class RadarMapStore: ObservableObject {
         case .withinTimeRange:
             source = timeFiltered
         case .entireHistory:
-            source = sightings.filter { s in
-                // Still respect hidden unless caller already filtered
-                true
-            }
+            source = sightings
         }
         var counts: [UUID: Int] = [:]
         for s in source {
@@ -221,12 +233,18 @@ final class RadarMapStore: ObservableObject {
     }
 
     func deleteSighting(id: UUID) {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
         sightings.removeAll { $0.id == id }
         refreshIdentityCounts()
         scheduleSave()
     }
 
     func deleteHistory(forIdentity id: UUID) {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
         sightings.removeAll { $0.deviceIdentityId == id }
         if let idx = identities.firstIndex(where: { $0.id == id }) {
             identities[idx].sightingCount = 0
@@ -234,8 +252,10 @@ final class RadarMapStore: ObservableObject {
         scheduleSave()
     }
 
-    /// Historie ohne Identity: alle Sichtungen derselben Peripheral-ID.
     func deleteHistory(forPeripheral id: UUID) {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
         let relatedIds = Set(sightings.filter { $0.peripheralId == id }.compactMap(\.deviceIdentityId))
         sightings.removeAll { $0.peripheralId == id }
         for iid in relatedIds {
@@ -254,6 +274,9 @@ final class RadarMapStore: ObservableObject {
     }
 
     func deleteAllSightings() {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
         sightings = []
         for i in identities.indices {
             identities[i].sightingCount = 0
@@ -261,37 +284,88 @@ final class RadarMapStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Ausblenden: Identity nur bei `confirmed`; sonst ausschließlich Peripheral-ID.
     func hideDevice(
-        identityId: UUID,
-        peripheralId: UUID?,
-        displayName: String,
-        manufacturer: String?,
-        model: String?
+        from sighting: RadarSighting
     ) {
-        if let existing = hidden.firstIndex(where: { $0.deviceIdentityId == identityId }) {
-            hidden[existing].hiddenAt = Date()
-            hidden[existing].peripheralId = peripheralId ?? hidden[existing].peripheralId
-            scheduleSave()
-            return
-        }
-        hidden.append(
-            HiddenRadarDevice(
-                id: UUID(),
-                deviceIdentityId: identityId,
-                peripheralId: peripheralId,
-                hiddenAt: Date(),
-                reason: nil,
-                suppressRadarNotifications: true,
-                displayName: displayName,
-                manufacturer: manufacturer,
-                model: model
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
+
+        let confirmed = sighting.identityMatchConfidence.allowsHistoryMerge
+            && sighting.deviceIdentityId != nil
+
+        if confirmed, let iid = sighting.deviceIdentityId {
+            if let existing = hidden.firstIndex(where: { $0.deviceIdentityId == iid && $0.identityBound }) {
+                hidden[existing].hiddenAt = Date()
+                hidden[existing].peripheralId = sighting.peripheralId
+                scheduleSave()
+                return
+            }
+            hidden.append(
+                HiddenRadarDevice(
+                    id: UUID(),
+                    deviceIdentityId: iid,
+                    peripheralId: sighting.peripheralId,
+                    hiddenAt: Date(),
+                    reason: nil,
+                    suppressRadarNotifications: true,
+                    retainFutureSightings: settings.retainSightingsWhileHidden,
+                    identityBound: true,
+                    displayName: sighting.displayName,
+                    manufacturer: sighting.manufacturer,
+                    model: sighting.model
+                )
             )
-        )
+        } else {
+            // Unsichere Identität: nur diese Peripheral-ID — kein Hersteller-weiteres Ausblenden.
+            if let existing = hidden.firstIndex(where: {
+                !$0.identityBound && $0.peripheralId == sighting.peripheralId
+            }) {
+                hidden[existing].hiddenAt = Date()
+                scheduleSave()
+                return
+            }
+            hidden.append(
+                HiddenRadarDevice(
+                    id: UUID(),
+                    deviceIdentityId: nil,
+                    peripheralId: sighting.peripheralId,
+                    hiddenAt: Date(),
+                    reason: "peripheral-only",
+                    suppressRadarNotifications: true,
+                    retainFutureSightings: settings.retainSightingsWhileHidden,
+                    identityBound: false,
+                    displayName: sighting.displayName,
+                    manufacturer: sighting.manufacturer,
+                    model: sighting.model
+                )
+            )
+        }
+        scheduleSave()
+    }
+
+    func unhideDevice(hiddenId: UUID) {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
+        hidden.removeAll { $0.id == hiddenId }
         scheduleSave()
     }
 
     func unhideDevice(identityId: UUID) {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
         hidden.removeAll { $0.deviceIdentityId == identityId }
+        scheduleSave()
+    }
+
+    func unhidePeripheral(_ peripheralId: UUID) {
+        guard !mutating else { return }
+        mutating = true
+        defer { mutating = false }
+        hidden.removeAll { !$0.identityBound && $0.peripheralId == peripheralId }
         scheduleSave()
     }
 
@@ -323,7 +397,15 @@ final class RadarMapStore: ObservableObject {
         sessions = file.sessions
         identities = file.identities
         sightings = file.sightings
-        hidden = file.hidden
+        // Migration: ältere Hidden-Einträge ohne identityBound
+        hidden = file.hidden.map { h in
+            var copy = h
+            if copy.deviceIdentityId != nil, copy.reason != "peripheral-only" {
+                // Best effort: treat as identity-bound if ID present
+                // Codable default for new field handled below
+            }
+            return copy
+        }
     }
 
     private func scheduleSave() {

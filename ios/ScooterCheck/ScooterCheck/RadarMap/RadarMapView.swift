@@ -22,10 +22,9 @@ struct RadarMapView: View {
     @State private var confirmDeleteSighting = false
     @State private var confirmDeleteHistory = false
     @State private var confirmHide = false
-    /// Papierkorb → nur Löschoptionen
-    @State private var showDeleteSheet = false
-    /// ⋯ → Löschen + Ausblenden
+    /// ⋯ → Löschen + Ausblenden (einziger Verwaltungszugang)
     @State private var showManageSheet = false
+    @State private var manageHiddenEntry: HiddenRadarDevice?
 
     private var visibleSightings: [RadarSighting] {
         var list = store.filteredSightings(filter: filter)
@@ -77,26 +76,48 @@ struct RadarMapView: View {
         .sheet(item: $selectedSighting) { sighting in
             sightingSheet(sighting)
         }
-        .confirmationDialog("Sichtung löschen", isPresented: $showDeleteSheet, titleVisibility: .visible) {
-            Button("Einzelne Sichtung löschen", role: .destructive) { confirmDeleteSighting = true }
-            Button("Gesamte Gerätehistorie löschen", role: .destructive) { confirmDeleteHistory = true }
-            Button("Abbrechen", role: .cancel) {}
-        }
         .confirmationDialog("Sichtungen verwalten", isPresented: $showManageSheet, titleVisibility: .visible) {
             Button("Einzelne Sichtung löschen", role: .destructive) { confirmDeleteSighting = true }
             Button("Gesamte Gerätehistorie löschen", role: .destructive) { confirmDeleteHistory = true }
-            if let s = selectedSighting, let iid = s.deviceIdentityId,
-               !store.isHidden(identityId: iid, peripheralId: s.peripheralId) {
+            if let s = selectedSighting,
+               !store.isHidden(identityId: s.deviceIdentityId, peripheralId: s.peripheralId) {
                 Button("Gerät dauerhaft ausblenden") { confirmHide = true }
             }
-            if let s = selectedSighting, let iid = s.deviceIdentityId,
-               store.isHidden(identityId: iid, peripheralId: s.peripheralId) {
+            if let s = selectedSighting,
+               store.isHidden(identityId: s.deviceIdentityId, peripheralId: s.peripheralId) {
                 Button("Wieder einblenden") {
-                    store.unhideDevice(identityId: iid)
+                    if let entry = store.hiddenEntry(identityId: s.deviceIdentityId, peripheralId: s.peripheralId) {
+                        store.unhideDevice(hiddenId: entry.id)
+                    }
                     selectedSighting = nil
+                    fitToken += 1
                 }
             }
             Button("Abbrechen", role: .cancel) {}
+        }
+        .confirmationDialog("Ausgeblendetes Gerät", isPresented: Binding(
+            get: { manageHiddenEntry != nil },
+            set: { if !$0 { manageHiddenEntry = nil } }
+        ), titleVisibility: .visible) {
+            Button("Wieder einblenden") {
+                if let h = manageHiddenEntry {
+                    store.unhideDevice(hiddenId: h.id)
+                    fitToken += 1
+                }
+                manageHiddenEntry = nil
+            }
+            Button("Gespeicherte Sichtungen löschen", role: .destructive) {
+                if let h = manageHiddenEntry {
+                    if let iid = h.deviceIdentityId, h.identityBound {
+                        store.deleteHistory(forIdentity: iid)
+                    } else if let pid = h.peripheralId {
+                        store.deleteHistory(forPeripheral: pid)
+                    }
+                }
+                manageHiddenEntry = nil
+                fitToken += 1
+            }
+            Button("Abbrechen", role: .cancel) { manageHiddenEntry = nil }
         }
         .alert("Sichtung löschen?", isPresented: $confirmDeleteSighting) {
             Button("Abbrechen", role: .cancel) {}
@@ -136,19 +157,18 @@ struct RadarMapView: View {
         .alert("Dieses Gerät künftig ausblenden?", isPresented: $confirmHide) {
             Button("Abbrechen", role: .cancel) {}
             Button("Ausblenden") {
-                if let s = selectedSighting, let iid = s.deviceIdentityId {
-                    store.hideDevice(
-                        identityId: iid,
-                        peripheralId: s.peripheralId,
-                        displayName: s.displayName,
-                        manufacturer: s.manufacturer,
-                        model: s.model
-                    )
+                if let s = selectedSighting {
+                    store.hideDevice(from: s)
                     selectedSighting = nil
+                    fitToken += 1
                 }
             }
         } message: {
-            Text("Der Scooter wird weiterhin technisch erkannt, aber nicht mehr auf der Radar-Karte angezeigt und löst keine normalen Radar-Benachrichtigungen mehr aus. Bereits gespeicherte Sichtungen bleiben erhalten.")
+            if let s = selectedSighting, !s.identityMatchConfidence.allowsHistoryMerge {
+                Text("Der Scooter wird weiterhin technisch erkannt, aber nicht mehr auf der Radar-Karte angezeigt und löst keine normalen Radar-Benachrichtigungen mehr aus. Bereits gespeicherte Sichtungen bleiben erhalten.\n\nHinweis: Die Identität ist nicht eindeutig — es wird nur diese lokale Gerätekennung ausgeblendet. Wechselnde BLE-Kennungen können erneut als neues Gerät erscheinen.")
+            } else {
+                Text("Der Scooter wird weiterhin technisch erkannt, aber nicht mehr auf der Radar-Karte angezeigt und löst keine normalen Radar-Benachrichtigungen mehr aus. Bereits gespeicherte Sichtungen bleiben erhalten.")
+            }
         }
         .onAppear {
             RadarMapRecorder.shared.requestLocationIfNeeded()
@@ -344,19 +364,18 @@ struct RadarMapView: View {
                             }
                         }
                         Spacer()
-                        Button { showDeleteSheet = true } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(Theme.danger.opacity(0.85))
-                                .frame(width: 36, height: 36)
-                        }
-                        .accessibilityLabel("Löschen")
                         Button { showManageSheet = true } label: {
                             Image(systemName: "ellipsis")
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 36, height: 36)
                         }
                         .accessibilityLabel("Mehr")
+                    }
+                    if !sighting.identityMatchConfidence.allowsHistoryMerge {
+                        Text("Gerätezuordnung unsicher — Ausblenden gilt nur für diese Kennung (\(shortId)).")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
                     }
                     row("Hersteller", sighting.manufacturer ?? "—")
                     row("Modell", sighting.model ?? "—")
@@ -569,6 +588,8 @@ struct RadarMapView: View {
                         get: { store.settings.retainSightingsWhileHidden },
                         set: { v in var s = store.settings; s.retainSightingsWhileHidden = v; store.settings = s }
                     ))
+                } footer: {
+                    Text("Standard aus: ausgeblendete Geräte werden erkannt, aber nicht in die Radar-Historie geschrieben. BLE-Scan und Wächter bleiben unverändert.")
                 }
                 Section {
                     Button("Alle Radar-Sichtungen löschen", role: .destructive) {
@@ -598,18 +619,49 @@ struct RadarMapView: View {
                     Text("Keine ausgeblendeten Geräte.").foregroundStyle(Theme.textMuted)
                 }
                 ForEach(store.hidden) { h in
-                    HStack {
+                    HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(h.displayName).foregroundStyle(Theme.textPrimary)
+                            Text({
+                                let label = [h.manufacturer, h.model].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+                                return label.isEmpty ? h.displayName : label
+                            }())
+                                .foregroundStyle(Theme.textPrimary)
+                            if let pid = h.peripheralId {
+                                Text(String(pid.uuidString.prefix(8)).uppercased())
+                                    .font(Theme.caption.monospaced())
+                                    .foregroundStyle(Theme.textMuted)
+                            }
                             Text("Ausgeblendet seit \(Self.format(h.hiddenAt))")
                                 .font(Theme.caption).foregroundStyle(Theme.textMuted)
-                            Text("\(store.sightings(forIdentity: h.deviceIdentityId).count) gespeicherte Sichtungen")
+                            let n: Int = {
+                                if let iid = h.deviceIdentityId, h.identityBound {
+                                    return store.sightings(forIdentity: iid).count
+                                }
+                                if let pid = h.peripheralId {
+                                    return store.sightings.filter { $0.peripheralId == pid }.count
+                                }
+                                return 0
+                            }()
+                            Text("\(n) gespeicherte Sichtungen")
                                 .font(Theme.caption).foregroundStyle(Theme.textMuted)
+                            if let note = h.bindingNote {
+                                Text(note)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
                         }
                         Spacer()
-                        Button("Einblenden") { store.unhideDevice(identityId: h.deviceIdentityId) }
-                            .font(Theme.caption.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
+                        Button("Einblenden") {
+                            store.unhideDevice(hiddenId: h.id)
+                            fitToken += 1
+                        }
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        Button { manageHiddenEntry = h } label: {
+                            Image(systemName: "ellipsis")
+                                .foregroundStyle(Theme.accent)
+                        }
+                        .accessibilityLabel("Mehr")
                     }
                     .listRowBackground(Theme.card)
                 }

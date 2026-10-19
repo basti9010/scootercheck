@@ -87,10 +87,10 @@ final class RadarMapRecorder: NSObject, ObservableObject {
         let identityId = match.identity?.id
 
         // Ausgeblendet?
-        if store.isHidden(identityId: identityId, peripheralId: device.id) {
-            let retain = store.settings.retainSightingsWhileHidden
+        if let hidden = store.hiddenEntry(identityId: identityId, peripheralId: device.id) {
+            let retain = hidden.retainFutureSightings || store.settings.retainSightingsWhileHidden
             if !retain { return }
-            // Speichern, aber keine Repeat-Notification
+            // Speichern möglich, aber keine Repeat-Notification und nicht auf der normalen Karte
         } else if store.settings.notifyRepeatSightings,
                   let identityId,
                   match.confidence.allowsHistoryMerge {

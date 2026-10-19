@@ -123,15 +123,72 @@ struct RadarDeviceIdentity: Codable, Identifiable, Sendable, Equatable {
 
 struct HiddenRadarDevice: Codable, Identifiable, Sendable, Equatable {
     var id: UUID
-    var deviceIdentityId: UUID
-    /// Zusätzlich: konkrete Peripheral-ID bei unsicherer Identität.
+    /// Nur gesetzt bei belastbarer Geräteidentität — nie über schwache Fingerprints.
+    var deviceIdentityId: UUID?
+    /// Lokale Peripheral-ID; bei unsicherer Identität die einzige Bindung.
     var peripheralId: UUID?
     var hiddenAt: Date
     var reason: String?
     var suppressRadarNotifications: Bool
+    /// Pro-Gerät-Flag; globales Setting `retainSightingsWhileHidden` steuert den Default.
+    var retainFutureSightings: Bool
+    /// true = Identity bestätigt; false = nur diese Peripheral-ID.
+    var identityBound: Bool
     var displayName: String
     var manufacturer: String?
     var model: String?
+
+    var bindingNote: String? {
+        identityBound ? nil : "Nur diese Gerätekennung. Wechselnde BLE-IDs können erneut erscheinen."
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, deviceIdentityId, peripheralId, hiddenAt, reason
+        case suppressRadarNotifications, retainFutureSightings, identityBound
+        case displayName, manufacturer, model
+    }
+
+    init(
+        id: UUID,
+        deviceIdentityId: UUID?,
+        peripheralId: UUID?,
+        hiddenAt: Date,
+        reason: String?,
+        suppressRadarNotifications: Bool,
+        retainFutureSightings: Bool,
+        identityBound: Bool,
+        displayName: String,
+        manufacturer: String?,
+        model: String?
+    ) {
+        self.id = id
+        self.deviceIdentityId = deviceIdentityId
+        self.peripheralId = peripheralId
+        self.hiddenAt = hiddenAt
+        self.reason = reason
+        self.suppressRadarNotifications = suppressRadarNotifications
+        self.retainFutureSightings = retainFutureSightings
+        self.identityBound = identityBound
+        self.displayName = displayName
+        self.manufacturer = manufacturer
+        self.model = model
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        deviceIdentityId = try c.decodeIfPresent(UUID.self, forKey: .deviceIdentityId)
+        peripheralId = try c.decodeIfPresent(UUID.self, forKey: .peripheralId)
+        hiddenAt = try c.decode(Date.self, forKey: .hiddenAt)
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        suppressRadarNotifications = try c.decodeIfPresent(Bool.self, forKey: .suppressRadarNotifications) ?? true
+        retainFutureSightings = try c.decodeIfPresent(Bool.self, forKey: .retainFutureSightings) ?? false
+        identityBound = try c.decodeIfPresent(Bool.self, forKey: .identityBound)
+            ?? (deviceIdentityId != nil && reason != "peripheral-only")
+        displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? "Gerät"
+        manufacturer = try c.decodeIfPresent(String.self, forKey: .manufacturer)
+        model = try c.decodeIfPresent(String.self, forKey: .model)
+    }
 }
 
 struct RadarMapSettings: Codable, Equatable, Sendable {

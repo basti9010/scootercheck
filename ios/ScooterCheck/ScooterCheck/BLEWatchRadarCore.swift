@@ -871,8 +871,12 @@ final class BLERadarService: ObservableObject {
             let idOK = idResult?.radarEligibleScooter == true
             guard conf == .medium || conf == .high || idOK else { continue }
 
-            // Ausgeblendete Geräte: keine normalen Radar-Alarme/Benachrichtigungen
-            if RadarMapStore.shared.isHidden(identityId: nil, peripheralId: device.id) {
+            // Ausgeblendete Geräte: keine normalen Radar-Alarme (Wächter bleiben unabhängig)
+            let mapIdentity = RadarMapStore.shared.identities.first { $0.primaryPeripheralId == device.id }?.id
+            if RadarMapStore.shared.shouldSuppressRadarAlerts(
+                identityId: mapIdentity,
+                peripheralId: device.id
+            ) {
                 continue
             }
 
