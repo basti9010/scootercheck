@@ -99,6 +99,23 @@ final class ScooterFinderMathTests: XCTestCase {
         XCTAssertGreaterThan(path, 15)
     }
 
+    func testRssiAverageUsesFiveSecondWindow() {
+        var store = BleRssiAverageTracker.Store()
+        let id = UUID()
+        let t0 = Date()
+        store.record(id: id, rssi: -40, at: t0)
+        store.record(id: id, rssi: -80, at: t0.addingTimeInterval(1))
+        store.record(id: id, rssi: -60, at: t0.addingTimeInterval(2))
+        // Mittel (−40 −80 −60) / 3 = −60
+        XCTAssertEqual(store.average(id: id, fallback: -99, now: t0.addingTimeInterval(2)), -60)
+
+        // Alter Wert (−40) fällt nach >5 s aus dem Fenster.
+        store.record(id: id, rssi: -70, at: t0.addingTimeInterval(6))
+        let avg = store.average(id: id, fallback: -99, now: t0.addingTimeInterval(6))
+        // (−80 −60 −70) / 3 ≈ −70
+        XCTAssertEqual(avg, -70)
+    }
+
     func testStableListIgnoresSmallRssiFlicker() {
         let a = UUID()
         let b = UUID()
@@ -122,7 +139,7 @@ final class ScooterFinderMathTests: XCTestCase {
                 .init(id: b, rssi: -58, isStale: false),
             ],
             lastReorderAt: first.reorderAt,
-            now: t0.addingTimeInterval(2)
+            now: t0.addingTimeInterval(3)
         )
         XCTAssertEqual(flickered.order, [a, b])
     }
@@ -147,7 +164,7 @@ final class ScooterFinderMathTests: XCTestCase {
                 .init(id: b, rssi: -55, isStale: false),
             ],
             lastReorderAt: first.reorderAt,
-            now: t0.addingTimeInterval(2)
+            now: t0.addingTimeInterval(3)
         )
         XCTAssertEqual(reordered.order, [b, a])
     }

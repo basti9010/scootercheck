@@ -134,11 +134,59 @@ enum BleDeviceListOrdering {
     }
 }
 
+/// Gleitender RSSI-Mittelwert über ein Zeitfenster — Sortierschlüssel, Anzeige bleibt live.
+enum BleRssiAverageTracker {
+    static let defaultWindow: TimeInterval = 5.0
+
+    struct Store: Sendable {
+        private var samples: [UUID: [(at: Date, rssi: Int)]] = [:]
+
+        mutating func record(
+            id: UUID,
+            rssi: Int,
+            at: Date = Date(),
+            window: TimeInterval = BleRssiAverageTracker.defaultWindow
+        ) {
+            var list = samples[id, default: []]
+            list.append((at, rssi))
+            let cutoff = at.addingTimeInterval(-window)
+            list.removeAll { $0.at < cutoff }
+            // Cap gegen Speichernutzung bei AllowDuplicates-Flut
+            if list.count > 80 {
+                list.removeFirst(list.count - 80)
+            }
+            samples[id] = list
+        }
+
+        mutating func prune(keeping ids: Set<UUID>) {
+            samples = samples.filter { ids.contains($0.key) }
+        }
+
+        mutating func removeAll() {
+            samples.removeAll()
+        }
+
+        func average(
+            id: UUID,
+            fallback: Int,
+            window: TimeInterval = BleRssiAverageTracker.defaultWindow,
+            now: Date = Date()
+        ) -> Int {
+            guard let list = samples[id], !list.isEmpty else { return fallback }
+            let cutoff = now.addingTimeInterval(-window)
+            let recent = list.filter { $0.at >= cutoff }
+            let use = recent.isEmpty ? list : recent
+            let sum = use.reduce(0) { $0 + $1.rssi }
+            return Int((Double(sum) / Double(use.count)).rounded())
+        }
+    }
+}
+
 enum BleScanListStabilizer {
-    /// Erst umsortieren, wenn der Nachbar klar stärker ist (dBm).
-    static let hysteresisDb = 8
+    /// Erst umsortieren, wenn der Nachbar klar stärker ist (dBm) — auf Mittelwert bezogen.
+    static let hysteresisDb = 6
     /// Mindestabstand zwischen Umsortierungen.
-    static let minReorderInterval: TimeInterval = 1.8
+    static let minReorderInterval: TimeInterval = 2.5
 
     struct Item: Equatable, Sendable {
         let id: UUID
@@ -152,11 +200,18 @@ enum BleScanListStabilizer {
         lastReorderAt: Date,
         now: Date = Date(),
         hysteresisDb: Int = hysteresisDb,
-        minInterval: TimeInterval = minReorderInterval
+        minInterval: TimeInterval = minReorderInterval,
+        rankingRssi: ((ScannedDevice) -> Int)? = nil
     ) -> (order: [UUID], reorderAt: Date) {
         reconcile(
             previousOrder: previousOrder,
-            items: devices.map { Item(id: $0.id, rssi: $0.rssi, isStale: $0.isStale) },
+            items: devices.map {
+                Item(
+                    id: $0.id,
+                    rssi: rankingRssi?($0) ?? $0.rssi,
+                    isStale: $0.isStale
+                )
+            },
             lastReorderAt: lastReorderAt,
             now: now,
             hysteresisDb: hysteresisDb,

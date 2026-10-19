@@ -59,6 +59,7 @@ on:
       - cursor/radar-map-menus-compact-b100
       - cursor/ui-proportion-global-b100
       - cursor/radar-signal-settings-b100
+      - cursor/auslesen-rssi-average-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

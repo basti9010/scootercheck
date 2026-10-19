@@ -223,7 +223,8 @@ struct ScooterFinderView: View {
             previousOrder: stableOrderIds,
             devices: devices,
             lastReorderAt: force ? .distantPast : lastStableReorderAt,
-            now: now
+            now: now,
+            rankingRssi: { ble.rankingRssi(for: $0) }
         )
         stableOrderIds = result.order
         lastStableReorderAt = result.reorderAt
