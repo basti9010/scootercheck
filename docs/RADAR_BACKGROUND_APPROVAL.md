@@ -25,12 +25,16 @@ Zurück-Navigation beendet die Session **nicht**.
 
 Keine Silent-Audio- oder Fake-Standort-Umgehungen.
 
-## Display
+## Display & Radar-UI
 
-Zahnrad → Einstellungen:
+Ein Zahnrad neben der Seitenüberschrift öffnet ein kompaktes Bottom Sheet (Höhe ~260 pt):
 
-- Display darf ausgehen (Standard)
-- Display während der Suche eingeschaltet lassen → `isIdleTimerDisabled` nur im Vordergrund
+- **Display darf ausgehen** (Standard)
+- **Display eingeschaltet lassen** → `UIApplication.isIdleTimerDisabled` nur bei aktiver Session **und** Vordergrund
+
+Kein zweites Zahnrad, kein „Radar aktiv“-Schalter im Sheet (Session läuft über die Hauptseite / „Radar beenden“).
+
+Hauptseite: kompakter Statuspunkt + Kurztext (`compactTitle` / `compactSubtitle`); technische CoreBluetooth-Details nur in `BLERadarScanState.detail` (Diagnose), nicht in der regulären UI. Header-Zeile: ehrliche Hintergrundfähigkeit (`headerCapabilityLine`).
 
 ## Zulassungskatalog
 

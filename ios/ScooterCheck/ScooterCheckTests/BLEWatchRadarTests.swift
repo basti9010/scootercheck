@@ -65,6 +65,36 @@ final class BLEWatchRadarTests: XCTestCase {
         XCTAssertGreaterThan(BLERadarConfig.deviceCooldownSeconds, 10)
     }
 
+    func testRadarCompactStatusCopy() {
+        XCTAssertEqual(BLERadarScanState.bleScanActive.compactTitle, "Radar aktiv")
+        XCTAssertEqual(BLERadarScanState.bleScanActive.compactSubtitle, "BLE-Suche läuft")
+        XCTAssertEqual(BLERadarScanState.backgroundScanLimited.compactSubtitle, "Hintergrundsuche eingeschränkt")
+        XCTAssertEqual(BLERadarScanState.bluetoothOff.headerCapabilityLine, "Hintergrundsuche nicht verfügbar")
+        XCTAssertEqual(BLERadarDisplayMode.allowSleep.label, "Display darf ausgehen")
+        XCTAssertEqual(BLERadarDisplayMode.keepAwake.label, "Display eingeschaltet lassen")
+        XCTAssertEqual(BLERadarUserSettings.default.displayMode, .allowSleep)
+    }
+
+    func testRadarDisplayModePersists() {
+        let key = "bleRadar.userSettings.v1"
+        let backup = UserDefaults.standard.data(forKey: key)
+        defer {
+            if let backup {
+                UserDefaults.standard.set(backup, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        var settings = BLERadarUserSettings.default
+        settings.displayMode = .keepAwake
+        settings.save()
+        let loaded = BLERadarUserSettings.load()
+        XCTAssertEqual(loaded.displayMode, .keepAwake)
+        settings.displayMode = .allowSleep
+        settings.save()
+        XCTAssertEqual(BLERadarUserSettings.load().displayMode, .allowSleep)
+    }
+
     func testWatchStatusLabels() {
         XCTAssertEqual(BLEWatchStatus.watching.label, "Wird beobachtet")
         XCTAssertEqual(BLEWatchStatus.foundAgain.label, "Wieder erkannt")
