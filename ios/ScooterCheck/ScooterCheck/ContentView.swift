@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var isEdgeOpeningMenu = false
     @State private var showFAQ = false
     @State private var showPrivacy = false
+    @State private var showSettings = false
+    @ObservedObject private var appSettings = AppSettings.shared
     @State private var auslesenListSort: BleDeviceListSort = .signal
     @State private var auslesenHideNameless = false
     @State private var showShare = false
@@ -202,6 +204,10 @@ struct ContentView: View {
             .sheet(isPresented: $showPrivacy) {
                 PrivacyView()
             }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+            }
+            // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
                 BleDeviceDetailSheet(
                     device: device,
@@ -1963,6 +1969,13 @@ struct ContentView: View {
                 ) {
                     openPrivacyFromMenu()
                 }
+                sideNavRow(
+                    title: "Einstellungen",
+                    systemImage: "gearshape",
+                    selected: false
+                ) {
+                    openSettingsFromMenu()
+                }
             }
             .padding(.horizontal, 12)
 
@@ -2003,6 +2016,11 @@ struct ContentView: View {
     private func openPrivacyFromMenu() {
         setMenuOpen(false)
         showPrivacy = true
+    }
+
+    private func openSettingsFromMenu() {
+        setMenuOpen(false)
+        showSettings = true
     }
 
     private func sideNavRow(

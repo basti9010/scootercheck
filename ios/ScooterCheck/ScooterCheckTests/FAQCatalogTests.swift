@@ -62,6 +62,16 @@ final class FAQCatalogTests: XCTestCase {
         XCTAssertTrue(questions.contains(where: { $0.localizedCaseInsensitiveContains("Soft Unlock") }))
     }
 
+    func testSearchFindsEinstellungenAndSchriftgroesse() {
+        for query in ["Einstellungen", "Schriftgröße", "Schriftgroesse", "Menü"] {
+            let hits = FAQCatalog.filtered(query: query)
+            XCTAssertFalse(hits.isEmpty, "no hits for \(query)")
+        }
+        let ids = Set(FAQCatalog.categories.flatMap(\.items).map(\.id))
+        XCTAssertTrue(ids.contains("menue"))
+        XCTAssertTrue(ids.contains("einstellungen-schrift"))
+    }
+
     func testSearchEmptyReturnsAll() {
         XCTAssertEqual(
             FAQCatalog.filtered(query: "   ").count,

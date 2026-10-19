@@ -8,11 +8,14 @@ struct ScooterCheckApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(AppSettings.shared)
                 .task {
                     // Offline-Kern bleibt; Online nur ergänzen wenn erreichbar.
                     StockFirmwareCatalogRemote.refreshInBackground()
                 }
                 .onAppear {
+                    // Schriftstufe vor dem ersten Frame an Theme binden.
+                    _ = AppSettings.shared
                     UNUserNotificationCenter.current().delegate = appDelegate
                 }
         }

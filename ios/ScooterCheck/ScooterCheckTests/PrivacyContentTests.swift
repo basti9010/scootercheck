@@ -21,6 +21,18 @@ final class PrivacyContentTests: XCTestCase {
             PrivacyContent.atAGlanceBody.localizedCaseInsensitiveContains("kein Benutzerkonto")
                 || PrivacyContent.atAGlanceBody.localizedCaseInsensitiveContains("kein App-eigenen Server")
         )
+        XCTAssertTrue(
+            PrivacyContent.atAGlanceBody.localizedCaseInsensitiveContains("Schriftgröße")
+                || PrivacyContent.atAGlanceBody.localizedCaseInsensitiveContains("Einstellungen")
+        )
+    }
+
+    func testLocalStorageMentionsGlobalTextSize() {
+        let text = PrivacyContent.sections(for: .localStorage)
+            .flatMap(\.paragraphs)
+            .joined(separator: " ")
+        XCTAssertTrue(text.localizedCaseInsensitiveContains("Schriftgröße"))
+        XCTAssertTrue(text.localizedCaseInsensitiveContains("UserDefaults"))
     }
 
     func testPolicyDoesNotInventControllerAddress() {
