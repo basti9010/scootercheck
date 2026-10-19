@@ -25,6 +25,47 @@ enum BLERadarScanState: String, Equatable, Sendable {
         }
     }
 
+    /// Kurztitel für die Radar-Hauptseite (nicht technisch).
+    var compactTitle: String {
+        switch self {
+        case .radarEnded: return "Radar gestoppt"
+        case .radarPaused: return "Radar pausiert"
+        case .bluetoothOff: return "Bluetooth deaktiviert"
+        case .restoring: return "Radar aktiv"
+        case .radarActive, .bleScanActive, .backgroundScanLimited: return "Radar aktiv"
+        }
+    }
+
+    /// Zweite Zeile unter dem Statuspunkt.
+    var compactSubtitle: String {
+        switch self {
+        case .bleScanActive: return "BLE-Suche läuft"
+        case .radarActive: return "Hintergrundsuche verfügbar"
+        case .backgroundScanLimited: return "Hintergrundsuche eingeschränkt"
+        case .bluetoothOff: return "Kein Scan möglich"
+        case .radarPaused: return "Keine Alarme"
+        case .radarEnded: return "Keine aktive Session"
+        case .restoring: return "Wiederherstellung…"
+        }
+    }
+
+    /// Einzeiler unter der Seitenüberschrift — nur ehrliche Fähigkeiten.
+    var headerCapabilityLine: String {
+        switch self {
+        case .bluetoothOff, .radarEnded:
+            return "Hintergrundsuche nicht verfügbar"
+        case .backgroundScanLimited:
+            return "Hintergrundsuche eingeschränkt"
+        case .radarPaused:
+            return "Hintergrundsuche eingeschränkt"
+        case .radarActive, .bleScanActive, .restoring:
+            return Self.bluetoothCentralBackgroundConfigured
+                ? "Radar läuft im Hintergrund weiter"
+                : "Hintergrundsuche nicht verfügbar"
+        }
+    }
+
+    /// Technische Details nur für optionale Diagnose — nicht auf der Hauptseite.
     var detail: String {
         switch self {
         case .radarActive:
@@ -43,6 +84,13 @@ enum BLERadarScanState: String, Equatable, Sendable {
             return "Keine aktive Radar-Session."
         }
     }
+
+    private static var bluetoothCentralBackgroundConfigured: Bool {
+        guard let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] else {
+            return false
+        }
+        return modes.contains("bluetooth-central")
+    }
 }
 
 enum BLERadarDisplayMode: String, Codable, CaseIterable, Sendable {
@@ -54,7 +102,7 @@ enum BLERadarDisplayMode: String, Codable, CaseIterable, Sendable {
     var label: String {
         switch self {
         case .allowSleep: return "Display darf ausgehen"
-        case .keepAwake: return "Display während der Suche eingeschaltet lassen"
+        case .keepAwake: return "Display eingeschaltet lassen"
         }
     }
 }

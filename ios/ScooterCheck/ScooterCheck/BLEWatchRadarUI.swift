@@ -280,50 +280,44 @@ struct BLEWatchListScreen: View {
 
 // MARK: - Radar controls
 
-/// Statuszeile + Zahnrad für Radar-Einstellungen (Display, Alarme, Signal).
+/// Kompakte Statuszeile — ohne Zahnrad (Einstellungen nur über Header).
 struct BLERadarControlsCard: View {
     @ObservedObject var radar: BLERadarService
     @ObservedObject private var session = BLERadarSessionStore.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            HStack(spacing: Theme.Space.md) {
-                Circle()
-                    .fill(radar.isEnabled ? Theme.accent : Theme.textMuted.opacity(0.45))
-                    .frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(radar.isEnabled ? "Radar aktiv" : "Radar pausiert")
-                        .font(Theme.caption.weight(.medium))
-                        .foregroundStyle(Theme.textSecondary)
-                    Text(radar.scanState.label)
-                        .font(Theme.meta)
-                        .foregroundStyle(Theme.textMuted)
-                }
-                Spacer(minLength: 0)
-                Button {
-                    radar.showSettingsSheet = true
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: Theme.Icon.standard, weight: .medium))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: Theme.Control.backHit, height: Theme.Control.backHit)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Radar-Einstellungen")
+        HStack(spacing: Theme.Space.md) {
+            Circle()
+                .fill(statusDotColor)
+                .frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(radar.scanState.compactTitle)
+                    .font(Theme.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(radar.scanState.compactSubtitle)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.textMuted)
             }
-            Text(radar.scanStateDetail)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
             if let last = session.lastSightingSummary, let at = session.lastSightingAt {
-                Text("Letzte Sichtung: \(last) · \(relative(at))")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
+                Text(relative(at))
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.textMuted)
+                    .accessibilityLabel("Letzte Sichtung \(last) \(relative(at))")
             }
         }
+        .padding(.vertical, 2)
         .sheet(isPresented: $radar.showSettingsSheet) {
             BLERadarSettingsSheet(radar: radar)
+        }
+    }
+
+    private var statusDotColor: Color {
+        switch radar.scanState {
+        case .bleScanActive, .radarActive: return Theme.accent
+        case .backgroundScanLimited, .restoring: return Theme.accent.opacity(0.7)
+        case .radarPaused: return Theme.textMuted.opacity(0.55)
+        case .bluetoothOff, .radarEnded: return Theme.danger.opacity(0.85)
         }
     }
 
@@ -334,6 +328,33 @@ struct BLERadarControlsCard: View {
     }
 }
 
+/// Ruhiger Wartezustand, solange noch keine Scooter erkannt wurden.
+struct BLERadarWaitingView: View {
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(spacing: Theme.Space.sm) {
+            Image(systemName: "dot.radiowaves.left.and.right")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundStyle(Theme.accent.opacity(0.85))
+                .scaleEffect(pulse ? 1.08 : 0.94)
+                .opacity(pulse ? 1 : 0.55)
+                .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: pulse)
+                .onAppear { pulse = true }
+            Text("Suche nach E-Scootern")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text("Noch keine Geräte erkannt")
+                .font(Theme.meta)
+                .foregroundStyle(Theme.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Theme.Space.lg)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Kompaktes Bottom Sheet: nur Displaysteuerung.
 struct BLERadarSettingsSheet: View {
     @ObservedObject var radar: BLERadarService
     @ObservedObject private var session = BLERadarSessionStore.shared
@@ -341,110 +362,42 @@ struct BLERadarSettingsSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            List {
                 Section {
-                    Toggle("Radar aktiv", isOn: Binding(
-                        get: { radar.isEnabled },
-                        set: { radar.setEnabled($0) }
-                    ))
-                }
-                Section("Display") {
-                    Picker("Display", selection: Binding(
-                        get: { session.settings.displayMode },
-                        set: { mode in
-                            var s = session.settings
-                            s.displayMode = mode
-                            session.settings = s
-                        }
-                    )) {
-                        ForEach(BLERadarDisplayMode.allCases, id: \.self) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.inline)
-                    Text("Manuelle Sperre wird nie verhindert. „Eingeschaltet lassen“ gilt nur im Vordergrund.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-                if radar.isEnabled {
-                    Section("Benachrichtigungen") {
-                        Toggle("Scooter-Erkennung melden", isOn: Binding(
-                            get: { session.settings.notifyScooterDetections },
-                            set: { v in
+                    ForEach(BLERadarDisplayMode.allCases, id: \.self) { mode in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) {
                                 var s = session.settings
-                                s.notifyScooterDetections = v
+                                s.displayMode = mode
                                 session.settings = s
                             }
-                        ))
-                        Toggle("Zulassungshinweise hervorheben", isOn: Binding(
-                            get: { session.settings.highlightApprovalWarnings },
-                            set: { v in
-                                var s = session.settings
-                                s.highlightApprovalWarnings = v
-                                session.settings = s
+                        } label: {
+                            HStack(spacing: Theme.Space.md) {
+                                Text(mode.label)
+                                    .font(Theme.secondary)
+                                    .foregroundStyle(Theme.textPrimary)
+                                Spacer(minLength: 0)
+                                if session.settings.displayMode == mode {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Theme.accent)
+                                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                                }
                             }
-                        ))
-                        Toggle("Ton aktivieren", isOn: Binding(
-                            get: { radar.soundEnabled },
-                            set: { v in
-                                radar.soundEnabled = v
-                                radar.persistSettingsToStore()
-                            }
-                        ))
-                        Toggle("Haptik aktivieren", isOn: Binding(
-                            get: { radar.hapticsEnabled },
-                            set: { v in
-                                radar.hapticsEnabled = v
-                                radar.persistSettingsToStore()
-                            }
-                        ))
-                        Text("Haptik nur bei entsperrtem iPhone. Sperrbildschirm: iOS entscheidet über Notification-Ton.")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                    Section("Signalempfindlichkeit") {
-                        Picker("Alarm ab", selection: Binding(
-                            get: { radar.minimumSignalClass },
-                            set: { v in
-                                radar.minimumSignalClass = v
-                                radar.persistSettingsToStore()
-                            }
-                        )) {
-                            Text("Mittel").tag(BLESignalClass.medium)
-                            Text("Stark").tag(BLESignalClass.strong)
-                            Text("Sehr stark").tag(BLESignalClass.veryStrong)
+                            .contentShape(Rectangle())
                         }
-                        .pickerStyle(.inline)
+                        .buttonStyle(.plain)
+                        .listRowBackground(Theme.card)
                     }
-                    Section("Benachrichtigungswiederholung") {
-                        Picker("Wiederholung", selection: Binding(
-                            get: {
-                                BLERadarNotifyCooldown(rawValue: session.settings.notifyCooldownSeconds)
-                                    ?? .fiveMinutes
-                            },
-                            set: { v in
-                                var s = session.settings
-                                s.notifyCooldownSeconds = v.rawValue
-                                session.settings = s
-                            }
-                        )) {
-                            ForEach(BLERadarNotifyCooldown.allCases, id: \.self) { c in
-                                Text(c.label).tag(c)
-                            }
-                        }
-                        .pickerStyle(.inline)
-                    }
-                }
-                Section("Hintergrund") {
-                    Text(radar.scanStateDetail)
-                        .font(.caption)
-                        .foregroundStyle(Theme.textMuted)
-                    Text("Uneingeschränkte Suche aller BLE-Geräte im klassischen Hintergrundmodus ist von iOS nicht zugesichert. Radar filtert dann auf bekannte Service-UUIDs (Ninebot/Xiaomi). Ohne Widget-Extension keine echte Live-Activity-UI.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textMuted)
+                } header: {
+                    Text("Display während der Suche")
+                } footer: {
+                    Text("Die manuelle Displaysperre bleibt jederzeit möglich.")
                 }
             }
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
             .background(Theme.bg)
             .navigationTitle("Radar-Einstellungen")
             .navigationBarTitleDisplayMode(.inline)
@@ -459,7 +412,8 @@ struct BLERadarSettingsSheet: View {
             }
             .preferredColorScheme(.dark)
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.height(260)])
+        .presentationDragIndicator(.visible)
     }
 }
 

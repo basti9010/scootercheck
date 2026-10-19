@@ -508,7 +508,7 @@ struct ScooterFinderView: View {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
                 FindSubpageHeader(
                     title: "E-Scooter-Radar",
-                    subtitle: "Session bleibt aktiv beim Verlassen · beenden nur unten",
+                    subtitle: radar.scanState.headerCapabilityLine,
                     onBack: {
                         // Session bewusst NICHT beenden — Hintergrundsuche fortsetzen.
                         radarBrowseMode = false
@@ -544,7 +544,7 @@ struct ScooterFinderView: View {
                         ForEach(radar.recentHits.prefix(12)) { hit in
                             BLERadarHitCard(
                                 hit: hit,
-                                onDetails: { radar.showSettingsSheet = true },
+                                onDetails: nil,
                                 onDiagnose: {
                                     if let device = ble.devices.first(where: { $0.id == hit.id }) {
                                         diagnosisDevice = device
@@ -556,10 +556,7 @@ struct ScooterFinderView: View {
                 }
 
                 if listedDevices.isEmpty {
-                    Text("Warte auf Scooter-Signale…")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                        .padding(.top, Theme.Space.sm)
+                    BLERadarWaitingView()
                 } else {
                     Text("In Reichweite")
                         .font(Theme.caption.weight(.semibold))
