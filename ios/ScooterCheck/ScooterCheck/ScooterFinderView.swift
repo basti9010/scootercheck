@@ -19,6 +19,7 @@ struct ScooterFinderView: View {
     @StateObject private var searchEngine = BLESearchEngine()
     @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
     @ObservedObject private var radar = BLERadarService.shared
+    @ObservedObject private var identity = BLEIdentificationService.shared
     @State private var selected: ScannedDevice?
     @State private var detailDevice: ScannedDevice?
     @State private var showInfo = false
@@ -414,9 +415,9 @@ struct ScooterFinderView: View {
     }
 
     private func rowTitle(_ device: ScannedDevice) -> String {
-        if let label = device.modelLabel { return label }
-        if device.looksLikeScooter { return "Möglicher Scooter" }
-        return device.bleListDisplayName
+        // `identity` ObservedObject → Listen-Titel aktualisieren ohne Zeilen-Duplikate.
+        _ = identity.results[device.id]
+        return identity.listTitle(for: device)
     }
 
     // MARK: - Actions
@@ -603,6 +604,9 @@ struct FinderDeviceDetailSheet: View {
     var onStartSearch: () -> Void
     var onDismiss: () -> Void
 
+    @ObservedObject private var identity = BLEIdentificationService.shared
+    @State private var showFullAnalysis = false
+
     private var lastSeenText: String {
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = Locale(identifier: "de_DE")
@@ -610,14 +614,23 @@ struct FinderDeviceDetailSheet: View {
         return formatter.localizedString(for: device.lastSeen, relativeTo: Date())
     }
 
+    private var identityResult: BLEIdentificationResult? {
+        identity.result(for: device.id)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.lg) {
                     VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                        Text(device.bleListDisplayName)
+                        Text(identity.listTitle(for: device))
                             .font(Theme.sectionTitle)
                             .foregroundStyle(Theme.textPrimary)
+                        if let sub = identityResult?.listSubtitle {
+                            Text(sub)
+                                .font(Theme.secondary)
+                                .foregroundStyle(Theme.accent)
+                        }
                         Text("Bluetooth-Gerät. Du kannst den Geräte-Wächter aktivieren oder es mit dem Signal-Finder aufspüren — ohne Speicherung als Scooter.")
                             .font(Theme.body)
                             .foregroundStyle(Theme.textSecondary)
@@ -630,8 +643,15 @@ struct FinderDeviceDetailSheet: View {
                         detailRow("Zuletzt gesehen", lastSeenText)
                         detailRow(
                             "Typ",
-                            device.looksLikeScooter ? "Möglicher E-Scooter" : "Unbekanntes BLE-Gerät"
+                            identityResult?.deviceCategory?.label
+                                ?? (device.looksLikeScooter ? "Möglicher E-Scooter" : "Unbekanntes BLE-Gerät")
                         )
+                        if let m = identityResult?.manufacturer {
+                            detailRow("Hersteller", m)
+                        }
+                        if let conf = identityResult?.confidence {
+                            detailRow("Zuverlässigkeit", conf.label)
+                        }
                     }
                     .padding(Theme.Space.lg)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -641,6 +661,10 @@ struct FinderDeviceDetailSheet: View {
                         RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
                             .stroke(Theme.border, lineWidth: 1)
                     )
+
+                    ScootOutlineButton(title: "Geräteanalyse", systemImage: "magnifyingglass") {
+                        showFullAnalysis = true
+                    }
 
                     BLEWatcherSettingsCard(device: device, isKnownScooter: false)
 
@@ -663,6 +687,16 @@ struct FinderDeviceDetailSheet: View {
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
                 AppChromeSheetHeader(closeTitle: "Fertig", onClose: onDismiss)
+            }
+            .sheet(isPresented: $showFullAnalysis) {
+                BLEDeviceAnalysisView(
+                    device: device,
+                    onSignalSearch: onStartSearch,
+                    onWatch: nil
+                )
+            }
+            .onAppear {
+                identity.ingest(device)
             }
         }
         .preferredColorScheme(.dark)

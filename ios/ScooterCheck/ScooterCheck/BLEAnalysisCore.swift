@@ -88,11 +88,15 @@ struct BLEDeviceFingerprint: Equatable, Sendable, Codable {
         capturedAt: Date = Date()
     ) {
         self.localName = Self.normalizeName(localName)
-        self.manufacturerDataHex = manufacturerDataHex?.uppercased()
+        // Compact hex so "4C 00" and "4C00" compare equal — RSSI never part of identity.
+        self.manufacturerDataHex = BLEManufacturerParsing.compactHex(manufacturerDataHex)
         self.manufacturerId = manufacturerId
+            ?? BLEManufacturerParsing.companyId(fromManufacturerHex: manufacturerDataHex)
         self.serviceUUIDs = serviceUUIDs.map { $0.uppercased() }.sorted()
         self.serviceDataHexByUUID = Dictionary(
-            uniqueKeysWithValues: serviceDataHexByUUID.map { ($0.key.uppercased(), $0.value.uppercased()) }
+            uniqueKeysWithValues: serviceDataHexByUUID.map {
+                ($0.key.uppercased(), BLEManufacturerParsing.compactHex($0.value) ?? $0.value.uppercased())
+            }
         )
         self.advertisingStructureKey = advertisingStructureKey
         self.txPower = txPower
@@ -103,12 +107,7 @@ struct BLEDeviceFingerprint: Equatable, Sendable, Codable {
 
     static func from(device: ScannedDevice, observedIntervalMs: Double? = nil) -> BLEDeviceFingerprint {
         let mfg = device.manufacturerDataHex
-        let mfgId: UInt16? = {
-            guard let hex = mfg, hex.count >= 4,
-                  let lo = UInt16(hex.prefix(2), radix: 16),
-                  let hi = UInt16(hex.dropFirst(2).prefix(2), radix: 16) else { return nil }
-            return lo | (hi << 8) // BLE company ID little-endian
-        }()
+        let mfgId = BLEManufacturerParsing.companyId(fromManufacturerHex: mfg)
         let structure = advertisingStructureKey(
             hasName: !(device.cryptoName.isEmpty),
             hasMfg: mfg != nil,

@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "source": "ScooterCheck documented BLE protocols + Bluetooth SIG GATT services",
+  "sourceUrl": "https://www.bluetooth.com/specifications/assigned-numbers/",
+  "updatedAt": "2026-03-18",
+  "note": "Only documented, verifiable patterns. No invented model IDs. Company ID alone never implies device class.",
+  "patterns": [
+    {
+      "id": "ninebot-uart",
+      "organization": "Ninebot (Changzhou) Tech Co., Ltd.",
+      "companyIds": ["0x0F1F"],
+      "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74"],
+      "suggestedCategory": "eScooter",
+      "requires": "ninebotUART",
+      "evidence": "Documented Ninebot UART service used by ScooterCheck protocol layer",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "nordic-uart-generic",
+      "organization": "Nordic Semiconductor ASA (chipset)",
+      "companyIds": ["0x0059"],
+      "serviceUUIDs": ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+      "suggestedCategory": null,
+      "requires": "additionalScooterHints",
+      "evidence": "Nordic UART is shared by many product classes; never sufficient alone for e-scooter",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "xiaomi-org",
+      "organization": "Xiaomi Inc.",
+      "companyIds": ["0x038F"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "modelOrNamePlusUART",
+      "evidence": "Xiaomi company identifier names the organization only",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "samsung-org",
+      "organization": "Samsung Electronics Co. Ltd.",
+      "companyIds": ["0x0075"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "neverScooterFromCID",
+      "evidence": "Samsung CID must not classify as e-scooter",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "apple-org",
+      "organization": "Apple, Inc.",
+      "companyIds": ["0x004C"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "nameHintsForSubclass",
+      "evidence": "Apple Continuity / manufacturer payload; class only with additional name hints",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "gatt-device-information",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["180A"],
+      "suggestedCategory": null,
+      "requires": "none",
+      "evidence": "Bluetooth SIG Device Information Service — generic",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "gatt-heart-rate",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["180D"],
+      "suggestedCategory": "sensor",
+      "requires": "serviceOnlyWeak",
+      "evidence": "Bluetooth SIG Heart Rate Service",
+      "aloneImpliesCategory": false
+    }
+  ]
+}

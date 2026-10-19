@@ -620,7 +620,11 @@ enum BLEScooterClassifier {
     }
 
     static func isRadarEligible(_ device: ScannedDevice) -> Bool {
-        confidence(for: device) != .low && device.looksLikeScooter
+        // Identifikations-Engine: nur belastbare Scooter-Klassifikation → Radar.
+        if let id = BLEIdentificationService.shared.result(for: device.id) {
+            return id.radarEligibleScooter
+        }
+        return confidence(for: device) != .low && device.looksLikeScooter
     }
 }
 

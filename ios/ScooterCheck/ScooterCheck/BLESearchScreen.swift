@@ -16,6 +16,7 @@ struct BLESearchScreen: View {
     @State private var expandWhyFingerprint = false
     @State private var showRawRssi = false
     @State private var showOptions = false
+    @State private var showOnlineIdentConsent = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -581,6 +582,44 @@ struct BLESearchScreen: View {
                         .font(Theme.secondary)
                         .tint(Theme.accent)
 
+                    Group {
+                        Divider().overlay(Theme.line)
+                        Text("Geräteidentifikation")
+                            .font(Theme.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textMuted)
+                        Toggle(
+                            "Online-Identifikation",
+                            isOn: Binding(
+                                get: {
+                                    BLEIdentificationService.shared.settings.onlineIdentificationEnabled
+                                        && BLEIdentificationService.shared.settings.onlineConsentAccepted
+                                },
+                                set: { on in
+                                    if on {
+                                        if BLEIdentificationService.shared.settings.onlineConsentAccepted {
+                                            BLEIdentificationService.shared.setOnlineEnabled(true)
+                                        } else {
+                                            showOnlineIdentConsent = true
+                                        }
+                                    } else {
+                                        BLEIdentificationService.shared.setOnlineEnabled(false)
+                                    }
+                                }
+                            )
+                        )
+                        .font(Theme.secondary)
+                        .tint(Theme.accent)
+                        Text("Nur nach Zustimmung; ohne Backend keine Netzübertragung. Lokale Analyse bleibt aktiv.")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Analyse-Cache löschen") {
+                            BLEIdentificationService.shared.clearCaches()
+                        }
+                        .font(Theme.buttonSecondary)
+                        .foregroundStyle(Theme.accent)
+                    }
+
                     Toggle(isOn: Binding(
                         get: { engine.surfaceMode == .map },
                         set: { on in
@@ -656,6 +695,18 @@ struct BLESearchScreen: View {
                 }
             }
             .preferredColorScheme(.dark)
+            .confirmationDialog(
+                "Online-Identifikation",
+                isPresented: $showOnlineIdentConsent,
+                titleVisibility: .visible
+            ) {
+                Button("Zustimmen und aktivieren") {
+                    BLEIdentificationService.shared.acceptOnlineConsent()
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Es werden nur technische Kennungen übertragen (Company Identifier, Service-UUIDs, Namenspräfix, Advertising-Struktur). Keine Standorte, keine Scan-Historie, keine dauerhaften Geräte-IDs. Ohne Backend findet keine Netzübertragung statt. Lokalanalyse bleibt ohne Internet möglich.")
+            }
         }
         .presentationDetents([.medium, .large])
     }

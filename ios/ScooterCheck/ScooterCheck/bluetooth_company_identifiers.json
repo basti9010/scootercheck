@@ -1,0 +1,5689 @@
+{
+  "version": 1,
+  "source": "Bluetooth SIG Assigned Numbers (Company Identifiers)",
+  "sourceUrl": "https://www.bluetooth.com/specifications/assigned-numbers/",
+  "updatedAt": "2026-03-18",
+  "note": "Company ID identifies the registered organization only — not the end-product class or model.",
+  "companies": [
+    {
+      "id": 0,
+      "hex": "0x0000",
+      "name": "Ericsson Technology Licensing"
+    },
+    {
+      "id": 1,
+      "hex": "0x0001",
+      "name": "Nokia Mobile Phones"
+    },
+    {
+      "id": 2,
+      "hex": "0x0002",
+      "name": "Intel Corp."
+    },
+    {
+      "id": 3,
+      "hex": "0x0003",
+      "name": "IBM Corp."
+    },
+    {
+      "id": 4,
+      "hex": "0x0004",
+      "name": "Toshiba Corp."
+    },
+    {
+      "id": 5,
+      "hex": "0x0005",
+      "name": "3Com"
+    },
+    {
+      "id": 6,
+      "hex": "0x0006",
+      "name": "Microsoft"
+    },
+    {
+      "id": 7,
+      "hex": "0x0007",
+      "name": "Lucent"
+    },
+    {
+      "id": 8,
+      "hex": "0x0008",
+      "name": "Motorola"
+    },
+    {
+      "id": 9,
+      "hex": "0x0009",
+      "name": "Infineon Technologies AG"
+    },
+    {
+      "id": 10,
+      "hex": "0x000A",
+      "name": "Cambridge Silicon Radio"
+    },
+    {
+      "id": 11,
+      "hex": "0x000B",
+      "name": "Silicon Wave"
+    },
+    {
+      "id": 12,
+      "hex": "0x000C",
+      "name": "Digianswer A/S"
+    },
+    {
+      "id": 13,
+      "hex": "0x000D",
+      "name": "Texas Instruments Inc."
+    },
+    {
+      "id": 14,
+      "hex": "0x000E",
+      "name": "Parthus Technologies Inc."
+    },
+    {
+      "id": 15,
+      "hex": "0x000F",
+      "name": "Broadcom Corporation"
+    },
+    {
+      "id": 16,
+      "hex": "0x0010",
+      "name": "Mitel Semiconductor"
+    },
+    {
+      "id": 17,
+      "hex": "0x0011",
+      "name": "Widcomm, Inc."
+    },
+    {
+      "id": 18,
+      "hex": "0x0012",
+      "name": "Zeevo, Inc."
+    },
+    {
+      "id": 19,
+      "hex": "0x0013",
+      "name": "Atmel Corporation"
+    },
+    {
+      "id": 20,
+      "hex": "0x0014",
+      "name": "Mitsubishi Electric Corporation"
+    },
+    {
+      "id": 21,
+      "hex": "0x0015",
+      "name": "RTX Telecom A/S"
+    },
+    {
+      "id": 22,
+      "hex": "0x0016",
+      "name": "KC Technology Inc."
+    },
+    {
+      "id": 23,
+      "hex": "0x0017",
+      "name": "Newlogic"
+    },
+    {
+      "id": 24,
+      "hex": "0x0018",
+      "name": "Transilica, Inc."
+    },
+    {
+      "id": 25,
+      "hex": "0x0019",
+      "name": "Rohde & Schwarz GmbH & Co. KG"
+    },
+    {
+      "id": 26,
+      "hex": "0x001A",
+      "name": "TTPCom Limited"
+    },
+    {
+      "id": 27,
+      "hex": "0x001B",
+      "name": "Signia Technologies, Inc."
+    },
+    {
+      "id": 28,
+      "hex": "0x001C",
+      "name": "Conexant Systems Inc."
+    },
+    {
+      "id": 29,
+      "hex": "0x001D",
+      "name": "Qualcomm"
+    },
+    {
+      "id": 30,
+      "hex": "0x001E",
+      "name": "Inventel"
+    },
+    {
+      "id": 31,
+      "hex": "0x001F",
+      "name": "AVM Berlin"
+    },
+    {
+      "id": 32,
+      "hex": "0x0020",
+      "name": "BandSpeed, Inc."
+    },
+    {
+      "id": 33,
+      "hex": "0x0021",
+      "name": "Mansella Ltd"
+    },
+    {
+      "id": 34,
+      "hex": "0x0022",
+      "name": "NEC Corporation"
+    },
+    {
+      "id": 35,
+      "hex": "0x0023",
+      "name": "WavePlus Technology Co., Ltd."
+    },
+    {
+      "id": 36,
+      "hex": "0x0024",
+      "name": "Alcatel"
+    },
+    {
+      "id": 37,
+      "hex": "0x0025",
+      "name": "NXP Semiconductors (formerly Philips Semiconductors)"
+    },
+    {
+      "id": 38,
+      "hex": "0x0026",
+      "name": "C Technologies"
+    },
+    {
+      "id": 39,
+      "hex": "0x0027",
+      "name": "Open Interface"
+    },
+    {
+      "id": 40,
+      "hex": "0x0028",
+      "name": "R F Micro Devices"
+    },
+    {
+      "id": 41,
+      "hex": "0x0029",
+      "name": "Hitachi Ltd"
+    },
+    {
+      "id": 42,
+      "hex": "0x002A",
+      "name": "Symbol Technologies, Inc."
+    },
+    {
+      "id": 43,
+      "hex": "0x002B",
+      "name": "Tenovis"
+    },
+    {
+      "id": 44,
+      "hex": "0x002C",
+      "name": "Macronix International Co. Ltd."
+    },
+    {
+      "id": 45,
+      "hex": "0x002D",
+      "name": "GCT Semiconductor"
+    },
+    {
+      "id": 46,
+      "hex": "0x002E",
+      "name": "Norwood Systems"
+    },
+    {
+      "id": 47,
+      "hex": "0x002F",
+      "name": "MewTel Technology Inc."
+    },
+    {
+      "id": 48,
+      "hex": "0x0030",
+      "name": "ST Microelectronics"
+    },
+    {
+      "id": 49,
+      "hex": "0x0031",
+      "name": "Synopsys, Inc."
+    },
+    {
+      "id": 50,
+      "hex": "0x0032",
+      "name": "Red-M (Communications) Ltd"
+    },
+    {
+      "id": 51,
+      "hex": "0x0033",
+      "name": "Commil Ltd"
+    },
+    {
+      "id": 52,
+      "hex": "0x0034",
+      "name": "Computer Access Technology Corporation (CATC)"
+    },
+    {
+      "id": 53,
+      "hex": "0x0035",
+      "name": "Eclipse (HQ Espana) S.L."
+    },
+    {
+      "id": 54,
+      "hex": "0x0036",
+      "name": "Renesas Electronics Corporation"
+    },
+    {
+      "id": 55,
+      "hex": "0x0037",
+      "name": "Mobilian Corporation"
+    },
+    {
+      "id": 56,
+      "hex": "0x0038",
+      "name": "Terax"
+    },
+    {
+      "id": 57,
+      "hex": "0x0039",
+      "name": "Integrated System Solution Corp."
+    },
+    {
+      "id": 58,
+      "hex": "0x003A",
+      "name": "Matsushita Electric Industrial Co., Ltd."
+    },
+    {
+      "id": 59,
+      "hex": "0x003B",
+      "name": "Gennum Corporation"
+    },
+    {
+      "id": 60,
+      "hex": "0x003C",
+      "name": "BlackBerry Limited (formerly Research In Motion)"
+    },
+    {
+      "id": 61,
+      "hex": "0x003D",
+      "name": "IPextreme, Inc."
+    },
+    {
+      "id": 62,
+      "hex": "0x003E",
+      "name": "Systems and Chips, Inc"
+    },
+    {
+      "id": 63,
+      "hex": "0x003F",
+      "name": "Bluetooth SIG, Inc"
+    },
+    {
+      "id": 64,
+      "hex": "0x0040",
+      "name": "Seiko Epson Corporation"
+    },
+    {
+      "id": 65,
+      "hex": "0x0041",
+      "name": "Integrated Silicon Solution Taiwan, Inc."
+    },
+    {
+      "id": 66,
+      "hex": "0x0042",
+      "name": "CONWISE Technology Corporation Ltd"
+    },
+    {
+      "id": 67,
+      "hex": "0x0043",
+      "name": "PARROT SA"
+    },
+    {
+      "id": 68,
+      "hex": "0x0044",
+      "name": "Socket Mobile"
+    },
+    {
+      "id": 69,
+      "hex": "0x0045",
+      "name": "Atheros Communications, Inc."
+    },
+    {
+      "id": 70,
+      "hex": "0x0046",
+      "name": "MediaTek, Inc."
+    },
+    {
+      "id": 71,
+      "hex": "0x0047",
+      "name": "Bluegiga"
+    },
+    {
+      "id": 72,
+      "hex": "0x0048",
+      "name": "Marvell Technology Group Ltd."
+    },
+    {
+      "id": 73,
+      "hex": "0x0049",
+      "name": "3DSP Corporation"
+    },
+    {
+      "id": 74,
+      "hex": "0x004A",
+      "name": "Accel Semiconductor Ltd."
+    },
+    {
+      "id": 75,
+      "hex": "0x004B",
+      "name": "Continental Automotive Systems"
+    },
+    {
+      "id": 76,
+      "hex": "0x004C",
+      "name": "Apple, Inc."
+    },
+    {
+      "id": 77,
+      "hex": "0x004D",
+      "name": "Staccato Communications, Inc."
+    },
+    {
+      "id": 78,
+      "hex": "0x004E",
+      "name": "Avago Technologies"
+    },
+    {
+      "id": 79,
+      "hex": "0x004F",
+      "name": "APT Ltd."
+    },
+    {
+      "id": 80,
+      "hex": "0x0050",
+      "name": "SiRF Technology, Inc."
+    },
+    {
+      "id": 81,
+      "hex": "0x0051",
+      "name": "Tzero Technologies, Inc."
+    },
+    {
+      "id": 82,
+      "hex": "0x0052",
+      "name": "J&M Corporation"
+    },
+    {
+      "id": 83,
+      "hex": "0x0053",
+      "name": "Free2move AB"
+    },
+    {
+      "id": 84,
+      "hex": "0x0054",
+      "name": "3DiJoy Corporation"
+    },
+    {
+      "id": 85,
+      "hex": "0x0055",
+      "name": "Plantronics, Inc."
+    },
+    {
+      "id": 86,
+      "hex": "0x0056",
+      "name": "Sony Ericsson Mobile Communications"
+    },
+    {
+      "id": 87,
+      "hex": "0x0057",
+      "name": "Harman International Industries, Inc."
+    },
+    {
+      "id": 88,
+      "hex": "0x0058",
+      "name": "Vizio, Inc."
+    },
+    {
+      "id": 89,
+      "hex": "0x0059",
+      "name": "Nordic Semiconductor ASA"
+    },
+    {
+      "id": 90,
+      "hex": "0x005A",
+      "name": "EM Microelectronic-Marin SA"
+    },
+    {
+      "id": 91,
+      "hex": "0x005B",
+      "name": "Ralink Technology Corporation"
+    },
+    {
+      "id": 92,
+      "hex": "0x005C",
+      "name": "Belkin International, Inc."
+    },
+    {
+      "id": 93,
+      "hex": "0x005D",
+      "name": "Realtek Semiconductor Corporation"
+    },
+    {
+      "id": 94,
+      "hex": "0x005E",
+      "name": "Stonestreet One, LLC"
+    },
+    {
+      "id": 95,
+      "hex": "0x005F",
+      "name": "Wicentric, Inc."
+    },
+    {
+      "id": 96,
+      "hex": "0x0060",
+      "name": "RivieraWaves S.A.S"
+    },
+    {
+      "id": 97,
+      "hex": "0x0061",
+      "name": "RDA Microelectronics"
+    },
+    {
+      "id": 98,
+      "hex": "0x0062",
+      "name": "Gibson Guitars"
+    },
+    {
+      "id": 99,
+      "hex": "0x0063",
+      "name": "MiCommand Inc."
+    },
+    {
+      "id": 100,
+      "hex": "0x0064",
+      "name": "Band XI International, LLC"
+    },
+    {
+      "id": 101,
+      "hex": "0x0065",
+      "name": "Hewlett-Packard Company"
+    },
+    {
+      "id": 102,
+      "hex": "0x0066",
+      "name": "9Solutions Oy"
+    },
+    {
+      "id": 103,
+      "hex": "0x0067",
+      "name": "GN Netcom A/S"
+    },
+    {
+      "id": 104,
+      "hex": "0x0068",
+      "name": "General Motors"
+    },
+    {
+      "id": 105,
+      "hex": "0x0069",
+      "name": "A&D Engineering, Inc."
+    },
+    {
+      "id": 106,
+      "hex": "0x006A",
+      "name": "MindTree Ltd."
+    },
+    {
+      "id": 107,
+      "hex": "0x006B",
+      "name": "Polar Electro OY"
+    },
+    {
+      "id": 108,
+      "hex": "0x006C",
+      "name": "Beautiful Enterprise Co., Ltd."
+    },
+    {
+      "id": 109,
+      "hex": "0x006D",
+      "name": "BriarTek, Inc"
+    },
+    {
+      "id": 110,
+      "hex": "0x006E",
+      "name": "Summit Data Communications, Inc."
+    },
+    {
+      "id": 111,
+      "hex": "0x006F",
+      "name": "Sound ID"
+    },
+    {
+      "id": 112,
+      "hex": "0x0070",
+      "name": "Monster, LLC"
+    },
+    {
+      "id": 113,
+      "hex": "0x0071",
+      "name": "connectBlue AB"
+    },
+    {
+      "id": 114,
+      "hex": "0x0072",
+      "name": "ShangHai Super Smart Electronics Co. Ltd."
+    },
+    {
+      "id": 115,
+      "hex": "0x0073",
+      "name": "Group Sense Ltd."
+    },
+    {
+      "id": 116,
+      "hex": "0x0074",
+      "name": "Zomm, LLC"
+    },
+    {
+      "id": 117,
+      "hex": "0x0075",
+      "name": "Samsung Electronics Co. Ltd."
+    },
+    {
+      "id": 118,
+      "hex": "0x0076",
+      "name": "Creative Technology Ltd."
+    },
+    {
+      "id": 119,
+      "hex": "0x0077",
+      "name": "Laird Technologies"
+    },
+    {
+      "id": 120,
+      "hex": "0x0078",
+      "name": "Nike, Inc."
+    },
+    {
+      "id": 121,
+      "hex": "0x0079",
+      "name": "lesswire AG"
+    },
+    {
+      "id": 122,
+      "hex": "0x007A",
+      "name": "MStar Semiconductor, Inc."
+    },
+    {
+      "id": 123,
+      "hex": "0x007B",
+      "name": "Hanlynn Technologies"
+    },
+    {
+      "id": 124,
+      "hex": "0x007C",
+      "name": "A & R Cambridge"
+    },
+    {
+      "id": 125,
+      "hex": "0x007D",
+      "name": "Seers Technology Co., Ltd."
+    },
+    {
+      "id": 126,
+      "hex": "0x007E",
+      "name": "Sports Tracking Technologies Ltd."
+    },
+    {
+      "id": 127,
+      "hex": "0x007F",
+      "name": "Autonet Mobile"
+    },
+    {
+      "id": 128,
+      "hex": "0x0080",
+      "name": "DeLorme Publishing Company, Inc."
+    },
+    {
+      "id": 129,
+      "hex": "0x0081",
+      "name": "WuXi Vimicro"
+    },
+    {
+      "id": 130,
+      "hex": "0x0082",
+      "name": "Sennheiser Communications A/S"
+    },
+    {
+      "id": 131,
+      "hex": "0x0083",
+      "name": "TimeKeeping Systems, Inc."
+    },
+    {
+      "id": 132,
+      "hex": "0x0084",
+      "name": "Ludus Helsinki Ltd."
+    },
+    {
+      "id": 133,
+      "hex": "0x0085",
+      "name": "BlueRadios, Inc."
+    },
+    {
+      "id": 134,
+      "hex": "0x0086",
+      "name": "Equinux AG"
+    },
+    {
+      "id": 135,
+      "hex": "0x0087",
+      "name": "Garmin International, Inc."
+    },
+    {
+      "id": 136,
+      "hex": "0x0088",
+      "name": "Ecotest"
+    },
+    {
+      "id": 137,
+      "hex": "0x0089",
+      "name": "GN ReSound A/S"
+    },
+    {
+      "id": 138,
+      "hex": "0x008A",
+      "name": "Jawbone"
+    },
+    {
+      "id": 139,
+      "hex": "0x008B",
+      "name": "Topcon Positioning Systems, LLC"
+    },
+    {
+      "id": 140,
+      "hex": "0x008C",
+      "name": "Gimbal Inc. (formerly Qualcomm Labs, Inc. and Qualcomm Retail Solutions, Inc.)"
+    },
+    {
+      "id": 141,
+      "hex": "0x008D",
+      "name": "Zscan Software"
+    },
+    {
+      "id": 142,
+      "hex": "0x008E",
+      "name": "Quintic Corp"
+    },
+    {
+      "id": 143,
+      "hex": "0x008F",
+      "name": "Telit Wireless Solutions GmbH (formerly Stollmann E+V GmbH)"
+    },
+    {
+      "id": 144,
+      "hex": "0x0090",
+      "name": "Funai Electric Co., Ltd."
+    },
+    {
+      "id": 145,
+      "hex": "0x0091",
+      "name": "Advanced PANMOBIL systems GmbH & Co. KG"
+    },
+    {
+      "id": 146,
+      "hex": "0x0092",
+      "name": "ThinkOptics, Inc."
+    },
+    {
+      "id": 147,
+      "hex": "0x0093",
+      "name": "Universal Electronics, Inc."
+    },
+    {
+      "id": 148,
+      "hex": "0x0094",
+      "name": "Airoha Technology Corp."
+    },
+    {
+      "id": 149,
+      "hex": "0x0095",
+      "name": "NEC Lighting, Ltd."
+    },
+    {
+      "id": 150,
+      "hex": "0x0096",
+      "name": "ODM Technology, Inc."
+    },
+    {
+      "id": 151,
+      "hex": "0x0097",
+      "name": "ConnecteDevice Ltd."
+    },
+    {
+      "id": 152,
+      "hex": "0x0098",
+      "name": "zero1.tv GmbH"
+    },
+    {
+      "id": 153,
+      "hex": "0x0099",
+      "name": "i.Tech Dynamic Global Distribution Ltd."
+    },
+    {
+      "id": 154,
+      "hex": "0x009A",
+      "name": "Alpwise"
+    },
+    {
+      "id": 155,
+      "hex": "0x009B",
+      "name": "Jiangsu Toppower Automotive Electronics Co., Ltd."
+    },
+    {
+      "id": 156,
+      "hex": "0x009C",
+      "name": "Colorfy, Inc."
+    },
+    {
+      "id": 157,
+      "hex": "0x009D",
+      "name": "Geoforce Inc."
+    },
+    {
+      "id": 158,
+      "hex": "0x009E",
+      "name": "Bose Corporation"
+    },
+    {
+      "id": 159,
+      "hex": "0x009F",
+      "name": "Suunto Oy"
+    },
+    {
+      "id": 160,
+      "hex": "0x00A0",
+      "name": "Kensington Computer Products Group"
+    },
+    {
+      "id": 161,
+      "hex": "0x00A1",
+      "name": "SR-Medizinelektronik"
+    },
+    {
+      "id": 162,
+      "hex": "0x00A2",
+      "name": "Vertu Corporation Limited"
+    },
+    {
+      "id": 163,
+      "hex": "0x00A3",
+      "name": "Meta Watch Ltd."
+    },
+    {
+      "id": 164,
+      "hex": "0x00A4",
+      "name": "LINAK A/S"
+    },
+    {
+      "id": 165,
+      "hex": "0x00A5",
+      "name": "OTL Dynamics LLC"
+    },
+    {
+      "id": 166,
+      "hex": "0x00A6",
+      "name": "Panda Ocean Inc."
+    },
+    {
+      "id": 167,
+      "hex": "0x00A7",
+      "name": "Visteon Corporation"
+    },
+    {
+      "id": 168,
+      "hex": "0x00A8",
+      "name": "ARP Devices Limited"
+    },
+    {
+      "id": 169,
+      "hex": "0x00A9",
+      "name": "Magneti Marelli S.p.A"
+    },
+    {
+      "id": 170,
+      "hex": "0x00AA",
+      "name": "CAEN RFID srl"
+    },
+    {
+      "id": 171,
+      "hex": "0x00AB",
+      "name": "Ingenieur-Systemgruppe Zahn GmbH"
+    },
+    {
+      "id": 172,
+      "hex": "0x00AC",
+      "name": "Green Throttle Games"
+    },
+    {
+      "id": 173,
+      "hex": "0x00AD",
+      "name": "Peter Systemtechnik GmbH"
+    },
+    {
+      "id": 174,
+      "hex": "0x00AE",
+      "name": "Omegawave Oy"
+    },
+    {
+      "id": 175,
+      "hex": "0x00AF",
+      "name": "Cinetix"
+    },
+    {
+      "id": 176,
+      "hex": "0x00B0",
+      "name": "Passif Semiconductor Corp"
+    },
+    {
+      "id": 177,
+      "hex": "0x00B1",
+      "name": "Saris Cycling Group, Inc"
+    },
+    {
+      "id": 178,
+      "hex": "0x00B2",
+      "name": "Bekey A/S"
+    },
+    {
+      "id": 179,
+      "hex": "0x00B3",
+      "name": "Clarinox Technologies Pty. Ltd."
+    },
+    {
+      "id": 180,
+      "hex": "0x00B4",
+      "name": "BDE Technology Co., Ltd."
+    },
+    {
+      "id": 181,
+      "hex": "0x00B5",
+      "name": "Swirl Networks"
+    },
+    {
+      "id": 182,
+      "hex": "0x00B6",
+      "name": "Meso international"
+    },
+    {
+      "id": 183,
+      "hex": "0x00B7",
+      "name": "TreLab Ltd"
+    },
+    {
+      "id": 184,
+      "hex": "0x00B8",
+      "name": "Qualcomm Innovation Center, Inc. (QuIC)"
+    },
+    {
+      "id": 185,
+      "hex": "0x00B9",
+      "name": "Johnson Controls, Inc."
+    },
+    {
+      "id": 186,
+      "hex": "0x00BA",
+      "name": "Starkey Laboratories Inc."
+    },
+    {
+      "id": 187,
+      "hex": "0x00BB",
+      "name": "S-Power Electronics Limited"
+    },
+    {
+      "id": 188,
+      "hex": "0x00BC",
+      "name": "Ace Sensor Inc"
+    },
+    {
+      "id": 189,
+      "hex": "0x00BD",
+      "name": "Aplix Corporation"
+    },
+    {
+      "id": 190,
+      "hex": "0x00BE",
+      "name": "AAMP of America"
+    },
+    {
+      "id": 191,
+      "hex": "0x00BF",
+      "name": "Stalmart Technology Limited"
+    },
+    {
+      "id": 192,
+      "hex": "0x00C0",
+      "name": "AMICCOM Electronics Corporation"
+    },
+    {
+      "id": 193,
+      "hex": "0x00C1",
+      "name": "Shenzhen Excelsecu Data Technology Co.,Ltd"
+    },
+    {
+      "id": 194,
+      "hex": "0x00C2",
+      "name": "Geneq Inc."
+    },
+    {
+      "id": 195,
+      "hex": "0x00C3",
+      "name": "adidas AG"
+    },
+    {
+      "id": 196,
+      "hex": "0x00C4",
+      "name": "LG Electronics"
+    },
+    {
+      "id": 197,
+      "hex": "0x00C5",
+      "name": "Onset Computer Corporation"
+    },
+    {
+      "id": 198,
+      "hex": "0x00C6",
+      "name": "Selfly BV"
+    },
+    {
+      "id": 199,
+      "hex": "0x00C7",
+      "name": "Quuppa Oy."
+    },
+    {
+      "id": 200,
+      "hex": "0x00C8",
+      "name": "GeLo Inc"
+    },
+    {
+      "id": 201,
+      "hex": "0x00C9",
+      "name": "Evluma"
+    },
+    {
+      "id": 202,
+      "hex": "0x00CA",
+      "name": "MC10"
+    },
+    {
+      "id": 203,
+      "hex": "0x00CB",
+      "name": "Binauric SE"
+    },
+    {
+      "id": 204,
+      "hex": "0x00CC",
+      "name": "Beats Electronics"
+    },
+    {
+      "id": 205,
+      "hex": "0x00CD",
+      "name": "Microchip Technology Inc."
+    },
+    {
+      "id": 206,
+      "hex": "0x00CE",
+      "name": "Elgato Systems GmbH"
+    },
+    {
+      "id": 207,
+      "hex": "0x00CF",
+      "name": "ARCHOS SA"
+    },
+    {
+      "id": 208,
+      "hex": "0x00D0",
+      "name": "Dexcom, Inc."
+    },
+    {
+      "id": 209,
+      "hex": "0x00D1",
+      "name": "Polar Electro Europe B.V."
+    },
+    {
+      "id": 210,
+      "hex": "0x00D2",
+      "name": "Dialog Semiconductor B.V."
+    },
+    {
+      "id": 211,
+      "hex": "0x00D3",
+      "name": "Taixingbang Technology (HK) Co,. LTD."
+    },
+    {
+      "id": 212,
+      "hex": "0x00D4",
+      "name": "Kawantech"
+    },
+    {
+      "id": 213,
+      "hex": "0x00D5",
+      "name": "Austco Communication Systems"
+    },
+    {
+      "id": 214,
+      "hex": "0x00D6",
+      "name": "Timex Group USA, Inc."
+    },
+    {
+      "id": 215,
+      "hex": "0x00D7",
+      "name": "Qualcomm Technologies, Inc."
+    },
+    {
+      "id": 216,
+      "hex": "0x00D8",
+      "name": "Qualcomm Connected Experiences, Inc."
+    },
+    {
+      "id": 217,
+      "hex": "0x00D9",
+      "name": "Voyetra Turtle Beach"
+    },
+    {
+      "id": 218,
+      "hex": "0x00DA",
+      "name": "txtr GmbH"
+    },
+    {
+      "id": 219,
+      "hex": "0x00DB",
+      "name": "Biosentronics"
+    },
+    {
+      "id": 220,
+      "hex": "0x00DC",
+      "name": "Procter & Gamble"
+    },
+    {
+      "id": 221,
+      "hex": "0x00DD",
+      "name": "Hosiden Corporation"
+    },
+    {
+      "id": 222,
+      "hex": "0x00DE",
+      "name": "Muzik LLC"
+    },
+    {
+      "id": 223,
+      "hex": "0x00DF",
+      "name": "Misfit Wearables Corp"
+    },
+    {
+      "id": 224,
+      "hex": "0x00E0",
+      "name": "Google"
+    },
+    {
+      "id": 225,
+      "hex": "0x00E1",
+      "name": "Danlers Ltd"
+    },
+    {
+      "id": 226,
+      "hex": "0x00E2",
+      "name": "Semilink Inc"
+    },
+    {
+      "id": 227,
+      "hex": "0x00E3",
+      "name": "inMusic Brands, Inc"
+    },
+    {
+      "id": 228,
+      "hex": "0x00E4",
+      "name": "L.S. Research Inc."
+    },
+    {
+      "id": 229,
+      "hex": "0x00E5",
+      "name": "Eden Software Consultants Ltd."
+    },
+    {
+      "id": 230,
+      "hex": "0x00E6",
+      "name": "Freshtemp"
+    },
+    {
+      "id": 231,
+      "hex": "0x00E7",
+      "name": "KS Technologies"
+    },
+    {
+      "id": 232,
+      "hex": "0x00E8",
+      "name": "ACTS Technologies"
+    },
+    {
+      "id": 233,
+      "hex": "0x00E9",
+      "name": "Vtrack Systems"
+    },
+    {
+      "id": 234,
+      "hex": "0x00EA",
+      "name": "Nielsen-Kellerman Company"
+    },
+    {
+      "id": 235,
+      "hex": "0x00EB",
+      "name": "Server Technology Inc."
+    },
+    {
+      "id": 236,
+      "hex": "0x00EC",
+      "name": "BioResarch Associates"
+    },
+    {
+      "id": 237,
+      "hex": "0x00ED",
+      "name": "Jolly Logic, LLC"
+    },
+    {
+      "id": 238,
+      "hex": "0x00EE",
+      "name": "Above Average Outcomes, Inc."
+    },
+    {
+      "id": 239,
+      "hex": "0x00EF",
+      "name": "Bitsplitters GmbH"
+    },
+    {
+      "id": 240,
+      "hex": "0x00F0",
+      "name": "PayPal, Inc."
+    },
+    {
+      "id": 241,
+      "hex": "0x00F1",
+      "name": "Witron Technology Limited"
+    },
+    {
+      "id": 242,
+      "hex": "0x00F2",
+      "name": "Morse Project Inc."
+    },
+    {
+      "id": 243,
+      "hex": "0x00F3",
+      "name": "Kent Displays Inc."
+    },
+    {
+      "id": 244,
+      "hex": "0x00F4",
+      "name": "Nautilus Inc."
+    },
+    {
+      "id": 245,
+      "hex": "0x00F5",
+      "name": "Smartifier Oy"
+    },
+    {
+      "id": 246,
+      "hex": "0x00F6",
+      "name": "Elcometer Limited"
+    },
+    {
+      "id": 247,
+      "hex": "0x00F7",
+      "name": "VSN Technologies, Inc."
+    },
+    {
+      "id": 248,
+      "hex": "0x00F8",
+      "name": "AceUni Corp., Ltd."
+    },
+    {
+      "id": 249,
+      "hex": "0x00F9",
+      "name": "StickNFind"
+    },
+    {
+      "id": 250,
+      "hex": "0x00FA",
+      "name": "Crystal Code AB"
+    },
+    {
+      "id": 251,
+      "hex": "0x00FB",
+      "name": "KOUKAAM a.s."
+    },
+    {
+      "id": 252,
+      "hex": "0x00FC",
+      "name": "Delphi Corporation"
+    },
+    {
+      "id": 253,
+      "hex": "0x00FD",
+      "name": "ValenceTech Limited"
+    },
+    {
+      "id": 254,
+      "hex": "0x00FE",
+      "name": "Stanley Black and Decker"
+    },
+    {
+      "id": 255,
+      "hex": "0x00FF",
+      "name": "Typo Products, LLC"
+    },
+    {
+      "id": 256,
+      "hex": "0x0100",
+      "name": "TomTom International BV"
+    },
+    {
+      "id": 257,
+      "hex": "0x0101",
+      "name": "Fugoo, Inc."
+    },
+    {
+      "id": 258,
+      "hex": "0x0102",
+      "name": "Keiser Corporation"
+    },
+    {
+      "id": 259,
+      "hex": "0x0103",
+      "name": "Bang & Olufsen S/A"
+    },
+    {
+      "id": 260,
+      "hex": "0x0104",
+      "name": "PLUS Location Systems Pty Ltd"
+    },
+    {
+      "id": 261,
+      "hex": "0x0105",
+      "name": "Ubiquitous Computing Technology Corporation"
+    },
+    {
+      "id": 262,
+      "hex": "0x0106",
+      "name": "Innovative Yachtter Solutions"
+    },
+    {
+      "id": 263,
+      "hex": "0x0107",
+      "name": "William Demant Holding A/S"
+    },
+    {
+      "id": 264,
+      "hex": "0x0108",
+      "name": "Chicony Electronics Co., Ltd."
+    },
+    {
+      "id": 265,
+      "hex": "0x0109",
+      "name": "Atus BV"
+    },
+    {
+      "id": 266,
+      "hex": "0x010A",
+      "name": "Codegate Ltd"
+    },
+    {
+      "id": 267,
+      "hex": "0x010B",
+      "name": "ERi, Inc"
+    },
+    {
+      "id": 268,
+      "hex": "0x010C",
+      "name": "Transducers Direct, LLC"
+    },
+    {
+      "id": 269,
+      "hex": "0x010D",
+      "name": "Fujitsu Ten LImited"
+    },
+    {
+      "id": 270,
+      "hex": "0x010E",
+      "name": "Audi AG"
+    },
+    {
+      "id": 271,
+      "hex": "0x010F",
+      "name": "HiSilicon Technologies Col, Ltd."
+    },
+    {
+      "id": 272,
+      "hex": "0x0110",
+      "name": "Nippon Seiki Co., Ltd."
+    },
+    {
+      "id": 273,
+      "hex": "0x0111",
+      "name": "Steelseries ApS"
+    },
+    {
+      "id": 274,
+      "hex": "0x0112",
+      "name": "Visybl Inc."
+    },
+    {
+      "id": 275,
+      "hex": "0x0113",
+      "name": "Openbrain Technologies, Co., Ltd."
+    },
+    {
+      "id": 276,
+      "hex": "0x0114",
+      "name": "Xensr"
+    },
+    {
+      "id": 277,
+      "hex": "0x0115",
+      "name": "e.solutions"
+    },
+    {
+      "id": 278,
+      "hex": "0x0116",
+      "name": "10AK Technologies"
+    },
+    {
+      "id": 279,
+      "hex": "0x0117",
+      "name": "Wimoto Technologies Inc"
+    },
+    {
+      "id": 280,
+      "hex": "0x0118",
+      "name": "Radius Networks, Inc."
+    },
+    {
+      "id": 281,
+      "hex": "0x0119",
+      "name": "Wize Technology Co., Ltd."
+    },
+    {
+      "id": 282,
+      "hex": "0x011A",
+      "name": "Qualcomm Labs, Inc."
+    },
+    {
+      "id": 283,
+      "hex": "0x011B",
+      "name": "Aruba Networks"
+    },
+    {
+      "id": 284,
+      "hex": "0x011C",
+      "name": "Baidu"
+    },
+    {
+      "id": 285,
+      "hex": "0x011D",
+      "name": "Arendi AG"
+    },
+    {
+      "id": 286,
+      "hex": "0x011E",
+      "name": "Skoda Auto a.s."
+    },
+    {
+      "id": 287,
+      "hex": "0x011F",
+      "name": "Volkwagon AG"
+    },
+    {
+      "id": 288,
+      "hex": "0x0120",
+      "name": "Porsche AG"
+    },
+    {
+      "id": 289,
+      "hex": "0x0121",
+      "name": "Sino Wealth Electronic Ltd."
+    },
+    {
+      "id": 290,
+      "hex": "0x0122",
+      "name": "AirTurn, Inc."
+    },
+    {
+      "id": 291,
+      "hex": "0x0123",
+      "name": "Kinsa, Inc"
+    },
+    {
+      "id": 292,
+      "hex": "0x0124",
+      "name": "HID Global"
+    },
+    {
+      "id": 293,
+      "hex": "0x0125",
+      "name": "SEAT es"
+    },
+    {
+      "id": 294,
+      "hex": "0x0126",
+      "name": "Promethean Ltd."
+    },
+    {
+      "id": 295,
+      "hex": "0x0127",
+      "name": "Salutica Allied Solutions"
+    },
+    {
+      "id": 296,
+      "hex": "0x0128",
+      "name": "GPSI Group Pty Ltd"
+    },
+    {
+      "id": 297,
+      "hex": "0x0129",
+      "name": "Nimble Devices Oy"
+    },
+    {
+      "id": 298,
+      "hex": "0x012A",
+      "name": "Changzhou Yongse Infotech Co., Ltd."
+    },
+    {
+      "id": 299,
+      "hex": "0x012B",
+      "name": "SportIQ"
+    },
+    {
+      "id": 300,
+      "hex": "0x012C",
+      "name": "TEMEC Instruments B.V."
+    },
+    {
+      "id": 301,
+      "hex": "0x012D",
+      "name": "Sony Corporation"
+    },
+    {
+      "id": 302,
+      "hex": "0x012E",
+      "name": "ASSA ABLOY"
+    },
+    {
+      "id": 303,
+      "hex": "0x012F",
+      "name": "Clarion Co. Inc."
+    },
+    {
+      "id": 304,
+      "hex": "0x0130",
+      "name": "Warehouse Innovations"
+    },
+    {
+      "id": 305,
+      "hex": "0x0131",
+      "name": "Cypress Semiconductor"
+    },
+    {
+      "id": 306,
+      "hex": "0x0132",
+      "name": "MADS Inc"
+    },
+    {
+      "id": 307,
+      "hex": "0x0133",
+      "name": "Blue Maestro Limited"
+    },
+    {
+      "id": 308,
+      "hex": "0x0134",
+      "name": "Resolution Products, Ltd."
+    },
+    {
+      "id": 309,
+      "hex": "0x0135",
+      "name": "Aireware LLC"
+    },
+    {
+      "id": 310,
+      "hex": "0x0136",
+      "name": "Seed Labs, Inc. (formerly ETC sp. z.o.o.)"
+    },
+    {
+      "id": 311,
+      "hex": "0x0137",
+      "name": "Prestigio Plaza Ltd."
+    },
+    {
+      "id": 312,
+      "hex": "0x0138",
+      "name": "NTEO Inc."
+    },
+    {
+      "id": 313,
+      "hex": "0x0139",
+      "name": "Focus Systems Corporation"
+    },
+    {
+      "id": 314,
+      "hex": "0x013A",
+      "name": "Tencent Holdings Ltd."
+    },
+    {
+      "id": 315,
+      "hex": "0x013B",
+      "name": "Allegion"
+    },
+    {
+      "id": 316,
+      "hex": "0x013C",
+      "name": "Murata Manufacturing Co., Ltd."
+    },
+    {
+      "id": 317,
+      "hex": "0x013D",
+      "name": "WirelessWERX"
+    },
+    {
+      "id": 318,
+      "hex": "0x013E",
+      "name": "Nod, Inc."
+    },
+    {
+      "id": 319,
+      "hex": "0x013F",
+      "name": "B&B Manufacturing Company"
+    },
+    {
+      "id": 320,
+      "hex": "0x0140",
+      "name": "Alpine Electronics (China) Co., Ltd"
+    },
+    {
+      "id": 321,
+      "hex": "0x0141",
+      "name": "FedEx Services"
+    },
+    {
+      "id": 322,
+      "hex": "0x0142",
+      "name": "Grape Systems Inc."
+    },
+    {
+      "id": 323,
+      "hex": "0x0143",
+      "name": "Bkon Connect"
+    },
+    {
+      "id": 324,
+      "hex": "0x0144",
+      "name": "Lintech GmbH"
+    },
+    {
+      "id": 325,
+      "hex": "0x0145",
+      "name": "Novatel Wireless"
+    },
+    {
+      "id": 326,
+      "hex": "0x0146",
+      "name": "Ciright"
+    },
+    {
+      "id": 327,
+      "hex": "0x0147",
+      "name": "Mighty Cast, Inc."
+    },
+    {
+      "id": 328,
+      "hex": "0x0148",
+      "name": "Ambimat Electronics"
+    },
+    {
+      "id": 329,
+      "hex": "0x0149",
+      "name": "Perytons Ltd."
+    },
+    {
+      "id": 330,
+      "hex": "0x014A",
+      "name": "Tivoli Audio, LLC"
+    },
+    {
+      "id": 331,
+      "hex": "0x014B",
+      "name": "Master Lock"
+    },
+    {
+      "id": 332,
+      "hex": "0x014C",
+      "name": "Mesh-Net Ltd"
+    },
+    {
+      "id": 333,
+      "hex": "0x014D",
+      "name": "HUIZHOU DESAY SV AUTOMOTIVE CO., LTD."
+    },
+    {
+      "id": 334,
+      "hex": "0x014E",
+      "name": "Tangerine, Inc."
+    },
+    {
+      "id": 335,
+      "hex": "0x014F",
+      "name": "B&W Group Ltd."
+    },
+    {
+      "id": 336,
+      "hex": "0x0150",
+      "name": "Pioneer Corporation"
+    },
+    {
+      "id": 337,
+      "hex": "0x0151",
+      "name": "OnBeep"
+    },
+    {
+      "id": 338,
+      "hex": "0x0152",
+      "name": "Vernier Software & Technology"
+    },
+    {
+      "id": 339,
+      "hex": "0x0153",
+      "name": "ROL Ergo"
+    },
+    {
+      "id": 340,
+      "hex": "0x0154",
+      "name": "Pebble Technology"
+    },
+    {
+      "id": 341,
+      "hex": "0x0155",
+      "name": "NETATMO"
+    },
+    {
+      "id": 342,
+      "hex": "0x0156",
+      "name": "Accumulate AB"
+    },
+    {
+      "id": 343,
+      "hex": "0x0157",
+      "name": "Anhui Huami Information Technology Co., Ltd."
+    },
+    {
+      "id": 344,
+      "hex": "0x0158",
+      "name": "Inmite s.r.o."
+    },
+    {
+      "id": 345,
+      "hex": "0x0159",
+      "name": "ChefSteps, Inc."
+    },
+    {
+      "id": 346,
+      "hex": "0x015A",
+      "name": "micas AG"
+    },
+    {
+      "id": 347,
+      "hex": "0x015B",
+      "name": "Biomedical Research Ltd."
+    },
+    {
+      "id": 348,
+      "hex": "0x015C",
+      "name": "Pitius Tec S.L."
+    },
+    {
+      "id": 349,
+      "hex": "0x015D",
+      "name": "Estimote, Inc."
+    },
+    {
+      "id": 350,
+      "hex": "0x015E",
+      "name": "Unikey Technologies, Inc."
+    },
+    {
+      "id": 351,
+      "hex": "0x015F",
+      "name": "Timer Cap Co."
+    },
+    {
+      "id": 352,
+      "hex": "0x0160",
+      "name": "AwoX"
+    },
+    {
+      "id": 353,
+      "hex": "0x0161",
+      "name": "yikes"
+    },
+    {
+      "id": 354,
+      "hex": "0x0162",
+      "name": "MADSGlobalNZ Ltd."
+    },
+    {
+      "id": 355,
+      "hex": "0x0163",
+      "name": "PCH International"
+    },
+    {
+      "id": 356,
+      "hex": "0x0164",
+      "name": "Qingdao Yeelink Information Technology Co., Ltd."
+    },
+    {
+      "id": 357,
+      "hex": "0x0165",
+      "name": "Milwaukee Tool (Formally Milwaukee Electric Tools)"
+    },
+    {
+      "id": 358,
+      "hex": "0x0166",
+      "name": "MISHIK Pte Ltd"
+    },
+    {
+      "id": 359,
+      "hex": "0x0167",
+      "name": "Bayer HealthCare"
+    },
+    {
+      "id": 360,
+      "hex": "0x0168",
+      "name": "Spicebox LLC"
+    },
+    {
+      "id": 361,
+      "hex": "0x0169",
+      "name": "emberlight"
+    },
+    {
+      "id": 362,
+      "hex": "0x016A",
+      "name": "Cooper-Atkins Corporation"
+    },
+    {
+      "id": 363,
+      "hex": "0x016B",
+      "name": "Qblinks"
+    },
+    {
+      "id": 364,
+      "hex": "0x016C",
+      "name": "MYSPHERA"
+    },
+    {
+      "id": 365,
+      "hex": "0x016D",
+      "name": "LifeScan Inc"
+    },
+    {
+      "id": 366,
+      "hex": "0x016E",
+      "name": "Volantic AB"
+    },
+    {
+      "id": 367,
+      "hex": "0x016F",
+      "name": "Podo Labs, Inc"
+    },
+    {
+      "id": 368,
+      "hex": "0x0170",
+      "name": "Roche Diabetes Care AG"
+    },
+    {
+      "id": 369,
+      "hex": "0x0171",
+      "name": "Amazon Fulfillment Service"
+    },
+    {
+      "id": 370,
+      "hex": "0x0172",
+      "name": "Connovate Technology Private Limited"
+    },
+    {
+      "id": 371,
+      "hex": "0x0173",
+      "name": "Kocomojo, LLC"
+    },
+    {
+      "id": 372,
+      "hex": "0x0174",
+      "name": "EveryKey LLC"
+    },
+    {
+      "id": 373,
+      "hex": "0x0175",
+      "name": "Dynamic Controls"
+    },
+    {
+      "id": 374,
+      "hex": "0x0176",
+      "name": "SentriLock"
+    },
+    {
+      "id": 375,
+      "hex": "0x0177",
+      "name": "I-SYST inc."
+    },
+    {
+      "id": 376,
+      "hex": "0x0178",
+      "name": "CASIO COMPUTER CO., LTD."
+    },
+    {
+      "id": 377,
+      "hex": "0x0179",
+      "name": "LAPIS Semiconductor Co., Ltd."
+    },
+    {
+      "id": 378,
+      "hex": "0x017A",
+      "name": "Telemonitor, Inc."
+    },
+    {
+      "id": 379,
+      "hex": "0x017B",
+      "name": "taskit GmbH"
+    },
+    {
+      "id": 380,
+      "hex": "0x017C",
+      "name": "Daimler AG"
+    },
+    {
+      "id": 381,
+      "hex": "0x017D",
+      "name": "BatAndCat"
+    },
+    {
+      "id": 382,
+      "hex": "0x017E",
+      "name": "BluDotz Ltd"
+    },
+    {
+      "id": 383,
+      "hex": "0x017F",
+      "name": "XTel ApS"
+    },
+    {
+      "id": 384,
+      "hex": "0x0180",
+      "name": "Gigaset Communications GmbH"
+    },
+    {
+      "id": 385,
+      "hex": "0x0181",
+      "name": "Gecko Health Innovations, Inc."
+    },
+    {
+      "id": 386,
+      "hex": "0x0182",
+      "name": "HOP Ubiquitous"
+    },
+    {
+      "id": 387,
+      "hex": "0x0183",
+      "name": "Walt Disney"
+    },
+    {
+      "id": 388,
+      "hex": "0x0184",
+      "name": "Nectar"
+    },
+    {
+      "id": 389,
+      "hex": "0x0185",
+      "name": "bel'apps LLC"
+    },
+    {
+      "id": 390,
+      "hex": "0x0186",
+      "name": "CORE Lighting Ltd"
+    },
+    {
+      "id": 391,
+      "hex": "0x0187",
+      "name": "Seraphim Sense Ltd"
+    },
+    {
+      "id": 392,
+      "hex": "0x0188",
+      "name": "Unico RBC"
+    },
+    {
+      "id": 393,
+      "hex": "0x0189",
+      "name": "Physical Enterprises Inc."
+    },
+    {
+      "id": 394,
+      "hex": "0x018A",
+      "name": "Able Trend Technology Limited"
+    },
+    {
+      "id": 395,
+      "hex": "0x018B",
+      "name": "Konica Minolta, Inc."
+    },
+    {
+      "id": 396,
+      "hex": "0x018C",
+      "name": "Wilo SE"
+    },
+    {
+      "id": 397,
+      "hex": "0x018D",
+      "name": "Extron Design Services"
+    },
+    {
+      "id": 398,
+      "hex": "0x018E",
+      "name": "Fitbit, Inc."
+    },
+    {
+      "id": 399,
+      "hex": "0x018F",
+      "name": "Fireflies Systems"
+    },
+    {
+      "id": 400,
+      "hex": "0x0190",
+      "name": "Intelletto Technologies Inc."
+    },
+    {
+      "id": 401,
+      "hex": "0x0191",
+      "name": "FDK CORPORATION"
+    },
+    {
+      "id": 402,
+      "hex": "0x0192",
+      "name": "Cloudleaf, Inc"
+    },
+    {
+      "id": 403,
+      "hex": "0x0193",
+      "name": "Maveric Automation LLC"
+    },
+    {
+      "id": 404,
+      "hex": "0x0194",
+      "name": "Acoustic Stream Corporation"
+    },
+    {
+      "id": 405,
+      "hex": "0x0195",
+      "name": "Zuli"
+    },
+    {
+      "id": 406,
+      "hex": "0x0196",
+      "name": "Paxton Access Ltd"
+    },
+    {
+      "id": 407,
+      "hex": "0x0197",
+      "name": "WiSilica Inc."
+    },
+    {
+      "id": 408,
+      "hex": "0x0198",
+      "name": "VENGIT Korltolt Felelssg Trsasg"
+    },
+    {
+      "id": 409,
+      "hex": "0x0199",
+      "name": "SALTO SYSTEMS S.L."
+    },
+    {
+      "id": 410,
+      "hex": "0x019A",
+      "name": "TRON Forum (formerly T-Engine Forum)"
+    },
+    {
+      "id": 411,
+      "hex": "0x019B",
+      "name": "CUBETECH s.r.o."
+    },
+    {
+      "id": 412,
+      "hex": "0x019C",
+      "name": "Cokiya Incorporated"
+    },
+    {
+      "id": 413,
+      "hex": "0x019D",
+      "name": "CVS Health"
+    },
+    {
+      "id": 414,
+      "hex": "0x019E",
+      "name": "Ceruus"
+    },
+    {
+      "id": 415,
+      "hex": "0x019F",
+      "name": "Strainstall Ltd"
+    },
+    {
+      "id": 416,
+      "hex": "0x01A0",
+      "name": "Channel Enterprises (HK) Ltd."
+    },
+    {
+      "id": 417,
+      "hex": "0x01A1",
+      "name": "FIAMM"
+    },
+    {
+      "id": 418,
+      "hex": "0x01A2",
+      "name": "GIGALANE.CO.,LTD"
+    },
+    {
+      "id": 419,
+      "hex": "0x01A3",
+      "name": "EROAD"
+    },
+    {
+      "id": 420,
+      "hex": "0x01A4",
+      "name": "Mine Safety Appliances"
+    },
+    {
+      "id": 421,
+      "hex": "0x01A5",
+      "name": "Icon Health and Fitness"
+    },
+    {
+      "id": 422,
+      "hex": "0x01A6",
+      "name": "Asandoo GmbH"
+    },
+    {
+      "id": 423,
+      "hex": "0x01A7",
+      "name": "ENERGOUS CORPORATION"
+    },
+    {
+      "id": 424,
+      "hex": "0x01A8",
+      "name": "Taobao"
+    },
+    {
+      "id": 425,
+      "hex": "0x01A9",
+      "name": "Canon Inc."
+    },
+    {
+      "id": 426,
+      "hex": "0x01AA",
+      "name": "Geophysical Technology Inc."
+    },
+    {
+      "id": 427,
+      "hex": "0x01AB",
+      "name": "Facebook, Inc."
+    },
+    {
+      "id": 428,
+      "hex": "0x01AC",
+      "name": "Nipro Diagnostics, Inc."
+    },
+    {
+      "id": 429,
+      "hex": "0x01AD",
+      "name": "FlightSafety International"
+    },
+    {
+      "id": 430,
+      "hex": "0x01AE",
+      "name": "Earlens Corporation"
+    },
+    {
+      "id": 431,
+      "hex": "0x01AF",
+      "name": "Sunrise Micro Devices, Inc."
+    },
+    {
+      "id": 432,
+      "hex": "0x01B0",
+      "name": "Star Micronics Co., Ltd."
+    },
+    {
+      "id": 433,
+      "hex": "0x01B1",
+      "name": "Netizens Sp. z o.o."
+    },
+    {
+      "id": 434,
+      "hex": "0x01B2",
+      "name": "Nymi Inc."
+    },
+    {
+      "id": 435,
+      "hex": "0x01B3",
+      "name": "Nytec, Inc."
+    },
+    {
+      "id": 436,
+      "hex": "0x01B4",
+      "name": "Trineo Sp. z o.o."
+    },
+    {
+      "id": 437,
+      "hex": "0x01B5",
+      "name": "Nest Labs Inc."
+    },
+    {
+      "id": 438,
+      "hex": "0x01B6",
+      "name": "LM Technologies Ltd"
+    },
+    {
+      "id": 439,
+      "hex": "0x01B7",
+      "name": "General Electric Company"
+    },
+    {
+      "id": 440,
+      "hex": "0x01B8",
+      "name": "i+D3 S.L."
+    },
+    {
+      "id": 441,
+      "hex": "0x01B9",
+      "name": "HANA Micron"
+    },
+    {
+      "id": 442,
+      "hex": "0x01BA",
+      "name": "Stages Cycling LLC"
+    },
+    {
+      "id": 443,
+      "hex": "0x01BB",
+      "name": "Cochlear Bone Anchored Solutions AB"
+    },
+    {
+      "id": 444,
+      "hex": "0x01BC",
+      "name": "SenionLab AB"
+    },
+    {
+      "id": 445,
+      "hex": "0x01BD",
+      "name": "Syszone Co., Ltd"
+    },
+    {
+      "id": 446,
+      "hex": "0x01BE",
+      "name": "Pulsate Mobile Ltd."
+    },
+    {
+      "id": 447,
+      "hex": "0x01BF",
+      "name": "Hong Kong HunterSun Electronic Limited"
+    },
+    {
+      "id": 448,
+      "hex": "0x01C0",
+      "name": "pironex GmbH"
+    },
+    {
+      "id": 449,
+      "hex": "0x01C1",
+      "name": "BRADATECH Corp."
+    },
+    {
+      "id": 450,
+      "hex": "0x01C2",
+      "name": "Transenergooil AG"
+    },
+    {
+      "id": 451,
+      "hex": "0x01C3",
+      "name": "Bunch"
+    },
+    {
+      "id": 452,
+      "hex": "0x01C4",
+      "name": "DME Microelectronics"
+    },
+    {
+      "id": 453,
+      "hex": "0x01C5",
+      "name": "Bitcraze AB"
+    },
+    {
+      "id": 454,
+      "hex": "0x01C6",
+      "name": "HASWARE Inc."
+    },
+    {
+      "id": 455,
+      "hex": "0x01C7",
+      "name": "Abiogenix Inc."
+    },
+    {
+      "id": 456,
+      "hex": "0x01C8",
+      "name": "Poly-Control ApS"
+    },
+    {
+      "id": 457,
+      "hex": "0x01C9",
+      "name": "Avi-on"
+    },
+    {
+      "id": 458,
+      "hex": "0x01CA",
+      "name": "Laerdal Medical AS"
+    },
+    {
+      "id": 459,
+      "hex": "0x01CB",
+      "name": "Fetch My Pet"
+    },
+    {
+      "id": 460,
+      "hex": "0x01CC",
+      "name": "Sam Labs Ltd."
+    },
+    {
+      "id": 461,
+      "hex": "0x01CD",
+      "name": "Chengdu Synwing Technology Ltd"
+    },
+    {
+      "id": 462,
+      "hex": "0x01CE",
+      "name": "HOUWA SYSTEM DESIGN, k.k."
+    },
+    {
+      "id": 463,
+      "hex": "0x01CF",
+      "name": "BSH"
+    },
+    {
+      "id": 464,
+      "hex": "0x01D0",
+      "name": "Primus Inter Pares Ltd"
+    },
+    {
+      "id": 465,
+      "hex": "0x01D1",
+      "name": "August Home, Inc"
+    },
+    {
+      "id": 466,
+      "hex": "0x01D2",
+      "name": "Gill Electronics"
+    },
+    {
+      "id": 467,
+      "hex": "0x01D3",
+      "name": "Sky Wave Design"
+    },
+    {
+      "id": 468,
+      "hex": "0x01D4",
+      "name": "Newlab S.r.l."
+    },
+    {
+      "id": 469,
+      "hex": "0x01D5",
+      "name": "ELAD srl"
+    },
+    {
+      "id": 470,
+      "hex": "0x01D6",
+      "name": "G-wearables inc."
+    },
+    {
+      "id": 471,
+      "hex": "0x01D7",
+      "name": "Squadrone Systems Inc."
+    },
+    {
+      "id": 472,
+      "hex": "0x01D8",
+      "name": "Code Corporation"
+    },
+    {
+      "id": 473,
+      "hex": "0x01D9",
+      "name": "Savant Systems LLC"
+    },
+    {
+      "id": 474,
+      "hex": "0x01DA",
+      "name": "Logitech International SA"
+    },
+    {
+      "id": 475,
+      "hex": "0x01DB",
+      "name": "Innblue Consulting"
+    },
+    {
+      "id": 476,
+      "hex": "0x01DC",
+      "name": "iParking Ltd."
+    },
+    {
+      "id": 477,
+      "hex": "0x01DD",
+      "name": "Koninklijke Philips Electronics N.V."
+    },
+    {
+      "id": 478,
+      "hex": "0x01DE",
+      "name": "Minelab Electronics Pty Limited"
+    },
+    {
+      "id": 479,
+      "hex": "0x01DF",
+      "name": "Bison Group Ltd."
+    },
+    {
+      "id": 480,
+      "hex": "0x01E0",
+      "name": "Widex A/S"
+    },
+    {
+      "id": 481,
+      "hex": "0x01E1",
+      "name": "Jolla Ltd"
+    },
+    {
+      "id": 482,
+      "hex": "0x01E2",
+      "name": "Lectronix, Inc."
+    },
+    {
+      "id": 483,
+      "hex": "0x01E3",
+      "name": "Caterpillar Inc"
+    },
+    {
+      "id": 484,
+      "hex": "0x01E4",
+      "name": "Freedom Innovations"
+    },
+    {
+      "id": 485,
+      "hex": "0x01E5",
+      "name": "Dynamic Devices Ltd"
+    },
+    {
+      "id": 486,
+      "hex": "0x01E6",
+      "name": "Technology Solutions (UK) Ltd"
+    },
+    {
+      "id": 487,
+      "hex": "0x01E7",
+      "name": "IPS Group Inc."
+    },
+    {
+      "id": 488,
+      "hex": "0x01E8",
+      "name": "STIR"
+    },
+    {
+      "id": 489,
+      "hex": "0x01E9",
+      "name": "Sano, Inc."
+    },
+    {
+      "id": 490,
+      "hex": "0x01EA",
+      "name": "Advanced Application Design, Inc."
+    },
+    {
+      "id": 491,
+      "hex": "0x01EB",
+      "name": "AutoMap LLC"
+    },
+    {
+      "id": 492,
+      "hex": "0x01EC",
+      "name": "Spreadtrum Communications Shanghai Ltd"
+    },
+    {
+      "id": 493,
+      "hex": "0x01ED",
+      "name": "CuteCircuit LTD"
+    },
+    {
+      "id": 494,
+      "hex": "0x01EE",
+      "name": "Valeo Service"
+    },
+    {
+      "id": 495,
+      "hex": "0x01EF",
+      "name": "Fullpower Technologies, Inc."
+    },
+    {
+      "id": 496,
+      "hex": "0x01F0",
+      "name": "KloudNation"
+    },
+    {
+      "id": 497,
+      "hex": "0x01F1",
+      "name": "Zebra Technologies Corporation"
+    },
+    {
+      "id": 498,
+      "hex": "0x01F2",
+      "name": "Itron, Inc."
+    },
+    {
+      "id": 499,
+      "hex": "0x01F3",
+      "name": "The University of Tokyo"
+    },
+    {
+      "id": 500,
+      "hex": "0x01F4",
+      "name": "UTC Fire and Security"
+    },
+    {
+      "id": 501,
+      "hex": "0x01F5",
+      "name": "Cool Webthings Limited"
+    },
+    {
+      "id": 502,
+      "hex": "0x01F6",
+      "name": "DJO Global"
+    },
+    {
+      "id": 503,
+      "hex": "0x01F7",
+      "name": "Gelliner Limited"
+    },
+    {
+      "id": 504,
+      "hex": "0x01F8",
+      "name": "Anyka (Guangzhou) Microelectronics Technology Co, LTD"
+    },
+    {
+      "id": 505,
+      "hex": "0x01F9",
+      "name": "Medtronic Inc."
+    },
+    {
+      "id": 506,
+      "hex": "0x01FA",
+      "name": "Gozio Inc."
+    },
+    {
+      "id": 507,
+      "hex": "0x01FB",
+      "name": "Form Lifting, LLC"
+    },
+    {
+      "id": 508,
+      "hex": "0x01FC",
+      "name": "Wahoo Fitness, LLC"
+    },
+    {
+      "id": 509,
+      "hex": "0x01FD",
+      "name": "Kontakt Micro-Location Sp. z o.o."
+    },
+    {
+      "id": 510,
+      "hex": "0x01FE",
+      "name": "Radio Systems Corporation"
+    },
+    {
+      "id": 511,
+      "hex": "0x01FF",
+      "name": "Freescale Semiconductor, Inc."
+    },
+    {
+      "id": 512,
+      "hex": "0x0200",
+      "name": "Verifone Systems Pte Ltd. Taiwan Branch"
+    },
+    {
+      "id": 513,
+      "hex": "0x0201",
+      "name": "AR Timing"
+    },
+    {
+      "id": 514,
+      "hex": "0x0202",
+      "name": "Rigado LLC"
+    },
+    {
+      "id": 515,
+      "hex": "0x0203",
+      "name": "Kemppi Oy"
+    },
+    {
+      "id": 516,
+      "hex": "0x0204",
+      "name": "Tapcentive Inc."
+    },
+    {
+      "id": 517,
+      "hex": "0x0205",
+      "name": "Smartbotics Inc."
+    },
+    {
+      "id": 518,
+      "hex": "0x0206",
+      "name": "Otter Products, LLC"
+    },
+    {
+      "id": 519,
+      "hex": "0x0207",
+      "name": "STEMP Inc."
+    },
+    {
+      "id": 520,
+      "hex": "0x0208",
+      "name": "LumiGeek LLC"
+    },
+    {
+      "id": 521,
+      "hex": "0x0209",
+      "name": "InvisionHeart Inc."
+    },
+    {
+      "id": 522,
+      "hex": "0x020A",
+      "name": "Macnica Inc."
+    },
+    {
+      "id": 523,
+      "hex": "0x020B",
+      "name": "Jaguar Land Rover Limited"
+    },
+    {
+      "id": 524,
+      "hex": "0x020C",
+      "name": "CoroWare Technologies, Inc"
+    },
+    {
+      "id": 525,
+      "hex": "0x020D",
+      "name": "Simplo Technology Co., LTD"
+    },
+    {
+      "id": 526,
+      "hex": "0x020E",
+      "name": "Omron Healthcare Co., LTD"
+    },
+    {
+      "id": 527,
+      "hex": "0x020F",
+      "name": "Comodule GMBH"
+    },
+    {
+      "id": 528,
+      "hex": "0x0210",
+      "name": "ikeGPS"
+    },
+    {
+      "id": 529,
+      "hex": "0x0211",
+      "name": "Telink Semiconductor Co. Ltd"
+    },
+    {
+      "id": 530,
+      "hex": "0x0212",
+      "name": "Interplan Co., Ltd"
+    },
+    {
+      "id": 531,
+      "hex": "0x0213",
+      "name": "Wyler AG"
+    },
+    {
+      "id": 532,
+      "hex": "0x0214",
+      "name": "IK Multimedia Production srl"
+    },
+    {
+      "id": 533,
+      "hex": "0x0215",
+      "name": "Lukoton Experience Oy"
+    },
+    {
+      "id": 534,
+      "hex": "0x0216",
+      "name": "MTI Ltd"
+    },
+    {
+      "id": 535,
+      "hex": "0x0217",
+      "name": "Tech4home, Lda"
+    },
+    {
+      "id": 536,
+      "hex": "0x0218",
+      "name": "Hiotech AB"
+    },
+    {
+      "id": 537,
+      "hex": "0x0219",
+      "name": "DOTT Limited"
+    },
+    {
+      "id": 538,
+      "hex": "0x021A",
+      "name": "Blue Speck Labs, LLC"
+    },
+    {
+      "id": 539,
+      "hex": "0x021B",
+      "name": "Cisco Systems, Inc"
+    },
+    {
+      "id": 540,
+      "hex": "0x021C",
+      "name": "Mobicomm Inc"
+    },
+    {
+      "id": 541,
+      "hex": "0x021D",
+      "name": "Edamic"
+    },
+    {
+      "id": 542,
+      "hex": "0x021E",
+      "name": "Goodnet, Ltd"
+    },
+    {
+      "id": 543,
+      "hex": "0x021F",
+      "name": "Luster Leaf Products Inc"
+    },
+    {
+      "id": 544,
+      "hex": "0x0220",
+      "name": "Manus Machina BV"
+    },
+    {
+      "id": 545,
+      "hex": "0x0221",
+      "name": "Mobiquity Networks Inc"
+    },
+    {
+      "id": 546,
+      "hex": "0x0222",
+      "name": "Praxis Dynamics"
+    },
+    {
+      "id": 547,
+      "hex": "0x0223",
+      "name": "Philip Morris Products S.A."
+    },
+    {
+      "id": 548,
+      "hex": "0x0224",
+      "name": "Comarch SA"
+    },
+    {
+      "id": 549,
+      "hex": "0x0225",
+      "name": "Nestl Nespresso S.A."
+    },
+    {
+      "id": 550,
+      "hex": "0x0226",
+      "name": "Merlinia A/S"
+    },
+    {
+      "id": 551,
+      "hex": "0x0227",
+      "name": "LifeBEAM Technologies"
+    },
+    {
+      "id": 552,
+      "hex": "0x0228",
+      "name": "Twocanoes Labs, LLC"
+    },
+    {
+      "id": 553,
+      "hex": "0x0229",
+      "name": "Muoverti Limited"
+    },
+    {
+      "id": 554,
+      "hex": "0x022A",
+      "name": "Stamer Musikanlagen GMBH"
+    },
+    {
+      "id": 555,
+      "hex": "0x022B",
+      "name": "Tesla Motors"
+    },
+    {
+      "id": 556,
+      "hex": "0x022C",
+      "name": "Pharynks Corporation"
+    },
+    {
+      "id": 557,
+      "hex": "0x022D",
+      "name": "Lupine"
+    },
+    {
+      "id": 558,
+      "hex": "0x022E",
+      "name": "Siemens AG"
+    },
+    {
+      "id": 559,
+      "hex": "0x022F",
+      "name": "Huami (Shanghai) Culture Communication CO., LTD"
+    },
+    {
+      "id": 560,
+      "hex": "0x0230",
+      "name": "Foster Electric Company, Ltd"
+    },
+    {
+      "id": 561,
+      "hex": "0x0231",
+      "name": "ETA SA"
+    },
+    {
+      "id": 562,
+      "hex": "0x0232",
+      "name": "x-Senso Solutions Kft"
+    },
+    {
+      "id": 563,
+      "hex": "0x0233",
+      "name": "Shenzhen SuLong Communication Ltd"
+    },
+    {
+      "id": 564,
+      "hex": "0x0234",
+      "name": "FengFan (BeiJing) Technology Co, Ltd"
+    },
+    {
+      "id": 565,
+      "hex": "0x0235",
+      "name": "Qrio Inc"
+    },
+    {
+      "id": 566,
+      "hex": "0x0236",
+      "name": "Pitpatpet Ltd"
+    },
+    {
+      "id": 567,
+      "hex": "0x0237",
+      "name": "MSHeli s.r.l."
+    },
+    {
+      "id": 568,
+      "hex": "0x0238",
+      "name": "Trakm8 Ltd"
+    },
+    {
+      "id": 569,
+      "hex": "0x0239",
+      "name": "JIN CO, Ltd"
+    },
+    {
+      "id": 570,
+      "hex": "0x023A",
+      "name": "Alatech Tehnology"
+    },
+    {
+      "id": 571,
+      "hex": "0x023B",
+      "name": "Beijing CarePulse Electronic Technology Co, Ltd"
+    },
+    {
+      "id": 572,
+      "hex": "0x023C",
+      "name": "Awarepoint"
+    },
+    {
+      "id": 573,
+      "hex": "0x023D",
+      "name": "ViCentra B.V."
+    },
+    {
+      "id": 574,
+      "hex": "0x023E",
+      "name": "Raven Industries"
+    },
+    {
+      "id": 575,
+      "hex": "0x023F",
+      "name": "WaveWare Technologies Inc."
+    },
+    {
+      "id": 576,
+      "hex": "0x0240",
+      "name": "Argenox Technologies"
+    },
+    {
+      "id": 577,
+      "hex": "0x0241",
+      "name": "Bragi GmbH"
+    },
+    {
+      "id": 578,
+      "hex": "0x0242",
+      "name": "16Lab Inc"
+    },
+    {
+      "id": 579,
+      "hex": "0x0243",
+      "name": "Masimo Corp"
+    },
+    {
+      "id": 580,
+      "hex": "0x0244",
+      "name": "Iotera Inc"
+    },
+    {
+      "id": 581,
+      "hex": "0x0245",
+      "name": "Endress+Hauser"
+    },
+    {
+      "id": 582,
+      "hex": "0x0246",
+      "name": "ACKme Networks, Inc."
+    },
+    {
+      "id": 583,
+      "hex": "0x0247",
+      "name": "FiftyThree Inc."
+    },
+    {
+      "id": 584,
+      "hex": "0x0248",
+      "name": "Parker Hannifin Corp"
+    },
+    {
+      "id": 585,
+      "hex": "0x0249",
+      "name": "Transcranial Ltd"
+    },
+    {
+      "id": 586,
+      "hex": "0x024A",
+      "name": "Uwatec AG"
+    },
+    {
+      "id": 587,
+      "hex": "0x024B",
+      "name": "Orlan LLC"
+    },
+    {
+      "id": 588,
+      "hex": "0x024C",
+      "name": "Blue Clover Devices"
+    },
+    {
+      "id": 589,
+      "hex": "0x024D",
+      "name": "M-Way Solutions GmbH"
+    },
+    {
+      "id": 590,
+      "hex": "0x024E",
+      "name": "Microtronics Engineering GmbH"
+    },
+    {
+      "id": 591,
+      "hex": "0x024F",
+      "name": "Schneider Schreibgerte GmbH"
+    },
+    {
+      "id": 592,
+      "hex": "0x0250",
+      "name": "Sapphire Circuits LLC"
+    },
+    {
+      "id": 593,
+      "hex": "0x0251",
+      "name": "Lumo Bodytech Inc."
+    },
+    {
+      "id": 594,
+      "hex": "0x0252",
+      "name": "UKC Technosolution"
+    },
+    {
+      "id": 595,
+      "hex": "0x0253",
+      "name": "Xicato Inc."
+    },
+    {
+      "id": 596,
+      "hex": "0x0254",
+      "name": "Playbrush"
+    },
+    {
+      "id": 597,
+      "hex": "0x0255",
+      "name": "Dai Nippon Printing Co., Ltd."
+    },
+    {
+      "id": 598,
+      "hex": "0x0256",
+      "name": "G24 Power Limited"
+    },
+    {
+      "id": 599,
+      "hex": "0x0257",
+      "name": "AdBabble Local Commerce Inc."
+    },
+    {
+      "id": 600,
+      "hex": "0x0258",
+      "name": "Devialet SA"
+    },
+    {
+      "id": 601,
+      "hex": "0x0259",
+      "name": "ALTYOR"
+    },
+    {
+      "id": 602,
+      "hex": "0x025A",
+      "name": "University of Applied Sciences Valais/Haute Ecole Valaisanne"
+    },
+    {
+      "id": 603,
+      "hex": "0x025B",
+      "name": "Five Interactive, LLC dba Zendo"
+    },
+    {
+      "id": 604,
+      "hex": "0x025C",
+      "name": "NetEaseHangzhouNetwork co.Ltd."
+    },
+    {
+      "id": 605,
+      "hex": "0x025D",
+      "name": "Lexmark International Inc."
+    },
+    {
+      "id": 606,
+      "hex": "0x025E",
+      "name": "Fluke Corporation"
+    },
+    {
+      "id": 607,
+      "hex": "0x025F",
+      "name": "Yardarm Technologies"
+    },
+    {
+      "id": 608,
+      "hex": "0x0260",
+      "name": "SensaRx"
+    },
+    {
+      "id": 609,
+      "hex": "0x0261",
+      "name": "SECVRE GmbH"
+    },
+    {
+      "id": 610,
+      "hex": "0x0262",
+      "name": "Glacial Ridge Technologies"
+    },
+    {
+      "id": 611,
+      "hex": "0x0263",
+      "name": "Identiv, Inc."
+    },
+    {
+      "id": 612,
+      "hex": "0x0264",
+      "name": "DDS, Inc."
+    },
+    {
+      "id": 613,
+      "hex": "0x0265",
+      "name": "SMK Corporation"
+    },
+    {
+      "id": 614,
+      "hex": "0x0266",
+      "name": "Schawbel Technologies LLC"
+    },
+    {
+      "id": 615,
+      "hex": "0x0267",
+      "name": "XMI Systems SA"
+    },
+    {
+      "id": 616,
+      "hex": "0x0268",
+      "name": "Cerevo"
+    },
+    {
+      "id": 617,
+      "hex": "0x0269",
+      "name": "Torrox GmbH & Co KG"
+    },
+    {
+      "id": 618,
+      "hex": "0x026A",
+      "name": "Gemalto"
+    },
+    {
+      "id": 619,
+      "hex": "0x026B",
+      "name": "DEKA Research & Development Corp."
+    },
+    {
+      "id": 620,
+      "hex": "0x026C",
+      "name": "Domster Tadeusz Szydlowski"
+    },
+    {
+      "id": 621,
+      "hex": "0x026D",
+      "name": "Technogym SPA"
+    },
+    {
+      "id": 622,
+      "hex": "0x026E",
+      "name": "FLEURBAEY BVBA"
+    },
+    {
+      "id": 623,
+      "hex": "0x026F",
+      "name": "Aptcode Solutions"
+    },
+    {
+      "id": 624,
+      "hex": "0x0270",
+      "name": "LSI ADL Technology"
+    },
+    {
+      "id": 625,
+      "hex": "0x0271",
+      "name": "Animas Corp"
+    },
+    {
+      "id": 626,
+      "hex": "0x0272",
+      "name": "Alps Electric Co., Ltd."
+    },
+    {
+      "id": 627,
+      "hex": "0x0273",
+      "name": "OCEASOFT"
+    },
+    {
+      "id": 628,
+      "hex": "0x0274",
+      "name": "Motsai Research"
+    },
+    {
+      "id": 629,
+      "hex": "0x0275",
+      "name": "Geotab"
+    },
+    {
+      "id": 630,
+      "hex": "0x0276",
+      "name": "E.G.O. Elektro-Gertebau GmbH"
+    },
+    {
+      "id": 631,
+      "hex": "0x0277",
+      "name": "bewhere inc"
+    },
+    {
+      "id": 632,
+      "hex": "0x0278",
+      "name": "Johnson Outdoors Inc"
+    },
+    {
+      "id": 633,
+      "hex": "0x0279",
+      "name": "steute Schaltgerate GmbH & Co. KG"
+    },
+    {
+      "id": 634,
+      "hex": "0x027A",
+      "name": "Ekomini inc."
+    },
+    {
+      "id": 635,
+      "hex": "0x027B",
+      "name": "DEFA AS"
+    },
+    {
+      "id": 636,
+      "hex": "0x027C",
+      "name": "Aseptika Ltd"
+    },
+    {
+      "id": 637,
+      "hex": "0x027D",
+      "name": "HUAWEI Technologies Co., Ltd. ( )"
+    },
+    {
+      "id": 638,
+      "hex": "0x027E",
+      "name": "HabitAware, LLC"
+    },
+    {
+      "id": 639,
+      "hex": "0x027F",
+      "name": "ruwido austria gmbh"
+    },
+    {
+      "id": 640,
+      "hex": "0x0280",
+      "name": "ITEC corporation"
+    },
+    {
+      "id": 641,
+      "hex": "0x0281",
+      "name": "StoneL"
+    },
+    {
+      "id": 642,
+      "hex": "0x0282",
+      "name": "Sonova AG"
+    },
+    {
+      "id": 643,
+      "hex": "0x0283",
+      "name": "Maven Machines, Inc."
+    },
+    {
+      "id": 644,
+      "hex": "0x0284",
+      "name": "Synapse Electronics"
+    },
+    {
+      "id": 645,
+      "hex": "0x0285",
+      "name": "Standard Innovation Inc."
+    },
+    {
+      "id": 646,
+      "hex": "0x0286",
+      "name": "RF Code, Inc."
+    },
+    {
+      "id": 647,
+      "hex": "0x0287",
+      "name": "Wally Ventures S.L."
+    },
+    {
+      "id": 648,
+      "hex": "0x0288",
+      "name": "Willowbank Electronics Ltd"
+    },
+    {
+      "id": 649,
+      "hex": "0x0289",
+      "name": "SK Telecom"
+    },
+    {
+      "id": 650,
+      "hex": "0x028A",
+      "name": "Jetro AS"
+    },
+    {
+      "id": 651,
+      "hex": "0x028B",
+      "name": "Code Gears LTD"
+    },
+    {
+      "id": 652,
+      "hex": "0x028C",
+      "name": "NANOLINK APS"
+    },
+    {
+      "id": 653,
+      "hex": "0x028D",
+      "name": "IF, LLC"
+    },
+    {
+      "id": 654,
+      "hex": "0x028E",
+      "name": "RF Digital Corp"
+    },
+    {
+      "id": 655,
+      "hex": "0x028F",
+      "name": "Church & Dwight Co., Inc"
+    },
+    {
+      "id": 656,
+      "hex": "0x0290",
+      "name": "Multibit Oy"
+    },
+    {
+      "id": 657,
+      "hex": "0x0291",
+      "name": "CliniCloud Inc"
+    },
+    {
+      "id": 658,
+      "hex": "0x0292",
+      "name": "SwiftSensors"
+    },
+    {
+      "id": 659,
+      "hex": "0x0293",
+      "name": "Blue Bite"
+    },
+    {
+      "id": 660,
+      "hex": "0x0294",
+      "name": "ELIAS GmbH"
+    },
+    {
+      "id": 661,
+      "hex": "0x0295",
+      "name": "Sivantos GmbH"
+    },
+    {
+      "id": 662,
+      "hex": "0x0296",
+      "name": "Petzl"
+    },
+    {
+      "id": 663,
+      "hex": "0x0297",
+      "name": "storm power ltd"
+    },
+    {
+      "id": 664,
+      "hex": "0x0298",
+      "name": "EISST Ltd"
+    },
+    {
+      "id": 665,
+      "hex": "0x0299",
+      "name": "Inexess Technology Simma KG"
+    },
+    {
+      "id": 666,
+      "hex": "0x029A",
+      "name": "Currant, Inc."
+    },
+    {
+      "id": 667,
+      "hex": "0x029B",
+      "name": "C2 Development, Inc."
+    },
+    {
+      "id": 668,
+      "hex": "0x029C",
+      "name": "Blue Sky Scientific, LLC"
+    },
+    {
+      "id": 669,
+      "hex": "0x029D",
+      "name": "ALOTTAZS LABS, LLC"
+    },
+    {
+      "id": 670,
+      "hex": "0x029E",
+      "name": "Kupson spol. s r.o."
+    },
+    {
+      "id": 671,
+      "hex": "0x029F",
+      "name": "Areus Engineering GmbH"
+    },
+    {
+      "id": 672,
+      "hex": "0x02A0",
+      "name": "Impossible Camera GmbH"
+    },
+    {
+      "id": 673,
+      "hex": "0x02A1",
+      "name": "InventureTrack Systems"
+    },
+    {
+      "id": 674,
+      "hex": "0x02A2",
+      "name": "LockedUp"
+    },
+    {
+      "id": 675,
+      "hex": "0x02A3",
+      "name": "Itude"
+    },
+    {
+      "id": 676,
+      "hex": "0x02A4",
+      "name": "Pacific Lock Company"
+    },
+    {
+      "id": 677,
+      "hex": "0x02A5",
+      "name": "Tendyron Corporation ( )"
+    },
+    {
+      "id": 678,
+      "hex": "0x02A6",
+      "name": "Robert Bosch GmbH"
+    },
+    {
+      "id": 679,
+      "hex": "0x02A7",
+      "name": "Illuxtron international B.V."
+    },
+    {
+      "id": 680,
+      "hex": "0x02A8",
+      "name": "miSport Ltd."
+    },
+    {
+      "id": 681,
+      "hex": "0x02A9",
+      "name": "Chargelib"
+    },
+    {
+      "id": 682,
+      "hex": "0x02AA",
+      "name": "Doppler Lab"
+    },
+    {
+      "id": 683,
+      "hex": "0x02AB",
+      "name": "BBPOS Limited"
+    },
+    {
+      "id": 684,
+      "hex": "0x02AC",
+      "name": "RTB Elektronik GmbH & Co. KG"
+    },
+    {
+      "id": 685,
+      "hex": "0x02AD",
+      "name": "Rx Networks, Inc."
+    },
+    {
+      "id": 686,
+      "hex": "0x02AE",
+      "name": "WeatherFlow, Inc."
+    },
+    {
+      "id": 687,
+      "hex": "0x02AF",
+      "name": "Technicolor USA Inc."
+    },
+    {
+      "id": 688,
+      "hex": "0x02B0",
+      "name": "Bestechnic(Shanghai),Ltd"
+    },
+    {
+      "id": 689,
+      "hex": "0x02B1",
+      "name": "Raden Inc"
+    },
+    {
+      "id": 690,
+      "hex": "0x02B2",
+      "name": "JouZen Oy"
+    },
+    {
+      "id": 691,
+      "hex": "0x02B3",
+      "name": "CLABER S.P.A."
+    },
+    {
+      "id": 692,
+      "hex": "0x02B4",
+      "name": "Hyginex, Inc."
+    },
+    {
+      "id": 693,
+      "hex": "0x02B5",
+      "name": "HANSHIN ELECTRIC RAILWAY CO.,LTD."
+    },
+    {
+      "id": 694,
+      "hex": "0x02B6",
+      "name": "Schneider Electric"
+    },
+    {
+      "id": 695,
+      "hex": "0x02B7",
+      "name": "Oort Technologies LLC"
+    },
+    {
+      "id": 696,
+      "hex": "0x02B8",
+      "name": "Chrono Therapeutics"
+    },
+    {
+      "id": 697,
+      "hex": "0x02B9",
+      "name": "Rinnai Corporation"
+    },
+    {
+      "id": 698,
+      "hex": "0x02BA",
+      "name": "Swissprime Technologies AG"
+    },
+    {
+      "id": 699,
+      "hex": "0x02BB",
+      "name": "Koha.,Co.Ltd"
+    },
+    {
+      "id": 700,
+      "hex": "0x02BC",
+      "name": "Genevac Ltd"
+    },
+    {
+      "id": 701,
+      "hex": "0x02BD",
+      "name": "Chemtronics"
+    },
+    {
+      "id": 702,
+      "hex": "0x02BE",
+      "name": "Seguro Technology Sp. z o.o."
+    },
+    {
+      "id": 703,
+      "hex": "0x02BF",
+      "name": "Redbird Flight Simulations"
+    },
+    {
+      "id": 704,
+      "hex": "0x02C0",
+      "name": "Dash Robotics"
+    },
+    {
+      "id": 705,
+      "hex": "0x02C1",
+      "name": "LINE Corporation"
+    },
+    {
+      "id": 706,
+      "hex": "0x02C2",
+      "name": "Guillemot Corporation"
+    },
+    {
+      "id": 707,
+      "hex": "0x02C3",
+      "name": "Techtronic Power Tools Technology Limited"
+    },
+    {
+      "id": 708,
+      "hex": "0x02C4",
+      "name": "Wilson Sporting Goods"
+    },
+    {
+      "id": 709,
+      "hex": "0x02C5",
+      "name": "Lenovo (Singapore) Pte Ltd. ( )"
+    },
+    {
+      "id": 710,
+      "hex": "0x02C6",
+      "name": "Ayatan Sensors"
+    },
+    {
+      "id": 711,
+      "hex": "0x02C7",
+      "name": "Electronics Tomorrow Limited"
+    },
+    {
+      "id": 712,
+      "hex": "0x02C8",
+      "name": "VASCO Data Security International, Inc."
+    },
+    {
+      "id": 713,
+      "hex": "0x02C9",
+      "name": "PayRange Inc."
+    },
+    {
+      "id": 714,
+      "hex": "0x02CA",
+      "name": "ABOV Semiconductor"
+    },
+    {
+      "id": 715,
+      "hex": "0x02CB",
+      "name": "AINA-Wireless Inc."
+    },
+    {
+      "id": 716,
+      "hex": "0x02CC",
+      "name": "Eijkelkamp Soil & Water"
+    },
+    {
+      "id": 717,
+      "hex": "0x02CD",
+      "name": "BMA ergonomics b.v."
+    },
+    {
+      "id": 718,
+      "hex": "0x02CE",
+      "name": "Teva Branded Pharmaceutical Products R&D, Inc."
+    },
+    {
+      "id": 719,
+      "hex": "0x02CF",
+      "name": "Anima"
+    },
+    {
+      "id": 720,
+      "hex": "0x02D0",
+      "name": "3M"
+    },
+    {
+      "id": 721,
+      "hex": "0x02D1",
+      "name": "Empatica Srl"
+    },
+    {
+      "id": 722,
+      "hex": "0x02D2",
+      "name": "Afero, Inc."
+    },
+    {
+      "id": 723,
+      "hex": "0x02D3",
+      "name": "Powercast Corporation"
+    },
+    {
+      "id": 724,
+      "hex": "0x02D4",
+      "name": "Secuyou ApS"
+    },
+    {
+      "id": 725,
+      "hex": "0x02D5",
+      "name": "OMRON Corporation"
+    },
+    {
+      "id": 726,
+      "hex": "0x02D6",
+      "name": "Send Solutions"
+    },
+    {
+      "id": 727,
+      "hex": "0x02D7",
+      "name": "NIPPON SYSTEMWARE CO.,LTD."
+    },
+    {
+      "id": 728,
+      "hex": "0x02D8",
+      "name": "Neosfar"
+    },
+    {
+      "id": 729,
+      "hex": "0x02D9",
+      "name": "Fliegl Agrartechnik GmbH"
+    },
+    {
+      "id": 730,
+      "hex": "0x02DA",
+      "name": "Gilvader"
+    },
+    {
+      "id": 731,
+      "hex": "0x02DB",
+      "name": "Digi International Inc (R)"
+    },
+    {
+      "id": 732,
+      "hex": "0x02DC",
+      "name": "DeWalch Technologies, Inc."
+    },
+    {
+      "id": 733,
+      "hex": "0x02DD",
+      "name": "Flint Rehabilitation Devices, LLC"
+    },
+    {
+      "id": 734,
+      "hex": "0x02DE",
+      "name": "Samsung SDS Co., Ltd."
+    },
+    {
+      "id": 735,
+      "hex": "0x02DF",
+      "name": "Blur Product Development"
+    },
+    {
+      "id": 736,
+      "hex": "0x02E0",
+      "name": "University of Michigan"
+    },
+    {
+      "id": 737,
+      "hex": "0x02E1",
+      "name": "Victron Energy BV"
+    },
+    {
+      "id": 738,
+      "hex": "0x02E2",
+      "name": "NTT docomo"
+    },
+    {
+      "id": 739,
+      "hex": "0x02E3",
+      "name": "Carmanah Technologies Corp."
+    },
+    {
+      "id": 740,
+      "hex": "0x02E4",
+      "name": "Bytestorm Ltd."
+    },
+    {
+      "id": 741,
+      "hex": "0x02E5",
+      "name": "Espressif Incorporated ( () )"
+    },
+    {
+      "id": 742,
+      "hex": "0x02E6",
+      "name": "Unwire"
+    },
+    {
+      "id": 743,
+      "hex": "0x02E7",
+      "name": "Connected Yard, Inc."
+    },
+    {
+      "id": 744,
+      "hex": "0x02E8",
+      "name": "American Music Environments"
+    },
+    {
+      "id": 745,
+      "hex": "0x02E9",
+      "name": "Sensogram Technologies, Inc."
+    },
+    {
+      "id": 746,
+      "hex": "0x02EA",
+      "name": "Fujitsu Limited"
+    },
+    {
+      "id": 747,
+      "hex": "0x02EB",
+      "name": "Ardic Technology"
+    },
+    {
+      "id": 748,
+      "hex": "0x02EC",
+      "name": "Delta Systems, Inc"
+    },
+    {
+      "id": 749,
+      "hex": "0x02ED",
+      "name": "HTC Corporation"
+    },
+    {
+      "id": 750,
+      "hex": "0x02EE",
+      "name": "Citizen Holdings Co., Ltd."
+    },
+    {
+      "id": 751,
+      "hex": "0x02EF",
+      "name": "SMART-INNOVATION.inc"
+    },
+    {
+      "id": 752,
+      "hex": "0x02F0",
+      "name": "Blackrat Software"
+    },
+    {
+      "id": 753,
+      "hex": "0x02F1",
+      "name": "The Idea Cave, LLC"
+    },
+    {
+      "id": 754,
+      "hex": "0x02F2",
+      "name": "GoPro, Inc."
+    },
+    {
+      "id": 755,
+      "hex": "0x02F3",
+      "name": "AuthAir, Inc"
+    },
+    {
+      "id": 756,
+      "hex": "0x02F4",
+      "name": "Vensi, Inc."
+    },
+    {
+      "id": 757,
+      "hex": "0x02F5",
+      "name": "Indagem Tech LLC"
+    },
+    {
+      "id": 758,
+      "hex": "0x02F6",
+      "name": "Intemo Technologies"
+    },
+    {
+      "id": 759,
+      "hex": "0x02F7",
+      "name": "DreamVisions co., Ltd."
+    },
+    {
+      "id": 760,
+      "hex": "0x02F8",
+      "name": "Runteq Oy Ltd"
+    },
+    {
+      "id": 761,
+      "hex": "0x02F9",
+      "name": "IMAGINATION TECHNOLOGIES LTD"
+    },
+    {
+      "id": 762,
+      "hex": "0x02FA",
+      "name": "CoSTAR TEchnologies"
+    },
+    {
+      "id": 763,
+      "hex": "0x02FB",
+      "name": "Clarius Mobile Health Corp."
+    },
+    {
+      "id": 764,
+      "hex": "0x02FC",
+      "name": "Shanghai Frequen Microelectronics Co., Ltd."
+    },
+    {
+      "id": 765,
+      "hex": "0x02FD",
+      "name": "Uwanna, Inc."
+    },
+    {
+      "id": 766,
+      "hex": "0x02FE",
+      "name": "Lierda Science & Technology Group Co., Ltd."
+    },
+    {
+      "id": 767,
+      "hex": "0x02FF",
+      "name": "Silicon Laboratories"
+    },
+    {
+      "id": 768,
+      "hex": "0x0300",
+      "name": "World Moto Inc."
+    },
+    {
+      "id": 769,
+      "hex": "0x0301",
+      "name": "Giatec Scientific Inc."
+    },
+    {
+      "id": 770,
+      "hex": "0x0302",
+      "name": "Loop Devices, Inc"
+    },
+    {
+      "id": 771,
+      "hex": "0x0303",
+      "name": "IACA electronique"
+    },
+    {
+      "id": 772,
+      "hex": "0x0304",
+      "name": "Martians Inc"
+    },
+    {
+      "id": 773,
+      "hex": "0x0305",
+      "name": "Swipp ApS"
+    },
+    {
+      "id": 774,
+      "hex": "0x0306",
+      "name": "Life Laboratory Inc."
+    },
+    {
+      "id": 775,
+      "hex": "0x0307",
+      "name": "FUJI INDUSTRIAL CO.,LTD."
+    },
+    {
+      "id": 776,
+      "hex": "0x0308",
+      "name": "Surefire, LLC"
+    },
+    {
+      "id": 777,
+      "hex": "0x0309",
+      "name": "Dolby Labs"
+    },
+    {
+      "id": 778,
+      "hex": "0x030A",
+      "name": "Ellisys"
+    },
+    {
+      "id": 779,
+      "hex": "0x030B",
+      "name": "Magnitude Lighting Converters"
+    },
+    {
+      "id": 780,
+      "hex": "0x030C",
+      "name": "Hilti AG"
+    },
+    {
+      "id": 781,
+      "hex": "0x030D",
+      "name": "Devdata S.r.l."
+    },
+    {
+      "id": 782,
+      "hex": "0x030E",
+      "name": "Deviceworx"
+    },
+    {
+      "id": 783,
+      "hex": "0x030F",
+      "name": "Shortcut Labs"
+    },
+    {
+      "id": 784,
+      "hex": "0x0310",
+      "name": "SGL Italia S.r.l."
+    },
+    {
+      "id": 785,
+      "hex": "0x0311",
+      "name": "PEEQ DATA"
+    },
+    {
+      "id": 786,
+      "hex": "0x0312",
+      "name": "Ducere Technologies Pvt Ltd"
+    },
+    {
+      "id": 787,
+      "hex": "0x0313",
+      "name": "DiveNav, Inc."
+    },
+    {
+      "id": 788,
+      "hex": "0x0314",
+      "name": "RIIG AI Sp. z o.o."
+    },
+    {
+      "id": 789,
+      "hex": "0x0315",
+      "name": "Thermo Fisher Scientific"
+    },
+    {
+      "id": 790,
+      "hex": "0x0316",
+      "name": "AG Measurematics Pvt. Ltd."
+    },
+    {
+      "id": 791,
+      "hex": "0x0317",
+      "name": "CHUO Electronics CO., LTD."
+    },
+    {
+      "id": 792,
+      "hex": "0x0318",
+      "name": "Aspenta International"
+    },
+    {
+      "id": 793,
+      "hex": "0x0319",
+      "name": "Eugster Frismag AG"
+    },
+    {
+      "id": 794,
+      "hex": "0x031A",
+      "name": "Amber wireless GmbH"
+    },
+    {
+      "id": 795,
+      "hex": "0x031B",
+      "name": "HQ Inc"
+    },
+    {
+      "id": 796,
+      "hex": "0x031C",
+      "name": "Lab Sensor Solutions"
+    },
+    {
+      "id": 797,
+      "hex": "0x031D",
+      "name": "Enterlab ApS"
+    },
+    {
+      "id": 798,
+      "hex": "0x031E",
+      "name": "Eyefi, Inc."
+    },
+    {
+      "id": 799,
+      "hex": "0x031F",
+      "name": "MetaSystem S.p.A."
+    },
+    {
+      "id": 800,
+      "hex": "0x0320",
+      "name": "SONO ELECTRONICS. CO., LTD"
+    },
+    {
+      "id": 801,
+      "hex": "0x0321",
+      "name": "Jewelbots"
+    },
+    {
+      "id": 802,
+      "hex": "0x0322",
+      "name": "Compumedics Limited"
+    },
+    {
+      "id": 803,
+      "hex": "0x0323",
+      "name": "Rotor Bike Components"
+    },
+    {
+      "id": 804,
+      "hex": "0x0324",
+      "name": "Astro, Inc."
+    },
+    {
+      "id": 805,
+      "hex": "0x0325",
+      "name": "Amotus Solutions"
+    },
+    {
+      "id": 806,
+      "hex": "0x0326",
+      "name": "Healthwear Technologies (Changzhou)Ltd"
+    },
+    {
+      "id": 807,
+      "hex": "0x0327",
+      "name": "Essex Electronics"
+    },
+    {
+      "id": 808,
+      "hex": "0x0328",
+      "name": "Grundfos A/S"
+    },
+    {
+      "id": 809,
+      "hex": "0x0329",
+      "name": "Eargo, Inc."
+    },
+    {
+      "id": 810,
+      "hex": "0x032A",
+      "name": "Electronic Design Lab"
+    },
+    {
+      "id": 811,
+      "hex": "0x032B",
+      "name": "ESYLUX"
+    },
+    {
+      "id": 812,
+      "hex": "0x032C",
+      "name": "NIPPON SMT.CO.,Ltd"
+    },
+    {
+      "id": 813,
+      "hex": "0x032D",
+      "name": "BM innovations GmbH"
+    },
+    {
+      "id": 814,
+      "hex": "0x032E",
+      "name": "indoormap"
+    },
+    {
+      "id": 815,
+      "hex": "0x032F",
+      "name": "OttoQ Inc"
+    },
+    {
+      "id": 816,
+      "hex": "0x0330",
+      "name": "North Pole Engineering"
+    },
+    {
+      "id": 817,
+      "hex": "0x0331",
+      "name": "3flares Technologies Inc."
+    },
+    {
+      "id": 818,
+      "hex": "0x0332",
+      "name": "Electrocompaniet A.S."
+    },
+    {
+      "id": 819,
+      "hex": "0x0333",
+      "name": "Mul-T-Lock"
+    },
+    {
+      "id": 820,
+      "hex": "0x0334",
+      "name": "Corentium AS"
+    },
+    {
+      "id": 821,
+      "hex": "0x0335",
+      "name": "Enlighted Inc"
+    },
+    {
+      "id": 822,
+      "hex": "0x0336",
+      "name": "GISTIC"
+    },
+    {
+      "id": 823,
+      "hex": "0x0337",
+      "name": "AJP2 Holdings, LLC"
+    },
+    {
+      "id": 824,
+      "hex": "0x0338",
+      "name": "COBI GmbH"
+    },
+    {
+      "id": 825,
+      "hex": "0x0339",
+      "name": "Blue Sky Scientific, LLC"
+    },
+    {
+      "id": 826,
+      "hex": "0x033A",
+      "name": "Appception, Inc."
+    },
+    {
+      "id": 827,
+      "hex": "0x033B",
+      "name": "Courtney Thorne Limited"
+    },
+    {
+      "id": 828,
+      "hex": "0x033C",
+      "name": "Virtuosys"
+    },
+    {
+      "id": 829,
+      "hex": "0x033D",
+      "name": "TPV Technology Limited"
+    },
+    {
+      "id": 830,
+      "hex": "0x033E",
+      "name": "Monitra SA"
+    },
+    {
+      "id": 831,
+      "hex": "0x033F",
+      "name": "Automation Components, Inc."
+    },
+    {
+      "id": 832,
+      "hex": "0x0340",
+      "name": "Letsense s.r.l."
+    },
+    {
+      "id": 833,
+      "hex": "0x0341",
+      "name": "Etesian Technologies LLC"
+    },
+    {
+      "id": 834,
+      "hex": "0x0342",
+      "name": "GERTEC BRASIL LTDA."
+    },
+    {
+      "id": 835,
+      "hex": "0x0343",
+      "name": "Drekker Development Pty. Ltd."
+    },
+    {
+      "id": 836,
+      "hex": "0x0344",
+      "name": "Whirl Inc"
+    },
+    {
+      "id": 837,
+      "hex": "0x0345",
+      "name": "Locus Positioning"
+    },
+    {
+      "id": 838,
+      "hex": "0x0346",
+      "name": "Acuity Brands Lighting, Inc"
+    },
+    {
+      "id": 839,
+      "hex": "0x0347",
+      "name": "Prevent Biometrics"
+    },
+    {
+      "id": 840,
+      "hex": "0x0348",
+      "name": "Arioneo"
+    },
+    {
+      "id": 841,
+      "hex": "0x0349",
+      "name": "VersaMe"
+    },
+    {
+      "id": 842,
+      "hex": "0x034A",
+      "name": "Vaddio"
+    },
+    {
+      "id": 843,
+      "hex": "0x034B",
+      "name": "Libratone A/S"
+    },
+    {
+      "id": 844,
+      "hex": "0x034C",
+      "name": "HM Electronics, Inc."
+    },
+    {
+      "id": 845,
+      "hex": "0x034D",
+      "name": "TASER International, Inc."
+    },
+    {
+      "id": 846,
+      "hex": "0x034E",
+      "name": "SafeTrust Inc."
+    },
+    {
+      "id": 847,
+      "hex": "0x034F",
+      "name": "Heartland Payment Systems"
+    },
+    {
+      "id": 848,
+      "hex": "0x0350",
+      "name": "Bitstrata Systems Inc."
+    },
+    {
+      "id": 849,
+      "hex": "0x0351",
+      "name": "Pieps GmbH"
+    },
+    {
+      "id": 850,
+      "hex": "0x0352",
+      "name": "iRiding(Xiamen)Technology Co.,Ltd."
+    },
+    {
+      "id": 851,
+      "hex": "0x0353",
+      "name": "Alpha Audiotronics, Inc."
+    },
+    {
+      "id": 852,
+      "hex": "0x0354",
+      "name": "TOPPAN FORMS CO.,LTD."
+    },
+    {
+      "id": 853,
+      "hex": "0x0355",
+      "name": "Sigma Designs, Inc."
+    },
+    {
+      "id": 854,
+      "hex": "0x0356",
+      "name": "Spectrum Brands, Inc."
+    },
+    {
+      "id": 855,
+      "hex": "0x0357",
+      "name": "Polymap Wireless"
+    },
+    {
+      "id": 856,
+      "hex": "0x0358",
+      "name": "MagniWare Ltd."
+    },
+    {
+      "id": 857,
+      "hex": "0x0359",
+      "name": "Novotec Medical GmbH"
+    },
+    {
+      "id": 858,
+      "hex": "0x035A",
+      "name": "Medicom Innovation Partner a/s"
+    },
+    {
+      "id": 859,
+      "hex": "0x035B",
+      "name": "Matrix Inc."
+    },
+    {
+      "id": 860,
+      "hex": "0x035C",
+      "name": "Eaton Corporation"
+    },
+    {
+      "id": 861,
+      "hex": "0x035D",
+      "name": "KYS"
+    },
+    {
+      "id": 862,
+      "hex": "0x035E",
+      "name": "Naya Health, Inc."
+    },
+    {
+      "id": 863,
+      "hex": "0x035F",
+      "name": "Acromag"
+    },
+    {
+      "id": 864,
+      "hex": "0x0360",
+      "name": "Insulet Corporation"
+    },
+    {
+      "id": 865,
+      "hex": "0x0361",
+      "name": "Wellinks Inc."
+    },
+    {
+      "id": 866,
+      "hex": "0x0362",
+      "name": "ON Semiconductor"
+    },
+    {
+      "id": 867,
+      "hex": "0x0363",
+      "name": "FREELAP SA"
+    },
+    {
+      "id": 868,
+      "hex": "0x0364",
+      "name": "Favero Electronics Srl"
+    },
+    {
+      "id": 869,
+      "hex": "0x0365",
+      "name": "BioMech Sensor LLC"
+    },
+    {
+      "id": 870,
+      "hex": "0x0366",
+      "name": "BOLTT Sports technologies Private limited"
+    },
+    {
+      "id": 871,
+      "hex": "0x0367",
+      "name": "Saphe International"
+    },
+    {
+      "id": 872,
+      "hex": "0x0368",
+      "name": "Metormote AB"
+    },
+    {
+      "id": 873,
+      "hex": "0x0369",
+      "name": "littleBits"
+    },
+    {
+      "id": 874,
+      "hex": "0x036A",
+      "name": "SetPoint Medical"
+    },
+    {
+      "id": 875,
+      "hex": "0x036B",
+      "name": "BRControls Products BV"
+    },
+    {
+      "id": 876,
+      "hex": "0x036C",
+      "name": "Zipcar"
+    },
+    {
+      "id": 877,
+      "hex": "0x036D",
+      "name": "AirBolt Pty Ltd"
+    },
+    {
+      "id": 878,
+      "hex": "0x036E",
+      "name": "KeepTruckin Inc"
+    },
+    {
+      "id": 879,
+      "hex": "0x036F",
+      "name": "Motiv, Inc."
+    },
+    {
+      "id": 880,
+      "hex": "0x0370",
+      "name": "Wazombi Labs O"
+    },
+    {
+      "id": 881,
+      "hex": "0x0371",
+      "name": "ORBCOMM"
+    },
+    {
+      "id": 882,
+      "hex": "0x0372",
+      "name": "Nixie Labs, Inc."
+    },
+    {
+      "id": 883,
+      "hex": "0x0373",
+      "name": "AppNearMe Ltd"
+    },
+    {
+      "id": 884,
+      "hex": "0x0374",
+      "name": "Holman Industries"
+    },
+    {
+      "id": 885,
+      "hex": "0x0375",
+      "name": "Expain AS"
+    },
+    {
+      "id": 886,
+      "hex": "0x0376",
+      "name": "Electronic Temperature Instruments Ltd"
+    },
+    {
+      "id": 887,
+      "hex": "0x0377",
+      "name": "Plejd AB"
+    },
+    {
+      "id": 888,
+      "hex": "0x0378",
+      "name": "Propeller Health"
+    },
+    {
+      "id": 889,
+      "hex": "0x0379",
+      "name": "Shenzhen iMCO Electronic Technology Co.,Ltd"
+    },
+    {
+      "id": 890,
+      "hex": "0x037A",
+      "name": "Algoria"
+    },
+    {
+      "id": 891,
+      "hex": "0x037B",
+      "name": "Apption Labs Inc."
+    },
+    {
+      "id": 892,
+      "hex": "0x037C",
+      "name": "Cronologics Corporation"
+    },
+    {
+      "id": 893,
+      "hex": "0x037D",
+      "name": "MICRODIA Ltd."
+    },
+    {
+      "id": 894,
+      "hex": "0x037E",
+      "name": "lulabytes S.L."
+    },
+    {
+      "id": 895,
+      "hex": "0x037F",
+      "name": "Nestec S.A."
+    },
+    {
+      "id": 896,
+      "hex": "0x0380",
+      "name": "LLC MEGA - F service"
+    },
+    {
+      "id": 897,
+      "hex": "0x0381",
+      "name": "Sharp Corporation"
+    },
+    {
+      "id": 898,
+      "hex": "0x0382",
+      "name": "Precision Outcomes Ltd"
+    },
+    {
+      "id": 899,
+      "hex": "0x0383",
+      "name": "Kronos Incorporated"
+    },
+    {
+      "id": 900,
+      "hex": "0x0384",
+      "name": "OCOSMOS Co., Ltd."
+    },
+    {
+      "id": 901,
+      "hex": "0x0385",
+      "name": "Embedded Electronic Solutions Ltd. dba e2Solutions"
+    },
+    {
+      "id": 902,
+      "hex": "0x0386",
+      "name": "Aterica Inc."
+    },
+    {
+      "id": 903,
+      "hex": "0x0387",
+      "name": "BluStor PMC, Inc."
+    },
+    {
+      "id": 904,
+      "hex": "0x0388",
+      "name": "Kapsch TrafficCom AB"
+    },
+    {
+      "id": 905,
+      "hex": "0x0389",
+      "name": "ActiveBlu Corporation"
+    },
+    {
+      "id": 906,
+      "hex": "0x038A",
+      "name": "Kohler Mira Limited"
+    },
+    {
+      "id": 907,
+      "hex": "0x038B",
+      "name": "Noke"
+    },
+    {
+      "id": 908,
+      "hex": "0x038C",
+      "name": "Appion Inc."
+    },
+    {
+      "id": 909,
+      "hex": "0x038D",
+      "name": "Resmed Ltd"
+    },
+    {
+      "id": 910,
+      "hex": "0x038E",
+      "name": "Crownstone B.V."
+    },
+    {
+      "id": 911,
+      "hex": "0x038F",
+      "name": "Xiaomi Inc."
+    },
+    {
+      "id": 912,
+      "hex": "0x0390",
+      "name": "INFOTECH s.r.o."
+    },
+    {
+      "id": 913,
+      "hex": "0x0391",
+      "name": "Thingsquare AB"
+    },
+    {
+      "id": 914,
+      "hex": "0x0392",
+      "name": "T&D"
+    },
+    {
+      "id": 915,
+      "hex": "0x0393",
+      "name": "LAVAZZA S.p.A."
+    },
+    {
+      "id": 916,
+      "hex": "0x0394",
+      "name": "Netclearance Systems, Inc."
+    },
+    {
+      "id": 917,
+      "hex": "0x0395",
+      "name": "SDATAWAY"
+    },
+    {
+      "id": 918,
+      "hex": "0x0396",
+      "name": "BLOKS GmbH"
+    },
+    {
+      "id": 919,
+      "hex": "0x0397",
+      "name": "LEGO System A/S"
+    },
+    {
+      "id": 920,
+      "hex": "0x0398",
+      "name": "Thetatronics Ltd"
+    },
+    {
+      "id": 921,
+      "hex": "0x0399",
+      "name": "Nikon Corporation"
+    },
+    {
+      "id": 922,
+      "hex": "0x039A",
+      "name": "NeST"
+    },
+    {
+      "id": 923,
+      "hex": "0x039B",
+      "name": "South Silicon Valley Microelectronics"
+    },
+    {
+      "id": 924,
+      "hex": "0x039C",
+      "name": "ALE International"
+    },
+    {
+      "id": 925,
+      "hex": "0x039D",
+      "name": "CareView Communications, Inc."
+    },
+    {
+      "id": 926,
+      "hex": "0x039E",
+      "name": "SchoolBoard Limited"
+    },
+    {
+      "id": 927,
+      "hex": "0x039F",
+      "name": "Molex Corporation"
+    },
+    {
+      "id": 928,
+      "hex": "0x03A0",
+      "name": "IVT Wireless Limited"
+    },
+    {
+      "id": 929,
+      "hex": "0x03A1",
+      "name": "Alpine Labs LLC"
+    },
+    {
+      "id": 930,
+      "hex": "0x03A2",
+      "name": "Candura Instruments"
+    },
+    {
+      "id": 931,
+      "hex": "0x03A3",
+      "name": "SmartMovt Technology Co., Ltd"
+    },
+    {
+      "id": 932,
+      "hex": "0x03A4",
+      "name": "Token Zero Ltd"
+    },
+    {
+      "id": 933,
+      "hex": "0x03A5",
+      "name": "ACE CAD Enterprise Co., Ltd. (ACECAD)"
+    },
+    {
+      "id": 934,
+      "hex": "0x03A6",
+      "name": "Medela, Inc"
+    },
+    {
+      "id": 935,
+      "hex": "0x03A7",
+      "name": "AeroScout"
+    },
+    {
+      "id": 936,
+      "hex": "0x03A8",
+      "name": "Esrille Inc."
+    },
+    {
+      "id": 937,
+      "hex": "0x03A9",
+      "name": "THINKERLY SRL"
+    },
+    {
+      "id": 938,
+      "hex": "0x03AA",
+      "name": "Exon Sp. z o.o."
+    },
+    {
+      "id": 939,
+      "hex": "0x03AB",
+      "name": "Meizu Technology Co., Ltd."
+    },
+    {
+      "id": 940,
+      "hex": "0x03AC",
+      "name": "Smablo LTD"
+    },
+    {
+      "id": 941,
+      "hex": "0x03AD",
+      "name": "XiQ"
+    },
+    {
+      "id": 942,
+      "hex": "0x03AE",
+      "name": "Allswell Inc."
+    },
+    {
+      "id": 943,
+      "hex": "0x03AF",
+      "name": "Comm-N-Sense Corp DBA Verigo"
+    },
+    {
+      "id": 944,
+      "hex": "0x03B0",
+      "name": "VIBRADORM GmbH"
+    },
+    {
+      "id": 945,
+      "hex": "0x03B1",
+      "name": "Otodata Wireless Network Inc."
+    },
+    {
+      "id": 946,
+      "hex": "0x03B2",
+      "name": "Propagation Systems Limited"
+    },
+    {
+      "id": 947,
+      "hex": "0x03B3",
+      "name": "Midwest Instruments & Controls"
+    },
+    {
+      "id": 948,
+      "hex": "0x03B4",
+      "name": "Alpha Nodus, inc."
+    },
+    {
+      "id": 949,
+      "hex": "0x03B5",
+      "name": "petPOMM, Inc"
+    },
+    {
+      "id": 950,
+      "hex": "0x03B6",
+      "name": "Mattel"
+    },
+    {
+      "id": 951,
+      "hex": "0x03B7",
+      "name": "Airbly Inc."
+    },
+    {
+      "id": 952,
+      "hex": "0x03B8",
+      "name": "A-Safe Limited"
+    },
+    {
+      "id": 953,
+      "hex": "0x03B9",
+      "name": "FREDERIQUE CONSTANT SA"
+    },
+    {
+      "id": 954,
+      "hex": "0x03BA",
+      "name": "Maxscend Microelectronics Company Limited"
+    },
+    {
+      "id": 955,
+      "hex": "0x03BB",
+      "name": "Abbott Diabetes Care"
+    },
+    {
+      "id": 956,
+      "hex": "0x03BC",
+      "name": "ASB Bank Ltd"
+    },
+    {
+      "id": 957,
+      "hex": "0x03BD",
+      "name": "amadas"
+    },
+    {
+      "id": 958,
+      "hex": "0x03BE",
+      "name": "Applied Science, Inc."
+    },
+    {
+      "id": 959,
+      "hex": "0x03BF",
+      "name": "iLumi Solutions Inc."
+    },
+    {
+      "id": 960,
+      "hex": "0x03C0",
+      "name": "Arch Systems Inc."
+    },
+    {
+      "id": 961,
+      "hex": "0x03C1",
+      "name": "Ember Technologies, Inc."
+    },
+    {
+      "id": 962,
+      "hex": "0x03C2",
+      "name": "Snapchat Inc"
+    },
+    {
+      "id": 963,
+      "hex": "0x03C3",
+      "name": "Casambi Technologies Oy"
+    },
+    {
+      "id": 964,
+      "hex": "0x03C4",
+      "name": "Pico Technology Inc."
+    },
+    {
+      "id": 965,
+      "hex": "0x03C5",
+      "name": "St. Jude Medical, Inc."
+    },
+    {
+      "id": 966,
+      "hex": "0x03C6",
+      "name": "Intricon"
+    },
+    {
+      "id": 967,
+      "hex": "0x03C7",
+      "name": "Structural Health Systems, Inc."
+    },
+    {
+      "id": 968,
+      "hex": "0x03C8",
+      "name": "Avvel International"
+    },
+    {
+      "id": 969,
+      "hex": "0x03C9",
+      "name": "Gallagher Group"
+    },
+    {
+      "id": 970,
+      "hex": "0x03CA",
+      "name": "In2things Automation Pvt. Ltd."
+    },
+    {
+      "id": 971,
+      "hex": "0x03CB",
+      "name": "SYSDEV Srl"
+    },
+    {
+      "id": 972,
+      "hex": "0x03CC",
+      "name": "Vonkil Technologies Ltd"
+    },
+    {
+      "id": 973,
+      "hex": "0x03CD",
+      "name": "Wynd Technologies, Inc."
+    },
+    {
+      "id": 974,
+      "hex": "0x03CE",
+      "name": "CONTRINEX S.A."
+    },
+    {
+      "id": 975,
+      "hex": "0x03CF",
+      "name": "MIRA, Inc."
+    },
+    {
+      "id": 976,
+      "hex": "0x03D0",
+      "name": "Watteam Ltd"
+    },
+    {
+      "id": 977,
+      "hex": "0x03D1",
+      "name": "Density Inc."
+    },
+    {
+      "id": 978,
+      "hex": "0x03D2",
+      "name": "IOT Pot India Private Limited"
+    },
+    {
+      "id": 979,
+      "hex": "0x03D3",
+      "name": "Sigma Connectivity AB"
+    },
+    {
+      "id": 980,
+      "hex": "0x03D4",
+      "name": "PEG PEREGO SPA"
+    },
+    {
+      "id": 981,
+      "hex": "0x03D5",
+      "name": "Wyzelink Systems Inc."
+    },
+    {
+      "id": 982,
+      "hex": "0x03D6",
+      "name": "Yota Devices LTD"
+    },
+    {
+      "id": 983,
+      "hex": "0x03D7",
+      "name": "FINSECUR"
+    },
+    {
+      "id": 984,
+      "hex": "0x03D8",
+      "name": "Zen-Me Labs Ltd"
+    },
+    {
+      "id": 985,
+      "hex": "0x03D9",
+      "name": "3IWare Co., Ltd."
+    },
+    {
+      "id": 986,
+      "hex": "0x03DA",
+      "name": "EnOcean GmbH"
+    },
+    {
+      "id": 987,
+      "hex": "0x03DB",
+      "name": "Instabeat, Inc"
+    },
+    {
+      "id": 988,
+      "hex": "0x03DC",
+      "name": "Nima Labs"
+    },
+    {
+      "id": 989,
+      "hex": "0x03DD",
+      "name": "Andreas Stihl AG & Co. KG"
+    },
+    {
+      "id": 990,
+      "hex": "0x03DE",
+      "name": "Nathan Rhoades LLC"
+    },
+    {
+      "id": 991,
+      "hex": "0x03DF",
+      "name": "Grob Technologies, LLC"
+    },
+    {
+      "id": 992,
+      "hex": "0x03E0",
+      "name": "Actions (Zhuhai) Technology Co., Limited"
+    },
+    {
+      "id": 993,
+      "hex": "0x03E1",
+      "name": "SPD Development Company Ltd"
+    },
+    {
+      "id": 994,
+      "hex": "0x03E2",
+      "name": "Sensoan Oy"
+    },
+    {
+      "id": 995,
+      "hex": "0x03E3",
+      "name": "Qualcomm Life Inc"
+    },
+    {
+      "id": 996,
+      "hex": "0x03E4",
+      "name": "Chip-ing AG"
+    },
+    {
+      "id": 997,
+      "hex": "0x03E5",
+      "name": "ffly4u"
+    },
+    {
+      "id": 998,
+      "hex": "0x03E6",
+      "name": "IoT Instruments Oy"
+    },
+    {
+      "id": 999,
+      "hex": "0x03E7",
+      "name": "TRUE Fitness Technology"
+    },
+    {
+      "id": 1000,
+      "hex": "0x03E8",
+      "name": "Reiner Kartengeraete GmbH & Co. KG."
+    },
+    {
+      "id": 1001,
+      "hex": "0x03E9",
+      "name": "SHENZHEN LEMONJOY TECHNOLOGY CO., LTD."
+    },
+    {
+      "id": 1002,
+      "hex": "0x03EA",
+      "name": "Hello Inc."
+    },
+    {
+      "id": 1003,
+      "hex": "0x03EB",
+      "name": "Evollve Inc."
+    },
+    {
+      "id": 1004,
+      "hex": "0x03EC",
+      "name": "Jigowatts Inc."
+    },
+    {
+      "id": 1005,
+      "hex": "0x03ED",
+      "name": "BASIC MICRO.COM,INC."
+    },
+    {
+      "id": 1006,
+      "hex": "0x03EE",
+      "name": "CUBE TECHNOLOGIES"
+    },
+    {
+      "id": 1007,
+      "hex": "0x03EF",
+      "name": "foolography GmbH"
+    },
+    {
+      "id": 1008,
+      "hex": "0x03F0",
+      "name": "CLINK"
+    },
+    {
+      "id": 1009,
+      "hex": "0x03F1",
+      "name": "Hestan Smart Cooking Inc."
+    },
+    {
+      "id": 1010,
+      "hex": "0x03F2",
+      "name": "WindowMaster A/S"
+    },
+    {
+      "id": 1011,
+      "hex": "0x03F3",
+      "name": "Flowscape AB"
+    },
+    {
+      "id": 1012,
+      "hex": "0x03F4",
+      "name": "PAL Technologies Ltd"
+    },
+    {
+      "id": 1013,
+      "hex": "0x03F5",
+      "name": "WHERE, Inc."
+    },
+    {
+      "id": 1014,
+      "hex": "0x03F6",
+      "name": "Iton Technology Corp."
+    },
+    {
+      "id": 1015,
+      "hex": "0x03F7",
+      "name": "Owl Labs Inc."
+    },
+    {
+      "id": 1016,
+      "hex": "0x03F8",
+      "name": "Rockford Corp."
+    },
+    {
+      "id": 1017,
+      "hex": "0x03F9",
+      "name": "Becon Technologies Co.,Ltd."
+    },
+    {
+      "id": 1018,
+      "hex": "0x03FA",
+      "name": "Vyassoft Technologies Inc"
+    },
+    {
+      "id": 1019,
+      "hex": "0x03FB",
+      "name": "Nox Medical"
+    },
+    {
+      "id": 1020,
+      "hex": "0x03FC",
+      "name": "Kimberly-Clark"
+    },
+    {
+      "id": 1021,
+      "hex": "0x03FD",
+      "name": "Trimble Navigation Ltd."
+    },
+    {
+      "id": 1022,
+      "hex": "0x03FE",
+      "name": "Littelfuse"
+    },
+    {
+      "id": 1023,
+      "hex": "0x03FF",
+      "name": "Withings"
+    },
+    {
+      "id": 1024,
+      "hex": "0x0400",
+      "name": "i-developer IT Beratung UG"
+    },
+    {
+      "id": 1026,
+      "hex": "0x0402",
+      "name": "Sears Holdings Corporation"
+    },
+    {
+      "id": 1027,
+      "hex": "0x0403",
+      "name": "Gantner Electronic GmbH"
+    },
+    {
+      "id": 1028,
+      "hex": "0x0404",
+      "name": "Authomate Inc"
+    },
+    {
+      "id": 1029,
+      "hex": "0x0405",
+      "name": "Vertex International, Inc."
+    },
+    {
+      "id": 1030,
+      "hex": "0x0406",
+      "name": "Airtago"
+    },
+    {
+      "id": 1031,
+      "hex": "0x0407",
+      "name": "Swiss Audio SA"
+    },
+    {
+      "id": 1032,
+      "hex": "0x0408",
+      "name": "ToGetHome Inc."
+    },
+    {
+      "id": 1033,
+      "hex": "0x0409",
+      "name": "AXIS"
+    },
+    {
+      "id": 1034,
+      "hex": "0x040A",
+      "name": "Openmatics"
+    },
+    {
+      "id": 1035,
+      "hex": "0x040B",
+      "name": "Jana Care Inc."
+    },
+    {
+      "id": 1036,
+      "hex": "0x040C",
+      "name": "Senix Corporation"
+    },
+    {
+      "id": 1037,
+      "hex": "0x040D",
+      "name": "NorthStar Battery Company, LLC"
+    },
+    {
+      "id": 1038,
+      "hex": "0x040E",
+      "name": "SKF (U.K.) Limited"
+    },
+    {
+      "id": 1039,
+      "hex": "0x040F",
+      "name": "CO-AX Technology, Inc."
+    },
+    {
+      "id": 1040,
+      "hex": "0x0410",
+      "name": "Fender Musical Instruments"
+    },
+    {
+      "id": 1041,
+      "hex": "0x0411",
+      "name": "Luidia Inc"
+    },
+    {
+      "id": 1042,
+      "hex": "0x0412",
+      "name": "SEFAM"
+    },
+    {
+      "id": 1043,
+      "hex": "0x0413",
+      "name": "Wireless Cables Inc"
+    },
+    {
+      "id": 1044,
+      "hex": "0x0414",
+      "name": "Lightning Protection International Pty Ltd"
+    },
+    {
+      "id": 1045,
+      "hex": "0x0415",
+      "name": "Uber Technologies Inc"
+    },
+    {
+      "id": 1046,
+      "hex": "0x0416",
+      "name": "SODA GmbH"
+    },
+    {
+      "id": 1047,
+      "hex": "0x0417",
+      "name": "Fatigue Science"
+    },
+    {
+      "id": 1048,
+      "hex": "0x0418",
+      "name": "Alpine Electronics Inc."
+    },
+    {
+      "id": 1049,
+      "hex": "0x0419",
+      "name": "Novalogy LTD"
+    },
+    {
+      "id": 1050,
+      "hex": "0x041A",
+      "name": "Friday Labs Limited"
+    },
+    {
+      "id": 1051,
+      "hex": "0x041B",
+      "name": "OrthoAccel Technologies"
+    },
+    {
+      "id": 1052,
+      "hex": "0x041C",
+      "name": "WaterGuru, Inc."
+    },
+    {
+      "id": 1053,
+      "hex": "0x041D",
+      "name": "Benning Elektrotechnik und Elektronik GmbH & Co. KG"
+    },
+    {
+      "id": 1054,
+      "hex": "0x041E",
+      "name": "Dell Computer Corporation"
+    },
+    {
+      "id": 1055,
+      "hex": "0x041F",
+      "name": "Kopin Corporation"
+    },
+    {
+      "id": 1056,
+      "hex": "0x0420",
+      "name": "TecBakery GmbH"
+    },
+    {
+      "id": 1057,
+      "hex": "0x0421",
+      "name": "Backbone Labs, Inc."
+    },
+    {
+      "id": 1058,
+      "hex": "0x0422",
+      "name": "DELSEY SA"
+    },
+    {
+      "id": 1059,
+      "hex": "0x0423",
+      "name": "Chargifi Limited"
+    },
+    {
+      "id": 1060,
+      "hex": "0x0424",
+      "name": "Trainesense Ltd."
+    },
+    {
+      "id": 1061,
+      "hex": "0x0425",
+      "name": "Unify Software and Solutions GmbH & Co. KG"
+    },
+    {
+      "id": 1062,
+      "hex": "0x0426",
+      "name": "Husqvarna AB"
+    },
+    {
+      "id": 1063,
+      "hex": "0x0427",
+      "name": "Focus fleet and fuel management inc"
+    },
+    {
+      "id": 1064,
+      "hex": "0x0428",
+      "name": "SmallLoop, LLC"
+    },
+    {
+      "id": 1065,
+      "hex": "0x0429",
+      "name": "Prolon Inc."
+    },
+    {
+      "id": 1066,
+      "hex": "0x042A",
+      "name": "BD Medical"
+    },
+    {
+      "id": 1067,
+      "hex": "0x042B",
+      "name": "iMicroMed Incorporated"
+    },
+    {
+      "id": 1068,
+      "hex": "0x042C",
+      "name": "Ticto N.V."
+    },
+    {
+      "id": 1069,
+      "hex": "0x042D",
+      "name": "Meshtech AS"
+    },
+    {
+      "id": 1070,
+      "hex": "0x042E",
+      "name": "MemCachier Inc."
+    },
+    {
+      "id": 1071,
+      "hex": "0x042F",
+      "name": "Danfoss A/S"
+    },
+    {
+      "id": 1072,
+      "hex": "0x0430",
+      "name": "SnapStyk Inc."
+    },
+    {
+      "id": 1073,
+      "hex": "0x0431",
+      "name": "Amyway Corporation"
+    },
+    {
+      "id": 1074,
+      "hex": "0x0432",
+      "name": "Silk Labs, Inc."
+    },
+    {
+      "id": 1075,
+      "hex": "0x0433",
+      "name": "Pillsy Inc."
+    },
+    {
+      "id": 1076,
+      "hex": "0x0434",
+      "name": "Hatch Baby, Inc."
+    },
+    {
+      "id": 1077,
+      "hex": "0x0435",
+      "name": "Blocks Wearables Ltd."
+    },
+    {
+      "id": 1078,
+      "hex": "0x0436",
+      "name": "Drayson Technologies (Europe) Limited"
+    },
+    {
+      "id": 1079,
+      "hex": "0x0437",
+      "name": "eBest IOT Inc."
+    },
+    {
+      "id": 1080,
+      "hex": "0x0438",
+      "name": "Helvar Ltd"
+    },
+    {
+      "id": 1081,
+      "hex": "0x0439",
+      "name": "Radiance Technologies"
+    },
+    {
+      "id": 1082,
+      "hex": "0x043A",
+      "name": "Nuheara Limited"
+    },
+    {
+      "id": 1083,
+      "hex": "0x043B",
+      "name": "Appside co., ltd."
+    },
+    {
+      "id": 1084,
+      "hex": "0x043C",
+      "name": "DeLaval"
+    },
+    {
+      "id": 1085,
+      "hex": "0x043D",
+      "name": "Coiler Corporation"
+    },
+    {
+      "id": 1086,
+      "hex": "0x043E",
+      "name": "Thermomedics, Inc."
+    },
+    {
+      "id": 1087,
+      "hex": "0x043F",
+      "name": "Tentacle Sync GmbH"
+    },
+    {
+      "id": 1088,
+      "hex": "0x0440",
+      "name": "Valencell, Inc."
+    },
+    {
+      "id": 1089,
+      "hex": "0x0441",
+      "name": "iProtoXi Oy"
+    },
+    {
+      "id": 1090,
+      "hex": "0x0442",
+      "name": "SECOM CO., LTD."
+    },
+    {
+      "id": 1091,
+      "hex": "0x0443",
+      "name": "Tucker International LLC"
+    },
+    {
+      "id": 1092,
+      "hex": "0x0444",
+      "name": "Metanate Limited"
+    },
+    {
+      "id": 1093,
+      "hex": "0x0445",
+      "name": "Kobian Canada Inc."
+    },
+    {
+      "id": 1094,
+      "hex": "0x0446",
+      "name": "NETGEAR, Inc."
+    },
+    {
+      "id": 1095,
+      "hex": "0x0447",
+      "name": "Fabtronics Australia Pty Ltd"
+    },
+    {
+      "id": 1096,
+      "hex": "0x0448",
+      "name": "Grand Centrix GmbH"
+    },
+    {
+      "id": 1097,
+      "hex": "0x0449",
+      "name": "1UP USA.com llc"
+    },
+    {
+      "id": 1098,
+      "hex": "0x044A",
+      "name": "SHIMANO INC."
+    },
+    {
+      "id": 1099,
+      "hex": "0x044B",
+      "name": "Nain Inc."
+    },
+    {
+      "id": 1100,
+      "hex": "0x044C",
+      "name": "LifeStyle Lock, LLC"
+    },
+    {
+      "id": 1101,
+      "hex": "0x044D",
+      "name": "VEGA Grieshaber KG"
+    },
+    {
+      "id": 1102,
+      "hex": "0x044E",
+      "name": "Xtrava Inc."
+    },
+    {
+      "id": 1103,
+      "hex": "0x044F",
+      "name": "TTS Tooltechnic Systems AG & Co. KG"
+    },
+    {
+      "id": 1104,
+      "hex": "0x0450",
+      "name": "Teenage Engineering AB"
+    },
+    {
+      "id": 1105,
+      "hex": "0x0451",
+      "name": "Tunstall Nordic AB"
+    },
+    {
+      "id": 1106,
+      "hex": "0x0452",
+      "name": "Svep Design Center AB"
+    },
+    {
+      "id": 1107,
+      "hex": "0x0453",
+      "name": "GreenPeak Technologies BV"
+    },
+    {
+      "id": 1108,
+      "hex": "0x0454",
+      "name": "Sphinx Electronics GmbH & Co KG"
+    },
+    {
+      "id": 1109,
+      "hex": "0x0455",
+      "name": "Atomation"
+    },
+    {
+      "id": 1110,
+      "hex": "0x0456",
+      "name": "Nemik Consulting Inc"
+    },
+    {
+      "id": 1111,
+      "hex": "0x0457",
+      "name": "RF INNOVATION"
+    },
+    {
+      "id": 1112,
+      "hex": "0x0458",
+      "name": "Mini Solution Co., Ltd."
+    },
+    {
+      "id": 1113,
+      "hex": "0x0459",
+      "name": "Lumenetix, Inc"
+    },
+    {
+      "id": 1114,
+      "hex": "0x045A",
+      "name": "2048450 Ontario Inc"
+    },
+    {
+      "id": 1115,
+      "hex": "0x045B",
+      "name": "SPACEEK LTD"
+    },
+    {
+      "id": 1116,
+      "hex": "0x045C",
+      "name": "Delta T Corporation"
+    },
+    {
+      "id": 1117,
+      "hex": "0x045D",
+      "name": "Boston Scientific Corporation"
+    },
+    {
+      "id": 1118,
+      "hex": "0x045E",
+      "name": "Nuviz, Inc."
+    },
+    {
+      "id": 1119,
+      "hex": "0x045F",
+      "name": "Real Time Automation, Inc."
+    },
+    {
+      "id": 1120,
+      "hex": "0x0460",
+      "name": "Kolibree"
+    },
+    {
+      "id": 1121,
+      "hex": "0x0461",
+      "name": "vhf elektronik GmbH"
+    },
+    {
+      "id": 1122,
+      "hex": "0x0462",
+      "name": "Bonsai Systems GmbH"
+    },
+    {
+      "id": 1123,
+      "hex": "0x0463",
+      "name": "Fathom Systems Inc."
+    },
+    {
+      "id": 1124,
+      "hex": "0x0464",
+      "name": "Bellman & Symfon"
+    },
+    {
+      "id": 1125,
+      "hex": "0x0465",
+      "name": "International Forte Group LLC"
+    },
+    {
+      "id": 1126,
+      "hex": "0x0466",
+      "name": "CycleLabs Solutions inc."
+    },
+    {
+      "id": 1127,
+      "hex": "0x0467",
+      "name": "Codenex Oy"
+    },
+    {
+      "id": 1128,
+      "hex": "0x0468",
+      "name": "Kynesim Ltd"
+    },
+    {
+      "id": 1129,
+      "hex": "0x0469",
+      "name": "Palago AB"
+    },
+    {
+      "id": 1130,
+      "hex": "0x046A",
+      "name": "INSIGMA INC."
+    },
+    {
+      "id": 1131,
+      "hex": "0x046B",
+      "name": "PMD Solutions"
+    },
+    {
+      "id": 1132,
+      "hex": "0x046C",
+      "name": "Qingdao Realtime Technology Co., Ltd."
+    },
+    {
+      "id": 1133,
+      "hex": "0x046D",
+      "name": "BEGA Gantenbrink-Leuchten KG"
+    },
+    {
+      "id": 1134,
+      "hex": "0x046E",
+      "name": "Pambor Ltd."
+    },
+    {
+      "id": 3871,
+      "hex": "0x0F1F",
+      "name": "Ninebot (Changzhou) Tech Co., Ltd."
+    },
+    {
+      "id": 65535,
+      "hex": "0xFFFF",
+      "name": "SPECIAL USE/DEFAULT"
+    }
+  ]
+}
