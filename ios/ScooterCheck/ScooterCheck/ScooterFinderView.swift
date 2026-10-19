@@ -186,9 +186,10 @@ struct ScooterFinderView: View {
         .sheet(item: $detailDevice) { device in
             FinderDeviceDetailSheet(
                 device: device,
-                onStartSearch: {
+                liveRssi: ble.devices.first(where: { $0.id == device.id })?.rssi ?? device.rssi,
+                onStartSearch: { enableProximityAudio in
                     detailDevice = nil
-                    startFinding(device)
+                    startFinding(device, enableProximityAudio: enableProximityAudio)
                 },
                 onDismiss: { detailDevice = nil }
             )
@@ -286,11 +287,8 @@ struct ScooterFinderView: View {
                     VStack(spacing: Theme.Space.listGap) {
                         ForEach(listedDevices) { device in
                             Button {
-                                if mode == .signalPicker {
-                                    startFinding(device)
-                                } else {
-                                    detailDevice = device
-                                }
+                                // Signal-Finder: zuerst Detail mit Identifikationsaktionen (AirTag-ähnlich).
+                                detailDevice = device
                             } label: {
                                 finderDeviceRow(device)
                                     .overlay(alignment: .topTrailing) {
@@ -303,9 +301,7 @@ struct ScooterFinderView: View {
                             .buttonStyle(.plain)
                             .opacity(device.isStale ? 0.45 : 1)
                             .accessibilityHint(
-                                mode == .signalPicker
-                                    ? "Startet den Signal-Finder für dieses Gerät"
-                                    : "Öffnet Details mit Geräte-Wächter und Signal-Finder"
+                                "Öffnet Details mit Näherungssuche und Geräteaktionen"
                             )
                         }
                     }
@@ -449,7 +445,7 @@ struct ScooterFinderView: View {
     // MARK: - Actions
 
     /// Startet Signal-Finder — speichert das Gerät nie als bekannten Scooter.
-    private func startFinding(_ device: ScannedDevice) {
+    private func startFinding(_ device: ScannedDevice, enableProximityAudio: Bool = false) {
         if mode != .radar {
             radarBrowseMode = false
         }
@@ -459,6 +455,12 @@ struct ScooterFinderView: View {
         }
         radar.startSession(enableRadar: mode == .radar || radar.isEnabled)
         searchEngine.start(device: device, ble: ble)
+        if enableProximityAudio {
+            searchEngine.audioEnabled = true
+            searchEngine.hapticsEnabled = true
+            searchEngine.arSettings.audioEnabled = true
+            searchEngine.arSettings.hapticsEnabled = true
+        }
         BLESearchLiveActivityController.shared.start(deviceName: device.bleListDisplayName)
     }
 
@@ -681,14 +683,20 @@ struct ScooterFinderView: View {
     }
 }
 
-/// Detail aus Gerätesuche: Geräte-Wächter + Signal-Finder („Gerät aufspüren“).
+/// Detail: Fingerprint, Näherungssuche, dokumentierte Geräteaktionen (Piep/Blink).
 struct FinderDeviceDetailSheet: View {
     let device: ScannedDevice
-    var onStartSearch: () -> Void
+    var liveRssi: Int
+    /// `true` = Signal-Finder mit Suchton/Haptik starten.
+    var onStartSearch: (_ enableProximityAudio: Bool) -> Void
     var onDismiss: () -> Void
 
     @ObservedObject private var identity = BLEIdentificationService.shared
+    @StateObject private var capability = BLECapabilityService()
     @State private var showFullAnalysis = false
+    @State private var showProbeConfirm = false
+    @State private var alertActive = false
+    @State private var ledOn = false
 
     private var lastSeenText: String {
         let formatter = RelativeDateTimeFormatter()
@@ -701,64 +709,32 @@ struct FinderDeviceDetailSheet: View {
         identity.result(for: device.id)
     }
 
+    private var fingerprintStatus: BLEFingerprintStatus {
+        BLEFingerprintStatus.from(confidence: identityResult?.confidence)
+    }
+
+    private var signalBandLabel: String {
+        switch liveRssi {
+        case -55...0: return "Starkes Signal"
+        case -75 ..< -55: return "Mittleres Signal"
+        default: return "Schwaches Signal"
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.lg) {
-                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                        Text(identity.listTitle(for: device))
-                            .font(Theme.sectionTitle)
-                            .foregroundStyle(Theme.textPrimary)
-                        if let sub = identityResult?.listSubtitle {
-                            Text(sub)
-                                .font(Theme.secondary)
-                                .foregroundStyle(Theme.accent)
-                        }
-                        Text("Bluetooth-Gerät. Du kannst den Geräte-Wächter aktivieren oder es mit dem Signal-Finder aufspüren — ohne Speicherung als Scooter.")
-                            .font(Theme.body)
-                            .foregroundStyle(Theme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    VStack(alignment: .leading, spacing: Theme.Space.md) {
-                        detailRow("RSSI", "\(device.rssi) dBm · \(device.finderSignalLabel)")
-                        detailRow("BLE-ID", device.bleIdentifierShort)
-                        detailRow("Zuletzt gesehen", lastSeenText)
-                        detailRow(
-                            "Typ",
-                            identityResult?.deviceCategory?.label
-                                ?? (device.looksLikeScooter ? "Möglicher E-Scooter" : "Unbekanntes BLE-Gerät")
-                        )
-                        if let m = identityResult?.manufacturer {
-                            detailRow("Hersteller", m)
-                        }
-                        if let conf = identityResult?.confidence {
-                            detailRow("Zuverlässigkeit", conf.label)
-                        }
-                    }
-                    .padding(Theme.Space.lg)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                            .stroke(Theme.border, lineWidth: 1)
-                    )
-
+                    headerBlock
+                    statusCard
+                    proximityCard
+                    deviceActionsCard
                     ScootOutlineButton(title: "Geräteanalyse", systemImage: "magnifyingglass") {
                         showFullAnalysis = true
                     }
-
                     BLEWatcherSettingsCard(device: device, isKnownScooter: false)
-
-                    ScootPrimaryButton(
-                        title: "Gerät aufspüren",
-                        systemImage: "viewfinder"
-                    ) {
-                        onStartSearch()
-                    }
-
                     ScootSecondaryButton(title: "Schließen", systemImage: "xmark") {
+                        capability.disconnect(clearCaps: false)
                         onDismiss()
                     }
                 }
@@ -769,20 +745,178 @@ struct FinderDeviceDetailSheet: View {
             .background(Theme.bg.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
-                AppChromeSheetHeader(closeTitle: "Fertig", onClose: onDismiss)
+                AppChromeSheetHeader(closeTitle: "Fertig", onClose: {
+                    capability.disconnect(clearCaps: false)
+                    onDismiss()
+                })
             }
             .sheet(isPresented: $showFullAnalysis) {
                 BLEDeviceAnalysisView(
                     device: device,
-                    onSignalSearch: onStartSearch,
+                    onSignalSearch: { onStartSearch(false) },
                     onWatch: nil
                 )
+            }
+            .confirmationDialog(
+                "Schnittstellen prüfen?",
+                isPresented: $showProbeConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Verbinden und prüfen") {
+                    capability.probe(device: device)
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("ScooterCheck stellt eine kurze BLE-Verbindung her und liest dokumentierte GATT-Dienste. Es werden keine zufälligen Schreibbefehle gesendet.")
             }
             .onAppear {
                 identity.ingest(device)
             }
+            .onDisappear {
+                capability.disconnect(clearCaps: false)
+            }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private var headerBlock: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text(identity.listTitle(for: device))
+                .font(Theme.sectionTitle)
+                .foregroundStyle(Theme.textPrimary)
+            if let sub = identityResult?.listSubtitle {
+                Text(sub)
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.accent)
+            }
+            Text(fingerprintStatus.label)
+                .font(Theme.caption.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    private var statusCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.md) {
+            detailRow("Signal", "\(liveRssi) dBm · \(signalBandLabel)")
+            detailRow("Status", capability.phase == .idle ? "Erkannt" : capability.phase.label)
+            detailRow("BLE-ID", device.bleIdentifierShort)
+            detailRow("Zuletzt gesehen", lastSeenText)
+            detailRow(
+                "Typ",
+                identityResult?.deviceCategory?.label
+                    ?? (device.looksLikeScooter ? "Möglicher E-Scooter" : "Unbekanntes BLE-Gerät")
+            )
+            if let m = identityResult?.manufacturer {
+                detailRow("Hersteller", m)
+            }
+            ProximitySignalBars(rssi: liveRssi)
+                .frame(height: 10)
+                .padding(.top, 2)
+        }
+        .padding(Theme.Space.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+        )
+    }
+
+    private var proximityCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Gerät finden")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+                .textCase(.uppercase)
+            Text("Akustische Näherungssuche über das iPhone — steuert das Fremdgerät nicht. RSSI ist keine Meterangabe.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ScootPrimaryButton(
+                title: "Akustische Näherungssuche",
+                systemImage: "waveform"
+            ) {
+                onStartSearch(true)
+            }
+            ScootOutlineButton(title: "Nur Heatmap / Live", systemImage: "viewfinder") {
+                onStartSearch(false)
+            }
+        }
+    }
+
+    private var deviceActionsCard: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Geräteaktionen")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
+                .textCase(.uppercase)
+
+            if !capability.capabilities.probed {
+                Text("Prüfe zuerst, welche dokumentierten Schnittstellen das Gerät freigibt.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ScootOutlineButton(title: "Schnittstellen prüfen", systemImage: "link") {
+                    showProbeConfirm = true
+                }
+            } else if capability.phase == .probing {
+                HStack(spacing: Theme.Space.sm) {
+                    ProgressView().tint(Theme.accent)
+                    Text(capability.phase.label)
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            } else if !capability.capabilities.hasAnyDeviceAction {
+                Text("Keine dokumentierte Alarm- oder LED-Funktion erkannt. Die Näherungssuche bleibt verfügbar.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                if capability.capabilities.supportsAlert {
+                    if alertActive {
+                        ScootOutlineButton(title: "Alarm stoppen", systemImage: "speaker.slash") {
+                            capability.stopImmediateAlert()
+                            alertActive = false
+                        }
+                    } else {
+                        ScootOutlineButton(title: "Ton am Gerät abspielen", systemImage: "speaker.wave.2") {
+                            capability.sendImmediateAlert(level: .high)
+                            alertActive = true
+                        }
+                    }
+                }
+                if capability.capabilities.supportsVisualIdentification {
+                    if ledOn {
+                        ScootOutlineButton(title: "Blinken stoppen", systemImage: "lightbulb.slash") {
+                            capability.setNordicLed(on: false)
+                            ledOn = false
+                        }
+                    } else {
+                        ScootOutlineButton(title: "Gerät blinken lassen", systemImage: "lightbulb") {
+                            capability.setNordicLed(on: true)
+                            ledOn = true
+                        }
+                    }
+                }
+                if let note = capability.lastWriteNote {
+                    Text(note)
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text("Ein erfolgreicher BLE-Befehl beweist keinen hörbaren Ton.")
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.textMuted)
+            }
+
+            if case .failed(let msg) = capability.phase {
+                Text(msg)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func detailRow(_ title: String, _ value: String) -> some View {
@@ -795,5 +929,29 @@ struct FinderDeviceDetailSheet: View {
                 .foregroundStyle(Theme.textPrimary)
                 .textSelection(.enabled)
         }
+    }
+}
+
+/// Kompakte animierte Signalbalken für die Detailkarte (kein Metermaß).
+struct ProximitySignalBars: View {
+    let rssi: Int
+
+    private var fill: CGFloat {
+        let clamped = CGFloat(min(-30, max(-100, rssi)))
+        return (-30 - clamped) / 70
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Theme.surfaceSecondary)
+                Capsule()
+                    .fill(Theme.accent.opacity(0.85))
+                    .frame(width: max(8, geo.size.width * (1 - fill)))
+                    .animation(Theme.Motion.standard, value: rssi)
+            }
+        }
+        .accessibilityLabel("Signalstärke \(rssi) dBm")
     }
 }

@@ -265,10 +265,11 @@ private extension FAQCatalog {
                         "Sortierung nach Signalstärke oder Name",
                         "Optional: Geräte ohne Advertisement-Namen ausblenden",
                     ]),
-                    .paragraph("Zwei Zugangswege:"),
+                    .paragraph("Nach der Gerätewahl öffnet sich zuerst die Detailansicht (ähnlich einer Gerätefinder-App):"),
                     .bullets([
-                        "E-Scooter finden → Signal-Finder → Gerät wählen",
-                        "E-Scooter auslesen → Gerät → Detail → „Gerät aufspüren“ (soweit verfügbar)",
+                        "Akustische Näherungssuche — Suchton am iPhone je nach Signalstärke",
+                        "Heatmap / Live / AR — visuelle Annäherung",
+                        "Optional: dokumentierte Geräteaktionen (Piepen / Blinken), falls erkannt",
                     ]),
                     .paragraph("Drei Ansichten derselben Messsitzung:"),
                     .bullets([
@@ -276,12 +277,31 @@ private extension FAQCatalog {
                         "Heatmap — zweidimensionale Signalfläche, Nutzer zentriert",
                         "AR — AR Signal-Finder mit Kamera und bodenverankerten Signalflächen",
                     ]),
-                    .paragraph("In Heatmap und AR zeigen Farben gemessene Signalstärken entlang deines Weges — mint/grün stärker, rot schwächer. Die AR-Minikarte öffnet per Tippen die Heatmap."),
-                    .callout("Keine GPS-Ortung des Scooters und keine BLE-Peilung — Messungen liegen am iPhone-Standort, nicht am Gerät."),
+                    .paragraph("In Heatmap und AR zeigen Farben gemessene Signalstärken entlang deines Weges — mint/grün stärker, rot schwächer. Die AR-Minikarte öffnet per Tippen die Heatmap. Option „Suchton aktiv“ steuert das iPhone-Feedback."),
+                    .callout("Keine GPS-Ortung des Scooters und keine BLE-Peilung — Messungen liegen am iPhone-Standort, nicht am Gerät. RSSI ist keine Meterangabe."),
                 ],
                 keywords: [
                     "signal-finder", "heatmap", "live", "ar", "ar signal-finder", "gerät aufspüren", "rssi", "signalstärke",
                     "wärmer", "kälter", "richtung", "annäherung", "karte", "andere ble", "filter", "minikarte",
+                    "suchton", "näherungssuche", "piepen", "blinken",
+                ]
+            ),
+            FAQItem(
+                id: "finden-geraeteaktionen",
+                question: "Kann ScooterCheck ein Gerät piepsen oder blinken lassen?",
+                segments: [
+                    .paragraph("Ja — aber nur bei dokumentierten, vom Gerät freigegebenen Schnittstellen und nach ausdrücklicher Bestätigung."),
+                    .bullets([
+                        "Ton am Gerät — Immediate Alert Service (SIG 0x1802 / Alert Level 0x2A06), wenn schreibbar",
+                        "Gerät blinken lassen — nur bekannte dokumentierte LED-Profile (z. B. Nordic LED Button Service)",
+                        "Akustische Näherungssuche — Suchton am iPhone anhand der RSSI, steuert das Fremdgerät nicht",
+                    ]),
+                    .paragraph("Vor den Geräteaktionen prüft ScooterCheck die GATT-Services. Unbekannte Characteristics werden nicht wahllos beschrieben."),
+                    .callout("Ein erfolgreicher BLE-Schreibbefehl beweist keinen hörbaren Ton und kein sichtbares Blinken. Authentifizierung und Pairing-Grenzen werden respektiert."),
+                ],
+                keywords: [
+                    "piepen", "blinken", "alarm", "immediate alert", "led", "finden", "airtag",
+                    "ton am gerät", "näherungssuche", "suchton", "gatt",
                 ]
             ),
             FAQItem(

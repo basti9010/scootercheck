@@ -62,6 +62,7 @@ on:
       - cursor/auslesen-rssi-average-b100
       - cursor/pruefungen-neue-compact-b100
       - cursor/global-settings-b100
+      - cursor/ble-find-identify-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
