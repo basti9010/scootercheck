@@ -52,6 +52,8 @@ on:
       - cursor/ar-path-no-flicker-b100
       - cursor/ble-device-identification-b100
       - cursor/radar-background-approval-b100
+      - cursor/universal-scooter-diagnosis-b100
+      - cursor/radar-map-history-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
