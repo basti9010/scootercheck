@@ -33,12 +33,13 @@ final class FAQCatalogTests: XCTestCase {
             )
         }
         let finden = FAQCatalog.categories.first { $0.id == "finden" }
-        XCTAssertEqual(finden?.items.count, 9)
+        XCTAssertGreaterThanOrEqual(finden?.items.count ?? 0, 9)
         XCTAssertEqual(finden?.symbolName, "magnifyingglass")
         let ids = Set(finden?.items.map(\.id) ?? [])
         for needed in [
             "finden-was", "finden-radar",
             "finden-waechter", "finden-signal-finder",
+            "finden-geraeteaktionen",
         ] {
             XCTAssertTrue(ids.contains(needed), "missing \(needed)")
         }

@@ -546,7 +546,7 @@ struct BLESearchScreen: View {
                     }
 
                     Toggle(isOn: $engine.audioEnabled) {
-                        Text("Ton").font(Theme.secondary)
+                        Text("Suchton aktiv").font(Theme.secondary)
                     }
                     .tint(Theme.accent)
                     .onChange(of: engine.audioEnabled) { v in

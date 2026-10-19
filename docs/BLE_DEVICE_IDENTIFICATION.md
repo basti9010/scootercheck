@@ -82,7 +82,19 @@ Samsung-/Apple-Organisation → nicht als Scooter.
 
 ## GATT-Analyse
 
-Nur nach Nutzeraktion. Liest sichere Characteristics (u. a. Device Information). Keine Schreibbefehle, kein Auth-Bypass. Bei Ablehnung: Fehlermeldung, keine Geräteänderung.
+Nur nach Nutzeraktion. `BLEGattDeepAnalysis` liest sichere Characteristics (u. a. Device Information). Keine zufälligen Schreibbefehle, kein Auth-Bypass. Bei Ablehnung: Fehlermeldung, keine Geräteänderung.
+
+### Capability & Find-Aktionen (`BLECapabilityService`)
+
+Separater, nutzerbestätigter Pfad für **dokumentierte** Find-Me-/LED-Funktionen:
+
+| Fähigkeit | Voraussetzung | Aktion |
+|-----------|---------------|--------|
+| Immediate Alert | Service `1802`, Alert Level `2A06` schreibbar | Alert-Level 0/1/2 (SIG) |
+| Nordic LED | LED Button Service + Char `1525` schreibbar | LED an/aus |
+| Näherungssuche | immer (RSSI am iPhone) | Suchton/Haptik — steuert kein Fremdgerät |
+
+Keine Brute-Force-Writes. Ein bestätigter BLE-Write verifiziert **nicht** Ton oder Blinken am Gerät.
 
 ## Datenschutz
 

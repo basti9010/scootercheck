@@ -291,7 +291,8 @@ enum PrivacyContent {
                 "Die lokale Herstellerliste basiert auf Bluetooth-SIG Assigned Numbers. Eine Company Identifier benennt die registrierte Organisation — nicht automatisch Geräteklasse oder Modell.",
                 "Online-Identifikation ist optional und standardmäßig aus. Erst nach ausdrücklicher Zustimmung werden datensparsame technische Kennungen an ein konfiguriertes Backend gesendet — keine Standorte, keine vollständigen Scan-Historien, keine ungefragte Übertragung aller Geräte.",
                 "Ohne konfiguriertes Backend findet keine Online-Recherche statt; die lokale Analyse bleibt nutzbar.",
-                "Gespeicherte Online-Cache-Einträge und Analyseergebnisse kannst du in den App-Daten bzw. über „Analyse-Cache löschen“ entfernen."
+                "Gespeicherte Online-Cache-Einträge und Analyseergebnisse kannst du in den App-Daten bzw. über „Analyse-Cache löschen“ entfernen.",
+                "Optionale Geräteaktionen im Signal-Finder (Immediate Alert / dokumentierte LED) erfolgen nur nach Bestätigung und nur über bekannte GATT-Profile — keine ungefragten Schreibbefehle an unbekannte Characteristics."
             ]
         )
     ]

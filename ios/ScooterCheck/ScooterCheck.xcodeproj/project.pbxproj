@@ -83,6 +83,9 @@
 		A10000000000000000000064 /* OnlineIdentificationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000064 /* OnlineIdentificationProvider.swift */; };
 		A10000000000000000000065 /* BLEGattDeepAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000065 /* BLEGattDeepAnalysis.swift */; };
 		A10000000000000000000066 /* BLEDeviceAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000066 /* BLEDeviceAnalysisView.swift */; };
+		A100000000000000000000AA /* BLECapabilityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000AA /* BLECapabilityModels.swift */; };
+		A100000000000000000000AB /* BLECapabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000AB /* BLECapabilityService.swift */; };
+		A100000000000000000000AC /* BLECapabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000AC /* BLECapabilityTests.swift */; };
 		A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000068 /* BLEIdentificationTests.swift */; };
 		A10000000000000000000067 /* bluetooth_company_identifiers.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000067 /* bluetooth_company_identifiers.json */; };
 		A10000000000000000000069 /* ble_vendor_patterns.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000069 /* ble_vendor_patterns.json */; };
@@ -192,6 +195,9 @@
 		B10000000000000000000064 /* OnlineIdentificationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/OnlineIdentificationProvider.swift; sourceTree = "<group>"; };
 		B10000000000000000000065 /* BLEGattDeepAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLEGattDeepAnalysis.swift; sourceTree = "<group>"; };
 		B10000000000000000000066 /* BLEDeviceAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLEDeviceAnalysisView.swift; sourceTree = "<group>"; };
+		B100000000000000000000AA /* BLECapabilityModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLECapabilityModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000AB /* BLECapabilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLECapabilityService.swift; sourceTree = "<group>"; };
+		B100000000000000000000AC /* BLECapabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLECapabilityTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000068 /* BLEIdentificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentificationTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000067 /* bluetooth_company_identifiers.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = bluetooth_company_identifiers.json; sourceTree = "<group>"; };
 		B10000000000000000000069 /* ble_vendor_patterns.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ble_vendor_patterns.json; sourceTree = "<group>"; };
@@ -302,6 +308,8 @@
 				B10000000000000000000064 /* OnlineIdentificationProvider.swift */,
 				B10000000000000000000065 /* BLEGattDeepAnalysis.swift */,
 				B10000000000000000000066 /* BLEDeviceAnalysisView.swift */,
+				B100000000000000000000AA /* BLECapabilityModels.swift */,
+				B100000000000000000000AB /* BLECapabilityService.swift */,
 				B10000000000000000000067 /* bluetooth_company_identifiers.json */,
 				B10000000000000000000069 /* ble_vendor_patterns.json */,
 				B10000000000000000000070 /* BLERadarSession.swift */,
@@ -376,6 +384,7 @@
 				B10000000000000000000039 /* PrivacyContentTests.swift */,
 				B1000000000000000000002E /* ScooterFinderMathTests.swift */,
 				B10000000000000000000043 /* BLESearchCoreTests.swift */,
+				B100000000000000000000AC /* BLECapabilityTests.swift */,
 				B10000000000000000000046 /* BLEAnalysisCoreTests.swift */,
 				B10000000000000000000068 /* BLEIdentificationTests.swift */,
 				B10000000000000000000073 /* VehicleApprovalTests.swift */,
@@ -548,6 +557,8 @@
 				A10000000000000000000064 /* OnlineIdentificationProvider.swift in Sources */,
 				A10000000000000000000065 /* BLEGattDeepAnalysis.swift in Sources */,
 				A10000000000000000000066 /* BLEDeviceAnalysisView.swift in Sources */,
+				A100000000000000000000AA /* BLECapabilityModels.swift in Sources */,
+				A100000000000000000000AB /* BLECapabilityService.swift in Sources */,
 				A10000000000000000000048 /* BLEWatchRadarUI.swift in Sources */,
 				A10000000000000000000047 /* BLEWatchRadarCore.swift in Sources */,
 				A10000000000000000000070 /* BLERadarSession.swift in Sources */,
@@ -612,6 +623,7 @@
 				A10000000000000000000039 /* PrivacyContentTests.swift in Sources */,
 				A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */,
 				A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */,
+				A100000000000000000000AC /* BLECapabilityTests.swift in Sources */,
 				A10000000000000000000046 /* BLEAnalysisCoreTests.swift in Sources */,
 				A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */,
 				A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */,
