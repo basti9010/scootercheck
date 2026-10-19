@@ -64,7 +64,7 @@ struct UniversalDiagnosisView: View {
             }
             .preferredColorScheme(.dark)
             .onAppear { refresh() }
-            .onChange(of: gatt.phase) { _, phase in
+            .onChange(of: gatt.phase) { phase in
                 if case .done = phase, let report = gatt.report {
                     let snap = ReadOnlyDiagnosticEngine.shared.snapshotFromGatt(
                         analysis: report,
