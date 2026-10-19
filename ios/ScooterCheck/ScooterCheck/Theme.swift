@@ -113,8 +113,11 @@ enum Theme {
     enum Motion {
         static let drawer = Animation.easeInOut(duration: 0.30)
         static let standard = Animation.easeInOut(duration: 0.22)
+        /// Native-ähnlicher Seitenpush.
         static let page = Animation.easeInOut(duration: 0.28)
+        /// Sanfter Wurzel-/Tab-Wechsel.
         static let rootCrossfade = Animation.easeInOut(duration: 0.22)
+        /// Sehr kurz bei „Bewegung reduzieren“.
         static let reduced = Animation.easeInOut(duration: 0.01)
     }
 

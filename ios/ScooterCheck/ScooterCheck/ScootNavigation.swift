@@ -1,16 +1,7 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Motion tokens
-
-extension Theme.Motion {
-    /// Native-ähnlicher Seitenpush (~300 ms).
-    static let page = Animation.easeInOut(duration: 0.30)
-    /// Sanfter Wurzel-/Tab-Wechsel.
-    static let rootCrossfade = Animation.easeInOut(duration: 0.22)
-    /// Sehr kurz bei „Bewegung reduzieren“.
-    static let reduced = Animation.easeInOut(duration: 0.12)
-}
+// Motion tokens (`page`, `rootCrossfade`, `reduced`) leben in Theme.Motion.
 
 // MARK: - Interactive pop (Custom-Back + hidden NavigationBar)
 
