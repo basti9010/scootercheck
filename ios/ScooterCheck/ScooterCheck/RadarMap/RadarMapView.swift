@@ -22,6 +22,9 @@ struct RadarMapView: View {
     @State private var confirmDeleteSighting = false
     @State private var confirmDeleteHistory = false
     @State private var confirmHide = false
+    /// Papierkorb → nur Löschoptionen
+    @State private var showDeleteSheet = false
+    /// ⋯ → Löschen + Ausblenden
     @State private var showManageSheet = false
 
     private var visibleSightings: [RadarSighting] {
@@ -74,6 +77,11 @@ struct RadarMapView: View {
         .sheet(item: $selectedSighting) { sighting in
             sightingSheet(sighting)
         }
+        .confirmationDialog("Sichtung löschen", isPresented: $showDeleteSheet, titleVisibility: .visible) {
+            Button("Einzelne Sichtung löschen", role: .destructive) { confirmDeleteSighting = true }
+            Button("Gesamte Gerätehistorie löschen", role: .destructive) { confirmDeleteHistory = true }
+            Button("Abbrechen", role: .cancel) {}
+        }
         .confirmationDialog("Sichtungen verwalten", isPresented: $showManageSheet, titleVisibility: .visible) {
             Button("Einzelne Sichtung löschen", role: .destructive) { confirmDeleteSighting = true }
             Button("Gesamte Gerätehistorie löschen", role: .destructive) { confirmDeleteHistory = true }
@@ -96,25 +104,33 @@ struct RadarMapView: View {
                 if let id = selectedSighting?.id {
                     store.deleteSighting(id: id)
                     selectedSighting = nil
+                    fitToken += 1
                 }
             }
         } message: {
             if let s = selectedSighting {
-                Text("Möchtest du diese Sichtung vom \(Self.format(s.firstSeenAt)) dauerhaft löschen?")
+                Text("Möchtest du diese Sichtung vom \(Self.format(s.firstSeenAt)) wirklich löschen?")
+            } else {
+                Text("Möchtest du diese Sichtung wirklich löschen?")
             }
         }
         .alert("Gerätehistorie löschen?", isPresented: $confirmDeleteHistory) {
             Button("Abbrechen", role: .cancel) {}
             Button("Löschen", role: .destructive) {
-                if let iid = selectedSighting?.deviceIdentityId {
+                guard let s = selectedSighting else { return }
+                if let iid = s.deviceIdentityId {
                     store.deleteHistory(forIdentity: iid)
-                    selectedSighting = nil
+                } else {
+                    store.deleteHistory(forPeripheral: s.peripheralId)
                 }
+                selectedSighting = nil
+                focusIdentityId = nil
+                fitToken += 1
             }
         } message: {
-            if let iid = selectedSighting?.deviceIdentityId {
-                let n = store.sightings(forIdentity: iid).count
-                Text("Möchtest du alle \(n) gespeicherten Sichtungen dieses Geräts dauerhaft löschen?")
+            if let s = selectedSighting {
+                let n = store.sightingCount(for: s)
+                Text("Alle \(n) gespeicherten Sichtungen dieses Geräts dauerhaft löschen?")
             }
         }
         .alert("Dieses Gerät künftig ausblenden?", isPresented: $confirmHide) {
@@ -308,12 +324,15 @@ struct RadarMapView: View {
     }
 
     private func sightingSheet(_ sighting: RadarSighting) -> some View {
-        let history = sighting.deviceIdentityId.map { store.sightings(forIdentity: $0) } ?? [sighting]
+        let historyCount = store.sightingCount(for: sighting)
+        let history = sighting.deviceIdentityId.map { store.sightings(forIdentity: $0) }
+            ?? store.sightings.filter { $0.peripheralId == sighting.peripheralId }.sorted { $0.firstSeenAt < $1.firstSeenAt }
         let areas = sighting.deviceIdentityId.map { store.distinctAreaCount(forIdentity: $0) } ?? 0
+        let shortId = String(sighting.peripheralId.uuidString.prefix(8)).uppercased()
         return NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.md) {
-                    HStack {
+                    HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(sighting.displayName)
                                 .font(Theme.sectionTitle)
@@ -325,16 +344,26 @@ struct RadarMapView: View {
                             }
                         }
                         Spacer()
+                        Button { showDeleteSheet = true } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Theme.danger.opacity(0.85))
+                                .frame(width: 36, height: 36)
+                        }
+                        .accessibilityLabel("Löschen")
                         Button { showManageSheet = true } label: {
                             Image(systemName: "ellipsis")
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 36, height: 36)
                         }
+                        .accessibilityLabel("Mehr")
                     }
                     row("Hersteller", sighting.manufacturer ?? "—")
                     row("Modell", sighting.model ?? "—")
+                    row("Gerätekennung", shortId)
                     row("Zeitpunkt", Self.format(sighting.firstSeenAt))
                     row("Signal", sighting.signalLabel)
+                    row("Sichtungen", "\(historyCount)")
                     row("Identifikation", sighting.identificationConfidence.label)
                     row("Zuordnung", sighting.identityMatchConfidence.label)
                     if let acc = sighting.location?.horizontalAccuracy {
@@ -346,7 +375,7 @@ struct RadarMapView: View {
                        let st = GermanVehicleApprovalStatus(rawValue: raw) {
                         row("Zulassung", st.label)
                     }
-                    Text("Die Karte zeigt den Empfangsort des Smartphones, nicht die exakte Scooter-Position.")
+                    Text("Die Karte zeigt den Empfangsort des Smartphones, nicht die exakte Scooter-Position. Löschen betrifft nur Radar-Sichtungen — nicht bekannte Scooter, Prüfberichte oder Wächter.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
 

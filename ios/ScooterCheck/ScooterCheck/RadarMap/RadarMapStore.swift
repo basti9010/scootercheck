@@ -234,6 +234,25 @@ final class RadarMapStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Historie ohne Identity: alle Sichtungen derselben Peripheral-ID.
+    func deleteHistory(forPeripheral id: UUID) {
+        let relatedIds = Set(sightings.filter { $0.peripheralId == id }.compactMap(\.deviceIdentityId))
+        sightings.removeAll { $0.peripheralId == id }
+        for iid in relatedIds {
+            if let idx = identities.firstIndex(where: { $0.id == iid }) {
+                identities[idx].sightingCount = sightings.filter { $0.deviceIdentityId == iid }.count
+            }
+        }
+        scheduleSave()
+    }
+
+    func sightingCount(for sighting: RadarSighting) -> Int {
+        if let iid = sighting.deviceIdentityId {
+            return sightings(forIdentity: iid).count
+        }
+        return sightings.filter { $0.peripheralId == sighting.peripheralId }.count
+    }
+
     func deleteAllSightings() {
         sightings = []
         for i in identities.indices {
