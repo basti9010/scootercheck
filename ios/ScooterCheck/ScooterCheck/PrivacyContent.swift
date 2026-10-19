@@ -25,6 +25,8 @@ enum PrivacyContent {
     Einzige vom Code ausgehende Netzwerkabfrage: optionaler Download einer öffentlichen Firmware-Sollkatalog-Datei von GitHub (raw.githubusercontent.com). Dabei werden keine Prüfungs- oder Fotodaten hochgeladen.
 
     Standort- und Bewegungsdaten werden nur während „E-Scooter finden“ im Arbeitsspeicher ausgewertet und nicht in die Prüfungsablage geschrieben.
+
+    Globale App-Einstellungen (z. B. Schriftgröße unter Menü → Einstellungen) bleiben lokal auf dem Gerät; sie enthalten keine personenbezogenen Prüfungsdaten.
     """
 
     // MARK: - Hub navigation
@@ -118,7 +120,8 @@ enum PrivacyContent {
                 "Lokale Speicherung von Prüfberichten (PDF/JSON), optionaler Zuordnung (z. B. Kennzeichen/Name) und Fotos zur Dokumentation und Wiedererkennung.",
                 "Wiedererkennung zuvor geprüfter Scooter über lokal gespeicherte Serien-/Advertisement- und BLE-Peripheral-Kennungen.",
                 "Optionale Richtungsschätzung unter „E-Scooter finden“ anhand von Bluetooth-Signalstärke sowie Standort-/Bewegungssensoren während der aktiven Suche.",
-                "Optionaler Abruf eines öffentlichen Firmware-Sollkatalogs zur Aktualisierung von Vergleichsdaten."
+                "Optionaler Abruf eines öffentlichen Firmware-Sollkatalogs zur Aktualisierung von Vergleichsdaten.",
+                "Lokale Speicherung globaler App-Darstellungseinstellungen (z. B. Schriftgröße über Menü → Einstellungen)."
             ]
         ),
         Section(
@@ -127,7 +130,7 @@ enum PrivacyContent {
                 "Technische Scooter-/Diagnosedaten (u. a. Seriennummern, Firmwarestände, Register-/Board-Werte, BLE-Gerätenamen und -UUIDs), soweit auslesbar.",
                 "Optionale Subject-Angaben, die du eingibst (Kennzeichen, Name, Geburtsdatum).",
                 "Fotos, die du einer Prüfung zuordnest (Kamera oder Mediathek).",
-                "App-Einstellungen und lokal gespeicherte Notizen zu Soft-Unlock-Kombinationen (UserDefaults), sofern genutzt.",
+                "App-Einstellungen: globale Darstellung (Schriftgröße) sowie Soft-Unlock-Notizen/-Kombinationen und Feature-Einstellungen (z. B. Radar/Karte) in UserDefaults, sofern genutzt — keine Prüfungsinhalte.",
                 "Während „E-Scooter finden“: Standort-, Heading- und Bewegungsdaten nur im Arbeitsspeicher der laufenden Sitzung.",
                 "Keine Benutzerkonten; keine serverseitigen Profil-/Account-Daten in dieser App-Version."
             ]
@@ -155,6 +158,7 @@ enum PrivacyContent {
                 "Lokale Prüfungen und Fotos bleiben gespeichert, bis du sie in der App endgültig löschst oder die App bzw. deren Daten vom Gerät entfernst.",
                 "Archivieren entfernt Daten nicht; es blendet Einträge nur aus der aktiven Liste aus.",
                 "Standort-/Bewegungswerte der Scootersuche werden nicht dauerhaft in der Prüfungsablage gespeichert.",
+                "Globale Darstellungseinstellungen (Schriftgröße) bleiben, bis du sie änderst oder App-Daten vom Gerät entfernst.",
                 "iCloud-/Geräte-Backups des Betriebssystems können App-Daten mit sichern, sofern auf dem Gerät aktiviert — das steuert Apple/iOS, nicht ein App-Upload."
             ]
         ),
@@ -235,7 +239,7 @@ enum PrivacyContent {
             title: "Was lokal gespeichert wird",
             paragraphs: [
                 "Prüfungsindex und Session-/Protokollpakete unter Application Support (ScooterCheck/History), inkl. PDF/JSON und Fotoordner.",
-                "UserDefaults: u. a. Soft-Unlock-Einstellungen/-Kombos, optionaler BLE-Session-Schlüssel, Metadaten zum Firmware-Katalog-Cache.",
+                "UserDefaults: u. a. globale Schriftgröße (Menü → Einstellungen), Soft-Unlock-Einstellungen/-Kombos, Radar-/Karten-Optionen, optionaler BLE-Session-Schlüssel, Metadaten zum Firmware-Katalog-Cache.",
                 "Cache der heruntergeladenen Firmware-Katalog-JSON."
             ]
         ),
@@ -389,6 +393,7 @@ enum PrivacyContent {
             paragraphs: [
                 "Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit (soweit einschlägig), Widerspruch (soweit einschlägig), Widerruf von Einwilligungen, Beschwerde bei einer Aufsichtsbehörde.",
                 "Lokale Prüfungsdaten kannst du in der App einsehen, korrigieren (Zuordnung), archivieren oder endgültig löschen.",
+                "Globale Darstellungseinstellungen kannst du unter Menü → Einstellungen jederzeit ändern; mit dem Löschen der App-Daten entfallen sie ebenfalls.",
                 "Für Anfragen an den Verantwortlichen: Kontaktdaten sind in der App noch nicht hinterlegt — nutze die Kontaktmöglichkeit im App-Store-Eintrag des Anbieters, bis hier eine erreichbare Adresse ergänzt ist."
             ]
         )

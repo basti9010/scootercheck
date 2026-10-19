@@ -124,6 +124,23 @@ private extension FAQCatalog {
                 ],
                 keywords: ["ablauf", "prüfung", "profil", "übersicht", "bericht"]
             ),
+            FAQItem(
+                id: "menue",
+                question: "Was finde ich im linken Menü?",
+                segments: [
+                    .paragraph("Über das Seitenmenü erreichst du die Hauptbereiche der App:"),
+                    .bullets([
+                        "E-Scooter auslesen — Diagnose und Prüfbericht",
+                        "Prüfungen — gespeicherte Berichte (Aktiv / Archiv)",
+                        "E-Scooter finden — Radar, Wächter, Signal-Finder",
+                        "FAQ & Wissensbasis",
+                        "Datenschutz",
+                        "Einstellungen — globale App-Darstellung (z. B. Schriftgröße)",
+                    ]),
+                    .callout("Feature-Einstellungen wie Radar oder Radarkarte bleiben am jeweiligen Zahnrad vor Ort. „Einstellungen“ im Menü gilt für die ganze App."),
+                ],
+                keywords: ["menü", "navigation", "einstellungen", "schriftgröße", "drawer", "seitenmenü"]
+            ),
         ]
     )
 }
@@ -837,6 +854,22 @@ private extension FAQCatalog {
                     .callout("Details stehen im FAQ-Kapitel „E-Scooter finden“. Keine GPS-Ortung — nur Bluetooth-Signalhilfe."),
                 ],
                 keywords: ["finden", "e-scooter finden", "richtung", "rssi", "signal", "nähe", "wächter", "radar", "signal-finder", "auslesen"]
+            ),
+            FAQItem(
+                id: "einstellungen-schrift",
+                question: "Wo stelle ich die Schriftgröße ein?",
+                segments: [
+                    .paragraph("Im linken Menü unter „Einstellungen“ kannst du die Schriftgröße für die gesamte App wählen:"),
+                    .bullets([
+                        "Kompakt",
+                        "Standard",
+                        "Groß",
+                        "Sehr groß",
+                    ]),
+                    .paragraph("Die Stufe wird lokal auf dem Gerät gespeichert und gilt für Texte in Auslesen, Prüfungen, Finden und den übrigen Screens."),
+                    .callout("Das ist unabhängig von den Radar-/Karten-Einstellungen am jeweiligen Zahnrad."),
+                ],
+                keywords: ["einstellungen", "schriftgröße", "darstellung", "lesbarkeit", "textgröße", "barrierefreiheit"]
             ),
         ]
     )
