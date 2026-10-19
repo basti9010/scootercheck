@@ -372,14 +372,14 @@ struct BLERadarSettingsSheet: View {
                                 session.settings = s
                             }
                         } label: {
-                            HStack(spacing: Theme.Space.md) {
+                            HStack(spacing: Theme.Space.sm) {
                                 Text(mode.label)
-                                    .font(Theme.secondary)
+                                    .font(Theme.caption)
                                     .foregroundStyle(Theme.textPrimary)
                                 Spacer(minLength: 0)
                                 if session.settings.displayMode == mode {
                                     Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .font(.system(size: 12, weight: .semibold))
                                         .foregroundStyle(Theme.accent)
                                         .transition(.opacity.combined(with: .scale(scale: 0.85)))
                                 }
@@ -391,15 +391,18 @@ struct BLERadarSettingsSheet: View {
                     }
                 } header: {
                     Text("Display während der Suche")
+                        .font(Theme.meta)
                 } footer: {
-                    Text("Die manuelle Displaysperre bleibt jederzeit möglich.")
+                    Text("Manuelle Sperre bleibt jederzeit möglich.")
+                        .font(Theme.meta)
                 }
             }
+            .font(Theme.caption)
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .scrollDisabled(true)
             .background(Theme.bg)
-            .navigationTitle("Radar-Einstellungen")
+            .navigationTitle("Einstellungen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -407,12 +410,13 @@ struct BLERadarSettingsSheet: View {
                         radar.persistSettingsToStore()
                         dismiss()
                     }
+                    .font(Theme.caption.weight(.semibold))
                     .foregroundStyle(Theme.accent)
                 }
             }
             .preferredColorScheme(.dark)
         }
-        .presentationDetents([.height(260)])
+        .presentationDetents([.height(240)])
         .presentationDragIndicator(.visible)
     }
 }
