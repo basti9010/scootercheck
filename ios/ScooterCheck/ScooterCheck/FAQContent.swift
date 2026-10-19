@@ -886,10 +886,13 @@ private extension FAQCatalog {
                         "Groß",
                         "Sehr groß",
                     ]),
-                    .paragraph("Die Stufe wird lokal auf dem Gerät gespeichert und gilt für Texte in Auslesen, Prüfungen, Finden und den übrigen Screens."),
-                    .callout("Das ist unabhängig von den Radar-/Karten-Einstellungen am jeweiligen Zahnrad."),
+                    .paragraph("Dort legst du auch Startwerte für „E-Scooter auslesen“ (Filter, Sortierung) und den Signal-Finder (Suchton/Haptik) fest sowie die App-Version."),
+                    .paragraph("Die Werte werden lokal gespeichert. Radar- und Karten-Optionen bleiben am jeweiligen Zahnrad."),
                 ],
-                keywords: ["einstellungen", "schriftgröße", "darstellung", "lesbarkeit", "textgröße", "barrierefreiheit"]
+                keywords: [
+                    "einstellungen", "schriftgröße", "darstellung", "lesbarkeit", "textgröße", "barrierefreiheit",
+                    "suchton", "haptik", "sortierung", "filter", "version",
+                ]
             ),
         ]
     )

@@ -159,6 +159,11 @@ final class BLESearchEngine: NSObject, ObservableObject {
         bestZoneEstimator.reset()
         guidanceController.reset()
         arSettings = ARSignalFinderSettings.load()
+        // Globale Defaults (Menü → Einstellungen); Session-Toggle kann sie danach überschreiben.
+        audioEnabled = AppSettings.shared.findProximityAudioDefault
+        hapticsEnabled = AppSettings.shared.findProximityHapticsDefault
+        arSettings.audioEnabled = audioEnabled
+        arSettings.hapticsEnabled = hapticsEnabled
         relativeX = 0
         relativeY = 0
         originLocation = nil

@@ -455,6 +455,7 @@ struct ScooterFinderView: View {
         }
         radar.startSession(enableRadar: mode == .radar || radar.isEnabled)
         searchEngine.start(device: device, ble: ble)
+        // Explizite „Akustische Näherungssuche“ erzwingt Ton+Haptik; sonst globale Defaults aus start().
         if enableProximityAudio {
             searchEngine.audioEnabled = true
             searchEngine.hapticsEnabled = true
