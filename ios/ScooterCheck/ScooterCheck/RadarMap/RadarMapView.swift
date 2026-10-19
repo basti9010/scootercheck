@@ -558,20 +558,19 @@ struct RadarMapView: View {
                 }
                 Section("Aufbewahrung") {
                     Picker("Dauer", selection: Binding(
-                        get: { store.settings.retentionHours ?? -1 },
-                        set: { v in
+                        get: { store.settings.retentionChoice },
+                        set: { choice in
                             var s = store.settings
-                            s.retentionHours = v < 0 ? nil : v
+                            s.retentionChoice = choice
                             store.settings = s
                             store.pruneRetentionIfNeeded()
                         }
                     )) {
-                        Text("24 Stunden").tag(24)
-                        Text("48 Stunden").tag(48)
-                        Text("7 Tage").tag(168)
-                        Text("14 Tage").tag(336)
-                        Text("Bis zur manuellen Löschung").tag(-1)
+                        ForEach(RadarMapRetentionChoice.allCases) { choice in
+                            Text(choice.label).tag(choice)
+                        }
                     }
+                    .pickerStyle(.inline)
                 }
                 Section {
                     Button {

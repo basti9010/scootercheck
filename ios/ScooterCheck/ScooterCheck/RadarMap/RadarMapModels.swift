@@ -191,6 +191,52 @@ struct HiddenRadarDevice: Codable, Identifiable, Sendable, Equatable {
     }
 }
 
+/// Aufbewahrungsdauer der Radar-Karten-Sichtungen.
+enum RadarMapRetentionChoice: String, CaseIterable, Identifiable, Codable, Sendable {
+    case hours24
+    case hours48
+    case days7
+    case days14
+    /// Kein automatisches Löschen — nur manuell.
+    case untilManualDeletion
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .hours24: return "24 Stunden"
+        case .hours48: return "48 Stunden"
+        case .days7: return "7 Tage"
+        case .days14: return "14 Tage"
+        case .untilManualDeletion: return "Bis zur manuellen Löschung"
+        }
+    }
+
+    /// `nil` = keine automatische Bereinigung.
+    var hours: Int? {
+        switch self {
+        case .hours24: return 24
+        case .hours48: return 48
+        case .days7: return 168
+        case .days14: return 336
+        case .untilManualDeletion: return nil
+        }
+    }
+
+    static func from(hours: Int?) -> RadarMapRetentionChoice {
+        switch hours {
+        case 24: return .hours24
+        case 48: return .hours48
+        case 168: return .days7
+        case 336: return .days14
+        case nil, .some(-1): return .untilManualDeletion
+        default:
+            // Unbekannte gespeicherte Werte: kein stilles Zurücksetzen auf 48h.
+            return .untilManualDeletion
+        }
+    }
+}
+
 struct RadarMapSettings: Codable, Equatable, Sendable {
     var storeSightings: Bool
     var storeLocation: Bool
@@ -198,9 +244,14 @@ struct RadarMapSettings: Codable, Equatable, Sendable {
     var notifyRepeatSightings: Bool
     /// Minuten ohne Empfang → neue Sichtung (Default 15).
     var sightingGapMinutes: Int
-    /// Aufbewahrung in Stunden; nil = manuell.
+    /// Aufbewahrung in Stunden; nil = bis zur manuellen Löschung.
     var retentionHours: Int?
     var retainSightingsWhileHidden: Bool
+
+    var retentionChoice: RadarMapRetentionChoice {
+        get { RadarMapRetentionChoice.from(hours: retentionHours) }
+        set { retentionHours = newValue.hours }
+    }
 
     static let `default` = RadarMapSettings(
         storeSightings: false,
@@ -213,6 +264,59 @@ struct RadarMapSettings: Codable, Equatable, Sendable {
     )
 
     private static let key = "radarMap.settings.v1"
+    /// Persistenz-Sentinel für „bis zur manuellen Löschung“ (vermeidet weggelassenes Optional).
+    private static let manualRetentionSentinel = -1
+
+    enum CodingKeys: String, CodingKey {
+        case storeSightings, storeLocation, storeDeviceHistory, notifyRepeatSightings
+        case sightingGapMinutes, retentionHours, retainSightingsWhileHidden
+    }
+
+    init(
+        storeSightings: Bool,
+        storeLocation: Bool,
+        storeDeviceHistory: Bool,
+        notifyRepeatSightings: Bool,
+        sightingGapMinutes: Int,
+        retentionHours: Int?,
+        retainSightingsWhileHidden: Bool
+    ) {
+        self.storeSightings = storeSightings
+        self.storeLocation = storeLocation
+        self.storeDeviceHistory = storeDeviceHistory
+        self.notifyRepeatSightings = notifyRepeatSightings
+        self.sightingGapMinutes = sightingGapMinutes
+        self.retentionHours = retentionHours
+        self.retainSightingsWhileHidden = retainSightingsWhileHidden
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        storeSightings = try c.decodeIfPresent(Bool.self, forKey: .storeSightings) ?? false
+        storeLocation = try c.decodeIfPresent(Bool.self, forKey: .storeLocation) ?? false
+        storeDeviceHistory = try c.decodeIfPresent(Bool.self, forKey: .storeDeviceHistory) ?? true
+        notifyRepeatSightings = try c.decodeIfPresent(Bool.self, forKey: .notifyRepeatSightings) ?? false
+        sightingGapMinutes = try c.decodeIfPresent(Int.self, forKey: .sightingGapMinutes) ?? 15
+        retainSightingsWhileHidden = try c.decodeIfPresent(Bool.self, forKey: .retainSightingsWhileHidden) ?? false
+        if let raw = try c.decodeIfPresent(Int.self, forKey: .retentionHours) {
+            retentionHours = raw == Self.manualRetentionSentinel ? nil : raw
+        } else {
+            // Fehlender Key in älteren Saves: Default 48h beibehalten nur wenn nie gesetzt —
+            // hier: fehlend = Default aus Schema (48), Sentinel -1 = manuell.
+            retentionHours = 48
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(storeSightings, forKey: .storeSightings)
+        try c.encode(storeLocation, forKey: .storeLocation)
+        try c.encode(storeDeviceHistory, forKey: .storeDeviceHistory)
+        try c.encode(notifyRepeatSightings, forKey: .notifyRepeatSightings)
+        try c.encode(sightingGapMinutes, forKey: .sightingGapMinutes)
+        try c.encode(retainSightingsWhileHidden, forKey: .retainSightingsWhileHidden)
+        try c.encode(retentionHours ?? Self.manualRetentionSentinel, forKey: .retentionHours)
+    }
 
     static func load() -> RadarMapSettings {
         guard let data = UserDefaults.standard.data(forKey: key),
@@ -223,9 +327,8 @@ struct RadarMapSettings: Codable, Equatable, Sendable {
     }
 
     func save() {
-        if let data = try? JSONEncoder().encode(self) {
-            UserDefaults.standard.set(data, forKey: Self.key)
-        }
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(data, forKey: Self.key)
     }
 }
 
