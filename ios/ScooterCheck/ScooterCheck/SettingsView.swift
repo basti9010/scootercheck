@@ -14,28 +14,10 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: Theme.Space.xxl) {
                         PageTitle(text: "Einstellungen")
 
-                        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                            Text("Darstellung")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.textMuted)
-                                .textCase(.uppercase)
-
-                            Text("Schriftgröße")
-                                .font(Theme.cardTitle)
-                                .foregroundStyle(Theme.textPrimary)
-
-                            Text("Gilt für die gesamte App. Feature-Einstellungen (Radar, Karte) bleiben an Ort und Stelle.")
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            VStack(spacing: Theme.Space.sm) {
-                                ForEach(AppTextSize.allCases) { size in
-                                    textSizeRow(size)
-                                }
-                            }
-                            .padding(.top, Theme.Space.xs)
-                        }
+                        displaySection
+                        auslesenSection
+                        findenSection
+                        aboutSection
 
                         AppCopyrightFooter()
                             .frame(maxWidth: .infinity)
@@ -51,6 +33,138 @@ struct SettingsView: View {
             }
             .preferredColorScheme(.dark)
         }
+    }
+
+    // MARK: - Darstellung
+
+    private var displaySection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("Darstellung")
+
+            Text("Schriftgröße")
+                .font(Theme.cardTitle)
+                .foregroundStyle(Theme.textPrimary)
+
+            Text("Gilt für die gesamte App. Feature-Einstellungen (Radar, Karte) bleiben an Ort und Stelle.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(spacing: Theme.Space.sm) {
+                ForEach(AppTextSize.allCases) { size in
+                    textSizeRow(size)
+                }
+            }
+            .padding(.top, Theme.Space.xs)
+        }
+    }
+
+    // MARK: - Auslesen
+
+    private var auslesenSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("E-Scooter auslesen")
+
+            Text("Startwerte für die Geräteliste. Du kannst sie während der Suche weiterhin umschalten.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            settingsToggle(
+                title: "Nur vermutete E-Scooter",
+                subtitle: "Sonst alle BLE-Geräte in der Nähe",
+                isOn: $settings.auslesenShowOnlyScooters
+            )
+
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("Sortierung")
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.textPrimary)
+                Picker("Sortierung", selection: $settings.auslesenListSort) {
+                    ForEach(BleDeviceListSort.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .scootSegmented()
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
+
+            if !settings.auslesenShowOnlyScooters {
+                settingsToggle(
+                    title: "Namenlose Geräte ausblenden",
+                    subtitle: "Nur bei „Alle BLE-Geräte“",
+                    isOn: $settings.auslesenHideNameless
+                )
+            }
+        }
+    }
+
+    // MARK: - Finden
+
+    private var findenSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("E-Scooter finden")
+
+            Text("Standard für die akustische Näherungssuche im Signal-Finder. Radar-Alarme bleiben separat.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            settingsToggle(
+                title: "Suchton standardmäßig an",
+                subtitle: "Kann im Finder jederzeit umgeschaltet werden",
+                isOn: $settings.findProximityAudioDefault
+            )
+
+            settingsToggle(
+                title: "Haptik standardmäßig an",
+                subtitle: "Leichte Vibrationen bei Signaländerungen",
+                isOn: $settings.findProximityHapticsDefault
+            )
+        }
+    }
+
+    // MARK: - Über
+
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("Über die App")
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("ScooterCheck")
+                    .font(Theme.cardTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                Text(settings.appVersionLabel)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
+        }
+    }
+
+    // MARK: - Rows
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(Theme.caption)
+            .foregroundStyle(Theme.textMuted)
+            .textCase(.uppercase)
     }
 
     private func textSizeRow(_ size: AppTextSize) -> some View {
@@ -88,5 +202,28 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(size.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.cardTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                Text(subtitle)
+                    .font(Theme.meta)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .tint(Theme.accent)
+        .padding(.horizontal, Theme.Space.cardPadding)
+        .padding(.vertical, 11)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+        )
     }
 }

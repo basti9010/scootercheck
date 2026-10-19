@@ -63,6 +63,7 @@ on:
       - cursor/pruefungen-neue-compact-b100
       - cursor/global-settings-b100
       - cursor/ble-find-identify-b100
+      - cursor/settings-defaults-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

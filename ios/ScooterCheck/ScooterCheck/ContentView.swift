@@ -17,8 +17,8 @@ struct ContentView: View {
     @State private var showPrivacy = false
     @State private var showSettings = false
     @ObservedObject private var appSettings = AppSettings.shared
-    @State private var auslesenListSort: BleDeviceListSort = .signal
-    @State private var auslesenHideNameless = false
+    @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
+    @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
     @State private var historyShareItems: [Any] = []
     @State private var showHistoryShare = false
@@ -306,8 +306,14 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
         .tint(Theme.accent)
         .onAppear {
+            applyAuslesenDefaultsFromSettings()
             BLEWatchService.shared.attach(ble: ble)
             BLERadarService.shared.attach(ble: ble)
+        }
+        .onChange(of: showSettings) { open in
+            if !open {
+                applyAuslesenDefaultsFromSettings()
+            }
         }
         .onChange(of: scenePhase) { phase in
             BLEWatchService.shared.setForeground(phase == .active)
@@ -1169,6 +1175,13 @@ struct ContentView: View {
             if isBusyPhase || busy { return ble.phase == .scanning }
             return true
         }
+    }
+
+    /// Übernimmt globale Auslesen-Defaults (nach App-Start / Einstellungen schließen).
+    private func applyAuslesenDefaultsFromSettings() {
+        ble.showOnlyLikelyScooters = appSettings.auslesenShowOnlyScooters
+        auslesenListSort = appSettings.auslesenListSort
+        auslesenHideNameless = appSettings.auslesenHideNameless
     }
 
     private func primaryAction() {
