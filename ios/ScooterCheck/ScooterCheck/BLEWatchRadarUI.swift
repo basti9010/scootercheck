@@ -354,11 +354,16 @@ struct BLERadarWaitingView: View {
     }
 }
 
-/// Kompaktes Bottom Sheet: nur Displaysteuerung.
+/// Kompaktes Bottom Sheet: Display + Alarm-Signalstärke (ohne aufgeblähtes Formular).
 struct BLERadarSettingsSheet: View {
     @ObservedObject var radar: BLERadarService
     @ObservedObject private var session = BLERadarSessionStore.shared
     @Environment(\.dismiss) private var dismiss
+
+    /// Sinnvolle Alarm-Schwellen fürs Radar (ohne „Signal verloren“).
+    private static let alarmSignalOptions: [BLESignalClass] = [
+        .weak, .medium, .strong, .veryStrong
+    ]
 
     var body: some View {
         NavigationStack {
@@ -396,11 +401,32 @@ struct BLERadarSettingsSheet: View {
                     Text("Manuelle Sperre bleibt jederzeit möglich.")
                         .font(Theme.meta)
                 }
+
+                Section {
+                    Picker("Alarm ab", selection: Binding(
+                        get: { radar.minimumSignalClass },
+                        set: { v in
+                            radar.minimumSignalClass = v
+                            radar.persistSettingsToStore()
+                        }
+                    )) {
+                        ForEach(Self.alarmSignalOptions, id: \.self) { cls in
+                            Text(cls.label).tag(cls)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .listRowBackground(Theme.card)
+                } header: {
+                    Text("Signalempfindlichkeit")
+                        .font(Theme.meta)
+                } footer: {
+                    Text("Nur Treffer ab dieser Signalstärke lösen Radar-Alarme aus.")
+                        .font(Theme.meta)
+                }
             }
             .font(Theme.caption)
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .scrollDisabled(true)
             .background(Theme.bg)
             .navigationTitle("Einstellungen")
             .navigationBarTitleDisplayMode(.inline)
@@ -416,7 +442,7 @@ struct BLERadarSettingsSheet: View {
             }
             .preferredColorScheme(.dark)
         }
-        .presentationDetents([.height(240)])
+        .presentationDetents([.height(340), .medium])
         .presentationDragIndicator(.visible)
     }
 }
