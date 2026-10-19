@@ -100,10 +100,11 @@ final class UniversalDiagnosisTests: XCTestCase {
             signatureHex: nil,
             requireSignature: true
         )
-        guard case .failure(let msg) = outcome else {
+        guard case .failure(let err) = outcome else {
             return XCTFail("Unsigned profiles must be rejected")
         }
-        XCTAssertTrue(msg.lowercased().contains("signatur"))
+        XCTAssertEqual(err, .missingSignature)
+        XCTAssertTrue((err.errorDescription ?? "").lowercased().contains("signatur"))
     }
 
     func testOnlineIngestRejectsInvalidSignature() {

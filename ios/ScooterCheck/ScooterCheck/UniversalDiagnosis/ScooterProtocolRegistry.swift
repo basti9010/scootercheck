@@ -42,15 +42,35 @@ final class ScooterProtocolRegistry: ObservableObject {
         allProfiles.filter { !$0.verified }
     }
 
+    enum IngestError: Error, Equatable, LocalizedError {
+        case missingSignature
+        case invalidSignature
+        case invalidJSON
+        case noCompatibleProfiles
+
+        var errorDescription: String? {
+            switch self {
+            case .missingSignature:
+                return "Online-Profile ohne Signatur werden nicht übernommen."
+            case .invalidSignature:
+                return "Signatur ungültig — Profile verworfen."
+            case .invalidJSON:
+                return "Profil-JSON ungültig."
+            case .noCompatibleProfiles:
+                return "Keine kompatiblen verifizierten Profile in der Antwort."
+            }
+        }
+    }
+
     /// Nimmt nur signierte, verifizierte, kompatible Online-Profile an.
     func ingestOnlineProfiles(
         fileData: Data,
         signatureHex: String?,
         requireSignature: Bool
-    ) -> Result<Int, String> {
+    ) -> Result<Int, IngestError> {
         if requireSignature {
             guard let signatureHex, !signatureHex.isEmpty else {
-                return .failure("Online-Profile ohne Signatur werden nicht übernommen.")
+                return .failure(.missingSignature)
             }
             let ok = DiagnosticProfileSignature.verify(
                 payload: fileData,
@@ -58,11 +78,11 @@ final class ScooterProtocolRegistry: ObservableObject {
                 keyMaterial: DiagnosticProfileSignature.bundledKeyMaterial()
             )
             guard ok else {
-                return .failure("Signatur ungültig — Profile verworfen.")
+                return .failure(.invalidSignature)
             }
         }
         guard let file = try? JSONDecoder().decode(ScooterDiagnosticProfileFile.self, from: fileData) else {
-            return .failure("Profil-JSON ungültig.")
+            return .failure(.invalidJSON)
         }
         let appBuild = Int(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0") ?? 0
         let accepted = file.profiles.filter { profile in
@@ -72,7 +92,7 @@ final class ScooterProtocolRegistry: ObservableObject {
             return true
         }
         guard !accepted.isEmpty else {
-            return .failure("Keine kompatiblen verifizierten Profile in der Antwort.")
+            return .failure(.noCompatibleProfiles)
         }
         onlineCached = accepted
         if let encoded = try? JSONEncoder().encode(accepted) {

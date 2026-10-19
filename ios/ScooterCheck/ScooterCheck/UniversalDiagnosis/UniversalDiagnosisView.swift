@@ -335,8 +335,8 @@ struct UniversalDiagnosisView: View {
             case .success(let n):
                 onlineNote = "\(n) signierte Profile übernommen."
                 refresh()
-            case .failure(let msg):
-                onlineNote = msg
+            case .failure(let err):
+                onlineNote = err.errorDescription ?? "Übernahme fehlgeschlagen."
             }
         }
     }
