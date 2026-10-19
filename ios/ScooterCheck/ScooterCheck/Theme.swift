@@ -29,33 +29,40 @@ enum Theme {
     static let muted = textMuted
     static let secondaryText = textSecondary
 
-    // MARK: - Typography (ruhiger, weniger dominant)
+    // MARK: - Typography (ruhiger, weniger dominant; skaliert mit AppSettings)
 
-    /// App-Header Wordmark — Marke
-    static let brandWordmark = Font.system(size: 22, weight: .semibold)
+    /// Schrift-Multiplikator — wird von `AppSettings` auf dem MainActor aktualisiert.
+    nonisolated(unsafe) static var textScale: CGFloat = 1.0
+
+    private static func scaled(_ size: CGFloat, weight: Font.Weight) -> Font {
+        .system(size: size * textScale, weight: weight)
+    }
+
+    /// App-Header Wordmark — Marke (nur leicht skaliert)
+    static var brandWordmark: Font { scaled(22, weight: .semibold) }
     /// Seitenüberschrift — klar, nicht übergroß
-    static let pageTitle = Font.system(size: 21, weight: .semibold)
+    static var pageTitle: Font { scaled(21, weight: .semibold) }
     /// Abschnittsüberschrift
-    static let sectionTitle = Font.system(size: 16, weight: .semibold)
+    static var sectionTitle: Font { scaled(16, weight: .semibold) }
     /// Kartentitel
-    static let cardTitle = Font.system(size: 15, weight: .medium)
+    static var cardTitle: Font { scaled(15, weight: .medium) }
     /// Fließtext
-    static let body = Font.system(size: 14.5, weight: .regular)
+    static var body: Font { scaled(14.5, weight: .regular) }
     /// Beschreibung
-    static let secondary = Font.system(size: 13, weight: .regular)
+    static var secondary: Font { scaled(13, weight: .regular) }
     /// Caption
-    static let caption = Font.system(size: 12.5, weight: .regular)
+    static var caption: Font { scaled(12.5, weight: .regular) }
     /// Meta / Badge / Copyright
-    static let meta = Font.system(size: 11.5, weight: .regular)
-    static let badgeFont = Font.system(size: 11, weight: .semibold)
+    static var meta: Font { scaled(11.5, weight: .regular) }
+    static var badgeFont: Font { scaled(11, weight: .semibold) }
     /// Primär-Button
-    static let button = Font.system(size: 15, weight: .semibold)
+    static var button: Font { scaled(15, weight: .semibold) }
     /// Sekundär-Button
-    static let buttonSecondary = Font.system(size: 14, weight: .medium)
+    static var buttonSecondary: Font { scaled(14, weight: .medium) }
     /// Segment
-    static let segment = Font.system(size: 13, weight: .medium)
-    static let fieldLabel = Font.system(size: 12.5, weight: .medium)
-    static let fieldValue = Font.system(size: 14.5, weight: .regular)
+    static var segment: Font { scaled(13, weight: .medium) }
+    static var fieldLabel: Font { scaled(12.5, weight: .medium) }
+    static var fieldValue: Font { scaled(14.5, weight: .regular) }
 
     // MARK: - Spacing
 
