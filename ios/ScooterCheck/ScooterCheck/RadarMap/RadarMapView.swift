@@ -193,10 +193,10 @@ struct RadarMapView: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Radar-Karte")
-                    .font(Theme.sectionTitle)
-                    .foregroundStyle(Theme.textTitle)
+                    .font(Theme.cardTitle)
+                    .foregroundStyle(Theme.textPrimary)
                 Text("Smartphone-Standort bei BLE-Empfang")
-                    .font(Theme.caption)
+                    .font(Theme.meta)
                     .foregroundStyle(Theme.textMuted)
             }
             Spacer()
@@ -235,10 +235,10 @@ struct RadarMapView: View {
     private func chip(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(Theme.caption.weight(.semibold))
+                .font(Theme.meta.weight(.medium))
                 .foregroundStyle(active ? Theme.bg : Theme.textSecondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(active ? Theme.accent : Theme.card)
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(Theme.border, lineWidth: active ? 0 : Theme.Control.hairline))
@@ -355,8 +355,8 @@ struct RadarMapView: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(sighting.displayName)
-                                .font(Theme.sectionTitle)
-                                .foregroundStyle(Theme.textTitle)
+                                .font(Theme.cardTitle)
+                                .foregroundStyle(Theme.textPrimary)
                             if store.isHidden(identityId: sighting.deviceIdentityId, peripheralId: sighting.peripheralId) {
                                 Text("Ausgeblendet")
                                     .font(Theme.caption.weight(.semibold))
@@ -403,13 +403,13 @@ struct RadarMapView: View {
                         selectedSighting = nil
                         fitToken += 1
                     }
-                    .font(Theme.buttonSecondary)
+                    .font(Theme.caption.weight(.medium))
                     .foregroundStyle(Theme.accent)
 
                     if history.count > 1 {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Historie · \(history.count) Sichtungen · \(areas) Bereiche")
-                                .font(Theme.cardTitle)
+                                .font(Theme.caption.weight(.semibold))
                                 .foregroundStyle(Theme.textPrimary)
                             ForEach(history.reversed()) { h in
                                 VStack(alignment: .leading, spacing: 2) {
@@ -453,33 +453,29 @@ struct RadarMapView: View {
     private var filterSheet: some View {
         NavigationStack {
             Form {
-                Section("Zeitraum") {
-                    Picker("Preset", selection: $filter.timePreset) {
+                Section {
+                    Picker("Zeitraum", selection: $filter.timePreset) {
                         ForEach(RadarMapTimePreset.allCases) { p in
                             Text(p.label).tag(p)
                         }
                     }
-                }
-                Section("Geräte") {
-                    Picker("Typ", selection: $filter.deviceFilter) {
+                    Picker("Gerätetyp", selection: $filter.deviceFilter) {
                         ForEach(RadarMapDeviceFilter.allCases) { d in
                             Text(d.label).tag(d)
                         }
                     }
-                    Toggle("Ausgeblendete Geräte anzeigen", isOn: $filter.showHidden)
-                }
-                Section("Wiederholungen") {
-                    Toggle("Nur wiederholt erkannte Geräte", isOn: $filter.onlyRepeated)
-                    Picker("Mindestens", selection: $filter.minSightings) {
-                        Text("2").tag(2); Text("3").tag(3); Text("5").tag(5); Text("10").tag(10)
-                    }
-                    Picker("Bezug", selection: $filter.repeatScope) {
-                        ForEach(RadarMapRepeatScope.allCases) { s in
-                            Text(s.label).tag(s)
+                    Toggle("Ausgeblendete anzeigen", isOn: $filter.showHidden)
+                    Toggle("Nur wiederholt erkannt", isOn: $filter.onlyRepeated)
+                    if filter.onlyRepeated {
+                        Picker("Mindestens", selection: $filter.minSightings) {
+                            Text("2").tag(2); Text("3").tag(3); Text("5").tag(5); Text("10").tag(10)
+                        }
+                        Picker("Bezug", selection: $filter.repeatScope) {
+                            ForEach(RadarMapRepeatScope.allCases) { s in
+                                Text(s.label).tag(s)
+                            }
                         }
                     }
-                }
-                Section("Hersteller") {
                     Picker("Hersteller", selection: Binding(
                         get: { filter.manufacturer ?? "" },
                         set: { filter.manufacturer = $0.isEmpty ? nil : $0 }
@@ -489,15 +485,11 @@ struct RadarMapView: View {
                             Text(m).tag(m)
                         }
                     }
-                }
-                Section("Zulassung") {
-                    Picker("Status", selection: $filter.approval) {
+                    Picker("Zulassung", selection: $filter.approval) {
                         ForEach(RadarMapApprovalFilter.allCases) { a in
                             Text(a.label).tag(a)
                         }
                     }
-                }
-                Section("Signal") {
                     Picker("Signal", selection: $filter.signal) {
                         ForEach(RadarMapSignalFilter.allCases) { s in
                             Text(s.label).tag(s)
@@ -505,16 +497,21 @@ struct RadarMapView: View {
                     }
                 }
             }
+            .font(Theme.caption)
+            .pickerStyle(.menu)
             .scrollContentBackground(.hidden)
             .background(Theme.bg)
             .navigationTitle("Filter")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { showFilters = false }.foregroundStyle(Theme.accent)
+                    Button("Fertig") { showFilters = false }
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
+        .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
     }
 
@@ -522,7 +519,7 @@ struct RadarMapView: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Radar-Sichtungen speichern", isOn: Binding(
+                    Toggle("Sichtungen speichern", isOn: Binding(
                         get: { store.settings.storeSightings },
                         set: { v in var s = store.settings; s.storeSightings = v; store.settings = s }
                     ))
@@ -538,16 +535,17 @@ struct RadarMapView: View {
                         get: { store.settings.storeDeviceHistory },
                         set: { v in var s = store.settings; s.storeDeviceHistory = v; store.settings = s }
                     ))
-                    Toggle("Benachrichtigung bei wiederholter Sichtung", isOn: Binding(
+                    Toggle("Wiederholt erkannt melden", isOn: Binding(
                         get: { store.settings.notifyRepeatSightings },
                         set: { v in var s = store.settings; s.notifyRepeatSightings = v; store.settings = s }
                     ))
                 } footer: {
-                    Text("Die Karte zeigt den Smartphone-Standort beim BLE-Empfang, nicht die Scooter-Position. Speicherung ist opt-in.")
+                    Text("Standort = Smartphone beim Empfang, nicht Scooter-Position.")
+                        .font(Theme.meta)
                 }
-                Section("Sichtungslücke") {
+                Section {
                     Stepper(
-                        "Neue Sichtung nach \(store.settings.sightingGapMinutes) Min. Pause",
+                        "Pause bis neuer Eintrag: \(store.settings.sightingGapMinutes) Min.",
                         value: Binding(
                             get: { store.settings.sightingGapMinutes },
                             set: { v in var s = store.settings; s.sightingGapMinutes = v; store.settings = s }
@@ -555,22 +553,18 @@ struct RadarMapView: View {
                         in: 5...120,
                         step: 5
                     )
-                }
-                Section("Aufbewahrung") {
-                    Picker("Dauer", selection: Binding(
-                        get: { store.settings.retentionHours ?? -1 },
-                        set: { v in
+                    Picker("Aufbewahrung", selection: Binding(
+                        get: { store.settings.retentionChoice },
+                        set: { choice in
                             var s = store.settings
-                            s.retentionHours = v < 0 ? nil : v
+                            s.retentionChoice = choice
                             store.settings = s
                             store.pruneRetentionIfNeeded()
                         }
                     )) {
-                        Text("24 Stunden").tag(24)
-                        Text("48 Stunden").tag(48)
-                        Text("7 Tage").tag(168)
-                        Text("14 Tage").tag(336)
-                        Text("Bis zur manuellen Löschung").tag(-1)
+                        ForEach(RadarMapRetentionChoice.allCases) { choice in
+                            Text(choice.label).tag(choice)
+                        }
                     }
                 }
                 Section {
@@ -581,36 +575,39 @@ struct RadarMapView: View {
                         HStack {
                             Text("Ausgeblendete Geräte")
                             Spacer()
-                            Text("\(store.hidden.count) Geräte").foregroundStyle(Theme.textMuted)
+                            Text("\(store.hidden.count)")
+                                .foregroundStyle(Theme.textMuted)
                         }
                     }
-                    Toggle("Sichtungen ausgeblendeter Geräte weiterhin speichern", isOn: Binding(
+                    Toggle("Sichtungen trotz Ausblenden speichern", isOn: Binding(
                         get: { store.settings.retainSightingsWhileHidden },
                         set: { v in var s = store.settings; s.retainSightingsWhileHidden = v; store.settings = s }
                     ))
-                } header: {
-                    Text("Ausgeblendete Geräte")
-                } footer: {
-                    Text("Standard aus: ausgeblendete Geräte werden erkannt, aber nicht in die Radar-Historie geschrieben. BLE-Scan und Wächter bleiben unverändert.")
                 }
                 Section {
-                    Button("Alle Radar-Sichtungen löschen", role: .destructive) {
+                    Button("Alle Sichtungen löschen", role: .destructive) {
                         store.deleteAllSightings()
                     }
                 } footer: {
-                    Text("Löscht nur Radar-Karten-Daten. Bekannte Scooter, Prüfberichte und Wächter bleiben erhalten.")
+                    Text("Nur Radar-Karten-Daten. Prüfberichte und Wächter bleiben.")
+                        .font(Theme.meta)
                 }
             }
+            .font(Theme.caption)
+            .pickerStyle(.menu)
             .scrollContentBackground(.hidden)
             .background(Theme.bg)
-            .navigationTitle("Radar-Karte")
+            .navigationTitle("Einstellungen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { showSettings = false }.foregroundStyle(Theme.accent)
+                    Button("Fertig") { showSettings = false }
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
+        .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
     }
 
@@ -618,23 +615,27 @@ struct RadarMapView: View {
         NavigationStack {
             List {
                 if store.hidden.isEmpty {
-                    Text("Keine ausgeblendeten Geräte.").foregroundStyle(Theme.textMuted)
+                    Text("Keine ausgeblendeten Geräte.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
                 }
                 ForEach(store.hidden) { h in
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text({
                                 let label = [h.manufacturer, h.model].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
                                 return label.isEmpty ? h.displayName : label
                             }())
-                                .foregroundStyle(Theme.textPrimary)
+                            .font(Theme.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
                             if let pid = h.peripheralId {
                                 Text(String(pid.uuidString.prefix(8)).uppercased())
-                                    .font(Theme.caption.monospaced())
+                                    .font(Theme.meta.monospaced())
                                     .foregroundStyle(Theme.textMuted)
                             }
-                            Text("Ausgeblendet seit \(Self.format(h.hiddenAt))")
-                                .font(Theme.caption).foregroundStyle(Theme.textMuted)
+                            Text("Seit \(Self.format(h.hiddenAt))")
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.textMuted)
                             let n: Int = {
                                 if let iid = h.deviceIdentityId, h.identityBound {
                                     return store.sightings(forIdentity: iid).count
@@ -644,23 +645,20 @@ struct RadarMapView: View {
                                 }
                                 return 0
                             }()
-                            Text("\(n) gespeicherte Sichtungen")
-                                .font(Theme.caption).foregroundStyle(Theme.textMuted)
-                            if let note = h.bindingNote {
-                                Text(note)
-                                    .font(Theme.caption)
-                                    .foregroundStyle(Theme.textMuted)
-                            }
+                            Text("\(n) Sichtungen")
+                                .font(Theme.meta)
+                                .foregroundStyle(Theme.textMuted)
                         }
-                        Spacer()
+                        Spacer(minLength: 0)
                         Button("Einblenden") {
                             store.unhideDevice(hiddenId: h.id)
                             fitToken += 1
                         }
-                        .font(Theme.caption.weight(.semibold))
+                        .font(Theme.meta.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                         Button { manageHiddenEntry = h } label: {
                             Image(systemName: "ellipsis")
+                                .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
                         }
                         .accessibilityLabel("Mehr")
@@ -668,24 +666,28 @@ struct RadarMapView: View {
                     .listRowBackground(Theme.card)
                 }
             }
+            .font(Theme.caption)
             .scrollContentBackground(.hidden)
             .background(Theme.bg)
-            .navigationTitle("Ausgeblendete Geräte")
+            .navigationTitle("Ausgeblendet")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { showHiddenList = false }.foregroundStyle(Theme.accent)
+                    Button("Fertig") { showHiddenList = false }
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
+        .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
     }
 
     private func row(_ k: String, _ v: String) -> some View {
         HStack {
-            Text(k).font(Theme.caption).foregroundStyle(Theme.textMuted)
+            Text(k).font(Theme.meta).foregroundStyle(Theme.textMuted)
             Spacer()
-            Text(v).font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.textPrimary)
+            Text(v).font(Theme.caption.weight(.medium)).foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
     }

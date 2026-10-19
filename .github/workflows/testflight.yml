@@ -56,6 +56,7 @@ on:
       - cursor/radar-map-history-b100
       - cursor/radar-ui-compact-b100
       - cursor/radar-single-menu-b100
+      - cursor/radar-map-menus-compact-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
