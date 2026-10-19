@@ -54,40 +54,54 @@ final class AppSettings: ObservableObject {
     private init() {
         let defaults = UserDefaults.standard
 
-        if let raw = defaults.string(forKey: Self.textSizeKey),
-           let stored = AppTextSize(rawValue: raw) {
-            textSize = stored
-        } else {
-            textSize = .standard
-        }
-        Theme.textScale = textSize.scale
+        let loadedTextSize: AppTextSize = {
+            if let raw = defaults.string(forKey: Self.textSizeKey),
+               let stored = AppTextSize(rawValue: raw) {
+                return stored
+            }
+            return .standard
+        }()
 
-        if defaults.object(forKey: Self.auslesenScootersOnlyKey) != nil {
-            auslesenShowOnlyScooters = defaults.bool(forKey: Self.auslesenScootersOnlyKey)
-        } else {
-            auslesenShowOnlyScooters = true
-        }
+        let loadedScootersOnly: Bool = {
+            if defaults.object(forKey: Self.auslesenScootersOnlyKey) != nil {
+                return defaults.bool(forKey: Self.auslesenScootersOnlyKey)
+            }
+            return true
+        }()
 
-        if let sortRaw = defaults.string(forKey: Self.auslesenSortKey),
-           let sort = BleDeviceListSort(rawValue: sortRaw) {
-            auslesenListSort = sort
-        } else {
-            auslesenListSort = .signal
-        }
+        let loadedSort: BleDeviceListSort = {
+            if let sortRaw = defaults.string(forKey: Self.auslesenSortKey),
+               let sort = BleDeviceListSort(rawValue: sortRaw) {
+                return sort
+            }
+            return .signal
+        }()
 
-        auslesenHideNameless = defaults.bool(forKey: Self.auslesenHideNamelessKey)
+        let loadedHideNameless = defaults.bool(forKey: Self.auslesenHideNamelessKey)
 
-        if defaults.object(forKey: Self.findAudioKey) != nil {
-            findProximityAudioDefault = defaults.bool(forKey: Self.findAudioKey)
-        } else {
-            findProximityAudioDefault = false
-        }
+        let loadedAudio: Bool = {
+            if defaults.object(forKey: Self.findAudioKey) != nil {
+                return defaults.bool(forKey: Self.findAudioKey)
+            }
+            return false
+        }()
 
-        if defaults.object(forKey: Self.findHapticsKey) != nil {
-            findProximityHapticsDefault = defaults.bool(forKey: Self.findHapticsKey)
-        } else {
-            findProximityHapticsDefault = true
-        }
+        let loadedHaptics: Bool = {
+            if defaults.object(forKey: Self.findHapticsKey) != nil {
+                return defaults.bool(forKey: Self.findHapticsKey)
+            }
+            return true
+        }()
+
+        // Alle Stored Properties zuerst setzen (didSet läuft in init nicht).
+        textSize = loadedTextSize
+        auslesenShowOnlyScooters = loadedScootersOnly
+        auslesenListSort = loadedSort
+        auslesenHideNameless = loadedHideNameless
+        findProximityAudioDefault = loadedAudio
+        findProximityHapticsDefault = loadedHaptics
+
+        Theme.textScale = loadedTextSize.scale
     }
 }
 
