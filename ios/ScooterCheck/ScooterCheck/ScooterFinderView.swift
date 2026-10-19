@@ -15,6 +15,8 @@ struct ScooterFinderView: View {
     @ObservedObject var ble: BleClient
     var mode: ScooterFinderMode = .deviceSearch
     var onBackToHub: (() -> Void)?
+    /// Öffnet die Radar-Karte (nur Radar-Modus) — kein zweiter Hub-Menüpunkt.
+    var onOpenRadarMap: (() -> Void)? = nil
 
     @StateObject private var searchEngine = BLESearchEngine()
     @StateObject private var multiMonitor = BLEMultiDeviceMonitor()
@@ -516,6 +518,7 @@ struct ScooterFinderView: View {
                         onBackToHub?()
                     }
                 ) {
+                    // Nur ein Einstellungszahnrad — Karte als eigene Zeile darunter.
                     Button {
                         radar.showSettingsSheet = true
                     } label: {
@@ -528,6 +531,41 @@ struct ScooterFinderView: View {
                 }
 
                 BLERadarControlsCard(radar: radar)
+
+                if onOpenRadarMap != nil {
+                    Button {
+                        onOpenRadarMap?()
+                    } label: {
+                        HStack(spacing: Theme.Space.md) {
+                            Image(systemName: "map")
+                                .font(.system(size: Theme.Icon.standard, weight: .medium))
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 28, alignment: .center)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Radar-Karte")
+                                    .font(Theme.caption.weight(.semibold))
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text("Gespeicherte Sichtungen auf der Karte")
+                                    .font(Theme.meta)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(Theme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                                .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Radar-Karte öffnen")
+                }
 
                 if let banner = radar.banner {
                     BLERadarBannerView(

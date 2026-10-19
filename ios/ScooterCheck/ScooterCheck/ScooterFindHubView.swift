@@ -9,7 +9,7 @@ enum ScooterFindDestination: Equatable {
     case signalFinder
 }
 
-/// Zentrale Übersicht: E-Scooter-Radar, Geräte-Wächter, Signal-Finder.
+/// Zentrale Übersicht: E-Scooter-Radar (inkl. Karte), Geräte-Wächter, Signal-Finder.
 ///
 /// Unterseiten gleiten lokal im Inhaltsbereich — **ohne** verschachtelten
 /// `NavigationStack`, damit App-Header / ScooterCheck-Wordmark und Side-Menü
@@ -54,10 +54,12 @@ struct ScooterFindHubView: View {
             ScooterFinderView(
                 ble: ble,
                 mode: .radar,
-                onBackToHub: { destination = .hub }
+                onBackToHub: { destination = .hub },
+                onOpenRadarMap: { destination = .radarMap }
             )
         case .radarMap:
-            RadarMapView(onBack: { destination = .hub })
+            // Zurück zum Radar (nicht zum Hub) — Karte ist Unterpunkt des Radars.
+            RadarMapView(onBack: { destination = .radar })
         case .watch:
             BLEWatchListScreen(
                 onSelect: nil,
@@ -86,17 +88,10 @@ struct ScooterFindHubView: View {
                 VStack(spacing: Theme.Space.listGap) {
                     ScootFunctionCard(
                         title: "E-Scooter-Radar",
-                        subtitle: "Erkennt automatisch E-Scooter in deiner Nähe.",
+                        subtitle: "Erkennt automatisch E-Scooter in der Nähe · Karte und Einstellungen im Radar.",
                         systemImage: "dot.radiowaves.left.and.right"
                     ) {
                         destination = .radar
-                    }
-                    ScootFunctionCard(
-                        title: "Radar-Karte",
-                        subtitle: "Zeigt gespeicherte BLE-Sichtungen auf einer interaktiven Karte.",
-                        systemImage: "map"
-                    ) {
-                        destination = .radarMap
                     }
                     ScootFunctionCard(
                         title: "Geräte-Wächter",
