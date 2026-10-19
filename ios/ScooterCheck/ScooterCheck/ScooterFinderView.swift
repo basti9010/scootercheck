@@ -204,7 +204,10 @@ struct ScooterFinderView: View {
                     startFinding(selected)
                 },
                 onWatch: {
-                    BLEWatchService.shared.watch(device: device)
+                    BLEWatchService.shared.enableWatcher(
+                        for: device,
+                        isKnownScooter: device.looksLikeScooter
+                    )
                     diagnosisDevice = nil
                 }
             )

@@ -230,7 +230,10 @@ struct ContentView: View {
                         screen = .find
                     },
                     onWatch: {
-                        BLEWatchService.shared.watch(device: device)
+                        BLEWatchService.shared.enableWatcher(
+                            for: device,
+                            isKnownScooter: false
+                        )
                         universalDiagnosisDevice = nil
                     }
                 )
