@@ -76,11 +76,11 @@ struct ScooterFindHubView: View {
 
     private var hubContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-                VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                VStack(alignment: .leading, spacing: Theme.Space.section) {
+                VStack(alignment: .leading, spacing: Theme.Space.titleStack) {
                     PageTitle(text: "E-Scooter finden")
                     Text("Wähle eine Such- oder Analysefunktion")
-                        .font(Theme.secondary)
+                        .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

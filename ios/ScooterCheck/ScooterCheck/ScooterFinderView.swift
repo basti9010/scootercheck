@@ -241,8 +241,7 @@ struct ScooterFinderView: View {
                         Text("E-Scooter").tag(true)
                         Text(mode == .signalPicker ? "Andere BLE" : "Alle BLE").tag(false)
                     }
-                    .pickerStyle(.segmented)
-                    .font(Theme.segment)
+                    .scootSegmented()
                 }
 
                 HStack(alignment: .center, spacing: Theme.Space.sm) {
@@ -253,16 +252,16 @@ struct ScooterFinderView: View {
                     )
 
                     Text(ble.phase == .scanning ? "Suche" : "Pausiert")
-                        .font(Theme.caption)
+                        .font(Theme.meta)
                         .foregroundStyle(Theme.textMuted)
 
                     Button {
                         showInfo = true
                     } label: {
                         Image(systemName: "info.circle")
-                            .font(.system(size: Theme.Icon.standard, weight: .medium))
+                            .font(.system(size: Theme.Icon.compact, weight: .medium))
                             .foregroundStyle(Theme.textMuted)
-                            .frame(width: 36, height: 36)
+                            .frame(width: 40, height: 40)
                     }
                     .accessibilityLabel("Hinweise")
                 }
@@ -296,7 +295,7 @@ struct ScooterFinderView: View {
                                     .overlay(alignment: .topTrailing) {
                                         if radar.highlightDeviceIds.contains(device.id) {
                                             BLERadarHitBadge()
-                                                .padding(10)
+                                                .padding(8)
                                         }
                                     }
                             }
@@ -310,14 +309,10 @@ struct ScooterFinderView: View {
                         }
                     }
                 }
-
-                AppCopyrightFooter()
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, Theme.Space.sm)
-                    .padding(.bottom, Theme.Space.xxl)
             }
             .scootPagePadding()
-            .padding(.top, Theme.Space.sm)
+            .padding(.top, Theme.Space.xs)
+            .padding(.bottom, Theme.Space.xxl)
         }
     }
 
@@ -349,32 +344,25 @@ struct ScooterFinderView: View {
     }
 
     private var emptySelectionCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(emptySelectionTitle)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
-            Text(emptySelectionBody)
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+        let switchTitle: String? = {
             if showOnlyScooters {
-                ScootPrimaryButton(
-                    title: mode == .signalPicker ? "Andere BLE-Geräte anzeigen" : "Alle BLE-Geräte anzeigen",
-                    systemImage: "list.bullet"
-                ) {
-                    showOnlyScooters = false
-                }
-                .padding(.top, 4)
-            } else if mode == .signalPicker {
-                ScootPrimaryButton(title: "E-Scooter anzeigen", systemImage: "antenna.radiowaves.left.and.right") {
-                    showOnlyScooters = true
-                }
-                .padding(.top, 4)
+                return mode == .signalPicker ? "Andere BLE-Geräte anzeigen" : "Alle BLE-Geräte anzeigen"
             }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .scootCard()
+            return mode == .signalPicker ? "E-Scooter anzeigen" : nil
+        }()
+        let switchIcon: String? = {
+            if showOnlyScooters { return "list.bullet" }
+            return mode == .signalPicker ? "antenna.radiowaves.left.and.right" : nil
+        }()
+        return ScootEmptyStateCard(
+            title: emptySelectionTitle,
+            message: emptySelectionBody,
+            actionTitle: switchTitle,
+            actionSystemImage: switchIcon,
+            action: switchTitle == nil ? nil : {
+                showOnlyScooters.toggle()
+            }
+        )
     }
 
     private var emptySelectionTitle: String {

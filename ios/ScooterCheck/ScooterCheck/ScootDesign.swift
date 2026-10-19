@@ -122,12 +122,12 @@ struct ScootPrimaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Theme.Space.md) {
+            HStack(spacing: Theme.Space.sm) {
                 if busy {
                     ProgressView().tint(Theme.ink)
                 } else if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.system(size: Theme.Icon.standard, weight: .semibold))
+                        .font(.system(size: Theme.Icon.compact, weight: .semibold))
                 }
                 Text(title)
                     .font(Theme.button)
@@ -151,25 +151,26 @@ struct ScootSecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Theme.Space.md) {
+            HStack(spacing: Theme.Space.sm) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.system(size: Theme.Icon.standard, weight: .medium))
+                        .font(.system(size: Theme.Icon.compact, weight: .medium))
+                        .foregroundStyle(Theme.accent)
                 }
                 Text(title)
                     .font(Theme.buttonSecondary)
+                    .foregroundStyle(Theme.textPrimary)
                 Spacer(minLength: 0)
                 if showsChevron {
                     Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Theme.textMuted)
                 }
             }
-            .foregroundStyle(Theme.textPrimary)
             .padding(.horizontal, Theme.Space.cardPadding)
             .frame(maxWidth: .infinity)
-            .frame(minHeight: Theme.Control.secondaryMinHeight)
-            .background(Theme.card)
+            .frame(minHeight: Theme.Control.buttonMinHeight)
+            .background(Theme.surfaceSecondary)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
@@ -229,13 +230,13 @@ struct ScootActionPrimaryButton: View {
                         .font(.subheadline.weight(.medium))
                 }
                 Text(title)
-                    .font(.system(size: 16.5, weight: .medium))
+                    .font(Theme.button)
             }
             .foregroundStyle(Theme.ink)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(height: Theme.Control.buttonMinHeight + 4)
             .background(Theme.accent.opacity(enabled && !busy ? 1 : 0.35))
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled || busy)
@@ -722,8 +723,8 @@ struct AppCopyrightFooter: View {
 
     var body: some View {
         Text(verbatim: line)
-            .font(Theme.caption)
-            .foregroundStyle(Theme.textMuted)
+            .font(Theme.meta)
+            .foregroundStyle(Theme.textMuted.opacity(0.85))
             .accessibilityLabel(line)
     }
 }

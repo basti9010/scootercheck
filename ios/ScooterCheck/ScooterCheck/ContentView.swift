@@ -416,8 +416,7 @@ struct ContentView: View {
                 Text("E-Scooter").tag(true)
                 Text("Alle BLE-Geräte").tag(false)
             }
-            .pickerStyle(.segmented)
-            .font(Theme.segment)
+            .scootSegmented()
 
             if !ble.showOnlyLikelyScooters {
                 Text("Zeigt alle in der Umgebung erkannten BLE-Signale. Nicht jedes Gerät ist ein Scooter.")
@@ -479,29 +478,27 @@ struct ContentView: View {
     }
 
     private var searchEmptyCopy: some View {
-        VStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text(ble.showOnlyLikelyScooters
                  ? "Kein kompatibler Scooter gefunden"
                  : "Keine BLE-Geräte gefunden")
-                .font(Theme.sectionTitle)
+                .font(Theme.cardTitle)
                 .foregroundStyle(Theme.textPrimary)
-                .multilineTextAlignment(.center)
             Text(ble.showOnlyLikelyScooters
                  ? "Stelle sicher, dass dein Scooter eingeschaltet und in der Nähe ist. Unsichere Treffer erscheinen unter „Alle BLE-Geräte“."
                  : "Stelle sicher, dass Bluetooth aktiv ist und Geräte in der Nähe werben.")
-                .font(Theme.body)
+                .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if ble.showOnlyLikelyScooters {
-                ScootPrimaryButton(title: "Alle BLE-Geräte anzeigen", systemImage: "list.bullet") {
+                ScootSecondaryButton(title: "Alle BLE-Geräte anzeigen", systemImage: "list.bullet") {
                     ble.showOnlyLikelyScooters = false
                 }
+                .padding(.top, 2)
             }
         }
-        .frame(maxWidth: .infinity)
         .scootCard()
-        .padding(.top, 4)
+        .padding(.top, Theme.Space.xs)
     }
 
     private var connectingCard: some View {
@@ -2137,8 +2134,7 @@ struct ContentView: View {
                 Text("Aktiv (\(history.activeCount))").tag(HistoryShelf.active)
                 Text("Archiv (\(history.archivedCount))").tag(HistoryShelf.archive)
             }
-            .pickerStyle(.segmented)
-            .font(Theme.segment)
+            .scootSegmented()
             .onChange(of: historyShelf) { _ in
                 selectedHistoryIds = []
                 historySelecting = false
@@ -2178,23 +2174,22 @@ struct ContentView: View {
     }
 
     private var historyEmptyState: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Image(systemName: historyShelf == .archive ? "archivebox" : "tray")
-                .font(.title2)
-                .foregroundStyle(Theme.muted)
+                .font(.system(size: Theme.Icon.function, weight: .medium))
+                .foregroundStyle(Theme.textMuted)
             Text(historyShelf == .archive ? "Archiv ist leer" : "Noch keine Prüfungen")
-                .font(.headline)
-                .foregroundStyle(.white)
+                .font(Theme.cardTitle)
+                .foregroundStyle(Theme.textPrimary)
             Text(
                 historyShelf == .archive
                     ? "Archivierte Prüfungen erscheinen hier und können jederzeit wiederhergestellt werden."
                     : "Gespeicherte Prüfberichte erscheinen hier offline auf diesem Gerät."
             )
-            .font(.subheadline)
-            .foregroundStyle(Theme.muted)
+            .font(Theme.caption)
+            .foregroundStyle(Theme.textMuted)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .scootCard()
     }
 

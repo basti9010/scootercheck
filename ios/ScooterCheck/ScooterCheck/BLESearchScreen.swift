@@ -439,7 +439,7 @@ struct BLESearchScreen: View {
                 Text(mode.label).tag(mode)
             }
         }
-        .pickerStyle(.segmented)
+        .scootSegmented()
         .font(Theme.segment)
         .accessibilityLabel("Live, Heatmap oder AR")
     }
