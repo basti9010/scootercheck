@@ -1014,13 +1014,22 @@ struct ContentView: View {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
-            } else {
+            } else if screen == .overview {
+                // „Neue Prüfung“ sitzt kompakt im Header — kein grauer Fuß-Container.
+                if historySelecting, !selectedHistoryIds.isEmpty {
+                    historySelectionActionBar
+                        .padding(.horizontal, Theme.Space.page)
+                        .padding(.top, 12)
+                        .padding(.bottom, 16)
+                        .background(.ultraThinMaterial)
+                }
+            } else if screen == .home {
                 VStack(spacing: 10) {
-                    if screen == .home, ble.phase == .scanning {
+                    if ble.phase == .scanning {
                         ScootOutlineButton(title: "Suche stoppen", systemImage: "stop.fill") {
                             primaryAction()
                         }
-                    } else if screen == .home, ble.phase == .done {
+                    } else if ble.phase == .done {
                         ScootPrimaryButton(
                             title: "Manipulation prüfen",
                             systemImage: "checkmark.shield",
@@ -1029,13 +1038,7 @@ struct ContentView: View {
                         ) {
                             primaryAction()
                         }
-                    } else if screen == .overview, historySelecting, !selectedHistoryIds.isEmpty {
-                        historySelectionActionBar
-                    } else if screen == .overview {
-                        ScootPrimaryButton(title: "Neue Prüfung", systemImage: "plus") {
-                            primaryAction()
-                        }
-                    } else if screen == .home {
+                    } else {
                         ScootPrimaryButton(
                             title: "Scooter suchen",
                             systemImage: "magnifyingglass",
@@ -2146,6 +2149,29 @@ struct ContentView: View {
             .onChange(of: historyShelf) { _ in
                 selectedHistoryIds = []
                 historySelecting = false
+            }
+
+            if !historySelecting {
+                // Schlanker Text-CTA statt voller Mint-Button im grauen Material-Fuß.
+                Button {
+                    primaryAction()
+                } label: {
+                    HStack(spacing: Theme.Space.sm) {
+                        Image(systemName: "plus")
+                            .font(.system(size: Theme.Icon.compact, weight: .semibold))
+                        Text("Neue Prüfung")
+                            .font(Theme.buttonSecondary)
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: Theme.Control.secondaryMinHeight)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+                            .stroke(Theme.accent.opacity(0.55), lineWidth: Theme.Control.hairline)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Neue Prüfung")
             }
 
             if historySelecting {
