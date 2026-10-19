@@ -1014,13 +1014,22 @@ struct ContentView: View {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
-            } else {
+            } else if screen == .overview {
+                // „Neue Prüfung“ sitzt kompakt im Header — kein grauer Fuß-Container.
+                if historySelecting, !selectedHistoryIds.isEmpty {
+                    historySelectionActionBar
+                        .padding(.horizontal, Theme.Space.page)
+                        .padding(.top, 12)
+                        .padding(.bottom, 16)
+                        .background(.ultraThinMaterial)
+                }
+            } else if screen == .home {
                 VStack(spacing: 10) {
-                    if screen == .home, ble.phase == .scanning {
+                    if ble.phase == .scanning {
                         ScootOutlineButton(title: "Suche stoppen", systemImage: "stop.fill") {
                             primaryAction()
                         }
-                    } else if screen == .home, ble.phase == .done {
+                    } else if ble.phase == .done {
                         ScootPrimaryButton(
                             title: "Manipulation prüfen",
                             systemImage: "checkmark.shield",
@@ -1029,13 +1038,7 @@ struct ContentView: View {
                         ) {
                             primaryAction()
                         }
-                    } else if screen == .overview, historySelecting, !selectedHistoryIds.isEmpty {
-                        historySelectionActionBar
-                    } else if screen == .overview {
-                        ScootPrimaryButton(title: "Neue Prüfung", systemImage: "plus") {
-                            primaryAction()
-                        }
-                    } else if screen == .home {
+                    } else {
                         ScootPrimaryButton(
                             title: "Scooter suchen",
                             systemImage: "magnifyingglass",
@@ -2126,6 +2129,17 @@ struct ContentView: View {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.md) {
                 PageTitle(text: historyShelfTitle)
                 Spacer(minLength: Theme.Space.sm)
+                if !historySelecting {
+                    Button {
+                        primaryAction()
+                    } label: {
+                        Text("Neue Prüfung")
+                            .font(Theme.buttonSecondary)
+                            .foregroundStyle(Theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Neue Prüfung")
+                }
                 Button {
                     toggleHistorySelecting()
                 } label: {
