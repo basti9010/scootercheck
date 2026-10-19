@@ -937,8 +937,8 @@ struct ProximitySignalBars: View {
     let rssi: Int
 
     private var fill: CGFloat {
-        let clamped = min(-30, max(-100, rssi))
-        return CGFloat((-30 - clamped) / 70.0)
+        let clamped = CGFloat(min(-30, max(-100, rssi)))
+        return (-30 - clamped) / 70
     }
 
     var body: some View {
