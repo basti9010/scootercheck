@@ -553,22 +553,7 @@ struct ContentView: View {
     }
 
     private var deviceSection: some View {
-        let listed: [ScannedDevice] = {
-            let base: [ScannedDevice]
-            if ble.showOnlyLikelyScooters {
-                base = history.sortForScanList(ble.visibleDevices)
-                // Bekannte zuerst beibehalten, dann gewählte Sortierung innerhalb.
-                if auslesenListSort == .name {
-                    return BleDeviceListOrdering.prepare(base, sort: .name, hideNameless: false)
-                }
-                return base
-            }
-            return BleDeviceListOrdering.prepare(
-                ble.visibleDevices,
-                sort: auslesenListSort,
-                hideNameless: auslesenHideNameless
-            )
-        }()
+        let listed = auslesenListedDevices
         return VStack(spacing: 10) {
             ForEach(Array(listed.enumerated()), id: \.element.id) { index, item in
                 Button {
@@ -587,6 +572,29 @@ struct ContentView: View {
             }
         }
         .padding(.top, 4)
+    }
+
+    /// Signal-Sortierung kommt aus BleClient (5‑s‑RSSI-Mittel) — hier nicht erneut nach Roh-RSSI sortieren.
+    private var auslesenListedDevices: [ScannedDevice] {
+        if ble.showOnlyLikelyScooters {
+            let base = history.sortForScanList(ble.visibleDevices)
+            if auslesenListSort == .name {
+                return BleDeviceListOrdering.prepare(base, sort: .name, hideNameless: false)
+            }
+            return base
+        }
+        if auslesenListSort == .name {
+            return BleDeviceListOrdering.prepare(
+                ble.visibleDevices,
+                sort: .name,
+                hideNameless: auslesenHideNameless
+            )
+        }
+        var list = ble.visibleDevices
+        if auslesenHideNameless {
+            list = list.filter(BleDeviceListOrdering.hasAdvertisedName)
+        }
+        return list
     }
 
     private func resultCard(_ report: IntegrityResult) -> some View {

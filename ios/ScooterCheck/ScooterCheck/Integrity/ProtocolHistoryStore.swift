@@ -630,14 +630,12 @@ final class ProtocolHistoryStore: ObservableObject {
         return nil
     }
 
-    /// Geräte mit bekanntem Alias zuerst, danach stärkeres Signal.
+    /// Geräte mit bekanntem Alias zuerst; relative Reihenfolge innerhalb der Gruppen bleibt
+    /// (RSSI-Sortierung übernimmt der Scan-Stabilizer mit Mittelwert — kein Roh-Zucken).
     func sortForScanList(_ devices: [ScannedDevice]) -> [ScannedDevice] {
-        devices.sorted { a, b in
-            let aKnown = knownAlias(for: a) != nil
-            let bKnown = knownAlias(for: b) != nil
-            if aKnown != bKnown { return aKnown && !bKnown }
-            return a.rssi > b.rssi
-        }
+        let known = devices.filter { knownAlias(for: $0) != nil }
+        let unknown = devices.filter { knownAlias(for: $0) == nil }
+        return known + unknown
     }
 
     /// Ob Advertisement/Name des Geräts zur ausgelesenen Seriennummer passt.

@@ -297,6 +297,8 @@ final class BleClient: NSObject, ObservableObject {
     /// Stabile Scan-Reihenfolge (gegen RSSI-Flattern).
     private var stableScanOrderIds: [UUID] = []
     private var lastStableScanReorderAt = Date.distantPast
+    /// RSSI-Fenster für Sortierung (~5 s Mittelwert); Anzeige bleibt live (`device.rssi`).
+    private var rssiAverageStore = BleRssiAverageTracker.Store()
 
     private var central: CBCentralManager!
     private var peripheral: CBPeripheral?
@@ -390,9 +392,11 @@ final class BleClient: NSObject, ObservableObject {
         devices.removeAll()
         stableScanOrderIds = []
         lastStableScanReorderAt = .distantPast
+        rssiAverageStore.removeAll()
         if let seed {
             devices.append(seed)
             stableScanOrderIds = [seed.id]
+            rssiAverageStore.record(id: seed.id, rssi: seed.rssi)
         }
         for peripheral in retrieveAlreadyConnectedScooters() {
             upsertScanned(fromConnected: peripheral)
@@ -632,6 +636,12 @@ final class BleClient: NSObject, ObservableObject {
             let state = device.peripheral.state
             return state != .connected && state != .connecting
         }
+        rssiAverageStore.prune(keeping: Set(devices.map(\.id)))
+    }
+
+    /// Sortier-RSSI: Mittelwert der letzten ~5 s (Anzeige weiter über `device.rssi`).
+    func rankingRssi(for device: ScannedDevice) -> Int {
+        rssiAverageStore.average(id: device.id, fallback: device.rssi)
     }
 
     func stopScan() {
@@ -2279,10 +2289,18 @@ extension BleClient: CBCentralManagerDelegate {
             }
             // Identifikation im Hintergrund der bestehenden Discovery — kein zweiter Scan.
             BLEIdentificationService.shared.ingest(ingested)
-            // Stabile Reihenfolge: RSSI live, Zeilen nicht bei jedem dBm-Zucken tauschen.
+            // Sortierschlüssel = ~5‑s‑RSSI-Mittel; Anzeige bleibt das Live-RSSI.
+            rssiAverageStore.record(id: ingested.id, rssi: ingested.rssi)
+            let rankingItems = devices.map {
+                BleScanListStabilizer.Item(
+                    id: $0.id,
+                    rssi: rssiAverageStore.average(id: $0.id, fallback: $0.rssi),
+                    isStale: $0.isStale
+                )
+            }
             let stabilized = BleScanListStabilizer.reconcile(
                 previousOrder: stableScanOrderIds,
-                devices: devices,
+                items: rankingItems,
                 lastReorderAt: lastStableScanReorderAt
             )
             stableScanOrderIds = stabilized.order
@@ -2292,6 +2310,7 @@ extension BleClient: CBCentralManagerDelegate {
             if devices.count > Self.maxTrackedDevices {
                 devices = Array(devices.prefix(Self.maxTrackedDevices))
                 stableScanOrderIds = devices.map(\.id)
+                rssiAverageStore.prune(keeping: Set(devices.map(\.id)))
             }
             if phase == .scanning {
                 let visible = showOnlyLikelyScooters
