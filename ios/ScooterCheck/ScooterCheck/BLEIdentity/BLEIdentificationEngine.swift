@@ -1,6 +1,7 @@
 import Foundation
 
 /// Regelbasierte Offline-Identifikation aus Advertisement-Merkmalen.
+/// Gilt für **alle** BLE-Geräte (E-Scooter und Nicht-Scooter).
 /// Keine erfundenen Felder, kein RSSI als Identitätsnachweis, kein automatischer
 /// Schluss von Hersteller → Geräteklasse.
 enum BLEIdentificationEngine {
@@ -66,7 +67,7 @@ enum BLEIdentificationEngine {
             )
         }
 
-        // Dokumentierte Vendor-Muster (separate DB) — nur Evidenz, keine Auto-Klasse allein aus CID
+        // Dokumentierte Vendor-Muster — nur Evidenz, keine Auto-Klasse allein aus CID
         let vendorCatalog = BLEVendorPatternCatalog.shared
         if let companyId {
             for pattern in vendorCatalog.patterns(matchingCompanyId: companyId) where !pattern.aloneImpliesCategory {
@@ -92,7 +93,6 @@ enum BLEIdentificationEngine {
             }
         }
 
-        // — Geräteklasse (nie nur aus Hersteller) —
         let categoryDecision = classifyCategory(
             input: input,
             companyId: companyId,
@@ -101,7 +101,6 @@ enum BLEIdentificationEngine {
             contradictions: &contradictions
         )
 
-        // — Modell —
         var model = input.modelLabel
         if let model {
             evidence.append(
@@ -113,7 +112,6 @@ enum BLEIdentificationEngine {
             )
         }
 
-        // Hersteller allein ≠ Modell
         if model == nil, companyId != nil {
             evidence.append(
                 IdentificationEvidence(
@@ -159,7 +157,8 @@ enum BLEIdentificationEngine {
             companyId: companyId,
             manufacturer: manufacturerName,
             category: categoryDecision.category,
-            model: model
+            model: model,
+            localName: input.localName
         )
 
         return BLEIdentificationResult(
@@ -215,7 +214,7 @@ enum BLEIdentificationEngine {
         evidence: inout [IdentificationEvidence],
         contradictions: inout [IdentificationEvidence]
     ) -> CategoryDecision {
-        let name = (input.localName ?? "").uppercased()
+        let name = (input.localName ?? input.displayName).uppercased()
         let hasNinebotUART = input.serviceUUIDs.contains {
             $0.uppercased().contains("6E400001") && $0.uppercased().contains("696E65626F74")
         }
@@ -224,56 +223,18 @@ enum BLEIdentificationEngine {
             return u.contains("6E400001B5A3F393E0A9E50E24DCCA9E")
         }
 
-        // Apple Continuity / typische Apple-Dienste → nicht Scooter
-        if companyId == BLECompanyId.apple {
+        // —— Starke Scooter-Signale zuerst (dürfen Nicht-Scooter-Regeln nicht überstimmen) ——
+        if hasNinebotUART {
             evidence.append(
                 IdentificationEvidence(
-                    id: "apple-org",
-                    title: "Organisation: Apple",
-                    detail: "Company Identifier 0x004C. Geräteklasse bleibt unbestimmt, sofern keine weiteren Merkmale vorliegen."
+                    id: "ninebot-uart",
+                    title: "Ninebot-UART-Service",
+                    detail: "Dokumentierte Ninebot-Service-UUID."
                 )
             )
-            if name.contains("TV") || name.contains("APPLE TV") {
-                return CategoryDecision(category: .television, strength: .medium)
-            }
-            if name.contains("WATCH") {
-                return CategoryDecision(category: .smartwatch, strength: .medium)
-            }
-            if name.contains("AIRPOD") || name.contains("BEATS") {
-                return CategoryDecision(category: .audio, strength: .medium)
-            }
-            return CategoryDecision(category: .unknown, strength: .low)
+            return CategoryDecision(category: .eScooter, strength: .high)
         }
 
-        // Samsung — nie automatisch Scooter
-        if companyId == BLECompanyId.samsung {
-            evidence.append(
-                IdentificationEvidence(
-                    id: "samsung-org",
-                    title: "Organisation: Samsung",
-                    detail: "Company Identifier 0x0075 identifiziert die Organisation, nicht automatisch ein Endgerät."
-                )
-            )
-            if name.contains("TV") || name.contains("QLED") || name.contains("SAMSUNG") && name.contains("AU") {
-                return CategoryDecision(category: .television, strength: .medium)
-            }
-            contradictions.append(
-                IdentificationEvidence(
-                    id: "samsung-not-scooter",
-                    title: "Kein Scooter-Hinweis",
-                    detail: "Samsung-Company-ID allein begründet keine E-Scooter-Klassifikation.",
-                    supports: false
-                )
-            )
-            return CategoryDecision(category: .unknown, strength: .low)
-        }
-
-        // Estimote / Beacon-Dienste
-        if companyId == BLECompanyId.estimote {
-            return CategoryDecision(category: .beacon, strength: .medium)
-        }
-
-        // Ninebot company ID + UART = starker Scooter-Hinweis
         if companyId == BLECompanyId.ninebot {
             evidence.append(
                 IdentificationEvidence(
@@ -282,19 +243,9 @@ enum BLEIdentificationEngine {
                     detail: "Company Identifier 0x0F1F (Ninebot Changzhou)."
                 )
             )
-            if hasNinebotUART || input.modelLabel != nil {
-                evidence.append(
-                    IdentificationEvidence(
-                        id: "ninebot-scooter",
-                        title: "Scooter-Merkmale",
-                        detail: hasNinebotUART
-                            ? "Ninebot-UART-Service UUID erkannt."
-                            : "Modellhinweis aus Name/Serial vorhanden."
-                    )
-                )
+            if input.modelLabel != nil {
                 return CategoryDecision(category: .eScooter, strength: .high)
             }
-            // Nur Company ID: möglicher Scooter, aber nicht radar-eligible high
             evidence.append(
                 IdentificationEvidence(
                     id: "ninebot-class-uncertain",
@@ -302,27 +253,23 @@ enum BLEIdentificationEngine {
                     detail: "Ninebot stellt auch Nicht-Scooter-Produkte her; ohne UART/Modell kein sicherer Scooter."
                 )
             )
-            return CategoryDecision(category: .unknown, strength: .low)
+            // Fall-through: kein Scooter, aber auch kein Fake-Modell
         }
 
-        // Xiaomi: Company ID allein ≠ Scooter (viele Produkte)
         if companyId == BLECompanyId.xiaomi {
             evidence.append(
                 IdentificationEvidence(
                     id: "xiaomi-org",
                     title: "Organisation: Xiaomi",
-                    detail: "Company Identifier 0x038F."
+                    detail: "Company Identifier 0x038F — Organisation, nicht Produktklasse."
                 )
             )
-            if input.modelLabel != nil || (hasNordicUART && input.looksLikeScooterHint && looksLikeXiaomiScooterName(name)) {
-                evidence.append(
-                    IdentificationEvidence(
-                        id: "xiaomi-scooter",
-                        title: "Scooter-Hinweise",
-                        detail: "Modell-/Namensmuster und/oder UART in Kombination mit Scooter-Heuristik."
-                    )
-                )
+            if input.modelLabel != nil
+                || (hasNordicUART && input.looksLikeScooterHint && looksLikeXiaomiScooterName(name)) {
                 return CategoryDecision(category: .eScooter, strength: .medium)
+            }
+            if let nonScooter = classifyXiaomiNonScooter(name: name, evidence: &evidence) {
+                return nonScooter
             }
             if hasNordicUART && !input.looksLikeScooterHint {
                 contradictions.append(
@@ -334,22 +281,8 @@ enum BLEIdentificationEngine {
                     )
                 )
             }
-            return CategoryDecision(category: .unknown, strength: .low)
         }
 
-        // Ninebot UART ohne Company ID (manche Adv. ohne Manufacturer Data)
-        if hasNinebotUART {
-            evidence.append(
-                IdentificationEvidence(
-                    id: "ninebot-uart-only",
-                    title: "Ninebot-UART-Service",
-                    detail: "Dokumentierte Ninebot-Service-UUID ohne Company Identifier im Advertisement."
-                )
-            )
-            return CategoryDecision(category: .eScooter, strength: .high)
-        }
-
-        // Bestehende Name/Serial-Heuristik nur mit zusätzlichem Signal verstärken
         if input.modelLabel != nil {
             evidence.append(
                 IdentificationEvidence(
@@ -366,7 +299,7 @@ enum BLEIdentificationEngine {
                 IdentificationEvidence(
                     id: "name-plus-nordic",
                     title: "Namensheuristik + Nordic UART",
-                    detail: "Beide Signale zusammen — mittlerer Scooter-Hinweis; kein alleiniger Name."
+                    detail: "Beide Signale zusammen — mittlerer Scooter-Hinweis."
                 )
             )
             return CategoryDecision(category: .eScooter, strength: .medium)
@@ -377,18 +310,353 @@ enum BLEIdentificationEngine {
                 IdentificationEvidence(
                     id: "name-only",
                     title: "Nur Namensheuristik",
-                    detail: "Ohne Service-/Manufacturer-Bestätigung bleibt die Klasse unsicher."
+                    detail: "Ohne Service-/Manufacturer-Bestätigung bleibt die Klasse unsicher — kein Radar-Scooter."
                 )
             )
+            // weiter: ggf. Nicht-Scooter-Merkmale
+        }
+
+        // —— Nicht-Scooter: Organisation + Name / Dienste ——
+        if companyId == BLECompanyId.apple {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "apple-org",
+                    title: "Organisation: Apple",
+                    detail: "Company Identifier 0x004C."
+                )
+            )
+            if let d = classifyApple(name: name, services: services, evidence: &evidence) {
+                return d
+            }
             return CategoryDecision(category: .unknown, strength: .low)
         }
 
-        // Audio / Fitness generische GATT
-        if services.contains("180D") || services.contains("1814") || services.contains("1816") {
-            return CategoryDecision(category: .sensor, strength: .low)
+        if companyId == BLECompanyId.samsung {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "samsung-org",
+                    title: "Organisation: Samsung",
+                    detail: "Company Identifier 0x0075 — keine automatische Scooter-Klassifikation."
+                )
+            )
+            contradictions.append(
+                IdentificationEvidence(
+                    id: "samsung-not-scooter",
+                    title: "Kein Scooter-Hinweis",
+                    detail: "Samsung-Company-ID allein begründet keine E-Scooter-Klassifikation.",
+                    supports: false
+                )
+            )
+            if let d = classifySamsung(name: name, evidence: &evidence) {
+                return d
+            }
+            return CategoryDecision(category: .unknown, strength: .low)
+        }
+
+        if companyId == BLECompanyId.estimote {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "estimote-org",
+                    title: "Organisation: Estimote",
+                    detail: "Company Identifier 0x015D — Beacon-Familie."
+                )
+            )
+            return CategoryDecision(category: .beacon, strength: .medium)
+        }
+
+        if companyId == BLECompanyId.bose || companyId == BLECompanyId.sony {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "audio-org",
+                    title: "Audio-Herstellerkennung",
+                    detail: "Organisation bekannt; Geräteklasse nur mit Namens-/Servicehinweis belastbar."
+                )
+            )
+            if looksLikeAudioName(name) || services.contains(where: { $0.hasPrefix("11") }) {
+                return CategoryDecision(category: .audio, strength: .medium)
+            }
+            // Bose/Sony überwiegend Audio — ohne Namen nur schwacher Hinweis, nicht als Fakt
+            return CategoryDecision(category: .audio, strength: .low)
+        }
+
+        if companyId == BLECompanyId.garmin || companyId == BLECompanyId.fitbit {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "wearable-org",
+                    title: "Wearable-Herstellerkennung",
+                    detail: "Organisation bekannt; Modell nur mit Namenshinweis."
+                )
+            )
+            if looksLikeWatchName(name) {
+                return CategoryDecision(category: .smartwatch, strength: .medium)
+            }
+            return CategoryDecision(category: .wearable, strength: .low)
+        }
+
+        if companyId == BLECompanyId.google {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "google-org",
+                    title: "Organisation: Google",
+                    detail: "Company Identifier 0x00E0."
+                )
+            )
+            if let d = classifyGoogle(name: name, evidence: &evidence) {
+                return d
+            }
+            return CategoryDecision(category: .unknown, strength: .low)
+        }
+
+        if companyId == BLECompanyId.microsoft {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "ms-org",
+                    title: "Organisation: Microsoft",
+                    detail: "Company Identifier 0x0006."
+                )
+            )
+            if name.contains("SURFACE") || name.contains("XBOX") || name.contains("KEYBOARD") || name.contains("MOUSE") {
+                return CategoryDecision(category: .computer, strength: .medium)
+            }
+            return CategoryDecision(category: .unknown, strength: .low)
+        }
+
+        if companyId == BLECompanyId.lg {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "lg-org",
+                    title: "Organisation: LG Electronics",
+                    detail: "Company Identifier 0x00C4."
+                )
+            )
+            if name.contains("TV") || name.contains("OLED") || name.contains("WEBOS") {
+                return CategoryDecision(category: .television, strength: .medium)
+            }
+            return CategoryDecision(category: .unknown, strength: .low)
+        }
+
+        if companyId == BLECompanyId.espressif {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "espressif-org",
+                    title: "Organisation: Espressif (Chip)",
+                    detail: "Chip-Hersteller — typisch IoT/Smart-Home, kein Endprodukt-Beweis."
+                )
+            )
+            if looksLikeSmartHomeName(name) {
+                return CategoryDecision(category: .smartHome, strength: .medium)
+            }
+            return CategoryDecision(category: .unknown, strength: .low)
+        }
+
+        if companyId == BLECompanyId.nordic {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "nordic-org",
+                    title: "Organisation: Nordic Semiconductor",
+                    detail: "Chip-Hersteller — viele Endgeräteklassen; allein keine Produktklasse."
+                )
+            )
+        }
+
+        // —— Generische GATT- / Namensregeln (herstellerunabhängig) ——
+        if let gatt = classifyFromGATT(services: services, evidence: &evidence) {
+            return gatt
+        }
+
+        if let byName = classifyFromNameAlone(name: name, evidence: &evidence) {
+            return byName
         }
 
         return CategoryDecision(category: .unknown, strength: .none)
+    }
+
+    // MARK: Non-scooter helpers
+
+    private static func classifyApple(
+        name: String,
+        services: [String],
+        evidence: inout [IdentificationEvidence]
+    ) -> CategoryDecision? {
+        if services.contains(BLEKnownServiceUUID.exposureNotification)
+            || services.contains(where: { $0.uppercased().contains("FD6F") }) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "apple-ens",
+                    title: "Exposure Notification UUID",
+                    detail: "Typisch für Smartphones — kein Scooter."
+                )
+            )
+            return CategoryDecision(category: .smartphone, strength: .medium)
+        }
+        if name.contains("APPLE TV") || name.contains("TV") && name.contains("APPLE") {
+            return CategoryDecision(category: .television, strength: .medium)
+        }
+        if name.contains("WATCH") || name.contains("APPLE WATCH") {
+            return CategoryDecision(category: .smartwatch, strength: .medium)
+        }
+        if name.contains("AIRPOD") || name.contains("BEATS") || name.contains("HOMEPOD") {
+            return CategoryDecision(category: .audio, strength: .medium)
+        }
+        if name.contains("IPHONE") || name.contains("IPAD") || name.contains("MACBOOK") || name.contains("IMAC") {
+            return CategoryDecision(category: name.contains("IPHONE") || name.contains("IPAD") ? .smartphone : .computer, strength: .medium)
+        }
+        return nil
+    }
+
+    private static func classifySamsung(name: String, evidence: inout [IdentificationEvidence]) -> CategoryDecision? {
+        if name.contains("TV") || name.contains("QLED") || name.contains("OLED")
+            || (name.contains("SAMSUNG") && name.contains("AU")) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "samsung-tv-name",
+                    title: "Namenshinweis Fernseher",
+                    detail: "Local Name enthält TV-/Display-Muster."
+                )
+            )
+            return CategoryDecision(category: .television, strength: .medium)
+        }
+        if name.contains("WATCH") || name.contains("GALAXY WATCH") || name.contains("GEAR") {
+            return CategoryDecision(category: .smartwatch, strength: .medium)
+        }
+        if name.contains("BUDS") || name.contains("GALAXY BUDS") {
+            return CategoryDecision(category: .audio, strength: .medium)
+        }
+        if name.contains("GALAXY") || name.contains("SM-") {
+            return CategoryDecision(category: .smartphone, strength: .low)
+        }
+        return nil
+    }
+
+    private static func classifyXiaomiNonScooter(
+        name: String,
+        evidence: inout [IdentificationEvidence]
+    ) -> CategoryDecision? {
+        if name.contains("MI BAND") || name.contains("MIBAND") || name.contains("REDMI WATCH")
+            || name.contains("AMAZFIT") {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "xiaomi-wearable-name",
+                    title: "Wearable-Namensmuster",
+                    detail: "Passt zu Fitness-Band/Watch — nicht E-Scooter."
+                )
+            )
+            return CategoryDecision(category: .wearable, strength: .medium)
+        }
+        if name.contains("AIRPURIFIER") || name.contains("ROBOT") || name.contains("VACUUM")
+            || name.contains("SMART HOME") || name.contains("YEELIGHT") {
+            return CategoryDecision(category: .smartHome, strength: .medium)
+        }
+        if name.contains("EARPHONE") || name.contains("BUDS") || name.contains("HEADSET") {
+            return CategoryDecision(category: .audio, strength: .medium)
+        }
+        return nil
+    }
+
+    private static func classifyGoogle(name: String, evidence: inout [IdentificationEvidence]) -> CategoryDecision? {
+        if name.contains("CHROMECAST") || name.contains("GOOGLE TV") || name.contains("ANDROID TV") {
+            return CategoryDecision(category: .television, strength: .medium)
+        }
+        if name.contains("NEST") || name.contains("HOME") {
+            return CategoryDecision(category: .smartHome, strength: .medium)
+        }
+        if name.contains("PIXEL BUDS") || name.contains("BUDS") {
+            return CategoryDecision(category: .audio, strength: .medium)
+        }
+        if name.contains("PIXEL") {
+            return CategoryDecision(category: .smartphone, strength: .low)
+        }
+        return nil
+    }
+
+    private static func classifyFromGATT(
+        services: [String],
+        evidence: inout [IdentificationEvidence]
+    ) -> CategoryDecision? {
+        let upper = services.map { $0.uppercased() }
+        if upper.contains(BLEKnownServiceUUID.eddystone)
+            || upper.contains(where: { $0.contains("FEAA") }) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "eddystone",
+                    title: "Eddystone-Service",
+                    detail: "Bluetooth-Beacon-Profil (FEAA)."
+                )
+            )
+            return CategoryDecision(category: .beacon, strength: .medium)
+        }
+        if upper.contains(BLEKnownServiceUUID.exposureNotification)
+            || upper.contains(where: { $0.contains("FD6F") }) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "ens",
+                    title: "Exposure Notification",
+                    detail: "Typisch Smartphone — kein Scooter."
+                )
+            )
+            return CategoryDecision(category: .smartphone, strength: .medium)
+        }
+        if upper.contains(BLEKnownServiceUUID.humanInterfaceDevice) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "hid",
+                    title: "HID-Service (1812)",
+                    detail: "Human Interface Device — Tastatur/Maus/Controller."
+                )
+            )
+            return CategoryDecision(category: .computer, strength: .medium)
+        }
+        if upper.contains(BLEKnownServiceUUID.heartRate)
+            || upper.contains(BLEKnownServiceUUID.runningSpeedCadence)
+            || upper.contains(BLEKnownServiceUUID.cyclingSpeedCadence)
+            || upper.contains(BLEKnownServiceUUID.pulseOximeter)
+            || upper.contains(BLEKnownServiceUUID.bloodPressure)
+            || upper.contains(BLEKnownServiceUUID.glucose)
+            || upper.contains(BLEKnownServiceUUID.weightScale) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "fitness-gatt",
+                    title: "Fitness-/Gesundheits-GATT",
+                    detail: "Standardisierte SIG-Dienste (z. B. Heart Rate, CSC)."
+                )
+            )
+            return CategoryDecision(category: .sensor, strength: .medium)
+        }
+        if upper.contains(BLEKnownServiceUUID.environmentalSensing)
+            || upper.contains(BLEKnownServiceUUID.automationIO) {
+            return CategoryDecision(category: .smartHome, strength: .low)
+        }
+        return nil
+    }
+
+    private static func classifyFromNameAlone(
+        name: String,
+        evidence: inout [IdentificationEvidence]
+    ) -> CategoryDecision? {
+        guard !name.isEmpty, !name.hasPrefix("OHNE NAMEN") else { return nil }
+        if looksLikeTVName(name) {
+            evidence.append(
+                IdentificationEvidence(
+                    id: "name-tv",
+                    title: "Namenshinweis Fernseher",
+                    detail: "Local Name enthält TV-/Display-Muster (ohne Hersteller-Bestätigung schwach)."
+                )
+            )
+            return CategoryDecision(category: .television, strength: .low)
+        }
+        if looksLikeAudioName(name) {
+            return CategoryDecision(category: .audio, strength: .low)
+        }
+        if looksLikeWatchName(name) {
+            return CategoryDecision(category: .smartwatch, strength: .low)
+        }
+        if looksLikeSmartHomeName(name) {
+            return CategoryDecision(category: .smartHome, strength: .low)
+        }
+        if name.contains("IBEACON") || name.contains("BEACON") || name.contains("TILE") {
+            return CategoryDecision(category: .beacon, strength: .low)
+        }
+        return nil
     }
 
     private static func looksLikeXiaomiScooterName(_ name: String) -> Bool {
@@ -397,21 +665,48 @@ enum BLEIdentificationEngine {
             || name.contains("PRO 2")
             || name.contains("ESSENTIAL")
             || name.contains("1S")
-            || name.contains("XIAOMI")
+            || name.contains("XIAOMI") && name.contains("SCOOTER")
+    }
+
+    private static func looksLikeTVName(_ name: String) -> Bool {
+        name.contains("TV") || name.contains("QLED") || name.contains("OLED")
+            || name.contains("WEBOS") || name.contains("BRAVIA") || name.contains("FIRETV")
+    }
+
+    private static func looksLikeAudioName(_ name: String) -> Bool {
+        name.contains("AIRPOD") || name.contains("BUDS") || name.contains("HEADSET")
+            || name.contains("HEADPHONE") || name.contains("SPEAKER") || name.contains("SOUNDBAR")
+            || name.contains("BEATS") || name.contains("WH-") || name.contains("WF-")
+            || name.contains("BOSE") || name.contains("JBL")
+    }
+
+    private static func looksLikeWatchName(_ name: String) -> Bool {
+        name.contains("WATCH") || name.contains("BAND") || name.contains("FITBIT")
+            || name.contains("GARMIN") || name.contains("VERSA") || name.contains("CHARGE")
+    }
+
+    private static func looksLikeSmartHomeName(_ name: String) -> Bool {
+        name.contains("SHELLY") || name.contains("PHILIPS HUE") || name.contains("HUE ")
+            || name.contains("SMARTPLUG") || name.contains("SMART BULB") || name.contains("TASMOTA")
+            || name.contains("ESPHOME") || name.contains("YEELIGHT") || name.contains("SWITCHBOT")
+            || name.contains("VALETUDO") || name.contains("HOMEKIT")
     }
 
     private static func protocolProfileLabel(services: [String], companyId: UInt16?) -> String? {
         var parts: [String] = []
-        if services.contains(where: { $0.contains("6E40") || $0.count > 8 }) {
-            if services.contains(where: { BLEKnownServiceUUID.normalize($0).contains("696E65626F74") }) {
-                parts.append("Ninebot UART")
-            } else if services.contains(where: {
-                BLEKnownServiceUUID.normalize($0).contains("6E400001B5A3F393E0A9E50E24DCCA9E")
-            }) {
-                parts.append("Nordic UART")
-            }
+        if services.contains(where: {
+            BLEKnownServiceUUID.normalize($0).contains("696E65626F74")
+        }) {
+            parts.append("Ninebot UART")
+        } else if services.contains(where: {
+            BLEKnownServiceUUID.normalize($0).contains("6E400001B5A3F393E0A9E50E24DCCA9E")
+        }) {
+            parts.append("Nordic UART")
         }
         if services.contains("180A") { parts.append("Device Information") }
+        if services.contains("1812") { parts.append("HID") }
+        if services.contains("180D") { parts.append("Heart Rate") }
+        if services.contains(where: { $0.uppercased().contains("FEAA") }) { parts.append("Eddystone") }
         if companyId == BLECompanyId.apple { parts.append("Apple manufacturer payload") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -436,7 +731,10 @@ enum BLEIdentificationEngine {
         if manufacturer != nil, category != .unknown, categoryStrength == .medium {
             return .medium
         }
-        if manufacturer != nil || categoryStrength == .medium {
+        if category != .unknown, categoryStrength == .medium {
+            return .medium
+        }
+        if manufacturer != nil || categoryStrength == .medium || categoryStrength == .low {
             return .medium
         }
         if manufacturer != nil || evidenceCount > 0 {
@@ -480,7 +778,8 @@ enum BLEIdentificationEngine {
         companyId: UInt16?,
         manufacturer: String?,
         category: BLEDeviceCategory,
-        model: String?
+        model: String?,
+        localName: String?
     ) -> String? {
         var bits: [String] = []
         if let companyId {
@@ -489,8 +788,17 @@ enum BLEIdentificationEngine {
         if let manufacturer, model != nil {
             bits.append(shortManufacturer(manufacturer))
         }
-        if category != .unknown, model == nil {
+        if category != .unknown {
             bits.append(category.label)
+        } else if manufacturer == nil {
+            bits.append("Klasse unbekannt")
+        }
+        if let localName, !localName.isEmpty,
+           manufacturer != nil || category != .unknown {
+            let short = localName.count > 28 ? String(localName.prefix(28)) + "…" : localName
+            if !bits.contains(where: { localName.localizedCaseInsensitiveContains($0) }) {
+                bits.append(short)
+            }
         }
         return bits.isEmpty ? nil : bits.joined(separator: " · ")
     }
@@ -500,6 +808,7 @@ enum BLEIdentificationEngine {
             .replacingOccurrences(of: ", Inc.", with: "")
             .replacingOccurrences(of: " Co. Ltd.", with: "")
             .replacingOccurrences(of: " Co., Ltd.", with: "")
+            .replacingOccurrences(of: " Electronics Co. Ltd.", with: "")
             .replacingOccurrences(of: " (Changzhou) Tech Co., Ltd.", with: "")
             .trimmingCharacters(in: .whitespaces)
     }

@@ -372,16 +372,24 @@ struct ScooterFinderView: View {
     }
 
     private func finderDeviceRow(_ device: ScannedDevice) -> some View {
-        HStack(alignment: .center, spacing: Theme.Space.md) {
+        let idResult = identity.results[device.id]
+        return HStack(alignment: .center, spacing: Theme.Space.md) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(rowTitle(device))
                     .font(Theme.cardTitle)
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-                Text(finderDisplayId(device))
-                    .font(Theme.meta.monospaced())
-                    .foregroundStyle(Theme.textMuted)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                if let sub = idResult?.listSubtitle, !sub.isEmpty {
+                    Text(sub)
+                        .font(Theme.meta)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                } else {
+                    Text(finderDisplayId(device))
+                        .font(Theme.meta.monospaced())
+                        .foregroundStyle(Theme.textMuted)
+                        .lineLimit(1)
+                }
                 HStack(spacing: Theme.Space.sm) {
                     Text(device.finderSignalLabel)
                         .font(Theme.caption.weight(.medium))
@@ -391,6 +399,11 @@ struct ScooterFinderView: View {
                     Text(lastSeenLabel(device.lastSeen))
                         .font(Theme.meta)
                         .foregroundStyle(Theme.textMuted)
+                    if let cat = idResult?.deviceCategory, cat != .unknown, cat != .eScooter {
+                        Text(cat.label)
+                            .font(Theme.badgeFont)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                     if device.looksLikeScooter, !showOnlyScooters {
                         Text("E-Scooter?")
                             .font(Theme.badgeFont)

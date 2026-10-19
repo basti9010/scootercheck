@@ -283,7 +283,7 @@ enum PrivacyContent {
         Section(
             title: "BLE-Geräteidentifikation",
             paragraphs: [
-                "Während der BLE-Suche wertet ScooterCheck lokal verfügbare Advertisement-Merkmale aus (u. a. Company Identifier, Service-UUIDs, Namensmuster).",
+                "Während der BLE-Suche wertet ScooterCheck lokal verfügbare Advertisement-Merkmale aus (u. a. Company Identifier, Service-UUIDs, Namensmuster) — für E-Scooter und für alle übrigen BLE-Geräte.",
                 "Die lokale Herstellerliste basiert auf Bluetooth-SIG Assigned Numbers. Eine Company Identifier benennt die registrierte Organisation — nicht automatisch Geräteklasse oder Modell.",
                 "Online-Identifikation ist optional und standardmäßig aus. Erst nach ausdrücklicher Zustimmung werden datensparsame technische Kennungen an ein konfiguriertes Backend gesendet — keine Standorte, keine vollständigen Scan-Historien, keine ungefragte Übertragung aller Geräte.",
                 "Ohne konfiguriertes Backend findet keine Online-Recherche statt; die lokale Analyse bleibt nutzbar.",

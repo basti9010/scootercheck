@@ -253,6 +253,112 @@ final class BLEIdentificationTests: XCTestCase {
         let labels = BLEIdentificationConfidence.allCases.map(\.label)
         XCTAssertEqual(Set(labels), Set(["Hoch", "Mittel", "Niedrig", "Unbekannt"]))
     }
+
+    func testAppleWatchNameClassifiedAsSmartwatchNotScooter() {
+        let result = BLEIdentificationEngine.analyze(
+            .init(
+                deviceId: UUID(),
+                displayName: "Apple Watch",
+                localName: "Apple Watch",
+                manufacturerDataHex: "4C 00 10 00",
+                serviceUUIDs: [],
+                serviceDataHexByUUID: [:],
+                txPower: nil,
+                isConnectable: true,
+                looksLikeScooterHint: false,
+                modelLabel: nil,
+                modelBadge: nil
+            )
+        )
+        XCTAssertEqual(result.deviceCategory, .smartwatch)
+        XCTAssertFalse(result.radarEligibleScooter)
+        XCTAssertTrue(result.listTitle.contains("Smartwatch") || result.listTitle.contains("Apple"))
+    }
+
+    func testEddystoneServiceIsBeacon() {
+        let result = BLEIdentificationEngine.analyze(
+            .init(
+                deviceId: UUID(),
+                displayName: "Ohne Namen (BEAC)",
+                localName: nil,
+                manufacturerDataHex: nil,
+                serviceUUIDs: ["FEAA"],
+                serviceDataHexByUUID: [:],
+                txPower: -12,
+                isConnectable: false,
+                looksLikeScooterHint: false,
+                modelLabel: nil,
+                modelBadge: nil
+            )
+        )
+        XCTAssertEqual(result.deviceCategory, .beacon)
+        XCTAssertFalse(result.radarEligibleScooter)
+        XCTAssertTrue(result.listTitle.lowercased().contains("beacon") || result.listTitle.contains("Beacon"))
+    }
+
+    func testHeartRateGATTIsSensorNotScooter() {
+        let result = BLEIdentificationEngine.analyze(
+            .init(
+                deviceId: UUID(),
+                displayName: "HRM",
+                localName: "Tickr",
+                manufacturerDataHex: nil,
+                serviceUUIDs: ["180D", "180A"],
+                serviceDataHexByUUID: [:],
+                txPower: nil,
+                isConnectable: true,
+                looksLikeScooterHint: false,
+                modelLabel: nil,
+                modelBadge: nil
+            )
+        )
+        XCTAssertEqual(result.deviceCategory, .sensor)
+        XCTAssertFalse(result.radarEligibleScooter)
+    }
+
+    func testShellyNameSuggestsSmartHome() {
+        let result = BLEIdentificationEngine.analyze(
+            .init(
+                deviceId: UUID(),
+                displayName: "shellyplus1-AABBCC",
+                localName: "shellyplus1-AABBCC",
+                manufacturerDataHex: "E5 02 01",
+                serviceUUIDs: [],
+                serviceDataHexByUUID: [:],
+                txPower: nil,
+                isConnectable: true,
+                looksLikeScooterHint: false,
+                modelLabel: nil,
+                modelBadge: nil
+            )
+        )
+        XCTAssertEqual(result.deviceCategory, .smartHome)
+        XCTAssertNotEqual(result.deviceCategory, .eScooter)
+        XCTAssertFalse(result.radarEligibleScooter)
+    }
+
+    func testManufacturerOnlyUnknownCategoryStillLabeled() {
+        let result = BLEIdentificationEngine.analyze(
+            .init(
+                deviceId: UUID(),
+                displayName: "Ohne Namen (ZZZZ)",
+                localName: nil,
+                manufacturerDataHex: "E0 00 AA",
+                serviceUUIDs: [],
+                serviceDataHexByUUID: [:],
+                txPower: nil,
+                isConnectable: true,
+                looksLikeScooterHint: false,
+                modelLabel: nil,
+                modelBadge: nil
+            )
+        )
+        XCTAssertEqual(result.manufacturerCompanyId, 0x00E0)
+        XCTAssertNotNil(result.manufacturer)
+        XCTAssertEqual(result.deviceCategory, .unknown)
+        XCTAssertTrue(result.listTitle.contains("Modell unbekannt") || result.listTitle.contains("Google"))
+        XCTAssertFalse(result.radarEligibleScooter)
+    }
 }
 
 private extension BLEIdentificationConfidence {

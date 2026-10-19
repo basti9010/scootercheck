@@ -113,6 +113,13 @@ enum BLEKnownServiceUUID {
     static let immediateAlert = "1802"
     static let linkLoss = "1803"
     static let txPower = "1804"
+    static let humanInterfaceDevice = "1812"
+    static let bloodPressure = "1810"
+    static let glucose = "1808"
+    static let pulseOximeter = "1822"
+    static let weightScale = "181D"
+    static let eddystone = "FEAA"
+    static let exposureNotification = "FD6F"
     static let appleContinuityPrefix = "FD"
 
     static func normalize(_ uuid: String) -> String {

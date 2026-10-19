@@ -1,6 +1,6 @@
 # BLE-Geräteidentifikation
 
-Automatische, nachvollziehbare Identifikation von BLE-Geräten in ScooterCheck — lokal zuerst, Online nur nach Zustimmung.
+Automatische, nachvollziehbare Identifikation von **allen** BLE-Geräten in ScooterCheck (E-Scooter und Nicht-Scooter) — lokal zuerst, Online nur nach Zustimmung.
 
 ## Architektur
 
@@ -32,7 +32,18 @@ Kein zweiter BLE-Scan. Dieselben Discovery-Events wie Scan, Radar, Wächter und 
 1. **Hersteller** — Company Identifier → SIG-Name (Organisation, nicht Produktklasse)
 2. **Geräteklasse** — nur mit zusätzlichen technischen Merkmalen (nie nur aus Hersteller)
 3. **Modell** — nur bei dokumentierten Namens-/Serial-Hinweisen (`BleModelHint`) oder belastbarer Kombi
-4. **Kommunikationsprofil** — z. B. Ninebot UART, Nordic UART, Device Information
+4. **Kommunikationsprofil** — z. B. Ninebot UART, Nordic UART, Device Information, HID, Eddystone
+
+Gilt auch für **Andere BLE** (TV, Audio, Smartwatch, Beacon, Smart-Home, Sensor, Smartphone …). Beispiele:
+
+| Merkmale | Ergebnis |
+|----------|----------|
+| Samsung CID + Name „AU8000“ / „TV“ | Samsung – Fernseher / Media (kein Scooter) |
+| Apple CID + „AirPods“ | Apple – Audio |
+| Service `FEAA` | Mögliches Beacon |
+| Service `180D` | Mögliches Sensor |
+| Espressif CID + „shelly…“ | Espressif – Smart-Home |
+| Nur Google CID, kein Name | Google – Modell unbekannt (Klasse offen) |
 
 Confidence: `high` | `medium` | `low` | `unknown` (qualitativ, keine Pseudo-Prozentwerte).
 
