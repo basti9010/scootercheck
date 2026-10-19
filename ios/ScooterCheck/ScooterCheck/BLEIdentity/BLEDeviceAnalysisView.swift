@@ -14,6 +14,7 @@ struct BLEDeviceAnalysisView: View {
     @State private var expandGatt = false
     @State private var expandFingerprint = false
     @State private var isReanalyzing = false
+    @State private var showUniversalDiagnosis = false
     @Environment(\.dismiss) private var dismiss
 
     private var fingerprint: BLEDeviceFingerprint {
@@ -45,6 +46,7 @@ struct BLEDeviceAnalysisView: View {
                             .foregroundStyle(Theme.danger)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    universalHintCard
                     actionsCard
                     AppCopyrightFooter()
                         .frame(maxWidth: .infinity)
@@ -335,6 +337,38 @@ struct BLEDeviceAnalysisView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .scootCard()
+    }
+
+    private var universalHintCard: some View {
+        let assessment = UniversalScooterDetectionService.shared.assessPassively(
+            device: device,
+            identity: result
+        )
+        return VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Universelle Diagnose")
+                .font(Theme.cardTitle)
+                .foregroundStyle(Theme.textPrimary)
+            Text(assessment.compatibility.supportLevel.label)
+                .font(Theme.secondary)
+                .foregroundStyle(Theme.textSecondary)
+            if let profile = assessment.compatibility.profile {
+                Text("Profil: \(profile.id) · \(profile.verified ? "verifiziert" : "nur Hinweis")")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            ScootOutlineButton(title: "Diagnose öffnen", systemImage: "stethoscope") {
+                showUniversalDiagnosis = true
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .scootCard()
+        .sheet(isPresented: $showUniversalDiagnosis) {
+            UniversalDiagnosisView(
+                device: device,
+                onSignalSearch: onSignalSearch,
+                onWatch: onWatch
+            )
+        }
     }
 
     private var actionsCard: some View {

@@ -22,6 +22,7 @@ struct ScooterFinderView: View {
     @ObservedObject private var identity = BLEIdentificationService.shared
     @State private var selected: ScannedDevice?
     @State private var detailDevice: ScannedDevice?
+    @State private var diagnosisDevice: ScannedDevice?
     @State private var showInfo = false
     @State private var showMultiPicker = false
     @State private var multiSelectedIds: Set<UUID> = []
@@ -188,6 +189,27 @@ struct ScooterFinderView: View {
                     startFinding(device)
                 },
                 onDismiss: { detailDevice = nil }
+            )
+        }
+        .sheet(item: $diagnosisDevice) { device in
+            UniversalDiagnosisView(
+                device: device,
+                onNativeDump: {
+                    diagnosisDevice = nil
+                    detailDevice = device
+                },
+                onSignalSearch: {
+                    let selected = device
+                    diagnosisDevice = nil
+                    startFinding(selected)
+                },
+                onWatch: {
+                    BLEWatchService.shared.enableWatcher(
+                        for: device,
+                        isKnownScooter: device.looksLikeScooter
+                    )
+                    diagnosisDevice = nil
+                }
             )
         }
     }
@@ -520,9 +542,15 @@ struct ScooterFinderView: View {
                         .foregroundStyle(Theme.textMuted)
                     VStack(spacing: Theme.Space.listGap) {
                         ForEach(radar.recentHits.prefix(12)) { hit in
-                            BLERadarHitCard(hit: hit) {
-                                radar.showSettingsSheet = true
-                            }
+                            BLERadarHitCard(
+                                hit: hit,
+                                onDetails: { radar.showSettingsSheet = true },
+                                onDiagnose: {
+                                    if let device = ble.devices.first(where: { $0.id == hit.id }) {
+                                        diagnosisDevice = device
+                                    }
+                                }
+                            )
                         }
                     }
                 }

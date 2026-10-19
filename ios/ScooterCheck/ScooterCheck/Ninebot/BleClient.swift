@@ -1980,6 +1980,11 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     /// Öffentlich: Verbindung ohne gültige Scooter-Auslese — kein „bekannter Scooter“.
+    /// Hängt Diagnose-Metadaten an `reading.physicalMarks` (Evidence) — keine Sollwerte.
+    func annotateDiagnosticSnapshot(_ snapshot: ReadOnlyDiagnosticSnapshot) {
+        ScooterEvidenceEngineBridge.annotate(reading: &reading, snapshot: snapshot)
+    }
+
     func markUnsupportedScooter(_ message: String) {
         demoteUnverifiedLastConnect()
         // Fremdgerät darf keine spätere Protokoll-Speicherung „verunreinigen“.

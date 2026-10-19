@@ -88,6 +88,15 @@
 		A10000000000000000000071 /* VehicleApprovalCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000071 /* VehicleApprovalCatalog.swift */; };
 		A10000000000000000000072 /* vehicle_approval_catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000072 /* vehicle_approval_catalog.json */; };
 		A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000073 /* VehicleApprovalTests.swift */; };
+		A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000080 /* ScooterDiagnosticProfile.swift */; };
+		A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000081 /* ScooterProtocolRegistry.swift */; };
+		A10000000000000000000082 /* OnlineProtocolDiscoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000082 /* OnlineProtocolDiscoveryService.swift */; };
+		A10000000000000000000083 /* UniversalScooterDetectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000083 /* UniversalScooterDetectionService.swift */; };
+		A10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift */; };
+		A10000000000000000000085 /* GenericGATTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000085 /* GenericGATTReader.swift */; };
+		A10000000000000000000086 /* UniversalDiagnosisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000086 /* UniversalDiagnosisView.swift */; };
+		A10000000000000000000087 /* scooter_diagnostic_profiles.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000087 /* scooter_diagnostic_profiles.json */; };
+		A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000088 /* UniversalDiagnosisTests.swift */; };
 		A1000000000000000000004A /* BLESearchMotionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004A /* BLESearchMotionCore.swift */; };
 		A1000000000000000000004C /* BLESearchVisualTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004C /* BLESearchVisualTracker.swift */; };
 		A1000000000000000000004D /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004D /* ARKit.framework */; };
@@ -179,7 +188,16 @@
 		B10000000000000000000070 /* BLERadarSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLERadarSession.swift; sourceTree = "<group>"; };
 		B10000000000000000000071 /* VehicleApprovalCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleApprovalCatalog.swift; sourceTree = "<group>"; };
 		B10000000000000000000072 /* vehicle_approval_catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = vehicle_approval_catalog.json; sourceTree = "<group>"; };
+		B10000000000000000000080 /* ScooterDiagnosticProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/ScooterDiagnosticProfile.swift; sourceTree = "<group>"; };
+		B10000000000000000000081 /* ScooterProtocolRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/ScooterProtocolRegistry.swift; sourceTree = "<group>"; };
+		B10000000000000000000082 /* OnlineProtocolDiscoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/OnlineProtocolDiscoveryService.swift; sourceTree = "<group>"; };
+		B10000000000000000000083 /* UniversalScooterDetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/UniversalScooterDetectionService.swift; sourceTree = "<group>"; };
+		B10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/ReadOnlyDiagnosticEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000085 /* GenericGATTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/GenericGATTReader.swift; sourceTree = "<group>"; };
+		B10000000000000000000086 /* UniversalDiagnosisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/UniversalDiagnosisView.swift; sourceTree = "<group>"; };
+		B10000000000000000000087 /* scooter_diagnostic_profiles.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = scooter_diagnostic_profiles.json; sourceTree = "<group>"; };
 		B10000000000000000000073 /* VehicleApprovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleApprovalTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000088 /* UniversalDiagnosisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosisTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000004A /* BLESearchMotionCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchMotionCore.swift; sourceTree = "<group>"; };
 		B1000000000000000000004C /* BLESearchVisualTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchVisualTracker.swift; sourceTree = "<group>"; };
 		B1000000000000000000004D /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
@@ -271,6 +289,14 @@
 				B10000000000000000000070 /* BLERadarSession.swift */,
 				B10000000000000000000071 /* VehicleApprovalCatalog.swift */,
 				B10000000000000000000072 /* vehicle_approval_catalog.json */,
+				B10000000000000000000080 /* ScooterDiagnosticProfile.swift */,
+				B10000000000000000000081 /* ScooterProtocolRegistry.swift */,
+				B10000000000000000000082 /* OnlineProtocolDiscoveryService.swift */,
+				B10000000000000000000083 /* UniversalScooterDetectionService.swift */,
+				B10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift */,
+				B10000000000000000000085 /* GenericGATTReader.swift */,
+				B10000000000000000000086 /* UniversalDiagnosisView.swift */,
+				B10000000000000000000087 /* scooter_diagnostic_profiles.json */,
 				B10000000000000000000048 /* BLEWatchRadarUI.swift */,
 				B10000000000000000000047 /* BLEWatchRadarCore.swift */,
 				B1000000000000000000000E /* Info.plist */,
@@ -330,6 +356,7 @@
 				B10000000000000000000046 /* BLEAnalysisCoreTests.swift */,
 				B10000000000000000000068 /* BLEIdentificationTests.swift */,
 				B10000000000000000000073 /* VehicleApprovalTests.swift */,
+				B10000000000000000000088 /* UniversalDiagnosisTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
 				B10000000000000000000049 /* BLEWatchRadarTests.swift */,
@@ -454,6 +481,7 @@
 				A10000000000000000000067 /* bluetooth_company_identifiers.json in Resources */,
 				A10000000000000000000069 /* ble_vendor_patterns.json in Resources */,
 				A10000000000000000000072 /* vehicle_approval_catalog.json in Resources */,
+				A10000000000000000000087 /* scooter_diagnostic_profiles.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -498,6 +526,13 @@
 				A10000000000000000000047 /* BLEWatchRadarCore.swift in Sources */,
 				A10000000000000000000070 /* BLERadarSession.swift in Sources */,
 				A10000000000000000000071 /* VehicleApprovalCatalog.swift in Sources */,
+				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
+				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,
+				A10000000000000000000082 /* OnlineProtocolDiscoveryService.swift in Sources */,
+				A10000000000000000000083 /* UniversalScooterDetectionService.swift in Sources */,
+				A10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift in Sources */,
+				A10000000000000000000085 /* GenericGATTReader.swift in Sources */,
+				A10000000000000000000086 /* UniversalDiagnosisView.swift in Sources */,
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* Analyzer.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
@@ -549,6 +584,7 @@
 				A10000000000000000000046 /* BLEAnalysisCoreTests.swift in Sources */,
 				A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */,
 				A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */,
+				A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,
 				A10000000000000000000049 /* BLEWatchRadarTests.swift in Sources */,

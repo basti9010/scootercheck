@@ -27,8 +27,11 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
         var deviceName: String?
         var manufacturerName: String?
         var modelNumber: String?
+        var serialNumber: String?
         var firmwareRevision: String?
+        var hardwareRevision: String?
         var completedAt: Date
+        var errorMessage: String?
     }
 
     @Published private(set) var phase: Phase = .idle
@@ -90,6 +93,18 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
         didFinish = true
         if let error {
             phase = .failed(error)
+            report = Report(
+                services: serviceUUIDs,
+                characteristics: collected,
+                deviceName: collectedValue(uuid: "2A00"),
+                manufacturerName: collectedValue(uuid: "2A29"),
+                modelNumber: collectedValue(uuid: "2A24"),
+                serialNumber: collectedValue(uuid: "2A25"),
+                firmwareRevision: collectedValue(uuid: "2A26"),
+                hardwareRevision: collectedValue(uuid: "2A27"),
+                completedAt: Date(),
+                errorMessage: error
+            )
         } else {
             report = Report(
                 services: serviceUUIDs,
@@ -97,8 +112,11 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
                 deviceName: collectedValue(uuid: "2A00"),
                 manufacturerName: collectedValue(uuid: "2A29"),
                 modelNumber: collectedValue(uuid: "2A24"),
+                serialNumber: collectedValue(uuid: "2A25"),
                 firmwareRevision: collectedValue(uuid: "2A26"),
-                completedAt: Date()
+                hardwareRevision: collectedValue(uuid: "2A27"),
+                completedAt: Date(),
+                errorMessage: nil
             )
             phase = .done
         }
