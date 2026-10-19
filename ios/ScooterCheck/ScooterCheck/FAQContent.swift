@@ -322,6 +322,26 @@ private extension FAQCatalog {
                 ]
             ),
             FAQItem(
+                id: "finden-identifikation",
+                question: "Wie erkennt ScooterCheck unbekannte BLE-Geräte?",
+                segments: [
+                    .paragraph("Während der BLE-Suche analysiert ScooterCheck automatisch verfügbare Advertisement-Merkmale — für E-Scooter und für alle anderen BLE-Geräte, ohne zweiten Scan."),
+                    .bullets([
+                        "Hersteller über Bluetooth Company Identifier (SIG Assigned Numbers)",
+                        "Geräteklasse (TV, Audio, Smartwatch, Beacon, Smart-Home, Sensor …) nur mit zusätzlichen Merkmalen — nie allein aus dem Hersteller",
+                        "Modell nur bei dokumentierten Namens-/Protokollhinweisen",
+                        "Fingerprint aus stabilen Advertising-Mustern (ohne RSSI als Identität)",
+                    ]),
+                    .paragraph("Unter „Andere BLE“ erscheinen z. B. „Samsung – Fernseher / Media“ oder „Mögliches Beacon“, sobald die Daten das tragen. In der Geräteanalyse: Evidenz, 30 s beobachten, optional Online (nur nach Zustimmung), nur-lesende GATT-Analyse."),
+                    .callout("Ohne ausreichende Daten bleibt die Klasse „unbekannt“. Online-Treffer allein lösen keinen Radar-Alarm aus. iOS liefert keine fremden Bluetooth-MAC-Adressen."),
+                ],
+                keywords: [
+                    "identifikation", "hersteller", "company identifier", "fingerprint", "gatt",
+                    "online", "unbekanntes ble", "andere ble", "samsung", "fernseher", "beacon",
+                    "smart-home", "ninebot", "analyse", "evidenz",
+                ]
+            ),
+            FAQItem(
                 id: "finden-nicht-gefunden",
                 question: "Warum wird mein Scooter nicht gefunden?",
                 segments: [

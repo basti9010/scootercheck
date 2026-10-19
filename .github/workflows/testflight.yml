@@ -50,6 +50,7 @@ on:
       - cursor/ar-path-thinner-b100
       - cursor/heading-cone-compass-b100
       - cursor/ar-path-no-flicker-b100
+      - cursor/ble-device-identification-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -76,7 +77,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Sichtkegel folgt Kompass/Drehung sofort (Heatmap + AR)' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Automatische BLE-Geräteidentifikation (lokal + optional Online)' }}"
 
     steps:
       - name: Checkout

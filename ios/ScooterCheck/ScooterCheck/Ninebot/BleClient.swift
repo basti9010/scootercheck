@@ -2160,6 +2160,7 @@ extension BleClient: CBCentralManagerDelegate {
                 isConnectable: connectable,
                 serviceDataHexByUUID: serviceData
             )
+            let ingested: ScannedDevice
             if let index = devices.firstIndex(where: { $0.id == device.id }) {
                 // Badge/Modell beibehalten, sobald einmal erkannt.
                 let previous = devices[index]
@@ -2184,9 +2185,13 @@ extension BleClient: CBCentralManagerDelegate {
                     }()
                 )
                 devices[index] = merged
+                ingested = merged
             } else {
                 devices.append(device)
+                ingested = device
             }
+            // Identifikation im Hintergrund der bestehenden Discovery — kein zweiter Scan.
+            BLEIdentificationService.shared.ingest(ingested)
             // Stabile Reihenfolge: RSSI live, Zeilen nicht bei jedem dBm-Zucken tauschen.
             let stabilized = BleScanListStabilizer.reconcile(
                 previousOrder: stableScanOrderIds,

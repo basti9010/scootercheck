@@ -597,6 +597,7 @@ enum BLEScooterConfidence: String, Sendable {
     }
 }
 
+@MainActor
 enum BLEScooterClassifier {
     /// Nutzt bestehende Heuristik — Name allein reicht nicht für medium+.
     static func confidence(for device: ScannedDevice) -> BLEScooterConfidence {
@@ -620,7 +621,11 @@ enum BLEScooterClassifier {
     }
 
     static func isRadarEligible(_ device: ScannedDevice) -> Bool {
-        confidence(for: device) != .low && device.looksLikeScooter
+        // Identifikations-Engine: nur belastbare Scooter-Klassifikation → Radar.
+        if let id = BLEIdentificationService.shared.result(for: device.id) {
+            return id.radarEligibleScooter
+        }
+        return confidence(for: device) != .low && device.looksLikeScooter
     }
 }
 

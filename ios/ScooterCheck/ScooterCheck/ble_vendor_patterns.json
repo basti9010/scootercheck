@@ -1,0 +1,169 @@
+{
+  "version": 2,
+  "source": "ScooterCheck documented BLE protocols + Bluetooth SIG GATT services",
+  "sourceUrl": "https://www.bluetooth.com/specifications/assigned-numbers/",
+  "updatedAt": "2026-03-18",
+  "note": "Applies to all BLE devices (scooters and non-scooters). Company ID alone never implies device class. No invented model IDs.",
+  "patterns": [
+    {
+      "id": "ninebot-uart",
+      "organization": "Ninebot (Changzhou) Tech Co., Ltd.",
+      "companyIds": ["0x0F1F"],
+      "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74"],
+      "suggestedCategory": "eScooter",
+      "requires": "ninebotUART",
+      "evidence": "Documented Ninebot UART service used by ScooterCheck protocol layer",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "nordic-uart-generic",
+      "organization": "Nordic Semiconductor ASA (chipset)",
+      "companyIds": ["0x0059"],
+      "serviceUUIDs": ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+      "suggestedCategory": null,
+      "requires": "additionalScooterHints",
+      "evidence": "Nordic UART is shared by many product classes; never sufficient alone for e-scooter",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "xiaomi-org",
+      "organization": "Xiaomi Inc.",
+      "companyIds": ["0x038F"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "modelOrNamePlusUART",
+      "evidence": "Xiaomi company identifier names the organization only — phones, scooters, home, wearables",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "samsung-org",
+      "organization": "Samsung Electronics Co. Ltd.",
+      "companyIds": ["0x0075"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "neverScooterFromCID",
+      "evidence": "Samsung CID must not classify as e-scooter; TV/Watch/Buds need name or service hints",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "apple-org",
+      "organization": "Apple, Inc.",
+      "companyIds": ["0x004C"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "nameHintsForSubclass",
+      "evidence": "Apple Continuity / manufacturer payload; class only with additional name or ENS UUID",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "bose-org",
+      "organization": "Bose Corporation",
+      "companyIds": ["0x009E"],
+      "serviceUUIDs": [],
+      "suggestedCategory": "audio",
+      "requires": "preferNameHint",
+      "evidence": "Bose company identifier — audio products common, model not implied by CID alone",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "sony-org",
+      "organization": "Sony Corporation",
+      "companyIds": ["0x012D"],
+      "serviceUUIDs": [],
+      "suggestedCategory": "audio",
+      "requires": "preferNameHint",
+      "evidence": "Sony company identifier — many product classes; headphones often advertise local name",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "garmin-org",
+      "organization": "Garmin International, Inc.",
+      "companyIds": ["0x0087"],
+      "serviceUUIDs": [],
+      "suggestedCategory": "wearable",
+      "requires": "preferNameHint",
+      "evidence": "Garmin company identifier — wearables/sensors common",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "fitbit-org",
+      "organization": "Fitbit, Inc.",
+      "companyIds": ["0x018E"],
+      "serviceUUIDs": [],
+      "suggestedCategory": "wearable",
+      "requires": "preferNameHint",
+      "evidence": "Fitbit company identifier — wearable class only with supporting hints",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "google-org",
+      "organization": "Google",
+      "companyIds": ["0x00E0"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "nameHintsForSubclass",
+      "evidence": "Google company identifier — phones, Nest, Chromecast, Buds",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "espressif-chip",
+      "organization": "Espressif Incorporated",
+      "companyIds": ["0x02E5"],
+      "serviceUUIDs": [],
+      "suggestedCategory": null,
+      "requires": "smartHomeNameHint",
+      "evidence": "Espressif is a chip vendor (ESP32 etc.) — not an end-product class by itself",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "gatt-device-information",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["180A"],
+      "suggestedCategory": null,
+      "requires": "none",
+      "evidence": "Bluetooth SIG Device Information Service — generic",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "gatt-heart-rate",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["180D"],
+      "suggestedCategory": "sensor",
+      "requires": "serviceOnlyWeak",
+      "evidence": "Bluetooth SIG Heart Rate Service",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "gatt-hid",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["1812"],
+      "suggestedCategory": "computer",
+      "requires": "serviceHint",
+      "evidence": "Bluetooth SIG Human Interface Device Service",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "eddystone",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["FEAA"],
+      "suggestedCategory": "beacon",
+      "requires": "serviceHint",
+      "evidence": "Google Eddystone beacon service UUID",
+      "aloneImpliesCategory": false
+    },
+    {
+      "id": "exposure-notification",
+      "organization": null,
+      "companyIds": [],
+      "serviceUUIDs": ["FD6F"],
+      "suggestedCategory": "smartphone",
+      "requires": "serviceHint",
+      "evidence": "Exposure Notification service — typically smartphones",
+      "aloneImpliesCategory": false
+    }
+  ]
+}
