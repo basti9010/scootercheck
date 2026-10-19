@@ -4,6 +4,7 @@ import SwiftUI
 enum ScooterFindDestination: Equatable {
     case hub
     case radar
+    case radarMap
     case watch
     case signalFinder
 }
@@ -32,7 +33,7 @@ struct ScooterFindHubView: View {
                     .scootPushTransition(reduceMotion: reduceMotion)
                     // Edge-Zurück nur für Wächter. Radar/Signal-Finder haben eigene Geste —
                     // sonst springt ein Wisch über die Live-Suche direkt zum Hub und verwirft Daten.
-                    .scootEdgeBackGesture(isEnabled: destination == .watch) {
+                    .scootEdgeBackGesture(isEnabled: destination == .watch || destination == .radarMap) {
                         destination = .hub
                     }
                     .zIndex(1)
@@ -55,6 +56,8 @@ struct ScooterFindHubView: View {
                 mode: .radar,
                 onBackToHub: { destination = .hub }
             )
+        case .radarMap:
+            RadarMapView(onBack: { destination = .hub })
         case .watch:
             BLEWatchListScreen(
                 onSelect: nil,
@@ -87,6 +90,13 @@ struct ScooterFindHubView: View {
                         systemImage: "dot.radiowaves.left.and.right"
                     ) {
                         destination = .radar
+                    }
+                    ScootFunctionCard(
+                        title: "Radar-Karte",
+                        subtitle: "Zeigt gespeicherte BLE-Sichtungen auf einer interaktiven Karte.",
+                        systemImage: "map"
+                    ) {
+                        destination = .radarMap
                     }
                     ScootFunctionCard(
                         title: "Geräte-Wächter",

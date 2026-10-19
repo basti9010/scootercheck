@@ -97,6 +97,12 @@
 		A10000000000000000000086 /* UniversalDiagnosisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000086 /* UniversalDiagnosisView.swift */; };
 		A10000000000000000000087 /* scooter_diagnostic_profiles.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000087 /* scooter_diagnostic_profiles.json */; };
 		A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000088 /* UniversalDiagnosisTests.swift */; };
+		A10000000000000000000090 /* RadarMapModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000090 /* RadarMapModels.swift */; };
+		A10000000000000000000091 /* RadarMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000091 /* RadarMapStore.swift */; };
+		A10000000000000000000092 /* RadarMapRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000092 /* RadarMapRecorder.swift */; };
+		A10000000000000000000093 /* RadarMapKitCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000093 /* RadarMapKitCanvas.swift */; };
+		A10000000000000000000094 /* RadarMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000094 /* RadarMapView.swift */; };
+		A10000000000000000000095 /* RadarMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000095 /* RadarMapTests.swift */; };
 		A1000000000000000000004A /* BLESearchMotionCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004A /* BLESearchMotionCore.swift */; };
 		A1000000000000000000004C /* BLESearchVisualTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004C /* BLESearchVisualTracker.swift */; };
 		A1000000000000000000004D /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000004D /* ARKit.framework */; };
@@ -198,6 +204,12 @@
 		B10000000000000000000087 /* scooter_diagnostic_profiles.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = scooter_diagnostic_profiles.json; sourceTree = "<group>"; };
 		B10000000000000000000073 /* VehicleApprovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleApprovalTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000088 /* UniversalDiagnosisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosisTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000090 /* RadarMapModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarMap/RadarMapModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000091 /* RadarMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarMap/RadarMapStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000092 /* RadarMapRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarMap/RadarMapRecorder.swift; sourceTree = "<group>"; };
+		B10000000000000000000093 /* RadarMapKitCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarMap/RadarMapKitCanvas.swift; sourceTree = "<group>"; };
+		B10000000000000000000094 /* RadarMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarMap/RadarMapView.swift; sourceTree = "<group>"; };
+		B10000000000000000000095 /* RadarMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarMapTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000004A /* BLESearchMotionCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchMotionCore.swift; sourceTree = "<group>"; };
 		B1000000000000000000004C /* BLESearchVisualTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLESearchVisualTracker.swift; sourceTree = "<group>"; };
 		B1000000000000000000004D /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
@@ -297,6 +309,11 @@
 				B10000000000000000000085 /* GenericGATTReader.swift */,
 				B10000000000000000000086 /* UniversalDiagnosisView.swift */,
 				B10000000000000000000087 /* scooter_diagnostic_profiles.json */,
+				B10000000000000000000090 /* RadarMapModels.swift */,
+				B10000000000000000000091 /* RadarMapStore.swift */,
+				B10000000000000000000092 /* RadarMapRecorder.swift */,
+				B10000000000000000000093 /* RadarMapKitCanvas.swift */,
+				B10000000000000000000094 /* RadarMapView.swift */,
 				B10000000000000000000048 /* BLEWatchRadarUI.swift */,
 				B10000000000000000000047 /* BLEWatchRadarCore.swift */,
 				B1000000000000000000000E /* Info.plist */,
@@ -357,6 +374,7 @@
 				B10000000000000000000068 /* BLEIdentificationTests.swift */,
 				B10000000000000000000073 /* VehicleApprovalTests.swift */,
 				B10000000000000000000088 /* UniversalDiagnosisTests.swift */,
+				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
 				B10000000000000000000049 /* BLEWatchRadarTests.swift */,
@@ -533,6 +551,11 @@
 				A10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift in Sources */,
 				A10000000000000000000085 /* GenericGATTReader.swift in Sources */,
 				A10000000000000000000086 /* UniversalDiagnosisView.swift in Sources */,
+				A10000000000000000000090 /* RadarMapModels.swift in Sources */,
+				A10000000000000000000091 /* RadarMapStore.swift in Sources */,
+				A10000000000000000000092 /* RadarMapRecorder.swift in Sources */,
+				A10000000000000000000093 /* RadarMapKitCanvas.swift in Sources */,
+				A10000000000000000000094 /* RadarMapView.swift in Sources */,
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* Analyzer.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
@@ -585,6 +608,7 @@
 				A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */,
 				A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */,
 				A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */,
+				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,
 				A10000000000000000000049 /* BLEWatchRadarTests.swift in Sources */,

@@ -737,6 +737,10 @@ final class BLERadarService: ObservableObject {
             ble?.ensureRadarScanRunning(preferBackgroundFilter: isInBackground)
             BLESearchLiveActivityController.shared.startRadarSession()
             Task { _ = await BLENotificationService.shared.requestAuthorization() }
+            if RadarMapStore.shared.settings.storeSightings {
+                RadarMapRecorder.shared.beginMapSessionIfNeeded()
+                RadarMapRecorder.shared.requestLocationIfNeeded()
+            }
         }
         refreshScanState()
         sessionStore.applyDisplayMode()
@@ -754,6 +758,7 @@ final class BLERadarService: ObservableObject {
         pendingBundle = []
         bundleFlushTask?.cancel()
         sessionStore.endSession()
+        RadarMapRecorder.shared.endMapSession()
         ble?.stopRadarScanIfIdle()
         BLESearchLiveActivityController.shared.end()
         refreshScanState()
@@ -839,6 +844,24 @@ final class BLERadarService: ObservableObject {
             ? BLERadarConfig.minHitsForAlarmBackground
             : BLERadarConfig.minHitsForAlarmForeground
 
+        // Radar-Karte: alle eligible Geräte dokumentieren — unabhängig von Alarmschwelle.
+        if RadarMapStore.shared.settings.storeSightings {
+            RadarMapRecorder.shared.beginMapSessionIfNeeded()
+            for device in devices {
+                guard BLEScooterClassifier.isRadarEligible(device) else { continue }
+                let conf = BLEScooterClassifier.confidence(for: device)
+                let idOK = BLEIdentificationService.shared.result(for: device.id)?.radarEligibleScooter == true
+                guard conf == .medium || conf == .high || idOK else { continue }
+                let prepared = prepareAlarm(for: device, cls: .medium)
+                RadarMapRecorder.shared.observe(
+                    device: device,
+                    confidence: conf,
+                    approval: prepared.approval?.entry.germanApproval,
+                    now: now
+                )
+            }
+        }
+
         var candidates: [(ScannedDevice, BLESignalClass, BLEScooterConfidence)] = []
         for device in devices {
             guard BLEScooterClassifier.isRadarEligible(device) else { continue }
@@ -847,6 +870,11 @@ final class BLERadarService: ObservableObject {
             let idResult = BLEIdentificationService.shared.result(for: device.id)
             let idOK = idResult?.radarEligibleScooter == true
             guard conf == .medium || conf == .high || idOK else { continue }
+
+            // Ausgeblendete Geräte: keine normalen Radar-Alarme/Benachrichtigungen
+            if RadarMapStore.shared.isHidden(identityId: nil, peripheralId: device.id) {
+                continue
+            }
 
             var proc = processors[device.id] ?? BLESignalProcessor()
             let smooth = proc.ingest(rawRssi: device.rssi, at: now)
