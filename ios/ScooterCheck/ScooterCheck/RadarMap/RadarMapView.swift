@@ -573,7 +573,7 @@ struct RadarMapView: View {
                         Text("Bis zur manuellen Löschung").tag(-1)
                     }
                 }
-                Section("Ausgeblendete Geräte") {
+                Section {
                     Button {
                         showSettings = false
                         showHiddenList = true
@@ -588,6 +588,8 @@ struct RadarMapView: View {
                         get: { store.settings.retainSightingsWhileHidden },
                         set: { v in var s = store.settings; s.retainSightingsWhileHidden = v; store.settings = s }
                     ))
+                } header: {
+                    Text("Ausgeblendete Geräte")
                 } footer: {
                     Text("Standard aus: ausgeblendete Geräte werden erkannt, aber nicht in die Radar-Historie geschrieben. BLE-Scan und Wächter bleiben unverändert.")
                 }
