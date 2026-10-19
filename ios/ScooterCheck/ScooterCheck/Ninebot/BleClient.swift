@@ -279,6 +279,17 @@ final class BleClient: NSObject, ObservableObject {
     @Published var showOnlyLikelyScooters = true
     /// Leichtgewichtiger Hintergrund-Scan nur für aktive BLE-Wächter (kein UI-Vollscan).
     @Published private(set) var watchScanOnly = false
+    /// Radar hält den Scan am Leben (auch ohne Radar-Screen).
+    @Published private(set) var radarScanActive = false
+    /// Im Hintergrund: Service-UUID-Filter statt `nil` (ehrliche iOS-Grenze).
+    @Published private(set) var radarBackgroundFiltered = false
+
+    var centralStatePoweredOn: Bool { central?.state == .poweredOn }
+
+    /// Bekannte Scooter-/Diagnose-Service-UUIDs für eingeschränkte Hintergrundsuche.
+    static var radarBackgroundServiceUUIDs: [CBUUID] {
+        [NbUUID.service, XiaomiUUID.service]
+    }
 
     private static let maxTrackedDevices = 50
     private static let centralRestoreId = "com.scootercheck.ble.central"
@@ -435,13 +446,77 @@ final class BleClient: NSObject, ObservableObject {
 
     /// Stoppt Watch-only-Scan, wenn keine Wächter mehr aktiv und kein UI-Scan nötig.
     func stopWatchScanIfIdle() {
-        guard watchScanOnly, phase == .scanning else { return }
+        guard watchScanOnly, !radarScanActive, phase == .scanning else { return }
         central.stopScan()
         stalePruneTask?.cancel()
         stalePruneTask = nil
         watchScanOnly = false
         phase = .idle
         statusMessage = "Bereit"
+    }
+
+    /// Radar-Session: Scan weiterlaufen lassen. Hintergrund → bekannte Service-UUIDs.
+    /// Vordergrund → uneingeschränkt (`nil`), sofern erlaubt.
+    func ensureRadarScanRunning(preferBackgroundFilter: Bool) {
+        guard central.state == .poweredOn else { return }
+        radarScanActive = true
+        let wantFilter = preferBackgroundFilter
+        if phase == .scanning {
+            // Filterwechsel: Scan neu starten
+            if radarBackgroundFiltered != wantFilter {
+                central.stopScan()
+                startRadarScan(filtered: wantFilter)
+            }
+            return
+        }
+        guard phase == .idle || phase == .failed || phase == .done || watchScanOnly else { return }
+        startRadarScan(filtered: wantFilter)
+    }
+
+    func stopRadarScanIfIdle() {
+        radarScanActive = false
+        radarBackgroundFiltered = false
+        if BLEWatchService.shared.hasActiveWatchers {
+            ensureWatchScanRunning()
+            return
+        }
+        guard phase == .scanning else { return }
+        // Nur Radar-/Watch-Scan stoppen — UI-Vollscan (startScan) nicht hier beenden.
+        if watchScanOnly || statusMessage.contains("Radar") {
+            central.stopScan()
+            stalePruneTask?.cancel()
+            stalePruneTask = nil
+            watchScanOnly = false
+            phase = .idle
+            statusMessage = "Bereit"
+        }
+    }
+
+    private func startRadarScan(filtered: Bool) {
+        watchScanOnly = false
+        radarBackgroundFiltered = filtered
+        phase = .scanning
+        if filtered {
+            statusMessage = "Radar · Hintergrund (bekannte Services)"
+            central.scanForPeripherals(
+                withServices: Self.radarBackgroundServiceUUIDs,
+                options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
+            )
+        } else {
+            statusMessage = "Radar · Suche aktiv"
+            central.scanForPeripherals(
+                withServices: nil,
+                options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+            )
+        }
+        stalePruneTask?.cancel()
+        stalePruneTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: filtered ? 5_000_000_000 : 2_000_000_000)
+                guard let self, self.phase == .scanning, self.radarScanActive else { break }
+                self.pruneStaleDevices(maxAge: filtered ? 90 : 20)
+            }
+        }
     }
 
     /// Trennt die aktive Session, damit der Scooter wieder advertisieren kann.
@@ -2111,8 +2186,11 @@ extension BleClient: CBCentralManagerDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
         Task { @MainActor in
-            // State Restoration: Scan ggf. fortsetzen, wenn Wächter aktiv.
-            if BLEWatchService.shared.hasActiveWatchers {
+            // State Restoration: Scan ggf. fortsetzen.
+            if BLERadarSessionStore.shared.sessionRequested {
+                BLERadarService.shared.startSession(enableRadar: true)
+                self.ensureRadarScanRunning(preferBackgroundFilter: true)
+            } else if BLEWatchService.shared.hasActiveWatchers {
                 self.ensureWatchScanRunning()
             }
             _ = dict
@@ -2137,6 +2215,10 @@ extension BleClient: CBCentralManagerDelegate {
             let byName = Self.isLikelyScooterName(rawName.isEmpty ? nil : rawName)
             let byService = Self.advertisementLooksLikeScooter(advertisementData)
             let hint = BleModelHint.recognize(bleName: rawName.isEmpty ? nil : rawName)
+            let ext = ExtendedScooterModelHint.recognize(
+                bleName: rawName.isEmpty ? nil : rawName,
+                displayName: name
+            )
             let now = Date()
             let mfg = Self.advertisementManufacturerHex(advertisementData)
             let services = Self.advertisementServiceUUIDStrings(advertisementData)
@@ -2149,9 +2231,9 @@ extension BleClient: CBCentralManagerDelegate {
                 cryptoName: rawName,
                 rssi: rssiValue,
                 peripheral: peripheral,
-                looksLikeScooter: byName || byService || hint != nil,
-                modelLabel: hint?.title,
-                modelBadge: hint?.shortBadge,
+                looksLikeScooter: byName || byService || hint != nil || ext != nil,
+                modelLabel: hint?.title ?? ext?.title,
+                modelBadge: hint?.shortBadge ?? ext?.shortBadge,
                 suggestedProfile: hint?.profile,
                 lastSeen: now,
                 manufacturerDataHex: mfg,

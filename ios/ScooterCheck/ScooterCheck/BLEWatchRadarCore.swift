@@ -23,9 +23,21 @@ enum BLEWatchConfig {
 enum BLERadarConfig {
     static let deviceCooldownSeconds: TimeInterval = 45
     static let globalMinInterval: TimeInterval = 2.5
-    static let minHitsForAlarm = 3
+    /// Vordergrund: mehrere Samples. Hintergrund: iOS fasst Adv. zusammen → 1 reicht.
+    static let minHitsForAlarmForeground = 2
+    static let minHitsForAlarmBackground = 1
     static let hitWindowSeconds: TimeInterval = 4.0
     static let highlightSeconds: TimeInterval = 90
+}
+
+enum BLERadarAlarmKind: String, Codable, Sendable, Equatable {
+    case normalScooter
+    case approvalWarning
+    case possibleUnapproved
+
+    var accentWarning: Bool {
+        self == .approvalWarning || self == .possibleUnapproved
+    }
 }
 
 // MARK: - Watch target
@@ -359,6 +371,12 @@ final class BLEWatchService: ObservableObject {
 
     func updateBackgroundScanIfNeeded() {
         guard let ble else { return }
+        if BLERadarSessionStore.shared.sessionRequested {
+            ble.ensureRadarScanRunning(
+                preferBackgroundFilter: BLERadarService.shared.isInBackground
+            )
+            return
+        }
         if hasActiveWatchers {
             ble.ensureWatchScanRunning()
         } else if ble.phase == .scanning, ble.watchScanOnly {
@@ -634,6 +652,10 @@ struct BLERadarHit: Identifiable, Equatable {
     var signalClass: BLESignalClass
     var confidence: BLEScooterConfidence
     var at: Date
+    var alarmKind: BLERadarAlarmKind
+    var approvalStatus: GermanVehicleApprovalStatus?
+    var approvalDetail: String?
+    var manufacturer: String?
 }
 
 @MainActor
@@ -648,36 +670,78 @@ final class BLERadarService: ObservableObject {
     @Published private(set) var highlightDeviceIds: Set<UUID> = []
     @Published private(set) var banner: String?
     @Published private(set) var timelineEvents: [BLESearchEvent] = []
+    @Published private(set) var scanState: BLERadarScanState = .radarEnded
+    @Published private(set) var scanStateDetail: String = BLERadarScanState.radarEnded.detail
+    @Published private(set) var isInBackground = false
+    @Published var showSettingsSheet = false
 
     private var processors: [UUID: BLESignalProcessor] = [:]
     private var hitTimes: [UUID: [Date]] = [:]
     private var lastAlarmAt: [UUID: Date] = [:]
+    private var lastNotifyAt: [UUID: Date] = [:]
     private var lastGlobalAlarm = Date.distantPast
     private var pendingBundle: [BLERadarHit] = []
     private var bundleFlushTask: Task<Void, Never>?
     private var sessionActive = false
-    private var bleCancellable: AnyCancellable?
+    private var extraCancellables = Set<AnyCancellable>()
     private weak var ble: BleClient?
+    private let sessionStore = BLERadarSessionStore.shared
+    private let approvalCatalog = VehicleApprovalCatalog.shared
 
-    private init() {}
+    private init() {
+        syncSettingsFromStore()
+        if sessionStore.sessionRequested {
+            sessionActive = true
+            isEnabled = true
+            refreshScanState()
+        }
+    }
 
     func attach(ble: BleClient) {
         self.ble = ble
-        bleCancellable?.cancel()
-        bleCancellable = ble.$devices
+        extraCancellables.removeAll()
+        ble.$devices
             .receive(on: RunLoop.main)
             .sink { [weak self] devices in
                 self?.ingest(devices)
             }
+            .store(in: &extraCancellables)
+        ble.$phase
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refreshScanState() }
+            .store(in: &extraCancellables)
     }
 
+    func syncSettingsFromStore() {
+        let s = sessionStore.settings
+        minimumSignalClass = s.minimumSignal
+        soundEnabled = s.soundEnabled
+        hapticsEnabled = s.hapticsEnabled
+    }
+
+    func persistSettingsToStore() {
+        var s = sessionStore.settings
+        s.minimumSignalClass = minimumSignalClass.rawValue
+        s.soundEnabled = soundEnabled
+        s.hapticsEnabled = hapticsEnabled
+        sessionStore.settings = s
+    }
+
+    /// Startet oder setzt eine dauerhafte Radar-Session fort (überlebt Navigation).
     func startSession(enableRadar: Bool = false) {
         sessionActive = true
         if enableRadar {
             setEnabled(true)
+            sessionStore.beginSession()
+            ble?.ensureRadarScanRunning(preferBackgroundFilter: isInBackground)
+            BLESearchLiveActivityController.shared.startRadarSession()
+            Task { _ = await BLENotificationService.shared.requestAuthorization() }
         }
+        refreshScanState()
+        sessionStore.applyDisplayMode()
     }
 
+    /// Nur über „Radar beenden“ — nicht beim Verlassen des Screens.
     func endSession() {
         setEnabled(false)
         sessionActive = false
@@ -688,7 +752,28 @@ final class BLERadarService: ObservableObject {
         banner = nil
         pendingBundle = []
         bundleFlushTask?.cancel()
+        sessionStore.endSession()
+        ble?.stopRadarScanIfIdle()
         BLESearchLiveActivityController.shared.end()
+        refreshScanState()
+    }
+
+    /// App-Lebenszyklus: Vordergrund/Hintergrund.
+    func setForeground(_ active: Bool) {
+        isInBackground = !active
+        sessionStore.applyDisplayMode()
+        guard sessionActive, isEnabled else {
+            refreshScanState()
+            return
+        }
+        ble?.ensureRadarScanRunning(preferBackgroundFilter: !active)
+        refreshScanState()
+        if active {
+            BLESearchLiveActivityController.shared.updateRadar(
+                status: "Suche aktiv",
+                lastSighting: lastSightingRelativeText()
+            )
+        }
     }
 
     func setEnabled(_ on: Bool) {
@@ -705,48 +790,93 @@ final class BLERadarService: ObservableObject {
         if !on {
             banner = nil
             pendingBundle = []
+            refreshScanState()
         } else {
+            sessionActive = true
+            sessionStore.beginSession()
             Task { _ = await BLENotificationService.shared.requestAuthorization() }
+            ble?.ensureRadarScanRunning(preferBackgroundFilter: isInBackground)
+            refreshScanState()
         }
     }
 
+    func refreshScanState() {
+        if !sessionActive || (!isEnabled && !sessionStore.sessionRequested) {
+            scanState = .radarEnded
+        } else if ble?.centralStatePoweredOn == false {
+            scanState = .bluetoothOff
+        } else if !isEnabled {
+            scanState = .radarPaused
+        } else if isInBackground {
+            scanState = .backgroundScanLimited
+        } else if ble?.phase == .scanning {
+            scanState = .bleScanActive
+        } else {
+            scanState = .radarActive
+        }
+        scanStateDetail = scanState.detail
+    }
+
+    private func lastSightingRelativeText() -> String {
+        guard let at = sessionStore.lastSightingAt else { return "noch keine" }
+        let s = Int(Date().timeIntervalSince(at))
+        if s < 60 { return "vor \(s) s" }
+        return "vor \(s / 60) Min."
+    }
+
     private func ingest(_ devices: [ScannedDevice]) {
-        guard isEnabled, sessionActive else { return }
+        guard isEnabled, sessionActive || sessionStore.sessionRequested else { return }
+        sessionActive = true
         let now = Date()
-        // Highlight expiry
+        let settings = sessionStore.settings
+        let minSignal = settings.minimumSignal
         highlightDeviceIds = Set(recentHits.filter {
             now.timeIntervalSince($0.at) < BLERadarConfig.highlightSeconds
         }.map(\.id))
+
+        let minHits = isInBackground
+            ? BLERadarConfig.minHitsForAlarmBackground
+            : BLERadarConfig.minHitsForAlarmForeground
 
         var candidates: [(ScannedDevice, BLESignalClass, BLEScooterConfidence)] = []
         for device in devices {
             guard BLEScooterClassifier.isRadarEligible(device) else { continue }
             let conf = BLEScooterClassifier.confidence(for: device)
-            guard conf == .medium || conf == .high else { continue }
+            // Identifikations-Engine kann auch ohne altes medium/high reichen
+            let idResult = BLEIdentificationService.shared.result(for: device.id)
+            let idOK = idResult?.radarEligibleScooter == true
+            guard conf == .medium || conf == .high || idOK else { continue }
 
             var proc = processors[device.id] ?? BLESignalProcessor()
             let smooth = proc.ingest(rawRssi: device.rssi, at: now)
             processors[device.id] = proc
             let cls = BLESignalClass.from(smoothedRssi: smooth, lost: false)
-            guard rank(cls) >= rank(minimumSignalClass), cls != .lost else { continue }
+            // Einzelnes RSSI im Hintergrund akzeptieren, wenn geglättet noch schwach kalibriert
+            let effectiveCls: BLESignalClass = {
+                if isInBackground, processors[device.id]?.sampleCount ?? 0 <= 1 {
+                    return BLESignalClass.from(smoothedRssi: Double(device.rssi), lost: false)
+                }
+                return cls
+            }()
+            guard rank(effectiveCls) >= rank(minSignal), effectiveCls != .lost else { continue }
 
             var times = (hitTimes[device.id] ?? []).filter {
                 now.timeIntervalSince($0) <= BLERadarConfig.hitWindowSeconds
             }
             times.append(now)
             hitTimes[device.id] = times
-            guard times.count >= BLERadarConfig.minHitsForAlarm else { continue }
+            guard times.count >= minHits else { continue }
 
-            let last = lastAlarmAt[device.id]
-            let cooldownOK = last.map { now.timeIntervalSince($0) >= BLERadarConfig.deviceCooldownSeconds } ?? true
+            let cooldown = TimeInterval(settings.notifyCooldownSeconds)
+            let last = lastNotifyAt[device.id] ?? lastAlarmAt[device.id]
+            let cooldownOK = last.map { now.timeIntervalSince($0) >= cooldown } ?? true
             guard cooldownOK else { continue }
 
-            candidates.append((device, cls, conf))
+            candidates.append((device, effectiveCls, conf))
         }
 
         guard !candidates.isEmpty else { return }
         guard now.timeIntervalSince(lastGlobalAlarm) >= BLERadarConfig.globalMinInterval else {
-            // queue for bundle
             for c in candidates {
                 enqueueHit(c.0, cls: c.1, conf: c.2, at: now)
             }
@@ -763,14 +893,85 @@ final class BLERadarService: ObservableObject {
         }
     }
 
+    private struct PreparedAlarm {
+        var title: String
+        var body: String
+        var kind: BLERadarAlarmKind
+        var displayName: String
+        var approval: VehicleApprovalMatch?
+        var manufacturer: String?
+    }
+
+    private func prepareAlarm(for device: ScannedDevice, cls: BLESignalClass) -> PreparedAlarm {
+        let idResult = BLEIdentificationService.shared.result(for: device.id)
+        let ext = ExtendedScooterModelHint.recognize(
+            bleName: device.cryptoName.isEmpty ? nil : device.cryptoName,
+            displayName: device.bleListDisplayName
+        )
+        let modelName = ext?.title
+            ?? device.modelLabel
+            ?? idResult?.model
+            ?? (idResult?.listTitle.hasPrefix("Möglicher") == true ? idResult?.listTitle : nil)
+            ?? "Möglicher E-Scooter – Modell unbekannt"
+
+        let approval = approvalCatalog.match(
+            displayName: device.bleListDisplayName,
+            bleName: device.cryptoName.isEmpty ? nil : device.cryptoName,
+            modelLabel: ext?.title ?? device.modelLabel ?? idResult?.model,
+            manufacturerHint: ext?.brand ?? idResult?.manufacturer
+        )
+
+        let settings = sessionStore.settings
+        if settings.highlightApprovalWarnings,
+           let approval,
+           approval.concreteVariant,
+           approval.entry.germanApproval.warrantsApprovalAlert {
+            return PreparedAlarm(
+                title: "E-Scooter erkannt – Zulassungshinweis",
+                body: "\(approval.entry.model): Für diese Ausführung ist keine deutsche Straßenzulassung dokumentiert. Fahrzeugdaten prüfen. Signal: \(cls.label).",
+                kind: .approvalWarning,
+                displayName: approval.entry.manufacturer + " " + approval.entry.model,
+                approval: approval,
+                manufacturer: approval.entry.manufacturer
+            )
+        }
+        if settings.highlightApprovalWarnings,
+           let approval,
+           !approval.concreteVariant,
+           approval.entry.germanApproval.warrantsPossibleApprovalAlert
+            || (ext?.isConcrete == false && ext?.brand == "KuKirin") {
+            return PreparedAlarm(
+                title: "Möglicherweise nicht zugelassener E-Scooter",
+                body: "BLE-Merkmale passen zu einem \(approval.entry.manufacturer)-Modell. Identität und Zulassung nicht bestätigt. Signal: \(cls.label).",
+                kind: .possibleUnapproved,
+                displayName: modelName,
+                approval: approval,
+                manufacturer: approval.entry.manufacturer
+            )
+        }
+        return PreparedAlarm(
+            title: "E-Scooter erkannt",
+            body: "\(modelName) – Signal: \(cls.label).",
+            kind: .normalScooter,
+            displayName: modelName,
+            approval: approval,
+            manufacturer: ext?.brand ?? idResult?.manufacturer
+        )
+    }
+
     private func enqueueHit(_ device: ScannedDevice, cls: BLESignalClass, conf: BLEScooterConfidence, at now: Date) {
         lastAlarmAt[device.id] = now
+        let prepared = prepareAlarm(for: device, cls: cls)
         let hit = BLERadarHit(
             id: device.id,
-            deviceName: device.modelLabel ?? (device.looksLikeScooter ? "Möglicher E-Scooter" : device.bleListDisplayName),
+            deviceName: prepared.displayName,
             signalClass: cls,
             confidence: conf,
-            at: now
+            at: now,
+            alarmKind: prepared.kind,
+            approvalStatus: prepared.approval?.entry.germanApproval,
+            approvalDetail: prepared.approval?.entry.notes,
+            manufacturer: prepared.manufacturer
         )
         pendingBundle.append(hit)
         recentHits.insert(hit, at: 0)
@@ -785,28 +986,48 @@ final class BLERadarService: ObservableObject {
 
     private func fireSingle(_ device: ScannedDevice, cls: BLESignalClass, conf: BLEScooterConfidence, at now: Date) {
         lastAlarmAt[device.id] = now
+        lastNotifyAt[device.id] = now
         lastGlobalAlarm = now
-        let name = device.modelLabel ?? "Möglicher E-Scooter"
-        let hit = BLERadarHit(id: device.id, deviceName: name, signalClass: cls, confidence: conf, at: now)
+        let prepared = prepareAlarm(for: device, cls: cls)
+        let hit = BLERadarHit(
+            id: device.id,
+            deviceName: prepared.displayName,
+            signalClass: cls,
+            confidence: conf,
+            at: now,
+            alarmKind: prepared.kind,
+            approvalStatus: prepared.approval?.entry.germanApproval,
+            approvalDetail: prepared.approval?.entry.source,
+            manufacturer: prepared.manufacturer
+        )
         recentHits.insert(hit, at: 0)
         highlightDeviceIds.insert(device.id)
+        sessionStore.recordSighting(summary: "\(prepared.displayName) · \(cls.label)", at: now)
         timelineEvents.append(BLESearchEvent(
             type: .deviceFirstSeen,
-            title: "E-Scooter erkannt",
-            description: "\(name) · Signal: \(cls.label)",
+            title: prepared.title,
+            description: prepared.body,
             rssi: Double(device.rssi),
-            metadata: ["kind": "scooterDetected"]
+            metadata: ["kind": prepared.kind.rawValue]
         ))
-        presentAlarm(title: "E-Scooter erkannt", body: "\(name) · Signal: \(cls.label)")
-        BLENotificationService.shared.post(
-            id: "radar-\(device.id.uuidString)-\(Int(now.timeIntervalSince1970))",
-            title: "E-Scooter erkannt",
-            body: "\(name) wurde mit Signal „\(cls.label)“ erkannt.",
-            userInfo: [
-                "type": "bleRadar",
-                "deviceId": device.id.uuidString
-            ],
-            sound: soundEnabled
+        presentAlarm(title: prepared.title, body: prepared.body, warning: prepared.kind.accentWarning)
+        if sessionStore.settings.notifyScooterDetections {
+            BLENotificationService.shared.post(
+                id: "radar-\(device.id.uuidString)-\(Int(now.timeIntervalSince1970))",
+                title: prepared.title,
+                body: prepared.body,
+                userInfo: [
+                    "type": "bleRadar",
+                    "deviceId": device.id.uuidString,
+                    "alarmKind": prepared.kind.rawValue
+                ],
+                sound: soundEnabled && sessionStore.settings.soundEnabled
+            )
+        }
+        BLESearchLiveActivityController.shared.updateRadar(
+            status: prepared.kind.accentWarning ? "Zulassungsstatus prüfen" : "E-Scooter erkannt",
+            lastSighting: prepared.displayName,
+            modelLine: prepared.displayName
         )
     }
 
@@ -819,32 +1040,38 @@ final class BLERadarService: ObservableObject {
         let bundle = pendingBundle
         pendingBundle = []
         lastGlobalAlarm = now
-        let strong = bundle.filter { rank($0.signalClass) >= rank(.strong) }.count
-        let title = "\(bundle.count) E-Scooter erkannt"
+        for h in bundle { lastNotifyAt[h.id] = now }
+        let warning = bundle.contains(where: \.alarmKind.accentWarning)
+        let title = warning
+            ? "\(bundle.count) E-Scooter · Zulassungshinweis"
+            : "\(bundle.count) E-Scooter erkannt"
         var body = bundle.map(\.deviceName).prefix(3).joined(separator: ", ")
-        if strong > 0 { body += " · \(strong) mit starkem Signal" }
         timelineEvents.append(BLESearchEvent(
             type: .deviceFirstSeen,
             title: title,
             description: body,
             metadata: ["kind": "scooterDetected", "count": "\(bundle.count)"]
         ))
-        presentAlarm(title: title, body: body)
-        BLENotificationService.shared.post(
-            id: "radar-bundle-\(Int(now.timeIntervalSince1970))",
-            title: title,
-            body: body,
-            userInfo: ["type": "bleRadar", "bundled": true],
-            sound: soundEnabled
-        )
+        presentAlarm(title: title, body: body, warning: warning)
+        if sessionStore.settings.notifyScooterDetections {
+            BLENotificationService.shared.post(
+                id: "radar-bundle-\(Int(now.timeIntervalSince1970))",
+                title: title,
+                body: body,
+                userInfo: ["type": "bleRadar", "bundled": true],
+                sound: soundEnabled && sessionStore.settings.soundEnabled
+            )
+        }
+        sessionStore.recordSighting(summary: body, at: now)
     }
 
-    private func presentAlarm(title: String, body: String) {
+    private func presentAlarm(title: String, body: String, warning: Bool) {
         banner = "\(title)\n\(body)"
-        if hapticsEnabled {
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        // Haptik nur im Vordergrund — kein Anspruch auf Vibration bei gesperrtem Display.
+        if hapticsEnabled, sessionStore.settings.hapticsEnabled, !isInBackground {
+            UINotificationFeedbackGenerator().notificationOccurred(warning ? .error : .warning)
         }
-        if soundEnabled {
+        if soundEnabled, sessionStore.settings.soundEnabled, !isInBackground {
             AudioServicesPlaySystemSound(1007)
         }
         Task { @MainActor in
@@ -885,12 +1112,24 @@ final class BLESearchLiveActivityController: ObservableObject {
         signalLabel = "—"
         lastSeenText = "gerade eben"
         isActive = true
-        #if canImport(ActivityKit)
-        if #available(iOS 16.2, *) {
-            // Widget-Extension registriert Attributes; ohne Extension kein sichtbares UI.
-            _ = ActivityAuthorizationInfo().areActivitiesEnabled
-        }
-        #endif
+        probeActivityKit()
+    }
+
+    /// Radar-Session (kein Zielgerät) — stellt laufende Suche dar, keinen Dauer-Hintergrunddienst.
+    func startRadarSession() {
+        deviceName = "ScooterCheck Radar"
+        statusText = "Suche aktiv"
+        signalLabel = "—"
+        lastSeenText = "noch keine"
+        isActive = true
+        probeActivityKit()
+    }
+
+    func updateRadar(status: String, lastSighting: String, modelLine: String? = nil) {
+        guard isActive else { return }
+        statusText = status
+        lastSeenText = lastSighting
+        if let modelLine { deviceName = modelLine }
     }
 
     func update(status: String, signal: String, lastSeen: String, deviceName: String? = nil) {
@@ -907,6 +1146,17 @@ final class BLESearchLiveActivityController: ObservableObject {
         statusText = ""
         signalLabel = ""
         lastSeenText = ""
+    }
+
+    private func probeActivityKit() {
+        #if canImport(ActivityKit)
+        if #available(iOS 16.2, *) {
+            // Sichtbare Lock-Screen-UI braucht Widget Extension — hier nur Capability-Probe.
+            // iOS 26+: erweiterte BLE-Hintergrundrechte über Live Activity sind versionsabhängig;
+            // ohne Extension und Apple-Dokumentation für dieses Bundle keine uneingeschränkte Suche behaupten.
+            _ = ActivityAuthorizationInfo().areActivitiesEnabled
+        }
+        #endif
     }
 }
 

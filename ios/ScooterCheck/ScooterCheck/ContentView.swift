@@ -281,8 +281,14 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { phase in
             BLEWatchService.shared.setForeground(phase == .active)
+            BLERadarService.shared.setForeground(phase == .active)
             if phase == .active {
                 Task { await BLENotificationService.shared.refreshAuthorization() }
+                // Persistierte Radar-Session nach Entsperren fortsetzen
+                if BLERadarSessionStore.shared.sessionRequested {
+                    BLERadarService.shared.startSession(enableRadar: true)
+                    ble.ensureRadarScanRunning(preferBackgroundFilter: false)
+                }
             }
         }
         .onOpenURL { url in

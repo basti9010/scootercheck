@@ -486,32 +486,45 @@ struct ScooterFinderView: View {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
                 FindSubpageHeader(
                     title: "E-Scooter-Radar",
-                    subtitle: "Aktive Suche · kein Zielgerät nötig",
+                    subtitle: "Session bleibt aktiv beim Verlassen · beenden nur unten",
                     onBack: {
-                        radar.endSession()
+                        // Session bewusst NICHT beenden — Hintergrundsuche fortsetzen.
                         radarBrowseMode = false
+                        ble.ensureRadarScanRunning(preferBackgroundFilter: false)
                         onBackToHub?()
                     }
                 ) {
-                    Menu {
-                        Picker("Sortieren", selection: $listSort) {
-                            ForEach(BleDeviceListSort.allCases) { option in
-                                Text(option.title).tag(option)
-                            }
-                        }
+                    Button {
+                        radar.showSettingsSheet = true
                     } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        Image(systemName: "gearshape")
                             .font(.system(size: Theme.Icon.standard, weight: .medium))
                             .foregroundStyle(Theme.accent)
                             .frame(width: Theme.Control.backHit, height: Theme.Control.backHit)
                     }
-                    .accessibilityLabel("Sortieren")
+                    .accessibilityLabel("Radar-Einstellungen")
                 }
 
                 BLERadarControlsCard(radar: radar)
 
                 if let banner = radar.banner {
-                    BLERadarBannerView(text: banner)
+                    BLERadarBannerView(
+                        text: banner,
+                        warning: banner.contains("Zulassung") || banner.contains("nicht zugelassen")
+                    )
+                }
+
+                if !radar.recentHits.isEmpty {
+                    Text("Erkannte E-Scooter")
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
+                    VStack(spacing: Theme.Space.listGap) {
+                        ForEach(radar.recentHits.prefix(12)) { hit in
+                            BLERadarHitCard(hit: hit) {
+                                radar.showSettingsSheet = true
+                            }
+                        }
+                    }
                 }
 
                 if listedDevices.isEmpty {
@@ -520,6 +533,9 @@ struct ScooterFinderView: View {
                         .foregroundStyle(Theme.textMuted)
                         .padding(.top, Theme.Space.sm)
                 } else {
+                    Text("In Reichweite")
+                        .font(Theme.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
                     VStack(spacing: Theme.Space.listGap) {
                         ForEach(listedDevices) { device in
                             Button {
@@ -528,8 +544,10 @@ struct ScooterFinderView: View {
                                 finderDeviceRow(device)
                                     .overlay(alignment: .topTrailing) {
                                         if radar.highlightDeviceIds.contains(device.id) {
-                                            BLERadarHitBadge()
-                                                .padding(10)
+                                            BLERadarHitBadge(
+                                                warning: radar.recentHits.first(where: { $0.id == device.id })?.alarmKind.accentWarning == true
+                                            )
+                                            .padding(10)
                                         }
                                     }
                             }
