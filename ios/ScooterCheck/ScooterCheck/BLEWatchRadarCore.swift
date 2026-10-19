@@ -615,6 +615,7 @@ enum BLEScooterConfidence: String, Sendable {
     }
 }
 
+@MainActor
 enum BLEScooterClassifier {
     /// Nutzt bestehende Heuristik — Name allein reicht nicht für medium+.
     static func confidence(for device: ScannedDevice) -> BLEScooterConfidence {
