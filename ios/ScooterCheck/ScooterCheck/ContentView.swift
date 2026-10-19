@@ -55,6 +55,8 @@ struct ContentView: View {
     @State private var lastSonarDeviceCount = 0
     /// Detailansicht für allgemeine BLE-Geräte (kein Scooter-Persistieren).
     @State private var bleDetailDevice: ScannedDevice? = nil
+    /// Unbekannte Scooter ohne natives Protokoll → universelle Diagnose (kein Fake-Dump).
+    @State private var universalDiagnosisDevice: ScannedDevice? = nil
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var watchService = BLEWatchService.shared
@@ -212,6 +214,25 @@ struct ContentView: View {
                         prepareProfileConfirm(for: selected)
                     },
                     onDismiss: { bleDetailDevice = nil }
+                )
+            }
+            .sheet(item: $universalDiagnosisDevice) { device in
+                UniversalDiagnosisView(
+                    device: device,
+                    onNativeDump: {
+                        let selected = device
+                        universalDiagnosisDevice = nil
+                        prepareProfileConfirm(for: selected)
+                    },
+                    onSignalSearch: {
+                        universalDiagnosisDevice = nil
+                        findDestination = .signalFinder
+                        screen = .find
+                    },
+                    onWatch: {
+                        BLEWatchService.shared.watch(device: device)
+                        universalDiagnosisDevice = nil
+                    }
                 )
             }
             .shareIntegrityPack(
@@ -1203,14 +1224,23 @@ struct ContentView: View {
         ble.startScan()
     }
 
-    /// Scooter-/bekannte Geräte → Profil; sonst technische BLE-Detailansicht (kein Speichern).
+    /// Scooter-/bekannte Geräte → Profil; ohne natives Protokoll → universelle Diagnose; sonst BLE-Detail.
     private func selectScannedDevice(_ device: ScannedDevice) {
         let known = history.knownAlias(for: device) != nil
-        if device.looksLikeScooter || known {
+        if known || device.suggestedProfile != nil {
             prepareProfileConfirm(for: device)
-        } else {
-            bleDetailDevice = device
+            return
         }
+        if device.looksLikeScooter {
+            let assessment = UniversalScooterDetectionService.shared.assessPassively(device: device)
+            if assessment.compatibility.supportLevel == .fullNative {
+                prepareProfileConfirm(for: device)
+            } else {
+                universalDiagnosisDevice = device
+            }
+            return
+        }
+        bleDetailDevice = device
     }
 
     private func prepareProfileConfirm(for device: ScannedDevice) {
@@ -1371,6 +1401,13 @@ struct ContentView: View {
             }
             await ble.handshakeAndDump(profile: profile)
             if ble.phase == .done {
+                let assessment = UniversalScooterDetectionService.shared.assessPassively(device: device)
+                let snap = ReadOnlyDiagnosticEngine.shared.snapshotFromIntegrityReading(
+                    ble.reading,
+                    profile: assessment.compatibility.profile
+                )
+                ble.annotateDiagnosticSnapshot(snap)
+                ReadOnlyDiagnosticEngine.shared.apply(snap)
                 // Nur nach technisch verifizierter Scooter-Auslese speichern/merken.
                 if ScooterVerification.isVerifiedScooterReading(ble.reading) {
                     powerCycleDevice = device

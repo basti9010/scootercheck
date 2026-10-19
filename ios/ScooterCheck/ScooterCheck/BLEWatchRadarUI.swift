@@ -502,6 +502,8 @@ struct BLERadarHitBadge: View {
 struct BLERadarHitCard: View {
     let hit: BLERadarHit
     var onDetails: (() -> Void)?
+    /// Vertiefte Diagnose nur auf Nutzeraktion — Radar bleibt passiv.
+    var onDiagnose: (() -> Void)?
 
     private var warning: Bool { hit.alarmKind.accentWarning }
 
@@ -523,6 +525,9 @@ struct BLERadarHitCard: View {
                     .font(Theme.caption.weight(.semibold))
                     .foregroundStyle(warning ? Theme.danger : Theme.accent)
             }
+            Text("Passiv erkannt — keine automatische Diagnoseverbindung.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textMuted)
             if warning {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -547,6 +552,11 @@ struct BLERadarHitCard: View {
                         .font(Theme.buttonSecondary)
                         .foregroundStyle(Theme.accent)
                 }
+            }
+            if onDiagnose != nil {
+                Button("Diagnose / Protokoll prüfen") { onDiagnose?() }
+                    .font(Theme.buttonSecondary)
+                    .foregroundStyle(Theme.accent)
             }
         }
         .padding(Theme.Space.cardPadding)

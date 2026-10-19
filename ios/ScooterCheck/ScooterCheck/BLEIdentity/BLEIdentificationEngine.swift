@@ -101,7 +101,7 @@ enum BLEIdentificationEngine {
             contradictions: &contradictions
         )
 
-        var model = input.modelLabel
+        let model = input.modelLabel
         if let model {
             evidence.append(
                 IdentificationEvidence(
