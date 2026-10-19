@@ -164,6 +164,8 @@ struct BLESignalProcessor: Sendable {
     private(set) var smoothed: Double?
     private(set) var smoothedTimeline: [(Date, Double)] = []
 
+    var sampleCount: Int { rawHistory.count }
+
     mutating func reset() {
         rawHistory = []
         smoothed = nil

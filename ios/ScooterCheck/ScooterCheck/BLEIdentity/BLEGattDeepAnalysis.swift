@@ -240,7 +240,7 @@ extension BLEGattDeepAnalysis: CBPeripheralDelegate {
 
     private static func decode(_ data: Data) -> String {
         if let s = String(data: data, encoding: .utf8),
-           s.unicodeScalars.allSatisfy({ !$0.properties.isISOControl || $0 == "\n" }) {
+           s.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) || $0 == "\n" }) {
             let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
             if !t.isEmpty { return t }
         }
