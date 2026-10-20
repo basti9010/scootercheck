@@ -114,13 +114,12 @@ struct ContentView: View {
         return nil
     }
 
-    /// Idle-Start ohne Scan; Geräte-UI sobald gesucht wird oder Geräte da sind.
+    /// Idle-Start ohne Auslesen-Suche. Radar-/Wächter-Hintergrundscan öffnet die Geräte-UI nicht.
     private var showsStartLanding: Bool {
         screen == .home
             && !isBusyPhase
-            && ble.phase != .scanning
+            && !ble.auslesenScanActive
             && ble.phase != .done
-            && ble.visibleDevices.isEmpty
     }
 
     var body: some View {
@@ -1037,7 +1036,7 @@ struct ContentView: View {
                 }
             } else if screen == .home {
                 VStack(spacing: 10) {
-                    if ble.phase == .scanning {
+                    if ble.auslesenScanActive {
                         ScootOutlineButton(title: "Suche stoppen", systemImage: "stop.fill") {
                             primaryAction()
                         }
@@ -1050,7 +1049,7 @@ struct ContentView: View {
                         ) {
                             primaryAction()
                         }
-                    } else {
+                    } else if !showsStartLanding {
                         ScootPrimaryButton(
                             title: "Scooter suchen",
                             systemImage: "magnifyingglass",
@@ -1060,11 +1059,16 @@ struct ContentView: View {
                             primaryAction()
                         }
                     }
+                    // Start-Landing hat den CTA schon in der Karte — kein doppelter Fuß-Button.
                 }
                 .padding(.horizontal, Theme.Space.page)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
-                .background(.ultraThinMaterial)
+                .padding(.top, showsStartLanding ? 0 : 12)
+                .padding(.bottom, showsStartLanding ? 0 : 16)
+                .background {
+                    if !showsStartLanding {
+                        Rectangle().fill(.ultraThinMaterial)
+                    }
+                }
             }
         }
     }
@@ -1193,8 +1197,8 @@ struct ContentView: View {
         case .find:
             break
         case .home:
-            if ble.phase == .scanning {
-                ble.stopScan()
+            if ble.auslesenScanActive {
+                ble.stopScan(resumeBackground: true)
                 return
             }
             if ble.phase == .done {

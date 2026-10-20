@@ -283,6 +283,8 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var radarScanActive = false
     /// Im Hintergrund: Service-UUID-Filter statt `nil` (ehrliche iOS-Grenze).
     @Published private(set) var radarBackgroundFiltered = false
+    /// Nutzer hat unter „E-Scooter auslesen“ bewusst gesucht — unabhängig von Radar-/Wächter-Scan.
+    @Published private(set) var auslesenScanActive = false
 
     var centralStatePoweredOn: Bool { central?.state == .poweredOn }
 
@@ -386,6 +388,7 @@ final class BleClient: NSObject, ObservableObject {
             return
         }
         watchScanOnly = false
+        auslesenScanActive = true
         // Verbundene Scooter werben oft nicht — trennen und als Seed behalten,
         // sonst bleibt „Erneut prüfen“ leer, obwohl das Handy noch verbunden ist.
         let seed = disconnectForRescan()
@@ -644,16 +647,24 @@ final class BleClient: NSObject, ObservableObject {
         rssiAverageStore.average(id: device.id, fallback: device.rssi)
     }
 
-    func stopScan() {
+    /// - Parameter resumeBackground: Radar-/Wächter-Scan wieder anstoßen (nur nach
+    ///   bewusstem Stop der Auslesen-Suche). Bei `connect()` immer `false` lassen.
+    func stopScan(resumeBackground: Bool = false) {
         central.stopScan()
         stalePruneTask?.cancel()
         stalePruneTask = nil
         watchScanOnly = false
+        auslesenScanActive = false
         if phase == .scanning {
             phase = .idle
             statusMessage = "Scan beendet"
         }
-        // Kein automatischer Watch-Restart hier — würde connect/dump stören.
+        guard resumeBackground else { return }
+        if BLERadarSessionStore.shared.sessionRequested {
+            ensureRadarScanRunning(preferBackgroundFilter: BLERadarService.shared.isInBackground)
+        } else if BLEWatchService.shared.hasActiveWatchers {
+            ensureWatchScanRunning()
+        }
     }
 
     func connect(to device: ScannedDevice) async throws {
