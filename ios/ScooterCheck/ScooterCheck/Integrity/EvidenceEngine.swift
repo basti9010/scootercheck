@@ -583,9 +583,9 @@ enum EvidenceEngine {
             facts.append(EvidenceFact(
                 markerID: "speed.peak",
                 title: "Trip-Spitze",
-                source: "DIS/VCU",
+                source: "DIS",
                 register: "rSigMaxSpeed 0x24",
-                rawValue: rawHex(forNames: ["dis_trip_max", "vcu_g3_trip_max", "tft_trip_max"], in: reading)
+                rawValue: rawHex(forNames: ["dis_trip_max", "tft_trip_max"], in: reading)
                     ?? Format.kmh.format(Optional(peak)),
                 interpretedValue: Format.kmh.format(Optional(peak)),
                 expectedValue: "≤ \(Format.kmh.format(Optional(rated)))",
