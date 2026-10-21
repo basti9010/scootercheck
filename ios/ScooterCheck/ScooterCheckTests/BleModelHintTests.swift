@@ -232,7 +232,9 @@ final class BleModelHintTests: XCTestCase {
         let g3 = DiagnosticMap.fields(for: .maxG3D).map(\.id)
         XCTAssertEqual(f3, g3)
         XCTAssertTrue(f3.contains("vcu_g3_maxspd"))
-        XCTAssertTrue(f3.contains("vcu_g3_trip_max"))
+        // Trip-Peak nur DIS rSigMaxSpeed — nicht VCU 0x24 (kein rSigMaxSpeed auf x3-VCU).
+        XCTAssertTrue(f3.contains("dis_trip_max"))
+        XCTAssertFalse(f3.contains("vcu_g3_trip_max"))
     }
 
 }

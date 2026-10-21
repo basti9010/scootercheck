@@ -1211,7 +1211,7 @@ enum IntegrityAnalyzer {
             case "speed.limit", "speed.max", "speed.peak":
                 let names: [String]
                 switch fact.id {
-                case "speed.peak": names = ["dis_trip_max", "vcu_g3_trip_max", "tft_trip_max"]
+                case "speed.peak": names = ["dis_trip_max", "tft_trip_max"]
                 case "speed.max": names = ["vcu_g3_maxspd", "vcu_g3_edmax"]
                 default: names = ["vcu_g3_maxspd", "dis_limit", "vcu_g3_edmax"]
                 }

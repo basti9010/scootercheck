@@ -54,6 +54,24 @@ final class PeakDisReportBugsTests: XCTestCase {
         XCTAssertEqual(reading.peakSpeedKmh ?? -1, 32.7, accuracy: 0.01)
     }
 
+    func testVcuG3Register24IsNotTripPeak() {
+        // F3-Pro-Bericht SC-20261021-2C3CA01C: VCU 0x24 = 3543 → fälschlich 67 km/h.
+        // Auf der G3-Karte gibt es kein VCU-rSigMaxSpeed — Peak darf daraus nicht entstehen.
+        XCTAssertFalse(DiagnosticMap.fields(for: .maxG3D).map(\.id).contains("vcu_g3_trip_max"))
+        XCTAssertFalse(DiagnosticMap.fields(for: .ninebotF3D).map(\.id).contains("vcu_g3_trip_max"))
+
+        var reading = IntegrityReading()
+        let bogus = DiagnosticMap.Spec(
+            id: "vcu_g3_trip_max",
+            board: .vcuG3,
+            register: Nb.Register.tripMaxSpeed,
+            readLen: 2,
+            category: .history
+        )
+        DiagnosticMap.apply(spec: bogus, data: Data([0x35, 0x43]), into: &reading)
+        XCTAssertNil(reading.peakSpeedKmh)
+    }
+
     // MARK: - Soft-Unlock report wording
 
     func testSoftUnlockFactShowsPeakWhenOnlyPeakCrossesThreshold() {

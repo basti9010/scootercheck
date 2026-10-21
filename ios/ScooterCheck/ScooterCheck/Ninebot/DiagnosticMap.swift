@@ -188,13 +188,12 @@ enum DiagnosticMap {
     ]
 
     private static let g3HistoryFields: [Spec] = [
-        // Trip-Peak (nicht das konfigurierte Limit): DIS rSigMaxSpeed 0x24 = ×0.1 km/h.
-        // Max G3 speichert Telemetrie oft auf VCU — deshalb zusätzliche Probes.
+        // Trip-Peak = DIS rSigMaxSpeed 0x24 (×0.1 km/h laut Segway-Config).
+        // Nicht VCU/TFT 0x24: auf Max G3 / F3 ist VCU 0x24 kein Trip-Peak (Config hat
+        // dort kein rSigMaxSpeed) — falsche Reads lieferten z. B. „67 km/h“ aus Mülldaten.
         Spec(id: "dis_trip_max", board: .dis, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
         Spec(id: "dis_trip_avg", board: .dis, register: Nb.Register.averageSpeed, readLen: 2, category: .history),
         Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .history),
-        Spec(id: "vcu_g3_trip_max", board: .vcuG3, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
-        Spec(id: "tft_trip_max", board: .tft, register: Nb.Register.tripMaxSpeed, readLen: 2, category: .history),
         // SHU/segMod x3: VCU rMileage @ 0x62 = Gesamtkilometer in 0.1 km (4 Byte).
         // Klassisches DIS 0xB7 bleibt Meter (0.001 km) — parallel als Fallback.
         Spec(id: "vcu_g3_odo", board: .vcuG3, register: Nb.G3Register.totalMileage, readLen: 4, category: .history),
@@ -320,10 +319,13 @@ enum DiagnosticMap {
             guard let raw = Nb.u16(data) else { return nil }
             return Format.code.format("0x\(String(format: "%04X", raw))")
 
-        case "dis_trip_max", "vcu_g3_trip_max", "tft_trip_max":
+        case "dis_trip_max", "tft_trip_max":
             guard let raw = Nb.u16(data),
                   let kmh = RegisterScale.tripPeakKmh(raw) else { return nil }
             return Format.kmh.format(Optional(kmh))
+
+        case "vcu_g3_trip_max":
+            return nil
 
         case "dis_rated", "dis_trip_avg", "dis_speed",
              "vcu_g3_rated", "mcu_g3_rated":
@@ -483,13 +485,18 @@ enum DiagnosticMap {
                 }
             }
 
-        case "dis_trip_max", "vcu_g3_trip_max", "tft_trip_max":
-            // Tatsächliche Trip-Spitze (nicht konfiguriertes Limit).
+        case "dis_trip_max", "tft_trip_max":
+            // Tatsächliche Trip-Spitze (nicht konfiguriertes Limit). Nur DIS/Legacy-TFT —
+            // nicht VCU 0x24 auf der G3-Karte (dort kein rSigMaxSpeed).
             if let raw = Nb.u16(data), let kmh = RegisterScale.tripPeakKmh(raw), kmh > 0 {
                 reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                 // Peak über Soft-Unlock-Schwelle = gefahrenes Tempo-Unlock.
                 markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
             }
+
+        case "vcu_g3_trip_max":
+            // Veralteter Spec-Name: auf x3-VCU kein Trip-Peak — ignorieren.
+            break
 
         case "dis_trip_avg":
             break

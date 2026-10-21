@@ -1655,8 +1655,9 @@ final class BleClient: NSObject, ObservableObject {
             (.vcuG3, [Nb.Register.serialNumber, Nb.G3Register.errorCode, Nb.G3Register.vcuVersion, Nb.G3Register.maxSpeed]),
             (.mcuG3, [Nb.Register.serialNumber, Nb.G3Register.mcuVersion]),
             (.bmsG3, [Nb.Register.serialNumber]),
-            (.tft, [Nb.Register.serialNumber, Nb.Register.tripMaxSpeed]),
+            // DIS traegt rSigMaxSpeed (Trip-Peak); TFT/VCU 0x24 ist auf x3 kein Peak-Register.
             (.dis, [Nb.Register.serialNumber, Nb.Register.error, Nb.Register.tripMaxSpeed]),
+            (.tft, [Nb.Register.serialNumber]),
         ]
 
         var liveBoards = Set<String>()
