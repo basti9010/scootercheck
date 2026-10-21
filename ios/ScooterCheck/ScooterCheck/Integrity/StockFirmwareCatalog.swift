@@ -39,6 +39,18 @@ enum StockFirmwareCatalog {
         bms: ["1.0.0", "1.1.0", "1.2.0"]
     )
 
+    /// F3 / F3 Pro — beobachtete Serienstände (Enc2/x3-Karte, SN 1EFH… / 1EFC…).
+    static let ninebotF3 = Entry(
+        mcu: ["2.4.0", "2.3.0", "2.2.0"],
+        vcu: [
+            "1.6.1", "1.5.7", "1.5.0",
+            // 4-Nibble-Decodierung aus BLE-Rohwerten (z. B. 61015701 → 97.1.87.1)
+            "97.1.87.1"
+        ],
+        ble: ["0.4.5", "0.4.0", "0.3.14"],
+        bms: ["4.1.6.8", "4.1.4.8", "4.1.3.0"]
+    )
+
     static func entry(for profile: ScooterProfile) -> Entry? {
         let bundled: Entry?
         let remoteKey: String?
@@ -53,8 +65,7 @@ enum StockFirmwareCatalog {
             bundled = zt3Pro
             remoteKey = "zt3Pro"
         case .ninebotF3:
-            // Bundled noch ohne Katalog; Online kann F3-Versionen nachliefern.
-            bundled = nil
+            bundled = ninebotF3
             remoteKey = "ninebotF3"
         case .ninebotF, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
             bundled = nil

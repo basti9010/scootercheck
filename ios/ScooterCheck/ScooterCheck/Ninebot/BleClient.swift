@@ -2108,6 +2108,10 @@ final class BleClient: NSObject, ObservableObject {
         if upper.range(of: #"\bG2\b"#, options: .regularExpression) != nil { return true }
 
         // Serien-/BLE-Präfixe
+        if compact.hasPrefix("1EF"), compact.count >= 10, compact.count <= 20 {
+            // F3 Pro Advertisement-/SN-IDs, z. B. 1EFHE2515C0440 / 1EFCE2515C0440
+            return true
+        }
         if compact.hasPrefix("1C"), compact.count >= 10, compact.count <= 20 {
             // Max G3 Advertisement-IDs, z. B. 1CGBF2531C0230
             return true

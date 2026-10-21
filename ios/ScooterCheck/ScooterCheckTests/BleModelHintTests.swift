@@ -30,6 +30,28 @@ final class BleModelHintTests: XCTestCase {
     func testF3BeforeGenericF() {
         let hint = BleModelHint.recognize(bleName: "Ninebot F3 Pro")
         XCTAssertEqual(hint?.profile.family, .ninebotF3)
+        XCTAssertEqual(hint?.profile, .ninebotF3D)
+        XCTAssertEqual(hint?.shortBadge, "F3 Pro")
+    }
+
+    func testF3ProFrom1EFHSerial() {
+        let hint = BleModelHint.recognize(bleName: nil, serial: "1EFHE2515C0440")
+        XCTAssertEqual(hint?.profile, .ninebotF3D)
+        XCTAssertEqual(hint?.shortBadge, "F3 Pro")
+        XCTAssertTrue(hint?.profile.usesG3RegisterMap == true)
+    }
+
+    func testF3ProFrom1EFCVcuSerial() {
+        let hint = BleModelHint.recognize(bleName: "1EFCE2515C0440")
+        XCTAssertEqual(hint?.profile.family, .ninebotF3)
+        XCTAssertEqual(hint?.profile, .ninebotF3D)
+    }
+
+    func testF3ProNotConfusedWithMaxG3_1C() {
+        let g3 = BleModelHint.recognize(bleName: "1CGBF2531C0230")
+        XCTAssertEqual(g3?.profile.family, .maxG3)
+        let f3 = BleModelHint.recognize(bleName: "1EFHE2515C0440")
+        XCTAssertEqual(f3?.profile.family, .ninebotF3)
     }
 
     func testF2Recognition() {
@@ -71,7 +93,8 @@ final class BleModelHintTests: XCTestCase {
     func testEnc2FamiliesUseLegacyOrG3Map() {
         XCTAssertTrue(ScooterProfile.maxG3D.usesG3RegisterMap)
         XCTAssertFalse(ScooterProfile.maxG2D.usesG3RegisterMap)
-        XCTAssertFalse(ScooterProfile.ninebotF3D.usesG3RegisterMap)
+        XCTAssertTrue(ScooterProfile.ninebotF3D.usesG3RegisterMap)
+        XCTAssertTrue(ScooterProfile.ninebotF3E.usesG3RegisterMap)
         XCTAssertTrue(ScooterProfile.maxG2D.usesNinebotEnc2)
         XCTAssertFalse(ScooterProfile.xiaomiClassicD.usesNinebotEnc2)
     }
@@ -81,13 +104,67 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertNotNil(StockFirmwareCatalog.entry(for: .maxG30D))
         XCTAssertNotNil(StockFirmwareCatalog.entry(for: .maxG2D))
         XCTAssertNotNil(StockFirmwareCatalog.entry(for: .zt3ProD))
+        XCTAssertNotNil(StockFirmwareCatalog.entry(for: .ninebotF3D))
         XCTAssertNil(StockFirmwareCatalog.entry(for: .ninebotED))
+    }
+
+    func testF3ProStockGearAndCatalog() {
+        XCTAssertEqual(ScooterProfile.ninebotF3D.stockMaxGear, 3)
+        XCTAssertEqual(ScooterProfile.maxG3D.stockMaxGear, 1)
+        let entry = try XCTUnwrap(StockFirmwareCatalog.entry(for: .ninebotF3D))
+        XCTAssertTrue(entry.ble.contains("0.4.5"))
+        XCTAssertTrue(entry.mcu.contains("2.4.0"))
+        XCTAssertTrue(entry.vcu.contains("1.6.1") || entry.vcu.contains("97.1.87.1"))
+    }
+
+    func testF3ProDisplayAndVcuSerialsMatch() {
+        XCTAssertFalse(TrackClassifier.serialsMismatch("1EFHE2515C0440", "1EFCE2515C0440"))
+        XCTAssertTrue(TrackClassifier.sameEnc2VehicleBody("1EFHE2515C0440", "1EFCE2515C0440"))
+        XCTAssertEqual(TrackClassifier.serialRegion(for: "1EFHE2515C0440"), .de)
+    }
+
+    func testF3ProGear3NotFlaggedAsUnlock() {
+        let reading = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            serialVcu: "1EFCE2515C0440",
+            speedMaxKmh: 20,
+            speedLimitKmh: 20,
+            peakSpeedKmh: 19,
+            fwMcu: "2.4.0",
+            fwBle: "0.4.5",
+            fwBms: "4.1.6.8",
+            fwVcu: "1.6.1",
+            gearMax: 3
+        )
+        let result = IntegrityAnalyzer.analyze(reading: reading, profile: .ninebotF3D)
+        let gear = result.facts.first { $0.id == "gear.max" }
+        XCTAssertEqual(gear?.status, .regelkonform, gear?.bewertung ?? "")
+        let evidence = EvidenceEngine.evaluate(reading: reading, profile: .ninebotF3D)
+        XCTAssertFalse(evidence.results.contains { $0.fact.markerID == "gear.max" })
+        XCTAssertFalse(evidence.results.contains { $0.fact.markerID == "fw.unknown" })
+        XCTAssertTrue(evidence.crossBoardIssues.isEmpty, "\(evidence.crossBoardIssues)")
+    }
+
+    func testF3ProElevatedLimitStillAuffaellig() {
+        let reading = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            speedLimitKmh: 35,
+            peakSpeedKmh: 45,
+            fwMcu: "2.4.0",
+            fwBle: "0.4.5",
+            fwVcu: "1.6.1",
+            gearMax: 3
+        )
+        let evidence = EvidenceEngine.evaluate(reading: reading, profile: .ninebotF3D)
+        XCTAssertTrue(evidence.results.contains { $0.fact.markerID == "speed.limit" })
+        XCTAssertFalse(evidence.results.contains { $0.fact.markerID == "gear.max" })
     }
 
     func testLikelyScooterNames() {
         XCTAssertTrue(BleClient.isLikelyScooterName("Max G2"))
         XCTAssertTrue(BleClient.isLikelyScooterName("Ninebot E45"))
         XCTAssertTrue(BleClient.isLikelyScooterName("F3 Pro"))
+        XCTAssertTrue(BleClient.isLikelyScooterName("1EFHE2515C0440"))
         XCTAssertFalse(BleClient.isLikelyScooterName("Nuki Smart Lock"))
         XCTAssertFalse(BleClient.isLikelyScooterName("Shelly2PMG3-28372F3CFA5C"))
     }
@@ -148,6 +225,14 @@ final class BleModelHintTests: XCTestCase {
         let bleFW = try XCTUnwrap(ids.firstIndex(of: "g3_ble_fw"))
         let speed = try XCTUnwrap(ids.firstIndex(of: "vcu_g3_speed"))
         XCTAssertLessThan(bleFW, speed)
+    }
+
+    func testF3ProUsesSameG3DiagnosticMap() {
+        let f3 = DiagnosticMap.fields(for: .ninebotF3D).map(\.id)
+        let g3 = DiagnosticMap.fields(for: .maxG3D).map(\.id)
+        XCTAssertEqual(f3, g3)
+        XCTAssertTrue(f3.contains("vcu_g3_maxspd"))
+        XCTAssertTrue(f3.contains("vcu_g3_trip_max"))
     }
 
 }
