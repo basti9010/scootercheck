@@ -664,7 +664,9 @@ enum DiagnosticMap {
     private static func looksLikeVehicleSerial(_ value: String) -> Bool {
         let sn = value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard sn.count >= 10 else { return false }
-        if sn.hasPrefix("1CG") || sn.hasPrefix("N4G") || sn.hasPrefix("N2") { return true }
+        if sn.hasPrefix("1CG") || sn.hasPrefix("1EF") || sn.hasPrefix("N4G") || sn.hasPrefix("N2") {
+            return true
+        }
         // Alphanumerisch, beginnt mit Ziffer → oft Fahrzeug-ID
         if sn.first?.isNumber == true, sn.allSatisfy({ $0.isLetter || $0.isNumber }) {
             return true

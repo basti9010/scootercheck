@@ -53,7 +53,7 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         case .maxG30: return "Ninebot Max G30"
         case .maxG3: return "Ninebot Max G3 / MAX3"
         case .ninebotF: return "Ninebot F2 / F-Serie"
-        case .ninebotF3: return "Ninebot F3"
+        case .ninebotF3: return "Ninebot F3 / F3 Pro"
         case .ninebotE: return "Ninebot E-Serie"
         case .ninebotD: return "Ninebot D-Serie"
         case .xiaomiClassic: return "Xiaomi M365 / Pro 2 / Essential"
@@ -66,7 +66,9 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         switch self {
         case .maxG3:
             return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)."
-        case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
+        case .ninebotF3:
+            return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (F3 Pro: SN 1EFH… / VCU 1EFC…)."
+        case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotE, .ninebotD:
             return "Ninebot Enc2 — Registerkarte wie G30/Legacy; Firmware-Katalog ggf. eingeschränkt."
         case .xiaomiClassic:
             return "Xiaomi Klartext (55 AA) — typisch M365 / Pro 2 / Essential / 1S."
@@ -146,8 +148,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG3US: return "Max G3 / MAX3 US"
         case .ninebotFD: return "F2 / F-Serie D"
         case .ninebotFE: return "F2 / F-Serie E"
-        case .ninebotF3D: return "F3 D"
-        case .ninebotF3E: return "F3 E"
+        case .ninebotF3D: return "F3 Pro D"
+        case .ninebotF3E: return "F3 Pro E"
         case .ninebotED: return "E-Serie D"
         case .ninebotEE: return "E-Serie E"
         case .ninebotDD: return "D-Serie D"
@@ -177,7 +179,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG3US: return ["1CGC", "MAX3", "G3", "US"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
-        case .ninebotF3D, .ninebotF3E: return ["N2FS", "N2F", "F3"]
+        case .ninebotF3D: return ["1EFH", "1EFC", "N2FS", "N2F", "F3"]
+        case .ninebotF3E: return ["1EFH", "1EFC", "N2FS", "N2F", "F3", "F3E"]
         case .ninebotED, .ninebotEE: return ["N2ES", "N2E", "E2", "E45", "E25"]
         case .ninebotDD: return ["N2DS", "N2D8", "D18", "D28", "D38"]
         case .ninebotDE: return ["N2DS", "N2D8", "D18", "D28", "D38"]
@@ -199,7 +202,21 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 
     /// Welche Registerkarte bei der Auslese verwendet wird.
-    var usesG3RegisterMap: Bool { family == .maxG3 }
+    /// Max G3 und F3 Pro teilen die Enc2-/x3-VCU-Karte (Limits, Trip-Peak, FW).
+    var usesG3RegisterMap: Bool { family == .maxG3 || family == .ninebotF3 }
+
+    /// Serienmäßige höchste Leistungsstufe (nicht Eco/Drive/Sport-Label).
+    /// F3 Pro: drei Fahrmodi ab Werk → max. Stufe 3 ist Serie; Max G3 DE typisch 1.
+    var stockMaxGear: Int {
+        switch family {
+        case .ninebotF3:
+            return 3
+        case .maxG3:
+            return market == .us37 ? 3 : 1
+        default:
+            return 1
+        }
+    }
 
     var legalText: String {
         let speedNote: String
@@ -249,6 +266,17 @@ struct BleModelHint: Equatable, Sendable {
         let foreignBlock = ["SHELLY", "NUKI", "SONOS", "THERMOSTAT", "IPHONE", "IPAD", "AIRPOD"]
         if foreignBlock.contains(where: { hay.contains($0) || compact.contains($0) }) {
             return nil
+        }
+
+        // F3 Pro — SN/BLE-IDs „1EFH…“ (Fahrzeug/DIS), „1EFC…“ (VCU); vor generischem 1C…-G3
+        if compact.hasPrefix("1EFH") || compact.hasPrefix("1EFC") || compact.hasPrefix("1EF") {
+            let eu = hay.contains("F3E") || hay.contains("25 KM") || hay.contains("25KM")
+                || hay.contains("25KMH")
+            return BleModelHint(
+                title: "Ninebot F3 Pro",
+                shortBadge: "F3 Pro",
+                profile: eu ? .ninebotF3E : .ninebotF3D
+            )
         }
 
         // Max G3 / MAX3 — BLE-IDs wie „1CGBF2531C0230“ (ohne „G3“ im Klartext)
@@ -304,13 +332,13 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        // F3 vor generischem F2 — nicht in Hex-Fragmenten (z. B. Shelly …F3CF…)
+        // F3 / F3 Pro vor generischem F2 — nicht in Hex-Fragmenten (z. B. Shelly …F3CF…)
         if hay.range(of: #"(?<![0-9A-F])F3(?![0-9A-F])"#, options: .regularExpression) != nil
             || hay.contains("NINEBOT F3") || hay.contains("SEGWAY F3") {
             let eu = hay.contains("F3E") || hay.contains("25 KM") || hay.contains("25KM")
             return BleModelHint(
-                title: "Ninebot F3",
-                shortBadge: "F3",
+                title: "Ninebot F3 Pro",
+                shortBadge: "F3 Pro",
                 profile: eu ? .ninebotF3E : .ninebotF3D
             )
         }
@@ -377,7 +405,7 @@ struct BleModelHint: Equatable, Sendable {
         guard !trimmed.isEmpty, !trimmed.hasPrefix("Ohne Namen") else { return nil }
         let compact = String(trimmed.uppercased().filter { $0.isLetter || $0.isNumber })
         guard compact.count >= 8, compact.count <= 20 else { return nil }
-        if compact.hasPrefix("1C") { return compact }
+        if compact.hasPrefix("1C") || compact.hasPrefix("1EF") { return compact }
         if compact.first?.isNumber == true, compact.allSatisfy({ $0.isLetter || $0.isNumber }) {
             return compact
         }

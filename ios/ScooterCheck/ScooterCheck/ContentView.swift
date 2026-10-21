@@ -1274,12 +1274,12 @@ struct ContentView: View {
     }
 
     private func prepareProfileConfirm(for device: ScannedDevice) {
-        let suggested = device.suggestedProfile
-            ?? ScooterProfile.suggested(
-                fromBluetoothName: device.cryptoName.isEmpty ? device.name : device.cryptoName
-            )
-            ?? profile
-        profile = suggested
+        let name = device.cryptoName.isEmpty ? device.name : device.cryptoName
+        // Nur erkanntes Modell übernehmen — kein stiller Fallback auf das letzte Profil (oft Max G3).
+        if let suggested = device.suggestedProfile
+            ?? ScooterProfile.suggested(fromBluetoothName: name) {
+            profile = suggested
+        }
         pendingDevice = device
         identifyNote = nil
         identifyBusy = false
@@ -2556,8 +2556,10 @@ struct ScooterDeviceCard: View {
     }
 
     private var thumbName: String {
+        let id = displayId.uppercased()
         // G3-Serienpräfix 1C… auch ohne erkannten Badge dem Max-G3-Asset zuordnen.
-        if displayId.uppercased().hasPrefix("1C") {
+        // F3 Pro (1EF…) nicht fälschlich als Max G3 darstellen.
+        if id.hasPrefix("1C") {
             return ScooterThumbnailAsset.maxG3
         }
         return ScooterThumbnailAsset.name(

@@ -93,7 +93,7 @@ private extension FAQCatalog {
                         "Bewerten",
                         "Dokumentieren (Prüfbericht als PDF und JSON)",
                     ]),
-                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), ZT3 Pro, F2/F3, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4 — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US)."),
+                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4 — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US)."),
                 ],
                 keywords: ["diagnose", "bluetooth", "lesen", "pdf", "json", "ninebot", "xiaomi"]
             ),
@@ -488,6 +488,7 @@ private extension FAQCatalog {
                     .paragraph("Die Auslese-Tiefe hängt vom Modell und der Firmware ab:"),
                     .bullets([
                         "Ninebot Max G3: Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)",
+                        "Ninebot F3 Pro: Enc2-Auslese mit derselben G3-Registerkarte (SN 1EFH… / VCU 1EFC…)",
                         "Ninebot Max G2, G30, ZT3 Pro, F-/E-/D-Serie: Enc2, Registerkarte ähnlich G30/Legacy; Firmware-Katalog ggf. eingeschränkt",
                         "Xiaomi Classic: Klartext-Protokoll (55 AA)",
                         "Xiaomi 3/4: oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich",
@@ -517,7 +518,7 @@ private extension FAQCatalog {
                 segments: [
                     .paragraph("Je nach Registerkarte und Modell können u. a. ausgewertet werden:"),
                     .bullets([
-                        "Region / Marktbezug (z. B. über Serienpräfixe wie 1CGB/1CGE/1CGC bei Max G3)",
+                        "Region / Marktbezug (z. B. über Serienpräfixe wie 1CGB/1CGE/1CGC bei Max G3 bzw. 1EFH/1EFC bei F3 Pro)",
                         "Konfiguriertes Geschwindigkeitslimit (Speed Limit)",
                         "Trip Peak / gespeicherte Spitzengeschwindigkeit (nicht dasselbe wie das konfigurierte Limit)",
                         "Session-/Soft-Unlock-Hinweise (Limit/Peak über Schwelle)",
