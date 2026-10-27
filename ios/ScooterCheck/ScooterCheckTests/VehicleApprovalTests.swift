@@ -49,6 +49,13 @@ final class VehicleApprovalTests: XCTestCase {
         XCTAssertNil(r)
     }
 
+    func testExtendedHintRecognizesXiaomiScooter6() {
+        let r = ExtendedScooterModelHint.recognize(bleName: "xiaomi.scooter.6")
+        XCTAssertEqual(r?.brand, "Xiaomi")
+        XCTAssertEqual(r?.title, "Xiaomi Electric Scooter 6")
+        XCTAssertTrue(r?.isConcrete == true)
+    }
+
     func testNoInventedAbeNumbersInCatalog() {
         for entry in VehicleApprovalCatalog.shared.entries {
             if let abe = entry.abeNumber {

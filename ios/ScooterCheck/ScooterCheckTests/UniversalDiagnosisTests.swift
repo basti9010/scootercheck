@@ -93,6 +93,23 @@ final class UniversalDiagnosisTests: XCTestCase {
         XCTAssertEqual(result.profile?.nativeStack, "gattDis")
     }
 
+    func testCompatibilityXiaomiScooter6MiHomeId() {
+        let input = ProtocolMatchInput(
+            name: "xiaomi.scooter.6",
+            cryptoName: "xiaomi.scooter.6",
+            modelLabel: nil,
+            serviceUUIDs: ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+            looksLikeScooter: true,
+            suggestedProfileRaw: nil,
+            isConnectable: true
+        )
+        let result = ProtocolCompatibilityEngine.evaluate(input: input, identity: nil, profiles: loadProfiles())
+        XCTAssertEqual(result.supportLevel, .fullNative)
+        XCTAssertEqual(result.profile?.nativeStack, "xiaomiPlain")
+        XCTAssertEqual(result.profile?.manufacturer, "Xiaomi")
+        XCTAssertTrue(result.matchedOn.contains(where: { $0.contains("Xiaomi") }))
+    }
+
     func testOnlineIngestRejectsUnsignedWhenRequired() {
         let data = encodeRemoteProfile(id: "remote-test")
         let outcome = ScooterProtocolRegistry.shared.ingestOnlineProfiles(

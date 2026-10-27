@@ -186,7 +186,10 @@ enum ProtocolCompatibilityEngine {
 
         if let xiaomi = profiles.first(where: { $0.verified && $0.nativeStack == "xiaomiPlain" }) {
             let nordic = services.contains(where: { $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E") })
-            let nameHit = xiaomi.modelPatterns.contains { hay.contains($0.uppercased()) }
+            let patternHit = xiaomi.modelPatterns.contains { hay.contains($0.uppercased()) }
+            // Mi-Home-IDs wie „xiaomi.scooter.6“ (Punkt statt Leerzeichen).
+            let miHomeId = hay.contains("XIAOMI") && hay.contains("SCOOTER")
+            let nameHit = patternHit || miHomeId || hay.contains("MISCOOTER")
             if (nordic && nameHit) || (nameHit && input.looksLikeScooter) {
                 matchedOn.append(contentsOf: [nameHit ? "Xiaomi-Name" : nil, nordic ? "Nordic UART" : nil].compactMap { $0 })
                 return ProtocolCompatibilityResult(

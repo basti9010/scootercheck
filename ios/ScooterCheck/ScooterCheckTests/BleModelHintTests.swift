@@ -79,6 +79,15 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertEqual(hint?.profile.family, .xiaomiRecent)
     }
 
+    func testXiaomiElectricScooter6FromMiHomeId() {
+        let hint = BleModelHint.recognize(bleName: "xiaomi.scooter.6")
+        XCTAssertEqual(hint?.profile.family, .xiaomiRecent)
+        XCTAssertEqual(hint?.profile, .xiaomiRecentD)
+        XCTAssertEqual(hint?.shortBadge, "Xiaomi 6")
+        XCTAssertEqual(hint?.title, "Xiaomi Electric Scooter 6")
+        XCTAssertTrue(BleClient.isLikelyScooterName("xiaomi.scooter.6"))
+    }
+
     func testZT3NotConfusedWithESeries() {
         let hint = BleModelHint.recognize(bleName: "N2ET123456")
         XCTAssertEqual(hint?.profile.family, .zt3Pro)

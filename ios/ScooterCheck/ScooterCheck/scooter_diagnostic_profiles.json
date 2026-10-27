@@ -31,7 +31,22 @@
     {
       "id": "xiaomi-plaintext-native",
       "manufacturer": "Xiaomi",
-      "modelPatterns": ["MI SCOOTER", "M365", "PRO 2", "ESSENTIAL", "1S", "SCOOTER 3", "SCOOTER 4"],
+      "modelPatterns": [
+        "XIAOMI.SCOOTER",
+        "XIAOMI SCOOTER",
+        "MI SCOOTER",
+        "MISCOOTER",
+        "M365",
+        "PRO 2",
+        "ESSENTIAL",
+        "1S",
+        "SCOOTER 3",
+        "SCOOTER 4",
+        "SCOOTER 5",
+        "SCOOTER 6",
+        "SCOOTER.6",
+        "ELECTRIC SCOOTER"
+      ],
       "serviceUUIDs": ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
       "protocolVersion": "xiaomi-55aa",
       "supportedReads": [
@@ -49,8 +64,8 @@
       "verified": true,
       "minAppBuild": 1,
       "nativeStack": "xiaomiPlain",
-      "updatedAt": "2026-03-18",
-      "notes": "Verschlüsselte Xiaomi-Kommunikation wird nicht umgangen."
+      "updatedAt": "2026-10-27",
+      "notes": "Inkl. Mi-Home-IDs wie xiaomi.scooter.6 (Electric Scooter 6). Verschlüsselte Xiaomi-Kommunikation (55 AB) wird nicht umgangen."
     },
     {
       "id": "gatt-device-information",

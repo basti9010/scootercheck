@@ -93,7 +93,7 @@ private extension FAQCatalog {
                         "Bewerten",
                         "Dokumentieren (Prüfbericht als PDF und JSON)",
                     ]),
-                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4 — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US)."),
+                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4/5/6 (inkl. Mi-Home-ID xiaomi.scooter.6) — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US)."),
                 ],
                 keywords: ["diagnose", "bluetooth", "lesen", "pdf", "json", "ninebot", "xiaomi"]
             ),
@@ -491,7 +491,7 @@ private extension FAQCatalog {
                         "Ninebot F3 Pro: Enc2-Auslese mit derselben G3-Registerkarte (SN 1EFH… / VCU 1EFC…)",
                         "Ninebot Max G2, G30, ZT3 Pro, F-/E-/D-Serie: Enc2, Registerkarte ähnlich G30/Legacy; Firmware-Katalog ggf. eingeschränkt",
                         "Xiaomi Classic: Klartext-Protokoll (55 AA)",
-                        "Xiaomi 3/4: oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich",
+                        "Xiaomi 3/4/5/6 (z. B. xiaomi.scooter.6): oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich",
                     ]),
                 ],
                 keywords: ["enc2", "g3", "xiaomi", "auslese", "support"]
