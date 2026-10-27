@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Menübereich „Pedelec auswerten“: Pilotmodell + BLE-Kandidaten (ohne Tiefenauslese).
+/// Menübereich „Pedelec auslesen“: Pilotmodell + BLE-Kandidaten + GATT-Auslese.
 struct PedelecEvaluationView: View {
     @ObservedObject var ble: BleClient
-    var onOpenDeviceDetail: (ScannedDevice) -> Void
+    var onOpenReadout: (ScannedDevice, PedelecCandidateMatch) -> Void
     var onOpenSignalFinder: () -> Void
 
     private var pilot: PedelecPilotModel { PedelecEvaluationCore.pilotGhostRiotEN }
@@ -21,8 +21,8 @@ struct PedelecEvaluationView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.section) {
                 VStack(alignment: .leading, spacing: Theme.Space.titleStack) {
-                    PageTitle(text: "Pedelec auswerten")
-                    Text("Prüft, ob ein Pedelec per Bluetooth erkennbar ist und ob eine Assistenz über dem gesetzlichen Limit (DE 25 km/h) technisch auslesbar wäre.")
+                    PageTitle(text: "Pedelec auslesen")
+                    Text("Liest Pedelec-/eBike-Bluetooth aus: Erkennung plus Standard-GATT. Assistenz-Limit (DE 25 km/h) und Tuning-Register folgen erst mit Bosch-Protokoll.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -46,14 +46,15 @@ struct PedelecEvaluationView: View {
 
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            SectionHeader(title: "Stand der Auswertung", systemImage: "info.circle")
+            SectionHeader(title: "Stand der Auslese", systemImage: "info.circle")
             Text(PedelecEvaluationCore.readoutCapabilitySummary)
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: Theme.Space.sm) {
                 statusChip(title: "BLE-Erkennung", systemImage: "antenna.radiowaves.left.and.right", ok: true)
-                statusChip(title: "Tiefenauslese", systemImage: "lock.doc", ok: false)
+                statusChip(title: "Standard-GATT", systemImage: "doc.text", ok: true)
+                statusChip(title: "Bosch-Register", systemImage: "lock.doc", ok: false)
             }
         }
         .scootCard()
@@ -153,7 +154,7 @@ struct PedelecEvaluationView: View {
     private func candidateRow(_ row: PedelecRankedDevice) -> some View {
         Button {
             if let device = deviceById[row.id] {
-                onOpenDeviceDetail(device)
+                onOpenReadout(device, row.match)
             }
         } label: {
             HStack(alignment: .top, spacing: Theme.Space.md) {
@@ -176,7 +177,9 @@ struct PedelecEvaluationView: View {
                             .foregroundStyle(Theme.textMuted)
                             .lineLimit(2)
                     }
-                    Text(row.match.deepReadoutAvailable ? "Tiefenauslese verfügbar" : "Nur Erkennung — keine Registerauslese")
+                    Text(row.match.deepReadoutAvailable
+                         ? "Tiefenauslese verfügbar"
+                         : "Tippen → Standard-GATT auslesen")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                 }
@@ -197,19 +200,20 @@ struct PedelecEvaluationView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityHint("Pedelec auslesen")
     }
 
     private var nextStepsCard: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             SectionHeader(title: "Nächste Schritte mit diesem Ghost", systemImage: "checklist")
-            Text("Für den Feldversuch am RIOT EN UNIVERSAL:")
+            Text("Für den Feldversuch am RIOT EN UNIVERSAL (Kiox 300):")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
             VStack(alignment: .leading, spacing: 6) {
-                Text("1. System einschalten (Display/Remote), nah am Motor/Display scannen.")
-                Text("2. Treffer tippen → BLE-Detail (Advertisement, Company-ID, Services).")
+                Text("1. System einschalten (Kiox 300 / LED-Remote), nah scannen.")
+                Text("2. Treffer tippen → Pedelec auslesen (Standard-GATT, nur Lesen).")
                 Text("3. Signal-Finder nutzen, wenn mehrere ähnliche Signale stören.")
-                Text("4. Tiefenauslese (Limit/Tuning) folgt erst mit Bosch-Protokoll-Anbindung.")
+                Text("4. Bosch-Limit/Tuning-Register folgen erst mit Protokoll-Anbindung.")
             }
             .font(Theme.caption)
             .foregroundStyle(Theme.textSecondary)

@@ -1,9 +1,9 @@
 import Foundation
 
-/// Read-only Pedelec-/eBike-Heuristik (kein Bosch-Protokoll-Dump).
+/// Read-only Pedelec-/eBike-Auslese-Hilfe (kein Bosch-Protokoll-Dump).
 ///
-/// Ziel: BLE-Kandidaten erkennen und Pilotmodelle dokumentieren.
-/// Tiefenauslese (Limit/Tuning-Register) ist für Bosch Smart System noch nicht verfügbar.
+/// Ziel: BLE-Kandidaten erkennen, Standard-GATT lesen, Pilotmodelle dokumentieren.
+/// Bosch-Register (Limit/Tuning) sind für Smart System noch nicht verfügbar.
 enum PedelecEvaluationCore {
 
     /// Bluetooth SIG Company Identifier: Robert Bosch GmbH.
@@ -116,10 +116,11 @@ enum PedelecEvaluationCore {
     /// Kurzer Status für die UI: was heute geht / was noch fehlt.
     static var readoutCapabilitySummary: String {
         """
-        BLE-Näherkennung (Bosch-Manufacturer-ID / Namensmuster) ist aktiv. \
-        Eine Register-Auslese wie bei Ninebot/Xiaomi (Limit, Peak, Firmware) \
-        ist für Bosch Smart System noch nicht implementiert — Pairing und \
-        proprietäres Protokoll stehen aus.
+        Auslesen heißt hier: BLE-Kandidat verbinden und Standard-GATT lesen \
+        (Device Information / GAP — nur Lesen). Bosch Smart System Limit- und \
+        Tuning-Register brauchen Pairing und ein proprietäres Protokoll; das \
+        ist noch nicht angebunden. Ohne freigegebene Characteristics bleibt \
+        der Bericht auf Erkennung + leere/teilweise GATT-Daten beschränkt.
         """
         .replacingOccurrences(of: "\n", with: " ")
         .replacingOccurrences(of: "  ", with: " ")
@@ -218,5 +219,12 @@ struct PedelecCandidateMatch: Equatable, Sendable {
 struct PedelecRankedDevice: Identifiable, Equatable, Sendable {
     var id: UUID { device.id }
     let device: ScannedPedelecAdvertisement
+    let match: PedelecCandidateMatch
+}
+
+/// Sheet-Ziel für die Pedelec-GATT-Auslese (gerät + Match-Begründung).
+struct PedelecReadoutTarget: Identifiable, Equatable {
+    var id: UUID { device.id }
+    let device: ScannedDevice
     let match: PedelecCandidateMatch
 }

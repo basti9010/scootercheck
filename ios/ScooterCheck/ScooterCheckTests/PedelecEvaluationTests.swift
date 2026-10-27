@@ -73,8 +73,9 @@ final class PedelecEvaluationTests: XCTestCase {
         XCTAssertEqual(ranked.first?.device.id, strong.id)
     }
 
-    func testCapabilitySummaryMentionsBoschGap() {
+    func testCapabilitySummaryMentionsGattAndBoschGap() {
         let text = PedelecEvaluationCore.readoutCapabilitySummary.lowercased()
+        XCTAssertTrue(text.contains("gatt") || text.contains("auslesen"))
         XCTAssertTrue(text.contains("bosch"))
         XCTAssertTrue(text.contains("nicht") || text.contains("noch"))
     }

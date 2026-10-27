@@ -59,6 +59,8 @@ struct ContentView: View {
     @State private var bleDetailDevice: ScannedDevice? = nil
     /// Unbekannte Scooter ohne natives Protokoll → universelle Diagnose (kein Fake-Dump).
     @State private var universalDiagnosisDevice: ScannedDevice? = nil
+    /// Pedelec-Kandidat → Standard-GATT-Auslese (kein Bosch-Register-Dump).
+    @State private var pedelecReadout: PedelecReadoutTarget? = nil
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var watchService = BLEWatchService.shared
@@ -137,7 +139,9 @@ struct ContentView: View {
                     } else if screen == .pedelec {
                         PedelecEvaluationView(
                             ble: ble,
-                            onOpenDeviceDetail: { bleDetailDevice = $0 },
+                            onOpenReadout: { device, match in
+                                pedelecReadout = PedelecReadoutTarget(device: device, match: match)
+                            },
                             onOpenSignalFinder: {
                                 findDestination = .signalFinder
                                 screen = .find
@@ -231,6 +235,13 @@ struct ContentView: View {
                         prepareProfileConfirm(for: selected)
                     },
                     onDismiss: { bleDetailDevice = nil }
+                )
+            }
+            .sheet(item: $pedelecReadout) { target in
+                PedelecReadoutView(
+                    device: target.device,
+                    match: target.match,
+                    onDismiss: { pedelecReadout = nil }
                 )
             }
             .sheet(item: $universalDiagnosisDevice) { device in
@@ -1955,7 +1966,7 @@ struct ContentView: View {
                     navigateFromMenu(to: .home)
                 }
                 sideNavRow(
-                    title: "Pedelec auswerten",
+                    title: "Pedelec auslesen",
                     systemImage: "bicycle",
                     selected: screen == .pedelec
                 ) {

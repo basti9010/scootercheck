@@ -21,7 +21,7 @@ final class FAQCatalogTests: XCTestCase {
     }
 
     func testPedelecSearchHits() {
-        for query in ["Pedelec", "eBike", "Bosch", "Ghost", "RIOT", "Kiox", "Performance Line CX"] {
+        for query in ["Pedelec", "Pedelec auslesen", "eBike", "Bosch", "Ghost", "RIOT", "Kiox", "Performance Line CX", "GATT"] {
             let hits = FAQCatalog.filtered(query: query)
             XCTAssertFalse(hits.isEmpty, "no hits for \(query)")
             XCTAssertTrue(
@@ -30,6 +30,7 @@ final class FAQCatalogTests: XCTestCase {
             )
         }
         let pedelec = FAQCatalog.categories.first { $0.id == "pedelec" }
+        XCTAssertEqual(pedelec?.title, "Pedelec auslesen")
         XCTAssertEqual(pedelec?.symbolName, "bicycle")
         let ids = Set(pedelec?.items.map(\.id) ?? [])
         for needed in ["pedelec-was", "pedelec-tuning", "pedelec-ghost"] {
