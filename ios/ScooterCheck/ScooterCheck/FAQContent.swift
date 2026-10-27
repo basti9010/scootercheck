@@ -422,7 +422,7 @@ private extension FAQCatalog {
                 segments: [
                     .paragraph("„Pedelec auswerten“ ist der Einstieg für eBikes/Pedelecs — parallel zu „E-Scooter auslesen“."),
                     .paragraph("Aktuell erkennt ScooterCheck passende Bluetooth-Advertisements (z. B. Robert Bosch GmbH, Company-ID 0x02A6, oder Namensmuster wie Bosch/eBike/Kiox). Eine Register-Auslese wie bei Ninebot/Xiaomi gibt es für Bosch Smart System noch nicht."),
-                    .callout("Pilotmodell: GHOST RIOT EN UNIVERSAL mit Bosch Performance Line CX (Smart System, typisch Kiox + LED Remote)."),
+                    .callout("Pilotmodell: GHOST RIOT EN UNIVERSAL mit Bosch Performance Line CX (Smart System, Kiox 300 + LED Remote)."),
                 ],
                 keywords: [
                     "pedelec", "ebike", "e-bike", "fahrrad", "ghost", "riot", "bosch", "cx",

@@ -20,7 +20,7 @@ enum PedelecEvaluationCore {
         frameSizeHint: "S",
         driveSystem: "Bosch Smart System",
         motor: "Performance Line CX",
-        displayHint: "Kiox 300 / Kiox 500",
+        displayHint: "Kiox 300",
         remoteHint: "Bosch LED Remote",
         legalAssistLimitKmh: legalAssistLimitKmhDE,
         notes: [

@@ -7,6 +7,7 @@ final class PedelecEvaluationTests: XCTestCase {
         XCTAssertEqual(pilot.brand, "GHOST")
         XCTAssertTrue(pilot.model.localizedCaseInsensitiveContains("RIOT"))
         XCTAssertTrue(pilot.motor.localizedCaseInsensitiveContains("CX"))
+        XCTAssertEqual(pilot.displayHint, "Kiox 300")
         XCTAssertEqual(pilot.legalAssistLimitKmh, 25)
         XCTAssertFalse(pilot.notes.isEmpty)
         XCTAssertEqual(PedelecEvaluationCore.pilotModels.count, 1)
