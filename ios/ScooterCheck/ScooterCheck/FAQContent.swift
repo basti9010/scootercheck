@@ -48,6 +48,7 @@ enum FAQCatalog {
         verstehen,
         grundlagen,
         finden,
+        pedelec,
         tuning,
         auslesen,
         register,
@@ -131,6 +132,7 @@ private extension FAQCatalog {
                     .paragraph("Über das Seitenmenü erreichst du die Hauptbereiche der App:"),
                     .bullets([
                         "E-Scooter auslesen — Diagnose und Prüfbericht",
+                        "Pedelec auslesen — BLE-Erkennung und Standard-GATT für eBikes (Pilot: Bosch Smart System)",
                         "Prüfungen — gespeicherte Berichte (Aktiv / Archiv)",
                         "E-Scooter finden — Radar, Wächter, Signal-Finder",
                         "FAQ & Wissensbasis",
@@ -401,6 +403,55 @@ private extension FAQCatalog {
                     .paragraph("ScooterCheck glättet Messwerte, soweit sinnvoll. Im Signal-Finder bleiben bereits gemessene Bereiche möglichst farbstabil; neue Messungen ergänzen lokal."),
                 ],
                 keywords: ["schwankt", "rssi", "glättung", "reflexion", "störung", "signal", "farbe"]
+            ),
+        ]
+    )
+}
+
+// MARK: - 3b. Pedelec auslesen
+
+private extension FAQCatalog {
+    static let pedelec = FAQCategory(
+        id: "pedelec",
+        title: "Pedelec auslesen",
+        symbolName: "bicycle",
+        items: [
+            FAQItem(
+                id: "pedelec-was",
+                question: "Was ist „Pedelec auslesen“?",
+                segments: [
+                    .paragraph("„Pedelec auslesen“ ist der Diagnose-Einstieg für eBikes/Pedelecs — parallel zu „E-Scooter auslesen“."),
+                    .paragraph("ScooterCheck erkennt passende Bluetooth-Advertisements (z. B. Robert Bosch GmbH, Company-ID 0x02A6, oder Namensmuster wie Bosch/eBike/Kiox) und versucht eine Standard-GATT-Auslese (Device Information / GAP, nur Lesen)."),
+                    .paragraph("Eine Register-Auslese wie bei Ninebot/Xiaomi (Limit, Peak, Firmware-Boards) gibt es für Bosch Smart System noch nicht — dafür fehlen Pairing und das proprietäre Protokoll."),
+                    .callout("Pilotmodell: GHOST RIOT EN UNIVERSAL mit Bosch Performance Line CX (Smart System, Kiox 300 + LED Remote)."),
+                ],
+                keywords: [
+                    "pedelec", "ebike", "e-bike", "fahrrad", "ghost", "riot", "bosch", "cx",
+                    "smart system", "kiox", "auslesen", "gatt", "auswerten",
+                ]
+            ),
+            FAQItem(
+                id: "pedelec-tuning",
+                question: "Kann ScooterCheck erkennen, ob ein Pedelec getunt ist?",
+                segments: [
+                    .paragraph("Noch nicht über Limit-/Tuning-Register. Bei Pedelecs (DE) wäre die zentrale Frage, ob die Motorassistenz über 25 km/h hinaus aktiv bleibt."),
+                    .paragraph("Dafür braucht es Zugriff auf die Antriebsdaten (Bosch Smart System: Pairing/Bonding und proprietäres Protokoll). ScooterCheck bleibt read-only und liefert dafür noch keinen Register-Dump."),
+                    .callout("Was schon geht: Kandidat markieren und Standard-GATT auslesen (Name, Hersteller, Modell, Serien-/Firmware-Felder — sofern das Gerät sie freigibt)."),
+                ],
+                keywords: ["tuning", "25", "limit", "assistenz", "schneller", "bosch", "auslese"]
+            ),
+            FAQItem(
+                id: "pedelec-ghost",
+                question: "Wie teste ich das Ghost RIOT EN UNIVERSAL?",
+                segments: [
+                    .paragraph("System einschalten (Kiox 300 / LED-Remote), Menü „Pedelec auslesen“ öffnen und in der Nähe scannen."),
+                    .bullets([
+                        "Treffer tippen → Pedelec auslesen (Standard-GATT startet automatisch)",
+                        "Bei Störsignalen Signal-Finder nutzen",
+                        "Kein Ninebot-/Xiaomi-Prüfbericht und noch keine Bosch-Limit-Werte erwarten",
+                    ]),
+                ],
+                keywords: ["ghost", "riot", "universal", "cx", "testen", "feldversuch", "kiox"]
             ),
         ]
     )
@@ -810,9 +861,10 @@ private extension FAQCatalog {
                         "Keine vollständige Erkennung rückgängig gemachter Manipulationen ohne Spuren",
                         "Keine zuverlässige Bewertung rein mechanischer Umbauten",
                         "Bei stark verschlüsselten Protokollen (z. B. manche Xiaomi 3/4) ggf. keine tiefe Auslese",
+                        "Noch keine Bosch-Register-Auslese für Pedelec-Limit/Tuning (Standard-GATT ja, proprietäres Smart System nein)",
                     ]),
                 ],
-                keywords: ["kann nicht", "grenzen", "xiaomi"]
+                keywords: ["kann nicht", "grenzen", "xiaomi", "bosch", "pedelec"]
             ),
         ]
     )
