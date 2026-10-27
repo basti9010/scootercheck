@@ -168,6 +168,24 @@ enum ExtendedScooterModelHint {
             .joined(separator: " ")
         guard !hay.isEmpty else { return nil }
 
+        // Xiaomi Mi-Home-IDs (z. B. xiaomi.scooter.6) — vor generischen Marken.
+        if hay.contains("XIAOMI.SCOOTER") || hay.contains("XIAOMI SCOOTER") || hay.contains("MISCOOTER") {
+            if hay.contains("SCOOTER.6") || hay.contains("SCOOTER 6") {
+                return Result(
+                    title: "Xiaomi Electric Scooter 6",
+                    shortBadge: "Xiaomi 6",
+                    brand: "Xiaomi",
+                    isConcrete: true
+                )
+            }
+            return Result(
+                title: "Xiaomi E-Scooter",
+                shortBadge: "Xiaomi",
+                brand: "Xiaomi",
+                isConcrete: false
+            )
+        }
+
         let isKu = hay.contains("KUKIRIN") || hay.contains("KUGOO KIRIN")
             || (hay.contains("KUGOO") && (hay.contains("G2") || hay.contains("G3") || hay.contains("G4")))
         guard isKu else { return nil }

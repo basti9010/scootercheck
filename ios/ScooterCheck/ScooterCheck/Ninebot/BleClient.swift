@@ -1138,7 +1138,10 @@ final class BleClient: NSObject, ObservableObject {
 
     nonisolated private static func nameSuggestsXiaomi(_ name: String) -> Bool {
         let upper = name.uppercased()
-        let tokens = ["XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER", "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2"]
+        let tokens = [
+            "XIAOMI", "XIAOMI.SCOOTER", "M365", "MI ELECTRIC", "MI SCOOTER", "MISCOOTER",
+            "SCOOTER 3", "SCOOTER 4", "SCOOTER 5", "SCOOTER 6", "PRO 2", "PRO2"
+        ]
         if tokens.contains(where: { upper.contains($0) }) { return true }
         if upper.hasPrefix("MI") && !upper.contains("NINEBOT") { return true }
         return false
@@ -2098,8 +2101,9 @@ final class BleClient: NSObject, ObservableObject {
         // Marken / Modellnamen
         let tokens = [
             "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX3", "MAX G3", "G3 PLUS", "MAX G2", "MAXG2",
-            "XIAOMI", "M365", "MI ELECTRIC", "MI SCOOTER",
-            "SCOOTER 3", "SCOOTER 4", "PRO 2", "PRO2", "PRO 3", "PRO3", "ESSENTIAL", "KICKSCOOTER"
+            "XIAOMI", "XIAOMI.SCOOTER", "M365", "MI ELECTRIC", "MI SCOOTER", "MISCOOTER",
+            "SCOOTER 3", "SCOOTER 4", "SCOOTER 5", "SCOOTER 6", "PRO 2", "PRO2", "PRO 3", "PRO3",
+            "ESSENTIAL", "KICKSCOOTER"
         ]
         if tokens.contains(where: { upper.contains($0) }) { return true }
         // „SCOOTER“ nur als ganzes Wort (nicht in Zufallsstrings)

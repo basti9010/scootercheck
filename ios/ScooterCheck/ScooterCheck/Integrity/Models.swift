@@ -375,12 +375,41 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        if hay.contains("SCOOTER 3") || hay.contains("SCOOTER 4") || hay.contains("MI3") || hay.contains("MI4")
+        // Mi-Home-Geräte-IDs: „xiaomi.scooter.6“ = Electric Scooter 6 usw.
+        if hay.contains("XIAOMI.SCOOTER") || compact.hasPrefix("XIAOMISCOOTER")
+            || hay.contains("MISCOOTER") {
+            let eu = hay.contains("25 KM") || hay.contains("25KM") || hay.contains("25KMH")
+            if hay.contains("SCOOTER.6") || hay.contains("SCOOTER 6") || compact.contains("SCOOTER6") {
+                return BleModelHint(
+                    title: "Xiaomi Electric Scooter 6",
+                    shortBadge: "Xiaomi 6",
+                    profile: eu ? .xiaomiRecentE : .xiaomiRecentD
+                )
+            }
+            if hay.contains("SCOOTER.5") || hay.contains("SCOOTER 5") || compact.contains("SCOOTER5")
+                || hay.contains("SCOOTER.4") || hay.contains("SCOOTER 4") || compact.contains("SCOOTER4")
+                || hay.contains("SCOOTER.3") || hay.contains("SCOOTER 3") || compact.contains("SCOOTER3") {
+                return BleModelHint(
+                    title: "Xiaomi Scooter 3 / 4 / 5",
+                    shortBadge: "Xiaomi 3–5",
+                    profile: eu ? .xiaomiRecentE : .xiaomiRecentD
+                )
+            }
+            return BleModelHint(
+                title: "Xiaomi E-Scooter",
+                shortBadge: "Xiaomi",
+                profile: eu ? .xiaomiRecentE : .xiaomiRecentD
+            )
+        }
+
+        if hay.contains("SCOOTER 3") || hay.contains("SCOOTER 4") || hay.contains("SCOOTER 5")
+            || hay.contains("SCOOTER 6") || hay.contains("MI3") || hay.contains("MI4")
             || hay.contains("PRO 3") || hay.contains("PRO3") || hay.contains("PRO 4") || hay.contains("PRO4") {
             let eu = hay.contains("25")
+            let isSix = hay.contains("SCOOTER 6")
             return BleModelHint(
-                title: "Xiaomi Scooter 3 / 4",
-                shortBadge: "Xiaomi 3/4",
+                title: isSix ? "Xiaomi Electric Scooter 6" : "Xiaomi Scooter 3 / 4",
+                shortBadge: isSix ? "Xiaomi 6" : "Xiaomi 3/4",
                 profile: eu ? .xiaomiRecentE : .xiaomiRecentD
             )
         }
