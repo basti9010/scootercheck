@@ -68,6 +68,7 @@ struct ContentView: View {
         case result
         case overview
         case find
+        case pedelec
     }
 
     /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
@@ -133,6 +134,16 @@ struct ContentView: View {
                     if screen == .find {
                         ScooterFindHubView(ble: ble, destination: $findDestination)
                             .transition(.opacity)
+                    } else if screen == .pedelec {
+                        PedelecEvaluationView(
+                            ble: ble,
+                            onOpenDeviceDetail: { bleDetailDevice = $0 },
+                            onOpenSignalFinder: {
+                                findDestination = .signalFinder
+                                screen = .find
+                            }
+                        )
+                        .transition(.opacity)
                     } else if screen == .overview {
                         controlsOverview
                             .transition(.opacity)
@@ -143,7 +154,7 @@ struct ContentView: View {
                                     errorBanner(err)
                                 }
                                 switch screen {
-                                case .overview, .find:
+                                case .overview, .find, .pedelec:
                                     EmptyView()
                                 case .result:
                                     if let result {
@@ -1021,8 +1032,8 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            // find: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
-            if showsStartLanding || screen == .find {
+            // find/pedelec: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
+            if showsStartLanding || screen == .find || screen == .pedelec {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
@@ -1169,7 +1180,7 @@ struct ContentView: View {
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview, .find: return true
+        case .overview, .find, .pedelec: return true
         case .result: return result != nil
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
@@ -1190,7 +1201,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find:
+        case .find, .pedelec:
             break
         case .home:
             if ble.phase == .scanning {
@@ -1944,6 +1955,13 @@ struct ContentView: View {
                     navigateFromMenu(to: .home)
                 }
                 sideNavRow(
+                    title: "Pedelec auswerten",
+                    systemImage: "bicycle",
+                    selected: screen == .pedelec
+                ) {
+                    navigateFromMenu(to: .pedelec)
+                }
+                sideNavRow(
                     title: history.activeCount == 0
                         ? "Prüfungen"
                         : "Prüfungen (\(history.activeCount))",
@@ -2088,6 +2106,15 @@ struct ContentView: View {
                 }
                 findDestination = .hub
                 screen = .find
+                if ble.phase != .scanning {
+                    ble.startScan()
+                }
+            case .pedelec:
+                if screen == .result { persistCurrentSession() }
+                if ble.isConnectedToScooter {
+                    ble.disconnect()
+                }
+                screen = .pedelec
                 if ble.phase != .scanning {
                     ble.startScan()
                 }

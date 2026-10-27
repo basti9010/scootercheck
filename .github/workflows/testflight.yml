@@ -67,6 +67,7 @@ on:
       - cursor/f3pro-detect-fix-b100
       - cursor/peak-vcu24-fix-b100
       - cursor/xiaomi-scooter-6-b100
+      - cursor/pedelec-auswerten-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
