@@ -136,7 +136,7 @@ struct ContentView: View {
                     if screen == .find {
                         ScooterFindHubView(ble: ble, destination: $findDestination)
                             .transition(.opacity)
-                    } else if screen == .pedelec {
+                    } else if screen == .pedelec, AppFeatureFlags.pedelecAuslesenVisible {
                         PedelecEvaluationView(
                             ble: ble,
                             onOpenReadout: { device, match in
@@ -238,11 +238,22 @@ struct ContentView: View {
                 )
             }
             .sheet(item: $pedelecReadout) { target in
-                PedelecReadoutView(
-                    device: target.device,
-                    match: target.match,
-                    onDismiss: { pedelecReadout = nil }
-                )
+                Group {
+                    if AppFeatureFlags.pedelecAuslesenVisible {
+                        PedelecReadoutView(
+                            device: target.device,
+                            match: target.match,
+                            onDismiss: { pedelecReadout = nil }
+                        )
+                    } else {
+                        Color.clear.onAppear { pedelecReadout = nil }
+                    }
+                }
+            }
+            .onAppear {
+                if screen == .pedelec, !AppFeatureFlags.pedelecAuslesenVisible {
+                    screen = .home
+                }
             }
             .sheet(item: $universalDiagnosisDevice) { device in
                 UniversalDiagnosisView(
@@ -1965,12 +1976,14 @@ struct ContentView: View {
                 ) {
                     navigateFromMenu(to: .home)
                 }
-                sideNavRow(
-                    title: "Pedelec auslesen",
-                    systemImage: "bicycle",
-                    selected: screen == .pedelec
-                ) {
-                    navigateFromMenu(to: .pedelec)
+                if AppFeatureFlags.pedelecAuslesenVisible {
+                    sideNavRow(
+                        title: "Pedelec auslesen",
+                        systemImage: "bicycle",
+                        selected: screen == .pedelec
+                    ) {
+                        navigateFromMenu(to: .pedelec)
+                    }
                 }
                 sideNavRow(
                     title: history.activeCount == 0
@@ -2121,6 +2134,10 @@ struct ContentView: View {
                     ble.startScan()
                 }
             case .pedelec:
+                guard AppFeatureFlags.pedelecAuslesenVisible else {
+                    screen = .home
+                    return
+                }
                 if screen == .result { persistCurrentSession() }
                 if ble.isConnectedToScooter {
                     ble.disconnect()

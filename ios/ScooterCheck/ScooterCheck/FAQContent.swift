@@ -44,7 +44,7 @@ struct FAQCategory: Identifiable, Hashable, Sendable {
 
 /// Statische Wissensbasis — spiegelt den in der App implementierten Funktionsumfang wider.
 enum FAQCatalog {
-    static let categories: [FAQCategory] = [
+    private static let allCategories: [FAQCategory] = [
         verstehen,
         grundlagen,
         finden,
@@ -56,6 +56,16 @@ enum FAQCatalog {
         grenzen,
         haeufige,
     ]
+
+    /// Sichtbare FAQ-Kategorien (Pedelec nur bei Feature-Flag).
+    static var categories: [FAQCategory] {
+        allCategories.filter { category in
+            if category.id == "pedelec" {
+                return AppFeatureFlags.pedelecAuslesenVisible
+            }
+            return true
+        }
+    }
 
     static func filtered(query: String) -> [FAQCategory] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -130,15 +140,19 @@ private extension FAQCatalog {
                 question: "Was finde ich im linken Menü?",
                 segments: [
                     .paragraph("Über das Seitenmenü erreichst du die Hauptbereiche der App:"),
-                    .bullets([
-                        "E-Scooter auslesen — Diagnose und Prüfbericht",
-                        "Pedelec auslesen — BLE-Erkennung und Standard-GATT für eBikes (Pilot: Bosch Smart System)",
-                        "Prüfungen — gespeicherte Berichte (Aktiv / Archiv)",
-                        "E-Scooter finden — Radar, Wächter, Signal-Finder",
-                        "FAQ & Wissensbasis",
-                        "Datenschutz",
-                        "Einstellungen — globale App-Darstellung (z. B. Schriftgröße)",
-                    ]),
+                    .bullets(
+                        [
+                            "E-Scooter auslesen — Diagnose und Prüfbericht",
+                            AppFeatureFlags.pedelecAuslesenVisible
+                                ? "Pedelec auslesen — BLE-Erkennung und Standard-GATT für eBikes (Pilot: Bosch Smart System)"
+                                : nil,
+                            "Prüfungen — gespeicherte Berichte (Aktiv / Archiv)",
+                            "E-Scooter finden — Radar, Wächter, Signal-Finder",
+                            "FAQ & Wissensbasis",
+                            "Datenschutz",
+                            "Einstellungen — globale App-Darstellung (z. B. Schriftgröße)",
+                        ].compactMap { $0 }
+                    ),
                     .callout("Feature-Einstellungen wie Radar oder Radarkarte bleiben am jeweiligen Zahnrad vor Ort. „Einstellungen“ im Menü gilt für die ganze App."),
                 ],
                 keywords: ["menü", "navigation", "einstellungen", "schriftgröße", "drawer", "seitenmenü"]
