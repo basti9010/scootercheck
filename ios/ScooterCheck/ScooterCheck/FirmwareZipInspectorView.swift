@@ -33,10 +33,11 @@ struct FirmwareZipInspectorView: View {
                     Button {
                         openSubjectPicker()
                     } label: {
-                        Label(report == nil ? "Datei wählen (ZIP/BIN/ENC/JSON/TXT)" : "Andere Datei wählen", systemImage: "doc.badge.gearshape")
+                        Text(report == nil ? "Datei wählen" : "Andere Datei")
+                            .font(Theme.buttonSecondary)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                     .tint(Theme.accent)
                     .disabled(isBusy)
 
@@ -113,15 +114,10 @@ struct FirmwareZipInspectorView: View {
     }
 
     private var intro: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            Text("Firmware-Forensik 2.0")
-                .font(Theme.sectionTitle)
-                .foregroundStyle(Theme.textTitle)
-            Text("Statische Analyse lokaler Firmwaredateien (ZIP/BIN/ENC/JSON/TXT). Rein lesend — kein Flashen, keine Fahrzeugänderung. Befunde sind an konkrete Dateibelege gebunden; fehlende Entschlüsselung oder Referenz wird ausdrücklich als nicht verfügbar markiert.")
-                .font(Theme.body)
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        Text("Lokale Firmwaredatei auswerten — nur lesend.")
+            .font(Theme.body)
+            .foregroundStyle(Theme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Sections
