@@ -143,6 +143,7 @@
 		A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A7 /* FirmwareForensicScorer.swift */; };
 		A100000000000000000000F1 /* FirmwareForensicOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F1 /* FirmwareForensicOrchestrator.swift */; };
 		A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F2 /* FirmwareForensicPDF.swift */; };
+		A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F3 /* FirmwareDocumentPicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -285,6 +286,7 @@
 		B100000000000000000000A7 /* FirmwareForensicScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicScorer.swift; sourceTree = "<group>"; };
 		B100000000000000000000F1 /* FirmwareForensicOrchestrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicOrchestrator.swift; sourceTree = "<group>"; };
 		B100000000000000000000F2 /* FirmwareForensicPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDF.swift; sourceTree = "<group>"; };
+		B100000000000000000000F3 /* FirmwareDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDocumentPicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -409,6 +411,7 @@
 				B100000000000000000000A7 /* FirmwareForensicScorer.swift */,
 				B100000000000000000000F1 /* FirmwareForensicOrchestrator.swift */,
 				B100000000000000000000F2 /* FirmwareForensicPDF.swift */,
+				B100000000000000000000F3 /* FirmwareDocumentPicker.swift */,
 			);
 			path = FirmwareForensics;
 			sourceTree = "<group>";
@@ -662,6 +665,7 @@
 				A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */,
 				A100000000000000000000F1 /* FirmwareForensicOrchestrator.swift in Sources */,
 				A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */,
+				A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,

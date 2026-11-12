@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Firmware-Forensik 2.0 — Read-Only, Dark UI (#12161C / #6BDBC2).
 struct FirmwareZipInspectorView: View {
@@ -8,8 +7,6 @@ struct FirmwareZipInspectorView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var references = FirmwareReferenceStore.shared
 
-    @State private var showImporter = false
-    @State private var showReferenceImporter = false
     @State private var report: FirmwareForensicReport?
     @State private var errorText: String?
     @State private var isBusy = false
@@ -34,7 +31,7 @@ struct FirmwareZipInspectorView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.lg) {
                     intro
                     Button {
-                        showImporter = true
+                        openSubjectPicker()
                     } label: {
                         Label(report == nil ? "Datei wählen (ZIP/BIN/ENC/JSON/TXT)" : "Andere Datei wählen", systemImage: "doc.badge.gearshape")
                             .frame(maxWidth: .infinity)
@@ -84,32 +81,6 @@ struct FirmwareZipInspectorView: View {
                 }
             }
             .preferredColorScheme(.dark)
-            .fileImporter(
-                isPresented: $showImporter,
-                allowedContentTypes: allowedTypes,
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    ingestSubject(url: url)
-                case .failure(let err):
-                    errorText = err.localizedDescription
-                }
-            }
-            .fileImporter(
-                isPresented: $showReferenceImporter,
-                allowedContentTypes: [.data, .zip, UTType(filenameExtension: "bin")].compactMap { $0 },
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    prepareReferenceImport(url: url)
-                case .failure(let err):
-                    errorText = err.localizedDescription
-                }
-            }
             .sheet(isPresented: $showRefForm) {
                 referenceImportForm
             }
@@ -119,11 +90,26 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
-    private var allowedTypes: [UTType] {
-        var t: [UTType] = [.zip, .json, .plainText, .data]
-        if let bin = UTType(filenameExtension: "bin") { t.append(bin) }
-        if let enc = UTType(filenameExtension: "enc") { t.append(enc) }
-        return t
+    private func openSubjectPicker() {
+        errorText = nil
+        FirmwareDocumentPickerPresenter.present(
+            contentTypes: FirmwareDocumentTypes.subject,
+            onPick: { url in
+                ingestSubject(url: url)
+            },
+            onCancel: nil
+        )
+    }
+
+    private func openReferencePicker() {
+        errorText = nil
+        FirmwareDocumentPickerPresenter.present(
+            contentTypes: FirmwareDocumentTypes.reference,
+            onPick: { url in
+                prepareReferenceImport(url: url)
+            },
+            onCancel: nil
+        )
     }
 
     private var intro: some View {
@@ -244,7 +230,7 @@ struct FirmwareZipInspectorView: View {
     private func comparisonSection(_ r: FirmwareForensicReport) -> some View {
         sectionCard("Firmwarevergleich") {
             Button {
-                showReferenceImporter = true
+                openReferencePicker()
             } label: {
                 Label("Referenzfirmware importieren", systemImage: "square.and.arrow.down")
                     .frame(maxWidth: .infinity)
@@ -447,13 +433,19 @@ struct FirmwareZipInspectorView: View {
     private func ingestSubject(url: URL) {
         errorText = nil
         isBusy = true
+        // asCopy:true liefert meist eine lokale Kopie; Security-Scope trotzdem absichern.
         let accessed = url.startAccessingSecurityScopedResource()
         defer { if accessed { url.stopAccessingSecurityScopedResource() } }
         do {
             let data = try Data(contentsOf: url)
+            guard !data.isEmpty else {
+                report = nil
+                errorText = "Die gewählte Datei ist leer oder konnte nicht gelesen werden."
+                isBusy = false
+                return
+            }
             lastFileName = url.lastPathComponent
             lastData = data
-            // Prefill reference form hints from filename / later meta
             if refModel.isEmpty {
                 let lower = lastFileName.lowercased()
                 if lower.contains("zt3") { refModel = "zt3" }
@@ -461,7 +453,7 @@ struct FirmwareZipInspectorView: View {
             reanalyze()
         } catch {
             report = nil
-            errorText = error.localizedDescription
+            errorText = "Datei konnte nicht gelesen werden: \(error.localizedDescription)"
         }
         isBusy = false
     }

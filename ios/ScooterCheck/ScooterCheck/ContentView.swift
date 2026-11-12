@@ -240,7 +240,7 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            .sheet(isPresented: $showFirmwareZipInspector) {
+            .fullScreenCover(isPresented: $showFirmwareZipInspector) {
                 FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
