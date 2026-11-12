@@ -116,6 +116,54 @@
       "updatedAt": "2026-03-18",
       "confidence": "low",
       "notes": "Used for Fall C style warnings: possible KuKirin, identity and approval not confirmed."
+    },
+    {
+      "id": "segway-gt3",
+      "manufacturer": "Segway-Ninebot",
+      "model": "SuperScooter GT3",
+      "variantKeys": ["GT3", "GT3 PRO", "SUPERSCOOTER GT3", "NBW84"],
+      "namePatterns": ["GT3", "SUPERSCOOTER"],
+      "bleNamePatterns": ["GT3", "NBW84"],
+      "germanApproval": "unconfirmed",
+      "abeNumber": null,
+      "maxSpeedKmhDocumented": null,
+      "source": "Bundled catalog — SuperScooter performance line; German approval must be verified per unit / KBA",
+      "sourceUrl": "https://www.kba.de/",
+      "updatedAt": "2026-11-12",
+      "confidence": "low",
+      "notes": "Identifiable via BLE/name GT3 / SuperScooter. No ABE number stored."
+    },
+    {
+      "id": "navee-family",
+      "manufacturer": "Navee",
+      "model": "Navee (Modellvariante)",
+      "variantKeys": ["NAVEE", "N65", "XT5", "UT5", "ST3"],
+      "namePatterns": ["NAVEE"],
+      "bleNamePatterns": ["NAVEE"],
+      "germanApproval": "unconfirmed",
+      "abeNumber": null,
+      "maxSpeedKmhDocumented": null,
+      "source": "Bundled catalog — brand recognition only; check vehicle documents / KBA",
+      "sourceUrl": "https://www.kba.de/",
+      "updatedAt": "2026-11-12",
+      "confidence": "low",
+      "notes": "German approval varies by model/year; not a legal determination."
+    },
+    {
+      "id": "soflow-family",
+      "manufacturer": "SoFlow",
+      "model": "SoFlow (Modellvariante)",
+      "variantKeys": ["SOFLOW", "SO FLOW", "SO4", "SO ONE"],
+      "namePatterns": ["SOFLOW", "SO FLOW", "SO4", "SO ONE"],
+      "bleNamePatterns": ["SOFLOW", "SO4"],
+      "germanApproval": "unconfirmed",
+      "abeNumber": null,
+      "maxSpeedKmhDocumented": null,
+      "source": "Bundled catalog — DE retail brand; approval must be verified per unit",
+      "sourceUrl": "https://www.kba.de/",
+      "updatedAt": "2026-11-12",
+      "confidence": "low",
+      "notes": "Some SoFlow models are ABE-equipped; catalog does not invent ABE IDs."
     }
   ]
 }

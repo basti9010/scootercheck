@@ -107,8 +107,10 @@
 		A10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift */; };
 		A10000000000000000000085 /* GenericGATTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000085 /* GenericGATTReader.swift */; };
 		A10000000000000000000086 /* UniversalDiagnosisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000086 /* UniversalDiagnosisView.swift */; };
+		A10000000000000000000089 /* NaveeProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000089 /* NaveeProtocol.swift */; };
 		A10000000000000000000087 /* scooter_diagnostic_profiles.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000087 /* scooter_diagnostic_profiles.json */; };
 		A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000088 /* UniversalDiagnosisTests.swift */; };
+		A1000000000000000000008A /* NaveeProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008A /* NaveeProtocolTests.swift */; };
 		A10000000000000000000090 /* RadarMapModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000090 /* RadarMapModels.swift */; };
 		A10000000000000000000091 /* RadarMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000091 /* RadarMapStore.swift */; };
 		A10000000000000000000092 /* RadarMapRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000092 /* RadarMapRecorder.swift */; };
@@ -225,6 +227,8 @@
 		B10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/ReadOnlyDiagnosticEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000085 /* GenericGATTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/GenericGATTReader.swift; sourceTree = "<group>"; };
 		B10000000000000000000086 /* UniversalDiagnosisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/UniversalDiagnosisView.swift; sourceTree = "<group>"; };
+		B10000000000000000000089 /* NaveeProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/NaveeProtocol.swift; sourceTree = "<group>"; };
+		B1000000000000000000008A /* NaveeProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NaveeProtocolTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000087 /* scooter_diagnostic_profiles.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = scooter_diagnostic_profiles.json; sourceTree = "<group>"; };
 		B10000000000000000000073 /* VehicleApprovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleApprovalTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000088 /* UniversalDiagnosisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosisTests.swift; sourceTree = "<group>"; };
@@ -340,6 +344,7 @@
 				B10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift */,
 				B10000000000000000000085 /* GenericGATTReader.swift */,
 				B10000000000000000000086 /* UniversalDiagnosisView.swift */,
+				B10000000000000000000089 /* NaveeProtocol.swift */,
 				B10000000000000000000087 /* scooter_diagnostic_profiles.json */,
 				B10000000000000000000090 /* RadarMapModels.swift */,
 				B10000000000000000000091 /* RadarMapStore.swift */,
@@ -410,6 +415,7 @@
 				B10000000000000000000068 /* BLEIdentificationTests.swift */,
 				B10000000000000000000073 /* VehicleApprovalTests.swift */,
 				B10000000000000000000088 /* UniversalDiagnosisTests.swift */,
+				B1000000000000000000008A /* NaveeProtocolTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
@@ -595,6 +601,7 @@
 				A10000000000000000000084 /* ReadOnlyDiagnosticEngine.swift in Sources */,
 				A10000000000000000000085 /* GenericGATTReader.swift in Sources */,
 				A10000000000000000000086 /* UniversalDiagnosisView.swift in Sources */,
+				A10000000000000000000089 /* NaveeProtocol.swift in Sources */,
 				A10000000000000000000090 /* RadarMapModels.swift in Sources */,
 				A10000000000000000000091 /* RadarMapStore.swift in Sources */,
 				A10000000000000000000092 /* RadarMapRecorder.swift in Sources */,
@@ -656,6 +663,7 @@
 				A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */,
 				A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */,
 				A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */,
+				A1000000000000000000008A /* NaveeProtocolTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,

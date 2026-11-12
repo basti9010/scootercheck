@@ -76,6 +76,37 @@ final class UniversalDiagnosisTests: XCTestCase {
         let result = ProtocolCompatibilityEngine.evaluate(input: input, identity: nil, profiles: loadProfiles())
         XCTAssertEqual(result.supportLevel, .researchHintOnly)
         XCTAssertEqual(result.profile?.manufacturer, "Navee")
+        XCTAssertFalse(result.profile?.supportedReads.isEmpty == true)
+    }
+
+    func testCompatibilityGT3FullNativeViaName() {
+        let input = ProtocolMatchInput(
+            name: "Segway",
+            cryptoName: "Segway GT3 Pro",
+            modelLabel: "GT3",
+            serviceUUIDs: ["6E400001-0000-0000-006E-696E65626F74"],
+            looksLikeScooter: true,
+            suggestedProfileRaw: "gt3D",
+            isConnectable: true
+        )
+        let result = ProtocolCompatibilityEngine.evaluate(input: input, identity: nil, profiles: loadProfiles())
+        XCTAssertEqual(result.supportLevel, .fullNative)
+        XCTAssertEqual(result.profile?.nativeStack, "ninebotEnc2")
+    }
+
+    func testCompatibilitySoFlowResearchOnly() {
+        let input = ProtocolMatchInput(
+            name: "SoFlow SO4",
+            cryptoName: "SoFlow SO4 Pro",
+            modelLabel: nil,
+            serviceUUIDs: [],
+            looksLikeScooter: true,
+            suggestedProfileRaw: nil,
+            isConnectable: true
+        )
+        let result = ProtocolCompatibilityEngine.evaluate(input: input, identity: nil, profiles: loadProfiles())
+        XCTAssertEqual(result.supportLevel, .researchHintOnly)
+        XCTAssertEqual(result.profile?.manufacturer, "SoFlow")
     }
 
     func testCompatibilityGattDisReadonly() {

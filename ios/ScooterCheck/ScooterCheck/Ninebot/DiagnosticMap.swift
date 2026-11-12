@@ -146,7 +146,7 @@ enum DiagnosticMap {
 
     static let fields: [Spec] = identityFields + limitFields + historyFields + firmwareFields + batteryFields + statusFields
 
-    /// Profilabhängige Registerliste — Max G3 nutzt andere Board-/Versions-Adressen.
+    /// Profilabhängige Registerliste — Max G3 / F3 / GT3 teilen die x3-VCU-Karte.
     static func fields(for profile: ScooterProfile) -> [Spec] {
         if profile.usesG3RegisterMap {
             // Firmware früh: kurze BLE/VCU-Versionen vor langen Limit-/History-Blöcken.

@@ -186,6 +186,51 @@ enum ExtendedScooterModelHint {
             )
         }
 
+        // Navee — proprietäres BLE (d0ff…); hier nur Marken-/Modellhinweis, kein Write-Stack.
+        if hay.contains("NAVEE") {
+            if hay.contains("N65") {
+                return Result(title: "Navee N65", shortBadge: "N65", brand: "Navee", isConcrete: true)
+            }
+            if hay.contains("XT5") {
+                let ultra = hay.contains("ULTRA")
+                return Result(
+                    title: ultra ? "Navee XT5 Ultra" : "Navee XT5",
+                    shortBadge: ultra ? "XT5 Ultra" : "XT5",
+                    brand: "Navee",
+                    isConcrete: true
+                )
+            }
+            if hay.contains("UT5") {
+                return Result(title: "Navee UT5", shortBadge: "UT5", brand: "Navee", isConcrete: true)
+            }
+            if hay.contains("ST3") {
+                return Result(title: "Navee ST3 Pro", shortBadge: "ST3", brand: "Navee", isConcrete: true)
+            }
+            if hay.range(of: #"\bV[0-9]{2}\b"#, options: .regularExpression) != nil {
+                return Result(title: "Navee (Serie)", shortBadge: "Navee", brand: "Navee", isConcrete: false)
+            }
+            return Result(title: "Navee E-Scooter", shortBadge: "Navee", brand: "Navee", isConcrete: false)
+        }
+
+        // SoFlow — DE-Markt; öffentliche Tools oft Tuning-fokussiert → nur Erkennung.
+        if hay.contains("SOFLOW") || hay.contains("SO FLOW")
+            || hay.range(of: #"\bSO4\b"#, options: .regularExpression) != nil
+            || hay.contains("SO ONE") || hay.contains("SOONE") {
+            if hay.contains("SO4 PRO GT") || hay.contains("SO4 PRO MAX") {
+                return Result(title: "SoFlow SO4 Pro", shortBadge: "SO4 Pro", brand: "SoFlow", isConcrete: true)
+            }
+            if hay.contains("SO4 PRO") {
+                return Result(title: "SoFlow SO4 Pro", shortBadge: "SO4 Pro", brand: "SoFlow", isConcrete: true)
+            }
+            if hay.range(of: #"\bSO4\b"#, options: .regularExpression) != nil {
+                return Result(title: "SoFlow SO4", shortBadge: "SO4", brand: "SoFlow", isConcrete: true)
+            }
+            if hay.contains("SO ONE") || hay.contains("SOONE") {
+                return Result(title: "SoFlow SO ONE", shortBadge: "SO ONE", brand: "SoFlow", isConcrete: true)
+            }
+            return Result(title: "SoFlow E-Scooter", shortBadge: "SoFlow", brand: "SoFlow", isConcrete: false)
+        }
+
         let isKu = hay.contains("KUKIRIN") || hay.contains("KUGOO KIRIN")
             || (hay.contains("KUGOO") && (hay.contains("G2") || hay.contains("G3") || hay.contains("G4")))
         guard isKu else { return nil }

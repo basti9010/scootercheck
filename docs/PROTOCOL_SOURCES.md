@@ -12,10 +12,10 @@ Keine Unlock-/Tuning-Schreibpfade, keine Bezahlungspflichtigen App-Backends.
 | 3 | [CamiAlfa M365-BLE-PROTOCOL](https://github.com/CamiAlfa/M365-BLE-PROTOCOL) | Xiaomi classic 55 AA Register | Plaintext-Pfad vorhanden; 55 AB verschlüsselt bewusst nicht |
 | 4 | [scooter-tuning-db](https://github.com/jx-grxf/scooter-tuning-db) | JSON-Karten Xiaomi/Ninebot klassisch, Neoline plaintext; KuKirin ohne BLE-Map | Als Katalog-Hinweis; nur **R**-Felder für Telemetrie relevant |
 | 5 | [ha-ninebot](https://github.com/BobMcGlobus/ha-ninebot) | Praxis: G30, F40, F3, Max G2/G3, Register-Scan-Methode | Methodik + Plausibilisierung |
-| 6 | [scootscoot](https://pypi.org/project/scootscoot/) | Enc2-Client, GT3-Pro-Profil | Kandidat für GT3-Erweiterung |
+| 6 | [scootscoot](https://pypi.org/project/scootscoot/) | Enc2-Client, GT3-Pro-Profil | GT3 nativ über x3-VCU-Karte |
 | 7 | ScooterHacking / NinebotCrypto | Framing, Crypto, klassische Boards | Bereits Basis der Enc2-Schicht |
-| 8 | [Navee ST3 Pro RE](https://github.com/pepperonas/navee-st3-pro) | BLE/UART-Protokollbeschreibung Navee | Research only — noch kein nativer Stack |
-| 9 | SoFlow SOHacks | BLE vorhanden, Fokus Tuning | Nur als Marken-Hinweis; **kein** Write-Import |
+| 8 | [Navee ST3 Pro RE](https://github.com/pepperonas/navee-st3-pro) | BLE/UART-Protokollbeschreibung Navee | Erkennung + Read-Frame-Codec; Live-Auth/Dump noch offen |
+| 9 | SoFlow SOHacks | BLE vorhanden, Fokus Tuning | Markenerkennung; **kein** Write-Import |
 | — | Dualtron/Kaabo/Inokim/Zero/Apollo/NIU | Laut Community oft geschlossen / unvollständig | Research only |
 
 ## Segway-Ninebot: dokumentierte Kick-Scooter (Auszug)
@@ -28,7 +28,7 @@ Aus der Geräteübersicht (Enc2 = AES wie Max G3; Proto2 = älteres XOR/Plain-ä
 | ZT3 Pro | 256 | Enc2 | 191 | ja |
 | F3 | 259 | Enc2 | 192 | ja |
 | MAX G2 | 131 | Enc2 | 121 | ja (Familie) |
-| SuperScooter GT3 | 257 | Enc2 | 192 | Profil/Board teils, **keine eigene Telemetrie-Karte** |
+| SuperScooter GT3 | 257 | Enc2 | 192 | ja (nativ, x3-VCU-Karte wie G3/F3) |
 | GT1 / GT2 | 112 / 113 | Enc2 | 86 / 83 | nein |
 | F2 / F2 Plus / F2 Pro | 127–129 | Proto2 | 104 | teilweise F-Familie |
 | D18 / D28 / D38 | 116/114/115 | Enc2 | ~46 | D-Familie grob |
@@ -42,11 +42,11 @@ https://nootnooot.codeberg.page/segway-ninebot-ble/devices/
 
 ## Was als Nächstes sinnvoll ist (read-only)
 
-1. **GT3 / P65 / ST2**: Enc2-Handshake existiert → Board-Map + Leseregister aus NootNooot-Device-Pages als `DiagnosticMap`-Erweiterung (nur Read).
+1. **P65 / ST2 / GT1/GT2**: Enc2-Handshake existiert → fehlende Familien als DiagnosticMap-Erweiterung (nur Read).
 2. **F2 Pro / Max G2**: Register-Listen gegen ha-ninebot und NootNooot abgleichen, fehlende Limit/Peak/SN-Felder ergänzen.
 3. **Neoline (E-Ride)**: plaintext BLE laut scooter-tuning-db — eigener kleiner Stack denkbar.
-4. **Navee**: PROTOCOL.md auswerten → eigener Stack oder Research→verified wenn SN/Limit/FW lesbar.
-5. **KuKirin / Vsett / Dualtron**: vorerst GATT-DIS; keine erfundenen Registerkarten.
+4. **Navee**: Live-Auth + SN/FW/Status (0x74/0x73/0x70) an `NaveeProtocol` verdrahten; verified erst nach Gerätetest.
+5. **KuKirin / Vsett / Dualtron / SoFlow**: vorerst GATT-DIS / Universelle Diagnose; keine erfundenen Registerkarten oder Write-Imports.
 
 ## Abgrenzung
 

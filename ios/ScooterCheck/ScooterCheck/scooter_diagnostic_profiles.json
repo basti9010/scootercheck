@@ -7,7 +7,7 @@
     {
       "id": "ninebot-enc2-native",
       "manufacturer": "Segway-Ninebot",
-      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "F3", "1C", "1EF"],
+      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "GT3", "SUPERSCOOTER", "F3", "1C", "1EF"],
       "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
       "protocolVersion": "enc2",
       "supportedReads": [
@@ -15,18 +15,18 @@
           "id": "nb-serial",
           "title": "Seriennummer / Firmware / Limits",
           "kind": "ninebotEnc2",
-          "notes": "Über bestehenden BleClient.handshakeAndDump Enc2-Pfad"
+          "notes": "Über bestehenden BleClient.handshakeAndDump Enc2-Pfad (inkl. G3/F3/GT3 x3-VCU-Karte)"
         }
       ],
       "referenceDataVersion": "integrity-profiles-v1",
       "approvalDataVersion": "vehicle-approval-v1",
-      "source": "NinebotCrypto/SHU + Max-G3-Flasher + NootNooot device tables (read subset)",
+      "source": "NinebotCrypto/SHU + Max-G3-Flasher + NootNooot device tables (read subset) + scootscoot gt3_pro",
       "sourceUrl": "https://nootnooot.codeberg.page/segway-ninebot-ble/",
       "verified": true,
       "minAppBuild": 1,
       "nativeStack": "ninebotEnc2",
       "updatedAt": "2026-11-12",
-      "notes": "Vollständige Diagnose nur nach erfolgreichem Enc2-Handshake. Erweiterbare Lesekarten: GT3/P65/ST2 laut NootNooot (noch nicht als eigene Maps)."
+      "notes": "Vollständige Diagnose nur nach erfolgreichem Enc2-Handshake. GT3 nutzt dieselbe x3-VCU-Karte wie Max G3/F3 (NootNooot HW-ID 257). Erweiterbare Lesekarten: P65/ST2."
     },
     {
       "id": "xiaomi-plaintext-native",
@@ -114,21 +114,21 @@
       "notes": "Nur standardisierte lesbare Characteristics — kein proprietäres Scooter-Protokoll."
     },
     {
-      "id": "segway-gt3-research",
+      "id": "segway-gt1-gt2-research",
       "manufacturer": "Segway",
-      "modelPatterns": ["GT3", "SUPERSCOOTER", "GT1", "GT2"],
+      "modelPatterns": ["GT1", "GT2"],
       "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
       "protocolVersion": "enc2-candidate",
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": "vehicle-approval-v1",
-      "source": "NootNooot device tables + scootscoot gt3_pro (Enc2 read candidate)",
+      "source": "NootNooot device tables (GT1/GT2 Enc2)",
       "sourceUrl": "https://nootnooot.codeberg.page/segway-ninebot-ble/devices/",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
       "updatedAt": "2026-11-12",
-      "notes": "Enc2 wie G3/ZT3; eigene DiagnosticMap noch nicht freigegeben. Versuch über ninebotEnc2 möglich möglich, Telemetrie unvollständig."
+      "notes": "GT3 ist nativ (ninebotEnc2 + x3-Map). GT1/GT2 bleiben Research — ältere Command-Sets."
     },
     {
       "id": "neoline-research",
@@ -167,19 +167,38 @@
     {
       "id": "navee-research",
       "manufacturer": "Navee",
-      "modelPatterns": ["NAVEE"],
-      "serviceUUIDs": [],
-      "protocolVersion": "research",
-      "supportedReads": [],
+      "modelPatterns": ["NAVEE", "N65", "XT5", "UT5", "ST3"],
+      "serviceUUIDs": ["0000D0FF-3C17-D293-8E48-14FE2E4DA212"],
+      "protocolVersion": "navee-ble-plain-candidate",
+      "supportedReads": [
+        {
+          "id": "navee-sn",
+          "title": "Seriennummer (CMD 0x74)",
+          "kind": "naveeRead",
+          "notes": "Laut PROTOCOL.md — Auth (0x30) erforderlich; noch nicht als freigegebener Stack verdrahtet"
+        },
+        {
+          "id": "navee-fw",
+          "title": "Firmware-Versionen (CMD 0x73)",
+          "kind": "naveeRead",
+          "notes": "Meter/BLDC/BMS/Screen ASCII — nur Lesen"
+        },
+        {
+          "id": "navee-status",
+          "title": "Fahrzeugstatus (CMD 0x70)",
+          "kind": "naveeRead",
+          "notes": "39 Felder Telemetrie — nur Lesen; keine Limit-/Unlock-Writes (0x6B/0x6E/0x51)"
+        }
+      ],
       "referenceDataVersion": null,
-      "approvalDataVersion": null,
-      "source": "pepperonas/navee-st3-pro PROTOCOL.md + Laufbursche NAVEE app (RE archive)",
-      "sourceUrl": "https://github.com/pepperonas/navee-st3-pro",
+      "approvalDataVersion": "vehicle-approval-v1",
+      "source": "pepperonas/navee-st3-pro docs/PROTOCOL.md (read cmds 0x70/0x73/0x74)",
+      "sourceUrl": "https://github.com/pepperonas/navee-st3-pro/blob/main/docs/PROTOCOL.md",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
       "updatedAt": "2026-11-12",
-      "notes": "Öffentliche Protokollbeschreibung vorhanden; noch kein freigegebener Read-Only-Stack in ScooterCheck."
+      "notes": "Markenerkennung + Frame-Codec (NaveeProtocol) vorhanden. Live-Auth/Dump noch nicht freigegeben — Universelle Diagnose / GATT. Keine Write-/Tuning-Pfade."
     },
     {
       "id": "vmax-research",
@@ -218,19 +237,19 @@
     {
       "id": "soflow-research",
       "manufacturer": "SoFlow",
-      "modelPatterns": ["SOFLOW", "SO FLOW"],
+      "modelPatterns": ["SOFLOW", "SO FLOW", "SO4", "SO ONE", "SOONE"],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
       "referenceDataVersion": null,
-      "approvalDataVersion": null,
+      "approvalDataVersion": "vehicle-approval-v1",
       "source": "Community BLE apps exist (e.g. SOHacks) — tuning-focused; not imported",
       "sourceUrl": "https://github.com/sohacks-tg119/sohacks",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
       "updatedAt": "2026-11-12",
-      "notes": "Nur Markenerkennung. Keine Write-/Tuning-Pfade in ScooterCheck."
+      "notes": "Markenerkennung (SO4 / SO ONE / SoFlow). Keine freigegebene Read-Only-Karte; keine Write-/Tuning-Pfade in ScooterCheck."
     },
     {
       "id": "vsett-research",

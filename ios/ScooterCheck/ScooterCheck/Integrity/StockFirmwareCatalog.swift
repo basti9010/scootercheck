@@ -67,7 +67,8 @@ enum StockFirmwareCatalog {
         case .ninebotF3:
             bundled = ninebotF3
             remoteKey = "ninebotF3"
-        case .ninebotF, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
+        case .gt3, .ninebotF, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
+            // GT3: x3-Map ja, aber kein freigegebener Serien-FW-Katalog (documentedOnly).
             bundled = nil
             remoteKey = nil
         }

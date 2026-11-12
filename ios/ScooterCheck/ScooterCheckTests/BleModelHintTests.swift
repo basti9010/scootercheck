@@ -104,8 +104,39 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertFalse(ScooterProfile.maxG2D.usesG3RegisterMap)
         XCTAssertTrue(ScooterProfile.ninebotF3D.usesG3RegisterMap)
         XCTAssertTrue(ScooterProfile.ninebotF3E.usesG3RegisterMap)
+        XCTAssertTrue(ScooterProfile.gt3D.usesG3RegisterMap)
+        XCTAssertTrue(ScooterProfile.gt3E.usesNinebotEnc2)
         XCTAssertTrue(ScooterProfile.maxG2D.usesNinebotEnc2)
         XCTAssertFalse(ScooterProfile.xiaomiClassicD.usesNinebotEnc2)
+    }
+
+    func testGT3RecognitionBeforeGenericG3() {
+        let hint = BleModelHint.recognize(bleName: "Segway GT3 Pro")
+        XCTAssertEqual(hint?.profile.family, .gt3)
+        XCTAssertEqual(hint?.shortBadge, "GT3")
+        XCTAssertEqual(hint?.profile, .gt3D)
+        XCTAssertTrue(hint?.profile.usesG3RegisterMap == true)
+        XCTAssertEqual(hint?.profile.stockMaxGear, 3)
+    }
+
+    func testGT3SuperScooterAndPartNumber() {
+        XCTAssertEqual(BleModelHint.recognize(bleName: "SuperScooter GT3")?.profile, .gt3D)
+        XCTAssertEqual(BleModelHint.recognize(bleName: "NBW84D004D0D")?.profile.family, .gt3)
+        let eu = BleModelHint.recognize(bleName: "Segway GT3 25km")
+        XCTAssertEqual(eu?.profile, .gt3E)
+    }
+
+    func testGT3NotConfusedWithMaxG3() {
+        let g3 = BleModelHint.recognize(bleName: "1CGBF2531C0230")
+        XCTAssertEqual(g3?.profile.family, .maxG3)
+        let gt3 = BleModelHint.recognize(bleName: "GT3")
+        XCTAssertEqual(gt3?.profile.family, .gt3)
+    }
+
+    func testLikelyScooterNameIncludesGT3NaveeSoFlow() {
+        XCTAssertTrue(BleClient.isLikelyScooterName("Segway GT3 Pro"))
+        XCTAssertTrue(BleClient.isLikelyScooterName("Navee XT5"))
+        XCTAssertTrue(BleClient.isLikelyScooterName("SoFlow SO4 Pro"))
     }
 
     func testStockCatalogCoverage() {
@@ -115,6 +146,7 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertNotNil(StockFirmwareCatalog.entry(for: .zt3ProD))
         XCTAssertNotNil(StockFirmwareCatalog.entry(for: .ninebotF3D))
         XCTAssertNil(StockFirmwareCatalog.entry(for: .ninebotED))
+        XCTAssertNil(StockFirmwareCatalog.entry(for: .gt3D))
     }
 
     func testF3ProStockGearAndCatalog() {
