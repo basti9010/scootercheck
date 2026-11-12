@@ -95,12 +95,28 @@ platform :ios do
       xcargs: "SUPPORTED_PLATFORMS=iphoneos SUPPORTS_MACCATALYST=NO"
     )
 
+    # Do not pass `changelog` together with skip_waiting: Fastlane then waits until
+    # the build appears on ASC (can hang 30–60+ min). Upload first, set notes best-effort.
+    changelog = ENV["TESTFLIGHT_CHANGELOG"] || "ScooterCheck Diagnose-Build"
     upload_to_testflight(
       api_key: api_key,
       app_identifier: BUNDLE_ID,
-      skip_waiting_for_build_processing: true,
-      changelog: ENV["TESTFLIGHT_CHANGELOG"] || "ScooterCheck Diagnose-Build"
+      skip_waiting_for_build_processing: true
     )
+
+    begin
+      build_number = get_build_number(xcodeproj: "ScooterCheck.xcodeproj")
+      set_changelog(
+        api_key: api_key,
+        app_identifier: BUNDLE_ID,
+        version: MARKETING_VERSION,
+        build: build_number,
+        changelog: changelog
+      )
+      UI.success("TestFlight changelog gesetzt (Build #{build_number})")
+    rescue => e
+      UI.important("Changelog nach Upload übersprungen (Build ggf. noch nicht sichtbar): #{e.message}")
+    end
   end
 end
 
