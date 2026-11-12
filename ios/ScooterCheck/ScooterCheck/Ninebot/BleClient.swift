@@ -273,6 +273,9 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var statusMessage = "Bereit"
     @Published private(set) var devices: [ScannedDevice] = []
     @Published private(set) var reading = IntegrityReading()
+    /// DarknessBot-ähnliche Livedaten (Poll nach erfolgreichem Dump).
+    @Published private(set) var liveTelemetry = LiveTelemetrySnapshot()
+    @Published private(set) var isLiveTelemetryActive = false
     @Published private(set) var lastError: String?
     @Published private(set) var detectedStack: BleStack = .unknown
     /// Wenn true: Liste nur mit Namen, die nach Scooter aussehen. Sonst alle BLE-Geräte.
@@ -365,6 +368,8 @@ final class BleClient: NSObject, ObservableObject {
     private var activeBleRequestSerial: UInt64 = 0
     /// Frames, die ankommen während kein sendReceive wartet (z. B. Power-Taste).
     private var incomingEncryptedFrames: [Data] = []
+    private var liveTelemetryTask: Task<Void, Never>?
+    private var liveTelemetryLengthMode: Nb.ReadLengthMode = .u16LE
 
     private static let passwordKeyPrefix = "ninebot_password_"
 
@@ -1630,6 +1635,76 @@ final class BleClient: NSObject, ObservableObject {
 
         phase = .done
         statusMessage = "Diagnose abgeschlossen (\(BleStack.ninebotEnc2.shortLabel), \(reading.rawRegisters.count) Register)"
+        liveTelemetryLengthMode = lengthMode
+        seedLiveTelemetryFromReading()
+        startLiveTelemetryPolling()
+    }
+
+    private func seedLiveTelemetryFromReading() {
+        var snap = LiveTelemetrySnapshot()
+        snap.speedKmh = reading.speedCurrentKmh
+        snap.batteryPercent = reading.batteryPercent
+        snap.voltageV = reading.batteryVoltage
+        snap.currentA = reading.batteryCurrent
+        snap.powerW = reading.peakPowerW
+        snap.remainKm = reading.remainKm
+        snap.tripKm = reading.tripKm
+        snap.tripMinutes = reading.rideTimeMinutes
+        snap.controllerTempC = reading.mcuTempC
+        snap.batteryTempC = reading.batteryTempC
+        snap.rawRegisterCount = reading.rawRegisters.count
+        if snap.hasAnyValue {
+            liveTelemetry = snap
+        }
+    }
+
+    /// Stoppt den Live-Poll (Disconnect / neuer Scan).
+    func stopLiveTelemetry() {
+        liveTelemetryTask?.cancel()
+        liveTelemetryTask = nil
+        isLiveTelemetryActive = false
+    }
+
+    /// Startet periodisches Auslesen der DarknessBot-Kernmetriken (nur Lesen).
+    private func startLiveTelemetryPolling() {
+        stopLiveTelemetry()
+        guard crypto != nil, peripheral?.state == .connected else { return }
+        isLiveTelemetryActive = true
+        let profile = dumpProfileHint
+        let mode = liveTelemetryLengthMode
+        liveTelemetryTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await self.pollLiveTelemetryOnce(profile: profile, mode: mode)
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
+    }
+
+    private func pollLiveTelemetryOnce(profile: ScooterProfile, mode: Nb.ReadLengthMode) async {
+        guard let crypto, peripheral?.state == .connected, phase == .done else {
+            stopLiveTelemetry()
+            return
+        }
+        var snap = liveTelemetry
+        let specs = DiagnosticMap.liveTelemetryFields(for: profile)
+        for spec in specs {
+            if Task.isCancelled { return }
+            if let parsed = await readDiagnosticRegister(
+                spec: spec,
+                crypto: crypto,
+                mode: mode,
+                timeout: 1.2
+            ) {
+                snap.apply(spec: spec, data: parsed.data)
+                DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+            }
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        }
+        if snap.hasAnyValue {
+            liveTelemetry = snap
+            statusMessage = "Livedaten aktiv · \(reading.rawRegisters.count) Register im Dump"
+        }
     }
 
     /// Klassische Board-Probe über Error-Register 0x01 (u8-Länge).
@@ -2055,6 +2130,7 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     private func resetSession() {
+        stopLiveTelemetry()
         peripheral = nil
         writeChar = nil
         notifyChar = nil
@@ -2101,6 +2177,7 @@ final class BleClient: NSObject, ObservableObject {
         // Marken / Modellnamen
         let tokens = [
             "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX3", "MAX G3", "G3 PLUS", "MAX G2", "MAXG2",
+            "GT3", "SUPERSCOOTER", "NAVEE", "SOFLOW", "SO FLOW", "SO4", "SO ONE",
             "XIAOMI", "XIAOMI.SCOOTER", "M365", "MI ELECTRIC", "MI SCOOTER", "MISCOOTER",
             "SCOOTER 3", "SCOOTER 4", "SCOOTER 5", "SCOOTER 6", "PRO 2", "PRO2", "PRO 3", "PRO3",
             "ESSENTIAL", "KICKSCOOTER"
@@ -2144,7 +2221,11 @@ final class BleClient: NSObject, ObservableObject {
 
     nonisolated static func advertisementLooksLikeScooter(_ advertisementData: [String: Any]) -> Bool {
         let uuids = advertisementServiceUUIDs(advertisementData)
-        let scooterServices: Set<CBUUID> = [NbUUID.service, XiaomiUUID.service]
+        let scooterServices: Set<CBUUID> = [
+            NbUUID.service,
+            XiaomiUUID.service,
+            CBUUID(string: NaveeProtocol.serviceUUID)
+        ]
         return uuids.contains { scooterServices.contains($0) }
     }
 

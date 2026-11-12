@@ -15,11 +15,13 @@ enum ScooterThumbnailAsset {
         .zt3Pro: zt3Pro,
         .maxG2: maxG2,
         .maxG3: maxG3,
+        .gt3: maxG3,
     ]
 
     /// Zusätzliche Texttreffer (lowercase) → Asset, falls kein Profil/Familie bekannt ist.
     private static let labelMatchers: [(needles: [String], asset: String)] = [
         (["zt3 pro", "zt3pro", "zt3"], zt3Pro),
+        (["gt3", "superscooter"], maxG3),
         (["max g3", "maxg3", "max3", "max 3"], maxG3),
         (["max g2", "maxg2", "max 2"], maxG2),
     ]

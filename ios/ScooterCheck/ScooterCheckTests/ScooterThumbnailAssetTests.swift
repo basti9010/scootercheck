@@ -5,6 +5,7 @@ final class ScooterThumbnailAssetTests: XCTestCase {
     func testFamilyMapping() {
         XCTAssertEqual(ScooterThumbnailAsset.name(for: .zt3Pro), "scooter_zt3pro")
         XCTAssertEqual(ScooterThumbnailAsset.name(for: .maxG3), "scooter_max_g3")
+        XCTAssertEqual(ScooterThumbnailAsset.name(for: .gt3), "scooter_max_g3")
         XCTAssertEqual(ScooterThumbnailAsset.name(for: .maxG2), "scooter_max_g2")
         XCTAssertEqual(ScooterThumbnailAsset.name(for: .ninebotF), ScooterThumbnailAsset.generic)
         XCTAssertEqual(ScooterThumbnailAsset.name(for: nil as ScooterFamily?), ScooterThumbnailAsset.generic)

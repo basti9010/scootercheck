@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var showFAQ = false
     @State private var showPrivacy = false
     @State private var showSettings = false
+    @State private var showFirmwareZipInspector = false
     @ObservedObject private var appSettings = AppSettings.shared
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
@@ -59,6 +60,8 @@ struct ContentView: View {
     @State private var bleDetailDevice: ScannedDevice? = nil
     /// Unbekannte Scooter ohne natives Protokoll → universelle Diagnose (kein Fake-Dump).
     @State private var universalDiagnosisDevice: ScannedDevice? = nil
+    /// Pedelec-Kandidat → Standard-GATT-Auslese (kein Bosch-Register-Dump).
+    @State private var pedelecReadout: PedelecReadoutTarget? = nil
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var watchService = BLEWatchService.shared
@@ -68,6 +71,7 @@ struct ContentView: View {
         case result
         case overview
         case find
+        case pedelec
     }
 
     /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
@@ -133,6 +137,18 @@ struct ContentView: View {
                     if screen == .find {
                         ScooterFindHubView(ble: ble, destination: $findDestination)
                             .transition(.opacity)
+                    } else if screen == .pedelec, AppFeatureFlags.pedelecAuslesenVisible {
+                        PedelecEvaluationView(
+                            ble: ble,
+                            onOpenReadout: { device, match in
+                                pedelecReadout = PedelecReadoutTarget(device: device, match: match)
+                            },
+                            onOpenSignalFinder: {
+                                findDestination = .signalFinder
+                                screen = .find
+                            }
+                        )
+                        .transition(.opacity)
                     } else if screen == .overview {
                         controlsOverview
                             .transition(.opacity)
@@ -143,7 +159,7 @@ struct ContentView: View {
                                     errorBanner(err)
                                 }
                                 switch screen {
-                                case .overview, .find:
+                                case .overview, .find, .pedelec:
                                     EmptyView()
                                 case .result:
                                     if let result {
@@ -207,6 +223,9 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
+            .sheet(isPresented: $showFirmwareZipInspector) {
+                FirmwareZipInspectorView()
+            }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
                 BleDeviceDetailSheet(
@@ -221,6 +240,24 @@ struct ContentView: View {
                     },
                     onDismiss: { bleDetailDevice = nil }
                 )
+            }
+            .sheet(item: $pedelecReadout) { target in
+                Group {
+                    if AppFeatureFlags.pedelecAuslesenVisible {
+                        PedelecReadoutView(
+                            device: target.device,
+                            match: target.match,
+                            onDismiss: { pedelecReadout = nil }
+                        )
+                    } else {
+                        Color.clear.onAppear { pedelecReadout = nil }
+                    }
+                }
+            }
+            .onAppear {
+                if screen == .pedelec, !AppFeatureFlags.pedelecAuslesenVisible {
+                    screen = .home
+                }
             }
             .sheet(item: $universalDiagnosisDevice) { device in
                 UniversalDiagnosisView(
@@ -252,7 +289,7 @@ struct ContentView: View {
             .sheet(isPresented: $showHistoryShare, onDismiss: { historyShareItems = [] }) {
                 ActivityShare(
                     items: historyShareItems,
-                    subject: historyShareItems.count > 2
+                    subject: historyShareItems.count > 3
                         ? "ScooterCheck Prüfberichte"
                         : "ScooterCheck Prüfbericht"
                 )
@@ -442,6 +479,17 @@ struct ContentView: View {
                 hideNameless: $auslesenHideNameless,
                 showsHideNameless: !ble.showOnlyLikelyScooters
             )
+
+            Button {
+                showFirmwareZipInspector = true
+            } label: {
+                Label("Firmware-ZIP auswerten", systemImage: "doc.zipper")
+                    .font(Theme.buttonSecondary)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(Theme.accent)
+            .accessibilityHint("Liest eine Flash-ZIP vom iPhone aus — ohne zu flashen")
         }
     }
 
@@ -705,6 +753,10 @@ struct ContentView: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.warn)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if ble.liveTelemetry.hasAnyValue || ble.isLiveTelemetryActive {
+                liveTelemetryCard(ble.liveTelemetry, active: ble.isLiveTelemetryActive)
             }
 
             Text("Details zur Prüfung")
@@ -972,6 +1024,50 @@ struct ContentView: View {
         try? history.save(current, scannedDevice: device)
     }
 
+    /// Livedaten-Streifen (DarknessBot-Parität) nach erfolgreicher Enc2-Auslese.
+    @ViewBuilder
+    private func liveTelemetryCard(_ snap: LiveTelemetrySnapshot, active: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            HStack {
+                Text("Livedaten")
+                    .font(Theme.sectionTitle)
+                Spacer()
+                Text(active ? "live" : "zuletzt")
+                    .font(Theme.caption)
+                    .foregroundStyle(active ? Theme.accent : Theme.textMuted)
+            }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                liveMetric("Geschwindigkeit", snap.speedKmh.map { String(format: "%.1f km/h", $0) })
+                liveMetric("Batterie", snap.batteryPercent.map { "\($0) %" })
+                liveMetric("Spannung", snap.voltageV.map { String(format: "%.2f V", $0) })
+                liveMetric("Strom", snap.currentA.map { String(format: "%.2f A", $0) })
+                liveMetric("Leistung", snap.powerW.map { String(format: "%.0f W", $0) })
+                liveMetric("Restreichweite", snap.remainKm.map { String(format: "%.1f km", $0) })
+                liveMetric("Trip", snap.tripKm.map { String(format: "%.1f km", $0) })
+                liveMetric("Trip-Zeit", snap.tripMinutes.map { "\($0) min" })
+                liveMetric("Controller", snap.controllerTempC.map { String(format: "%.1f °C", $0) })
+                liveMetric("Batterie-Temp.", snap.batteryTempC.map { String(format: "%.1f °C", $0) })
+            }
+        }
+        .padding(Theme.Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func liveMetric(_ title: String, _ value: String?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(Theme.textMuted)
+            Text(value ?? "—")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.92))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     /// Auffälligkeiten-Gruppe nur für Meta (Historie, Power-Cycle) — Klartext steht oben.
     private var detailFactGroups: [FactGroup] {
         [.evidence] + FactGroup.allCases.filter { $0 != .evidence }
@@ -1021,8 +1117,8 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            // find: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
-            if showsStartLanding || screen == .find {
+            // find/pedelec: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
+            if showsStartLanding || screen == .find || screen == .pedelec {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
@@ -1169,7 +1265,7 @@ struct ContentView: View {
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview, .find: return true
+        case .overview, .find, .pedelec: return true
         case .result: return result != nil
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
@@ -1190,7 +1286,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find:
+        case .find, .pedelec:
             break
         case .home:
             if ble.phase == .scanning {
@@ -1944,6 +2040,23 @@ struct ContentView: View {
                     navigateFromMenu(to: .home)
                 }
                 sideNavRow(
+                    title: "Firmware-ZIP auswerten",
+                    systemImage: "doc.zipper",
+                    selected: false
+                ) {
+                    setMenuOpen(false)
+                    showFirmwareZipInspector = true
+                }
+                if AppFeatureFlags.pedelecAuslesenVisible {
+                    sideNavRow(
+                        title: "Pedelec auslesen",
+                        systemImage: "bicycle",
+                        selected: screen == .pedelec
+                    ) {
+                        navigateFromMenu(to: .pedelec)
+                    }
+                }
+                sideNavRow(
                     title: history.activeCount == 0
                         ? "Prüfungen"
                         : "Prüfungen (\(history.activeCount))",
@@ -2088,6 +2201,19 @@ struct ContentView: View {
                 }
                 findDestination = .hub
                 screen = .find
+                if ble.phase != .scanning {
+                    ble.startScan()
+                }
+            case .pedelec:
+                guard AppFeatureFlags.pedelecAuslesenVisible else {
+                    screen = .home
+                    return
+                }
+                if screen == .result { persistCurrentSession() }
+                if ble.isConnectedToScooter {
+                    ble.disconnect()
+                }
+                screen = .pedelec
                 if ble.phase != .scanning {
                     ble.startScan()
                 }

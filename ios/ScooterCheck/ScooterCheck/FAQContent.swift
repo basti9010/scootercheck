@@ -44,10 +44,11 @@ struct FAQCategory: Identifiable, Hashable, Sendable {
 
 /// Statische Wissensbasis — spiegelt den in der App implementierten Funktionsumfang wider.
 enum FAQCatalog {
-    static let categories: [FAQCategory] = [
+    private static let allCategories: [FAQCategory] = [
         verstehen,
         grundlagen,
         finden,
+        pedelec,
         tuning,
         auslesen,
         register,
@@ -55,6 +56,16 @@ enum FAQCatalog {
         grenzen,
         haeufige,
     ]
+
+    /// Sichtbare FAQ-Kategorien (Pedelec nur bei Feature-Flag).
+    static var categories: [FAQCategory] {
+        allCategories.filter { category in
+            if category.id == "pedelec" {
+                return AppFeatureFlags.pedelecAuslesenVisible
+            }
+            return true
+        }
+    }
 
     static func filtered(query: String) -> [FAQCategory] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -93,9 +104,9 @@ private extension FAQCatalog {
                         "Bewerten",
                         "Dokumentieren (Prüfbericht als PDF und JSON)",
                     ]),
-                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4/5/6 (inkl. Mi-Home-ID xiaomi.scooter.6) — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US)."),
+                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), Segway SuperScooter GT3, ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4/5/6 (inkl. Mi-Home-ID xiaomi.scooter.6) — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US). Navee und SoFlow werden erkannt und über die universelle Diagnose geführt; ein freigegebener nativer Dump steht dort noch aus."),
                 ],
-                keywords: ["diagnose", "bluetooth", "lesen", "pdf", "json", "ninebot", "xiaomi"]
+                keywords: ["diagnose", "bluetooth", "lesen", "pdf", "json", "ninebot", "xiaomi", "gt3", "navee", "soflow"]
             ),
             FAQItem(
                 id: "veraendert",
@@ -129,14 +140,19 @@ private extension FAQCatalog {
                 question: "Was finde ich im linken Menü?",
                 segments: [
                     .paragraph("Über das Seitenmenü erreichst du die Hauptbereiche der App:"),
-                    .bullets([
-                        "E-Scooter auslesen — Diagnose und Prüfbericht",
-                        "Prüfungen — gespeicherte Berichte (Aktiv / Archiv)",
-                        "E-Scooter finden — Radar, Wächter, Signal-Finder",
-                        "FAQ & Wissensbasis",
-                        "Datenschutz",
-                        "Einstellungen — globale App-Darstellung (z. B. Schriftgröße)",
-                    ]),
+                    .bullets(
+                        [
+                            "E-Scooter auslesen — Diagnose und Prüfbericht",
+                            AppFeatureFlags.pedelecAuslesenVisible
+                                ? "Pedelec auslesen — BLE-Erkennung und Standard-GATT für eBikes (Pilot: Bosch Smart System)"
+                                : nil,
+                            "Prüfungen — gespeicherte Berichte (Aktiv / Archiv)",
+                            "E-Scooter finden — Radar, Wächter, Signal-Finder",
+                            "FAQ & Wissensbasis",
+                            "Datenschutz",
+                            "Einstellungen — globale App-Darstellung (z. B. Schriftgröße)",
+                        ].compactMap { $0 }
+                    ),
                     .callout("Feature-Einstellungen wie Radar oder Radarkarte bleiben am jeweiligen Zahnrad vor Ort. „Einstellungen“ im Menü gilt für die ganze App."),
                 ],
                 keywords: ["menü", "navigation", "einstellungen", "schriftgröße", "drawer", "seitenmenü"]
@@ -406,6 +422,55 @@ private extension FAQCatalog {
     )
 }
 
+// MARK: - 3b. Pedelec auslesen
+
+private extension FAQCatalog {
+    static let pedelec = FAQCategory(
+        id: "pedelec",
+        title: "Pedelec auslesen",
+        symbolName: "bicycle",
+        items: [
+            FAQItem(
+                id: "pedelec-was",
+                question: "Was ist „Pedelec auslesen“?",
+                segments: [
+                    .paragraph("„Pedelec auslesen“ ist der Diagnose-Einstieg für eBikes/Pedelecs — parallel zu „E-Scooter auslesen“."),
+                    .paragraph("ScooterCheck erkennt passende Bluetooth-Advertisements (z. B. Robert Bosch GmbH, Company-ID 0x02A6, oder Namensmuster wie Bosch/eBike/Kiox) und versucht eine Standard-GATT-Auslese (Device Information / GAP, nur Lesen)."),
+                    .paragraph("Eine Register-Auslese wie bei Ninebot/Xiaomi (Limit, Peak, Firmware-Boards) gibt es für Bosch Smart System noch nicht — dafür fehlen Pairing und das proprietäre Protokoll."),
+                    .callout("Pilotmodell: GHOST RIOT EN UNIVERSAL mit Bosch Performance Line CX (Smart System, Kiox 300 + LED Remote)."),
+                ],
+                keywords: [
+                    "pedelec", "ebike", "e-bike", "fahrrad", "ghost", "riot", "bosch", "cx",
+                    "smart system", "kiox", "auslesen", "gatt", "auswerten",
+                ]
+            ),
+            FAQItem(
+                id: "pedelec-tuning",
+                question: "Kann ScooterCheck erkennen, ob ein Pedelec getunt ist?",
+                segments: [
+                    .paragraph("Noch nicht über Limit-/Tuning-Register. Bei Pedelecs (DE) wäre die zentrale Frage, ob die Motorassistenz über 25 km/h hinaus aktiv bleibt."),
+                    .paragraph("Dafür braucht es Zugriff auf die Antriebsdaten (Bosch Smart System: Pairing/Bonding und proprietäres Protokoll). ScooterCheck bleibt read-only und liefert dafür noch keinen Register-Dump."),
+                    .callout("Was schon geht: Kandidat markieren und Standard-GATT auslesen (Name, Hersteller, Modell, Serien-/Firmware-Felder — sofern das Gerät sie freigibt)."),
+                ],
+                keywords: ["tuning", "25", "limit", "assistenz", "schneller", "bosch", "auslese"]
+            ),
+            FAQItem(
+                id: "pedelec-ghost",
+                question: "Wie teste ich das Ghost RIOT EN UNIVERSAL?",
+                segments: [
+                    .paragraph("System einschalten (Kiox 300 / LED-Remote), Menü „Pedelec auslesen“ öffnen und in der Nähe scannen."),
+                    .bullets([
+                        "Treffer tippen → Pedelec auslesen (Standard-GATT startet automatisch)",
+                        "Bei Störsignalen Signal-Finder nutzen",
+                        "Kein Ninebot-/Xiaomi-Prüfbericht und noch keine Bosch-Limit-Werte erwarten",
+                    ]),
+                ],
+                keywords: ["ghost", "riot", "universal", "cx", "testen", "feldversuch", "kiox"]
+            ),
+        ]
+    )
+}
+
 // MARK: - 4. Tuning verstehen
 
 private extension FAQCatalog {
@@ -482,19 +547,38 @@ private extension FAQCatalog {
         symbolName: "dot.radiowaves.left.and.right",
         items: [
             FAQItem(
+                id: "firmware-zip",
+                question: "Kann ScooterCheck eine Flash-ZIP auswerten?",
+                segments: [
+                    .paragraph("Ja — unter „E-Scooter auslesen“ bzw. im Menü: „Firmware-ZIP auswerten“. Die App liest nur (kein Flashen)."),
+                    .paragraph("Ausgewertet werden typische ScooterHacking-ZIPv3-Inhalte (info.json, FIRM.bin, params.txt) sowie Text-/String-Hinweise im Image."),
+                    .bullets([
+                        "Zielmodell, Board-Typ, kompatible Boards, MD5-Abgleich",
+                        "Speed-/Region-/Compat-Parameter aus params.txt",
+                        "Hinweise auf Custom-FW (SHFW/CFW) und mögliche Gesten-/Freischaltstrings",
+                        "Wiederholungsmuster wie „brake 6x“ in Klartext-Strings",
+                    ]),
+                    .callout("Treffer sind Hinweise aus dem Dateiinhalt. Ob eine Geste am konkreten Scooter wirkt, bestätigt nur die BLE-Auslese / der Vergleichstest."),
+                ],
+                keywords: ["zip", "firmware", "flash", "shu", "shfw", "cfw", "params", "kombination", "unlock"]
+            ),
+            FAQItem(
                 id: "tiefe",
                 question: "Wie tief kann ScooterCheck auslesen?",
                 segments: [
                     .paragraph("Die Auslese-Tiefe hängt vom Modell und der Firmware ab:"),
                     .bullets([
                         "Ninebot Max G3: Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)",
+                        "Segway SuperScooter GT3: Enc2 mit derselben x3-VCU-Registerkarte (NootNooot HW-ID 257); kein eigener Serien-FW-Katalog",
                         "Ninebot F3 Pro: Enc2-Auslese mit derselben G3-Registerkarte (SN 1EFH… / VCU 1EFC…)",
                         "Ninebot Max G2, G30, ZT3 Pro, F-/E-/D-Serie: Enc2, Registerkarte ähnlich G30/Legacy; Firmware-Katalog ggf. eingeschränkt",
                         "Xiaomi Classic: Klartext-Protokoll (55 AA)",
                         "Xiaomi 3/4/5/6 (z. B. xiaomi.scooter.6): oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich",
+                        "Navee / SoFlow: Marken- und Modellerkennung; Navee mit dokumentiertem Read-Frame-Codec — Live-Dump noch nicht freigegeben; keine Tuning-Writes",
+                        "Livedaten (nach Enc2-Dump): Geschwindigkeit, Batterie %, Spannung, Strom, Leistung (U·I), Restreichweite, Trip, Controller-/Batterie-Temperatur — Parität zu DarknessBot-KickScooter-Metriken (ohne EUC PWM/Pitch, ohne Writes)",
                     ]),
                 ],
-                keywords: ["enc2", "g3", "xiaomi", "auslese", "support"]
+                keywords: ["enc2", "g3", "gt3", "xiaomi", "navee", "soflow", "auslese", "support", "livedaten", "darknessbot"]
             ),
             FAQItem(
                 id: "seriennummern",
@@ -639,10 +723,10 @@ private extension FAQCatalog {
                 id: "rohdaten",
                 question: "Was sind Raw Data / Rohdaten?",
                 segments: [
-                    .paragraph("Rohdaten sind möglichst unverarbeitete Informationen direkt vom Steuergerät. ScooterCheck kann – soweit implementiert – Board, Register, Rohwert (Hex) und interpretierten Wert anzeigen bzw. im PDF unter den technischen Anhängen auflisten."),
-                    .paragraph("Das erhöht die Nachvollziehbarkeit der Bewertung: Man sieht nicht nur das Endergebnis, sondern auch die zugrunde liegenden Messwerte."),
+                    .paragraph("Rohdaten sind möglichst unverarbeitete Informationen direkt vom Steuergerät. ScooterCheck kann – soweit implementiert – Board, Register, Rohwert (Hex) und interpretierten Wert anzeigen."),
+                    .paragraph("Beim Speichern/Teilen entstehen drei Anlagen: der bewertete Bericht (PDF), eine separate Rohdaten-PDF (nur Register mit Inhalt, ohne Urteil) und die JSON-Datei. So kannst du die Messwerte selbst nachlesen, unabhängig von der Einschätzung."),
                 ],
-                keywords: ["raw", "rohdaten", "hex", "pdf"]
+                keywords: ["raw", "rohdaten", "hex", "pdf", "rohdaten.pdf", "ohne bewertung"]
             ),
             FAQItem(
                 id: "cross-board",
@@ -810,9 +894,10 @@ private extension FAQCatalog {
                         "Keine vollständige Erkennung rückgängig gemachter Manipulationen ohne Spuren",
                         "Keine zuverlässige Bewertung rein mechanischer Umbauten",
                         "Bei stark verschlüsselten Protokollen (z. B. manche Xiaomi 3/4) ggf. keine tiefe Auslese",
+                        "Noch keine Bosch-Register-Auslese für Pedelec-Limit/Tuning (Standard-GATT ja, proprietäres Smart System nein)",
                     ]),
                 ],
-                keywords: ["kann nicht", "grenzen", "xiaomi"]
+                keywords: ["kann nicht", "grenzen", "xiaomi", "bosch", "pedelec"]
             ),
         ]
     )
@@ -839,7 +924,7 @@ private extension FAQCatalog {
                 id: "bericht",
                 question: "Was enthält der Prüfbericht?",
                 segments: [
-                    .paragraph("Der exportierte Bericht (PDF/JSON) dokumentiert u. a. Zusammenfassung, Messwerte, optionale Attribution, technische Anhänge (Rohregister, Boards, Firmware, Evidenzmatrix, Neutralisierungen, Power-Cycle, ggf. Unlock-Hinweise) sowie methodische Hinweise."),
+                    .paragraph("Der Export umfasst den bewerteten Bericht (PDF), eine separate Rohdaten-PDF (alle Register mit Inhalt, ohne Urteil) und JSON. Der Bericht dokumentiert u. a. Zusammenfassung, Messwerte, optionale Attribution, technische Anhänge sowie methodische Hinweise."),
                     .paragraph("Gespeicherte Prüfungen bleiben in der App unter „Prüfungen“ verfügbar."),
                 ],
                 keywords: ["bericht", "pdf", "json", "protokoll"]

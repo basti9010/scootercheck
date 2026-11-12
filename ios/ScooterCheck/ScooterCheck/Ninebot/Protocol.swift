@@ -49,6 +49,11 @@ enum Nb {
         static let runtime: UInt8 = 0x64
         static let rideTime: UInt8 = 0x66
         static let singleMileage: UInt8 = 0x68
+        /// Trip-/Session-Laufzeit (NootNooot rRunningTime / rSingleRideTime).
+        static let runningTime: UInt8 = 0x69
+        static let singleRideTime: UInt8 = 0x6A
+        /// Controller-/Body-Temperatur (DarknessBot „controller temperature“).
+        static let bodyTemp: UInt8 = 0x6B
         static let maxSpeed: UInt8 = 0x46
         static let startSpeed: UInt8 = 0x42
         static let gearEDMax: UInt8 = 0x45
@@ -60,6 +65,13 @@ enum Nb {
         static let funBool2: UInt8 = 0x1E
         static let funBool3: UInt8 = 0x1F
         static let encryptionFlag: UInt8 = 0xE8
+
+        // BMS (Board 0x07) — DarknessBot Voltage/Current/Temp/Power-Parität.
+        static let bmsCurrent: UInt8 = 0x8D
+        static let bmsTemp: UInt8 = 0x96
+        static let bmsRemainCapacity: UInt8 = 0x8A
+        static let bmsMaxPower: UInt8 = 0x82
+        static let bmsTimeFull: UInt8 = 0x94
     }
 
     /// Register addresses are board-scoped; the same byte may mean different

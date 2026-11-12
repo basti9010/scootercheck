@@ -336,17 +336,22 @@ final class ProtocolHistoryStore: ObservableObject {
         let base = ProtocolPack.fileBaseName(protocolNumber: entry.protocolNumber)
         let sharePdf = dir.appendingPathComponent("\(base)_Bericht.pdf")
         let shareJson = dir.appendingPathComponent("\(base)_Daten.json")
+        let shareRaw = dir.appendingPathComponent("\(base)_Rohdaten.pdf")
         let pdf = fileManager.fileExists(atPath: sharePdf.path)
             ? sharePdf
             : dir.appendingPathComponent("\(entry.protocolNumber).pdf")
         let json = fileManager.fileExists(atPath: shareJson.path)
             ? shareJson
             : dir.appendingPathComponent("\(entry.protocolNumber).json")
+        let raw = fileManager.fileExists(atPath: shareRaw.path)
+            ? shareRaw
+            : dir.appendingPathComponent("\(entry.protocolNumber)_raw.pdf")
         guard fileManager.fileExists(atPath: pdf.path),
-              fileManager.fileExists(atPath: json.path) else {
+              fileManager.fileExists(atPath: json.path),
+              fileManager.fileExists(atPath: raw.path) else {
             return nil
         }
-        return ProtocolPack.PackURLs(pdfURL: pdf, jsonURL: json, directoryURL: dir)
+        return ProtocolPack.PackURLs(pdfURL: pdf, jsonURL: json, rawPdfURL: raw, directoryURL: dir)
     }
 
     /// Ensures pack files exist (regenerates from session if needed).
@@ -428,6 +433,11 @@ final class ProtocolHistoryStore: ObservableObject {
                 NamedShareFile(
                     url: pack.pdfURL,
                     title: "ScooterCheck \(entry.protocolNumber) Bericht.pdf",
+                    utType: "com.adobe.pdf"
+                ),
+                NamedShareFile(
+                    url: pack.rawPdfURL,
+                    title: "ScooterCheck \(entry.protocolNumber) Rohdaten.pdf",
                     utType: "com.adobe.pdf"
                 ),
                 NamedShareFile(

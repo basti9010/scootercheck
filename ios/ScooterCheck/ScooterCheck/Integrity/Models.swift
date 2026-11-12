@@ -39,6 +39,7 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
     case maxG2
     case maxG30
     case maxG3
+    case gt3
     case ninebotF
     case ninebotF3
     case ninebotE
@@ -52,6 +53,7 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         case .maxG2: return "Ninebot Max G2"
         case .maxG30: return "Ninebot Max G30"
         case .maxG3: return "Ninebot Max G3 / MAX3"
+        case .gt3: return "Segway SuperScooter GT3"
         case .ninebotF: return "Ninebot F2 / F-Serie"
         case .ninebotF3: return "Ninebot F3 / F3 Pro"
         case .ninebotE: return "Ninebot E-Serie"
@@ -66,6 +68,8 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         switch self {
         case .maxG3:
             return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)."
+        case .gt3:
+            return "Volle Enc2-Auslese mit G3/x3-VCU-Registerkarte (NootNooot HW-ID 257 / scootscoot gt3_pro). Kein eigener Serien-FW-Katalog."
         case .ninebotF3:
             return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (F3 Pro: SN 1EFH… / VCU 1EFC…)."
         case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotE, .ninebotD:
@@ -88,6 +92,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     case maxG3D
     case maxG3E
     case maxG3US
+    case gt3D
+    case gt3E
     case ninebotFD
     case ninebotFE
     case ninebotF3D
@@ -109,6 +115,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG2D, .maxG2E: return .maxG2
         case .maxG30D, .maxG30E: return .maxG30
         case .maxG3D, .maxG3E, .maxG3US: return .maxG3
+        case .gt3D, .gt3E: return .gt3
         case .ninebotFD, .ninebotFE: return .ninebotF
         case .ninebotF3D, .ninebotF3E: return .ninebotF3
         case .ninebotED, .ninebotEE: return .ninebotE
@@ -120,10 +127,10 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var market: ScooterMarket {
         switch self {
-        case .zt3ProD, .maxG2D, .maxG30D, .maxG3D, .ninebotFD, .ninebotF3D, .ninebotED, .ninebotDD,
+        case .zt3ProD, .maxG2D, .maxG30D, .maxG3D, .gt3D, .ninebotFD, .ninebotF3D, .ninebotED, .ninebotDD,
              .xiaomiClassicD, .xiaomiRecentD:
             return .de20
-        case .zt3ProE, .maxG2E, .maxG30E, .maxG3E, .ninebotFE, .ninebotF3E, .ninebotEE, .ninebotDE,
+        case .zt3ProE, .maxG2E, .maxG30E, .maxG3E, .gt3E, .ninebotFE, .ninebotF3E, .ninebotEE, .ninebotDE,
              .xiaomiClassicE, .xiaomiRecentE:
             return .eu25
         case .maxG3US:
@@ -146,6 +153,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG3D: return "Max G3 / MAX3 D"
         case .maxG3E: return "Max G3 / MAX3 E"
         case .maxG3US: return "Max G3 / MAX3 US"
+        case .gt3D: return "GT3 D"
+        case .gt3E: return "GT3 E"
         case .ninebotFD: return "F2 / F-Serie D"
         case .ninebotFE: return "F2 / F-Serie E"
         case .ninebotF3D: return "F3 Pro D"
@@ -177,6 +186,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG3D: return ["1CGB", "MAX3", "G3"]
         case .maxG3E: return ["1CGE", "MAX3", "G3"]
         case .maxG3US: return ["1CGC", "MAX3", "G3", "US"]
+        case .gt3D: return ["GT3", "SUPERSCOOTER", "NBW84"]
+        case .gt3E: return ["GT3", "SUPERSCOOTER", "NBW84", "GT3E"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
         case .ninebotF3D: return ["1EFH", "1EFC", "N2FS", "N2F", "F3"]
@@ -194,7 +205,7 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     /// Ninebot Enc2 vs. Xiaomi Klartext (55 AA). Xiaomi 3/4 ggf. verschlüsselt (55 AB) — dann eingeschränkt.
     var usesNinebotEnc2: Bool {
         switch family {
-        case .zt3Pro, .maxG2, .maxG30, .maxG3, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
+        case .zt3Pro, .maxG2, .maxG30, .maxG3, .gt3, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
             return true
         case .xiaomiClassic, .xiaomiRecent:
             return false
@@ -202,14 +213,14 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 
     /// Welche Registerkarte bei der Auslese verwendet wird.
-    /// Max G3 und F3 Pro teilen die Enc2-/x3-VCU-Karte (Limits, Trip-Peak, FW).
-    var usesG3RegisterMap: Bool { family == .maxG3 || family == .ninebotF3 }
+    /// Max G3, F3 Pro und GT3 teilen die Enc2-/x3-VCU-Karte (Limits, Trip-Peak, FW).
+    var usesG3RegisterMap: Bool { family == .maxG3 || family == .ninebotF3 || family == .gt3 }
 
     /// Serienmäßige höchste Leistungsstufe (nicht Eco/Drive/Sport-Label).
-    /// F3 Pro: drei Fahrmodi ab Werk → max. Stufe 3 ist Serie; Max G3 DE typisch 1.
+    /// F3 Pro / GT3: mehrere Fahrmodi ab Werk → max. Stufe 3 ist Serie; Max G3 DE typisch 1.
     var stockMaxGear: Int {
         switch family {
-        case .ninebotF3:
+        case .ninebotF3, .gt3:
             return 3
         case .maxG3:
             return market == .us37 ? 3 : 1
@@ -276,6 +287,18 @@ struct BleModelHint: Equatable, Sendable {
                 title: "Ninebot F3 Pro",
                 shortBadge: "F3 Pro",
                 profile: eu ? .ninebotF3E : .ninebotF3D
+            )
+        }
+
+        // Segway SuperScooter GT3 — vor generischem „G3“ / 1C…-Max-G3
+        if hay.contains("GT3") || hay.contains("SUPERSCOOTER") || compact.contains("NBW84")
+            || hay.contains("GT3 PRO") || compact.contains("GT3PRO") {
+            let eu = hay.contains("GT3E") || hay.contains("25 KM") || hay.contains("25KM")
+                || hay.contains("25KMH")
+            return BleModelHint(
+                title: "Segway SuperScooter GT3",
+                shortBadge: "GT3",
+                profile: eu ? .gt3E : .gt3D
             )
         }
 

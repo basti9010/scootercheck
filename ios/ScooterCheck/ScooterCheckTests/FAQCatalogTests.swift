@@ -4,11 +4,17 @@ import XCTest
 final class FAQCatalogTests: XCTestCase {
     func testRequiredCategoriesPresent() {
         let ids = Set(FAQCatalog.categories.map(\.id))
-        for needed in [
+        var needed = [
             "verstehen", "grundlagen", "finden", "tuning", "auslesen",
             "register", "bewertungen", "grenzen", "haeufige",
-        ] {
-            XCTAssertTrue(ids.contains(needed), "missing category \(needed)")
+        ]
+        if AppFeatureFlags.pedelecAuslesenVisible {
+            needed.insert("pedelec", at: 3)
+        } else {
+            XCTAssertFalse(ids.contains("pedelec"))
+        }
+        for id in needed {
+            XCTAssertTrue(ids.contains(id), "missing category \(id)")
         }
         let order = FAQCatalog.categories.map(\.id)
         guard let grundlagen = order.firstIndex(of: "grundlagen"),
@@ -16,6 +22,35 @@ final class FAQCatalogTests: XCTestCase {
             return XCTFail("grundlagen/finden missing")
         }
         XCTAssertEqual(finden, grundlagen + 1)
+        if AppFeatureFlags.pedelecAuslesenVisible {
+            guard let pedelec = order.firstIndex(of: "pedelec") else {
+                return XCTFail("pedelec missing")
+            }
+            XCTAssertEqual(pedelec, finden + 1)
+        }
+    }
+
+    func testPedelecSearchHits() {
+        guard AppFeatureFlags.pedelecAuslesenVisible else {
+            XCTAssertFalse(FAQCatalog.categories.contains(where: { $0.id == "pedelec" }))
+            XCTAssertTrue(FAQCatalog.filtered(query: "Pedelec auslesen").isEmpty)
+            return
+        }
+        for query in ["Pedelec", "Pedelec auslesen", "eBike", "Bosch", "Ghost", "RIOT", "Kiox", "Performance Line CX", "GATT"] {
+            let hits = FAQCatalog.filtered(query: query)
+            XCTAssertFalse(hits.isEmpty, "no hits for \(query)")
+            XCTAssertTrue(
+                hits.contains(where: { $0.id == "pedelec" }),
+                "pedelec category missing for \(query)"
+            )
+        }
+        let pedelec = FAQCatalog.categories.first { $0.id == "pedelec" }
+        XCTAssertEqual(pedelec?.title, "Pedelec auslesen")
+        XCTAssertEqual(pedelec?.symbolName, "bicycle")
+        let ids = Set(pedelec?.items.map(\.id) ?? [])
+        for needed in ["pedelec-was", "pedelec-tuning", "pedelec-ghost"] {
+            XCTAssertTrue(ids.contains(needed), "missing \(needed)")
+        }
     }
 
     func testScooterFindenSearchHits() {

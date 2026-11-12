@@ -56,6 +56,37 @@ final class VehicleApprovalTests: XCTestCase {
         XCTAssertTrue(r?.isConcrete == true)
     }
 
+    func testExtendedHintRecognizesNaveeXT5() {
+        let r = ExtendedScooterModelHint.recognize(bleName: "Navee XT5 Ultra")
+        XCTAssertEqual(r?.brand, "Navee")
+        XCTAssertEqual(r?.title, "Navee XT5 Ultra")
+        XCTAssertTrue(r?.isConcrete == true)
+    }
+
+    func testExtendedHintRecognizesSoFlowSO4() {
+        let r = ExtendedScooterModelHint.recognize(bleName: "SoFlow SO4 Pro")
+        XCTAssertEqual(r?.brand, "SoFlow")
+        XCTAssertEqual(r?.shortBadge, "SO4 Pro")
+        XCTAssertTrue(r?.isConcrete == true)
+    }
+
+    func testCatalogMatchesGT3AndNavee() {
+        let gt3 = VehicleApprovalCatalog.shared.match(
+            displayName: "Segway GT3 Pro",
+            bleName: "GT3",
+            modelLabel: "Segway SuperScooter GT3",
+            manufacturerHint: "Segway"
+        )
+        XCTAssertEqual(gt3?.entry.manufacturer, "Segway-Ninebot")
+        let navee = VehicleApprovalCatalog.shared.match(
+            displayName: "Navee N65",
+            bleName: "Navee N65",
+            modelLabel: "Navee N65",
+            manufacturerHint: "Navee"
+        )
+        XCTAssertEqual(navee?.entry.manufacturer, "Navee")
+    }
+
     func testNoInventedAbeNumbersInCatalog() {
         for entry in VehicleApprovalCatalog.shared.entries {
             if let abe = entry.abeNumber {
