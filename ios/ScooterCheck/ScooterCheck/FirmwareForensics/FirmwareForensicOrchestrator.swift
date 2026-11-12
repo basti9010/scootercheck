@@ -24,7 +24,9 @@ enum FirmwareForensicOrchestrator {
         var primaryRole: FirmwarePayloadRole?
         var paramsText: String?
 
-        for (path, bytes) in loaded.files {
+        for file in loaded.files {
+            let path = file.path
+            let bytes = file.data
             let role = FirmwarePackageLoader.role(for: path, meta: loaded.meta)
             let digest = FirmwareDigest.make(from: bytes)
             var notes: [String] = []

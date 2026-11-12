@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Vehicle context (optional BLE / last readout)
 
-struct FirmwareVehicleContext: Equatable, Sendable {
+struct FirmwareVehicleContext: Equatable, Codable, Sendable {
     var manufacturer: String?
     var modelLabel: String?
     var profileId: String?

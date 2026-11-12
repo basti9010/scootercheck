@@ -1,10 +1,15 @@
 import Foundation
 
+struct FirmwareLoadedFile: Equatable, Sendable {
+    var path: String
+    var data: Data
+}
+
 struct FirmwareLoadedPackage: Equatable, Sendable {
     var containerKind: FirmwareContainerKind
     var archiveDigest: FirmwareFileDigest
     var archiveByteCount: Int
-    var files: [(path: String, data: Data)]
+    var files: [FirmwareLoadedFile]
     var meta: FirmwarePackageMeta
     var loadWarnings: [String]
 }
@@ -91,7 +96,7 @@ enum FirmwarePackageLoader {
             containerKind: kind,
             archiveDigest: archiveDigest,
             archiveByteCount: data.count,
-            files: [(path, data)],
+            files: [FirmwareLoadedFile(path: path, data: data)],
             meta: meta,
             loadWarnings: []
         )
@@ -112,7 +117,7 @@ enum FirmwarePackageLoader {
                 loadWarnings: [error.localizedDescription]
             )
         }
-        let files = entries.map { ($0.name, $0.data) }
+        let files = entries.map { FirmwareLoadedFile(path: $0.name, data: $0.data) }
         var meta = FirmwarePackageMeta.empty
         if let info = entries.first(where: { baseName($0.name).lowercased() == "info.json" }) {
             meta = parseInfoJSON(info.data) ?? meta
