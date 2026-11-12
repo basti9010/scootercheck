@@ -1,13 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "source": "ScooterCheck bundled diagnostic profiles",
-  "updatedAt": "2026-03-18",
-  "note": "verified=true only for native stacks already implemented in BleClient. Other manufacturers listed as research hints without inventing read protocols. No executable scripts.",
+  "updatedAt": "2026-11-12",
+  "note": "verified=true only for native stacks already implemented in BleClient. Research entries cite public sources (docs/PROTOCOL_SOURCES.md). No invented write/unlock protocols. No executable scripts.",
   "profiles": [
     {
       "id": "ninebot-enc2-native",
       "manufacturer": "Segway-Ninebot",
-      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "F3", "1C"],
+      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "F3", "1C", "1EF"],
       "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
       "protocolVersion": "enc2",
       "supportedReads": [
@@ -20,13 +20,13 @@
       ],
       "referenceDataVersion": "integrity-profiles-v1",
       "approvalDataVersion": "vehicle-approval-v1",
-      "source": "ScooterCheck Ninebot Enc2 protocol layer",
-      "sourceUrl": null,
+      "source": "NinebotCrypto/SHU + Max-G3-Flasher + NootNooot device tables (read subset)",
+      "sourceUrl": "https://nootnooot.codeberg.page/segway-ninebot-ble/",
       "verified": true,
       "minAppBuild": 1,
       "nativeStack": "ninebotEnc2",
-      "updatedAt": "2026-03-18",
-      "notes": "Vollständige Diagnose nur nach erfolgreichem Enc2-Handshake."
+      "updatedAt": "2026-11-12",
+      "notes": "Vollständige Diagnose nur nach erfolgreichem Enc2-Handshake. Erweiterbare Lesekarten: GT3/P65/ST2 laut NootNooot (noch nicht als eigene Maps)."
     },
     {
       "id": "xiaomi-plaintext-native",
@@ -59,12 +59,12 @@
       ],
       "referenceDataVersion": "integrity-profiles-v1",
       "approvalDataVersion": "vehicle-approval-v1",
-      "source": "ScooterCheck Xiaomi plaintext protocol",
-      "sourceUrl": null,
+      "source": "CamiAlfa M365-BLE-PROTOCOL + scooter-tuning-db xiaomi_m365 (read subset)",
+      "sourceUrl": "https://github.com/CamiAlfa/M365-BLE-PROTOCOL",
       "verified": true,
       "minAppBuild": 1,
       "nativeStack": "xiaomiPlain",
-      "updatedAt": "2026-10-27",
+      "updatedAt": "2026-11-12",
       "notes": "Inkl. Mi-Home-IDs wie xiaomi.scooter.6 (Electric Scooter 6). Verschlüsselte Xiaomi-Kommunikation (55 AB) wird nicht umgangen."
     },
     {
@@ -114,6 +114,40 @@
       "notes": "Nur standardisierte lesbare Characteristics — kein proprietäres Scooter-Protokoll."
     },
     {
+      "id": "segway-gt3-research",
+      "manufacturer": "Segway",
+      "modelPatterns": ["GT3", "SUPERSCOOTER", "GT1", "GT2"],
+      "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+      "protocolVersion": "enc2-candidate",
+      "supportedReads": [],
+      "referenceDataVersion": null,
+      "approvalDataVersion": "vehicle-approval-v1",
+      "source": "NootNooot device tables + scootscoot gt3_pro (Enc2 read candidate)",
+      "sourceUrl": "https://nootnooot.codeberg.page/segway-ninebot-ble/devices/",
+      "verified": false,
+      "minAppBuild": 1,
+      "nativeStack": null,
+      "updatedAt": "2026-11-12",
+      "notes": "Enc2 wie G3/ZT3; eigene DiagnosticMap noch nicht freigegeben. Versuch über ninebotEnc2 möglich möglich, Telemetrie unvollständig."
+    },
+    {
+      "id": "neoline-research",
+      "manufacturer": "Neoline",
+      "modelPatterns": ["NEOLINE", "E-RIDE", "ERIDE"],
+      "serviceUUIDs": [],
+      "protocolVersion": "plaintext-candidate",
+      "supportedReads": [],
+      "referenceDataVersion": null,
+      "approvalDataVersion": null,
+      "source": "scooter-tuning-db neoline.json (TI CC254x plaintext candidate)",
+      "sourceUrl": "https://github.com/jx-grxf/scooter-tuning-db",
+      "verified": false,
+      "minAppBuild": 1,
+      "nativeStack": null,
+      "updatedAt": "2026-11-12",
+      "notes": "Öffentliche plaintext-BLE-Karte vorhanden — noch kein nativer ScooterCheck-Stack."
+    },
+    {
       "id": "kukirin-research",
       "manufacturer": "KuKirin",
       "modelPatterns": ["KUKIRIN", "KUGOO KIRIN", "KUGOO"],
@@ -122,30 +156,30 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": "vehicle-approval-v1",
-      "source": "Research hint — no validated read-only proprietary protocol in ScooterCheck",
-      "sourceUrl": null,
+      "source": "scooter-tuning-db kukirin.json — dashboard P-menu only, no BLE register map",
+      "sourceUrl": "https://github.com/jx-grxf/scooter-tuning-db",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
-      "notes": "Kein inventiertes Ausleseprotokoll. GATT-DIS falls vorhanden; sonst Status „kein kompatibles Protokoll“."
+      "updatedAt": "2026-11-12",
+      "notes": "Kein BLE-Registermap in offenen Quellen. GATT-DIS falls vorhanden."
     },
     {
       "id": "navee-research",
       "manufacturer": "Navee",
       "modelPatterns": ["NAVEE"],
       "serviceUUIDs": [],
-      "protocolVersion": "none",
+      "protocolVersion": "research",
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
-      "sourceUrl": null,
+      "source": "pepperonas/navee-st3-pro PROTOCOL.md + Laufbursche NAVEE app (RE archive)",
+      "sourceUrl": "https://github.com/pepperonas/navee-st3-pro",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
-      "notes": "Hersteller erkannt möglich; kein freigegebenes Diagnoseprofil."
+      "updatedAt": "2026-11-12",
+      "notes": "Öffentliche Protokollbeschreibung vorhanden; noch kein freigegebener Read-Only-Stack in ScooterCheck."
     },
     {
       "id": "vmax-research",
@@ -156,12 +190,12 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
+      "source": "Research hint — no comprehensive open BLE map found",
       "sourceUrl": null,
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
+      "updatedAt": "2026-11-12",
       "notes": "Kein freigegebenes Lesprotokoll in dieser App-Version."
     },
     {
@@ -173,12 +207,12 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
+      "source": "Research hint — no comprehensive open BLE map found",
       "sourceUrl": null,
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
+      "updatedAt": "2026-11-12",
       "notes": "Recherchehinweis."
     },
     {
@@ -190,13 +224,13 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
-      "sourceUrl": null,
+      "source": "Community BLE apps exist (e.g. SOHacks) — tuning-focused; not imported",
+      "sourceUrl": "https://github.com/sohacks-tg119/sohacks",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
-      "notes": "Recherchehinweis."
+      "updatedAt": "2026-11-12",
+      "notes": "Nur Markenerkennung. Keine Write-/Tuning-Pfade in ScooterCheck."
     },
     {
       "id": "vsett-research",
@@ -207,12 +241,12 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
+      "source": "Research hint — no comprehensive open BLE map found",
       "sourceUrl": null,
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
+      "updatedAt": "2026-11-12",
       "notes": "Recherchehinweis."
     },
     {
@@ -224,12 +258,12 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
+      "source": "Research hint — no comprehensive open BLE map found",
       "sourceUrl": null,
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
+      "updatedAt": "2026-11-12",
       "notes": "Recherchehinweis."
     },
     {
@@ -241,12 +275,12 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
+      "source": "Research hint — no comprehensive open BLE map found",
       "sourceUrl": null,
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
+      "updatedAt": "2026-11-12",
       "notes": "Recherchehinweis."
     },
     {
@@ -258,13 +292,13 @@
       "supportedReads": [],
       "referenceDataVersion": null,
       "approvalDataVersion": null,
-      "source": "Research hint only",
-      "sourceUrl": null,
+      "source": "Listed as not comprehensively covered in open scooter-tuning-db",
+      "sourceUrl": "https://github.com/jx-grxf/scooter-tuning-db",
       "verified": false,
       "minAppBuild": 1,
       "nativeStack": null,
-      "updatedAt": "2026-03-18",
-      "notes": "Recherchehinweis."
+      "updatedAt": "2026-11-12",
+      "notes": "Recherchehinweis — oft geschlossene Controller-Stacks."
     }
   ]
 }
