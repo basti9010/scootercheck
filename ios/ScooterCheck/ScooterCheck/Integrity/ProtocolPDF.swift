@@ -82,10 +82,12 @@ enum ProtocolPack {
     struct PackURLs {
         let pdfURL: URL
         let jsonURL: URL
+        /// Separates Rohdatenregister-PDF (ohne Bewertung).
+        let rawPdfURL: URL
         let directoryURL: URL
     }
 
-    /// AirDrop-freundliche Dateinamen: `ScooterCheck_<Protokoll>_Bericht.pdf/.json`
+    /// AirDrop-freundliche Dateinamen: `ScooterCheck_<Protokoll>_Bericht.pdf/.json/_Rohdaten.pdf`
     static func fileBaseName(protocolNumber: String) -> String {
         let safe = protocolNumber.replacingOccurrences(of: "/", with: "-")
         return "ScooterCheck_\(safe)"
@@ -104,18 +106,29 @@ enum ProtocolPack {
         // Canonical names used by history store + legacy short names for compatibility.
         let pdfURL = baseDir.appendingPathComponent("\(session.protocolNumber).pdf")
         let jsonURL = baseDir.appendingPathComponent("\(session.protocolNumber).json")
+        let rawCanonicalURL = baseDir.appendingPathComponent("\(session.protocolNumber)_raw.pdf")
         let sharePdfURL = baseDir.appendingPathComponent("\(base)_Bericht.pdf")
         let shareJsonURL = baseDir.appendingPathComponent("\(base)_Daten.json")
+        let shareRawPdfURL = baseDir.appendingPathComponent("\(base)_Rohdaten.pdf")
 
         let pdfData = try ProtocolPDF.render(session: session, result: result)
         try pdfData.write(to: pdfURL, options: .atomic)
         try pdfData.write(to: sharePdfURL, options: .atomic)
 
+        let rawPdfData = try ProtocolPDF.renderRawRegisters(session: session, result: result)
+        try rawPdfData.write(to: rawCanonicalURL, options: .atomic)
+        try rawPdfData.write(to: shareRawPdfURL, options: .atomic)
+
         let jsonData = try ProtocolJSON.makeJSON(session: session, result: result)
         try jsonData.write(to: jsonURL, options: .atomic)
         try jsonData.write(to: shareJsonURL, options: .atomic)
 
-        return PackURLs(pdfURL: sharePdfURL, jsonURL: shareJsonURL, directoryURL: baseDir)
+        return PackURLs(
+            pdfURL: sharePdfURL,
+            jsonURL: shareJsonURL,
+            rawPdfURL: shareRawPdfURL,
+            directoryURL: baseDir
+        )
     }
 }
 
@@ -146,6 +159,29 @@ enum ProtocolPDF {
             y = drawPlainSectionIV(context: context, result: result, y: y)
             y = drawClosingNotes(context: context, session: session, result: result, y: y)
         }
+    }
+
+    /// Separates PDF: alle ausgelesenen Register mit Inhalt — ohne Bewertung/Urteil.
+    static func renderRawRegisters(session: CheckSession, result: IntegrityResult) throws -> Data {
+        let registers = registersWithContent(from: result.reading)
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        return renderer.pdfData { context in
+            var y = beginStyledPage(context)
+            y = drawRawDumpLetterhead(context: context, session: session, result: result, registerCount: registers.count, y: y)
+            y = drawRawDumpBody(context: context, registers: registers, y: y)
+            _ = drawRawDumpFooter(context: context, session: session, y: y)
+        }
+    }
+
+    /// Register mit nicht-leerem Hex-Inhalt (sortiert nach Board/Adresse und Index).
+    static func registersWithContent(from reading: IntegrityReading) -> [RawRegister] {
+        reading.rawRegisters
+            .filter { !$0.valueHex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted {
+                if $0.address != $1.address { return $0.address.localizedStandardCompare($1.address) == .orderedAscending }
+                if $0.index != $1.index { return $0.index < $1.index }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
     }
 
     // MARK: Letterhead
@@ -579,8 +615,8 @@ enum ProtocolPDF {
             Die Auslese erfolgte über das Bluetooth-LE-Diagnoseprotokoll des Herstellers. \
             Register werden mit Serienprofilen verglichen. Firmware-Module (MCU, BLE, VCU, BMS) \
             werden — soweit hinterlegt — mit bekannten Serienständen abgeglichen. \
-            Mustererkennung basiert auf definierten Heuristiken. Rohdaten liegen in Abschnitt IV \
-            und als JSON-Anlage vor.
+            Mustererkennung basiert auf definierten Heuristiken. Rohdaten liegen in Abschnitt IV, \
+            in der separaten Rohdaten-PDF und als JSON-Anlage vor.
             """,
             at: cursor
         )
@@ -617,6 +653,139 @@ enum ProtocolPDF {
     }
 
     // Unused legacy stubs removed — PDF uses drawPlainSectionI…IV + drawClosingNotes.
+
+    // MARK: - Raw register dump PDF (no verdict)
+
+    private static func drawRawDumpLetterhead(
+        context: UIGraphicsPDFRendererContext,
+        session: CheckSession,
+        result: IntegrityResult,
+        registerCount: Int,
+        y: CGFloat
+    ) -> CGFloat {
+        var cursor = y
+        let brandY = cursor
+        let scooterW = measure("Scooter", font: titleFont(size: 26))
+        _ = drawText("Scooter", at: brandY, font: titleFont(size: 26), color: Theme.UI.accent)
+        cursor = drawText(
+            "Check",
+            at: brandY,
+            font: titleFont(size: 26),
+            color: Theme.UI.text,
+            xOffset: scooterW
+        )
+        cursor += 6
+        cursor = drawText(
+            "Rohdatenregister · ohne Bewertung",
+            at: cursor,
+            font: bodyFont(size: 11),
+            color: Theme.UI.muted
+        )
+        cursor += 10
+
+        let metaH: CGFloat = 96
+        drawCard(in: CGRect(x: margin, y: cursor, width: contentWidth, height: metaH))
+        var metaY = cursor + 12
+        metaY = drawText("Protokoll-Nr.  \(session.protocolNumber)", at: metaY, font: bodyFont(size: 11, weight: .semibold), color: Theme.UI.text, indent: 14)
+        metaY = drawText("Erstellt        \(germanDate(session.createdAt))", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
+        metaY = drawText("Profil          \(result.profile.label)", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
+        metaY = drawText("Seriennummer    \(result.reading.serialDisplay ?? "—")", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
+        metaY = drawText("Register        \(registerCount) mit Inhalt", at: metaY, font: bodyFont(size: 11), color: Theme.UI.muted, indent: 14)
+        cursor += metaH + 12
+
+        cursor = drawParagraph(
+            """
+            Diese Anlage listet ausschließlich ausgelesene Register mit Inhalt (Adresse, Name, Hex, ggf. Decodierung). \
+            Es erfolgt hier keine Einschätzung, kein Urteil und keine Evidenzbewertung — nur Rohdaten zur eigenen Nachprüfung.
+            """,
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        return cursor + 6
+    }
+
+    private static func drawRawDumpBody(
+        context: UIGraphicsPDFRendererContext,
+        registers: [RawRegister],
+        y: CGFloat
+    ) -> CGFloat {
+        var cursor = ensureSpace(context: context, y: y, needed: 40)
+        if registers.isEmpty {
+            return drawText(
+                "Keine Register mit Inhalt in dieser Auslese.",
+                at: cursor,
+                font: bodyFont(size: 10),
+                color: Theme.UI.muted
+            ) + sectionGap
+        }
+
+        cursor = drawText(
+            "Adresse / Index          Name                         Hex / Inhalt",
+            at: cursor,
+            font: monoFont(size: 8, weight: .semibold),
+            color: Theme.UI.muted
+        )
+        cursor += 4
+
+        var lastAddress: String?
+        for reg in registers {
+            if reg.address != lastAddress {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
+                cursor = drawText(
+                    "— \(reg.address) —",
+                    at: cursor,
+                    font: bodyFont(size: 9, weight: .semibold),
+                    color: Theme.UI.accent
+                )
+                lastAddress = reg.address
+            }
+            cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+            let idx = String(format: "0x%02X", reg.index)
+            let head = "\(reg.address) \(idx)"
+            cursor = drawText(
+                "\(pad(head, to: 22))  \(pad(reg.name, to: 28))  \(reg.valueHex)",
+                at: cursor,
+                font: monoFont(size: 8),
+                color: Theme.UI.text
+            )
+            if let decoded = reg.valueDecoded?.trimmingCharacters(in: .whitespacesAndNewlines), !decoded.isEmpty {
+                cursor = drawText(
+                    "    Inhalt: \(decoded)",
+                    at: cursor,
+                    font: bodyFont(size: 8),
+                    color: Theme.UI.muted
+                )
+            }
+        }
+        return cursor + sectionGap
+    }
+
+    private static func drawRawDumpFooter(
+        context: UIGraphicsPDFRendererContext,
+        session: CheckSession,
+        y: CGFloat
+    ) -> CGFloat {
+        var cursor = ensureSpace(context: context, y: y, needed: 50)
+        cursor = drawText(
+            "— Ende Rohdaten \(session.protocolNumber) —",
+            at: cursor,
+            font: bodyFont(size: 9),
+            color: Theme.UI.muted
+        )
+        let year = Calendar.current.component(.year, from: Date())
+        return drawText(
+            "© \(year) Bastian Ellinghausen · App \(appVersion)",
+            at: cursor,
+            font: bodyFont(size: 8),
+            color: Theme.UI.muted
+        )
+    }
+
+    private static func pad(_ text: String, to width: Int) -> String {
+        if text.count >= width { return String(text.prefix(width)) }
+        return text + String(repeating: " ", count: width - text.count)
+    }
 
     @discardableResult
     private static func beginStyledPage(_ context: UIGraphicsPDFRendererContext) -> CGFloat {
@@ -944,6 +1113,11 @@ private func shareItems(from pack: ProtocolPack.PackURLs, protocolNumber: String
         NamedShareFile(
             url: pack.pdfURL,
             title: "ScooterCheck \(protocolNumber) Bericht.pdf",
+            utType: "com.adobe.pdf"
+        ),
+        NamedShareFile(
+            url: pack.rawPdfURL,
+            title: "ScooterCheck \(protocolNumber) Rohdaten.pdf",
             utType: "com.adobe.pdf"
         ),
         NamedShareFile(

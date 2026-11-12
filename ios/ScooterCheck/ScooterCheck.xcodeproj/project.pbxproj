@@ -26,6 +26,7 @@
 		A100000000000000000000B2 /* PedelecEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B2 /* PedelecEvaluationTests.swift */; };
 		A100000000000000000000B3 /* PedelecReadoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B3 /* PedelecReadoutView.swift */; };
 		A100000000000000000000B5 /* AppFeatureFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B5 /* AppFeatureFlagsTests.swift */; };
+		A100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift */; };
 		A10000000000000000000038 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000038 /* PrivacyInfo.xcprivacy */; };
 		A10000000000000000000039 /* PrivacyContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000039 /* PrivacyContentTests.swift */; };
 		A1000000000000000000002C /* ScooterFinderEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000002C /* ScooterFinderEngine.swift */; };
@@ -147,6 +148,7 @@
 		B100000000000000000000B2 /* PedelecEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedelecEvaluationTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000B3 /* PedelecReadoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedelec/PedelecReadoutView.swift; sourceTree = "<group>"; };
 		B100000000000000000000B5 /* AppFeatureFlagsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFeatureFlagsTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolRawDumpPDFTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000038 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B10000000000000000000039 /* PrivacyContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyContentTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000002C /* ScooterFinderEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterFinderEngine.swift; sourceTree = "<group>"; };
@@ -399,6 +401,7 @@
 				B1000000000000000000002B /* FAQCatalogTests.swift */,
 				B100000000000000000000B2 /* PedelecEvaluationTests.swift */,
 				B100000000000000000000B5 /* AppFeatureFlagsTests.swift */,
+				B100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift */,
 				B10000000000000000000039 /* PrivacyContentTests.swift */,
 				B1000000000000000000002E /* ScooterFinderMathTests.swift */,
 				B10000000000000000000043 /* BLESearchCoreTests.swift */,
@@ -644,6 +647,7 @@
 				A1000000000000000000002B /* FAQCatalogTests.swift in Sources */,
 				A100000000000000000000B2 /* PedelecEvaluationTests.swift in Sources */,
 				A100000000000000000000B5 /* AppFeatureFlagsTests.swift in Sources */,
+				A100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift in Sources */,
 				A10000000000000000000039 /* PrivacyContentTests.swift in Sources */,
 				A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */,
 				A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */,

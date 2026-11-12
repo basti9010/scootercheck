@@ -285,7 +285,7 @@ struct ContentView: View {
             .sheet(isPresented: $showHistoryShare, onDismiss: { historyShareItems = [] }) {
                 ActivityShare(
                     items: historyShareItems,
-                    subject: historyShareItems.count > 2
+                    subject: historyShareItems.count > 3
                         ? "ScooterCheck Prüfberichte"
                         : "ScooterCheck Prüfbericht"
                 )

@@ -704,10 +704,10 @@ private extension FAQCatalog {
                 id: "rohdaten",
                 question: "Was sind Raw Data / Rohdaten?",
                 segments: [
-                    .paragraph("Rohdaten sind möglichst unverarbeitete Informationen direkt vom Steuergerät. ScooterCheck kann – soweit implementiert – Board, Register, Rohwert (Hex) und interpretierten Wert anzeigen bzw. im PDF unter den technischen Anhängen auflisten."),
-                    .paragraph("Das erhöht die Nachvollziehbarkeit der Bewertung: Man sieht nicht nur das Endergebnis, sondern auch die zugrunde liegenden Messwerte."),
+                    .paragraph("Rohdaten sind möglichst unverarbeitete Informationen direkt vom Steuergerät. ScooterCheck kann – soweit implementiert – Board, Register, Rohwert (Hex) und interpretierten Wert anzeigen."),
+                    .paragraph("Beim Speichern/Teilen entstehen drei Anlagen: der bewertete Bericht (PDF), eine separate Rohdaten-PDF (nur Register mit Inhalt, ohne Urteil) und die JSON-Datei. So kannst du die Messwerte selbst nachlesen, unabhängig von der Einschätzung."),
                 ],
-                keywords: ["raw", "rohdaten", "hex", "pdf"]
+                keywords: ["raw", "rohdaten", "hex", "pdf", "rohdaten.pdf", "ohne bewertung"]
             ),
             FAQItem(
                 id: "cross-board",
@@ -905,7 +905,7 @@ private extension FAQCatalog {
                 id: "bericht",
                 question: "Was enthält der Prüfbericht?",
                 segments: [
-                    .paragraph("Der exportierte Bericht (PDF/JSON) dokumentiert u. a. Zusammenfassung, Messwerte, optionale Attribution, technische Anhänge (Rohregister, Boards, Firmware, Evidenzmatrix, Neutralisierungen, Power-Cycle, ggf. Unlock-Hinweise) sowie methodische Hinweise."),
+                    .paragraph("Der Export umfasst den bewerteten Bericht (PDF), eine separate Rohdaten-PDF (alle Register mit Inhalt, ohne Urteil) und JSON. Der Bericht dokumentiert u. a. Zusammenfassung, Messwerte, optionale Attribution, technische Anhänge sowie methodische Hinweise."),
                     .paragraph("Gespeicherte Prüfungen bleiben in der App unter „Prüfungen“ verfügbar."),
                 ],
                 keywords: ["bericht", "pdf", "json", "protokoll"]
