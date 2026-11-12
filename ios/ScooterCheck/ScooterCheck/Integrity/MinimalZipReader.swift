@@ -102,16 +102,17 @@ enum MinimalZipReader {
         var output = Data(count: capacity)
         var total = 0
         while true {
+            let outCount = output.count
             let status: Int32 = output.withUnsafeMutableBytes { dst in
                 guard let base = dst.bindMemory(to: Bytef.self).baseAddress else { return Z_STREAM_ERROR }
                 stream.next_out = base.advanced(by: total)
-                stream.avail_out = uInt(output.count - total)
+                stream.avail_out = uInt(outCount - total)
                 return inflate(&stream, Z_NO_FLUSH)
             }
             total = Int(stream.total_out)
             if status == Z_STREAM_END { break }
             if status == Z_BUF_ERROR || stream.avail_out == 0 {
-                output.count += max(capacity, 4096)
+                output.count = outCount + max(capacity, 4096)
                 continue
             }
             if status != Z_OK { throw Error.inflateFailed }
