@@ -1,28 +1,13 @@
-# Firmware-ZIP-Inspektor (Read-Only)
+# Firmware-ZIP-Inspektor → Firmware-Forensik 2.0
 
 Stand: 2026-11-12
 
-ScooterCheck kann Flash-/Firmware-ZIPs vom iPhone **nur lesen** — kein Flashen, keine Schreibzugriffe auf den Scooter.
+Die frühere ZIP-Heuristik wurde durch **Firmware-Forensik 2.0** ersetzt.
 
-## Unterstütztes Format
+Siehe: [FIRMWARE_FORENSICS_2.md](./FIRMWARE_FORENSICS_2.md)
 
-Primär [ScooterHacking ZIPv3.2](https://wiki.scooterhacking.org/doku.php?id=zip3):
-
-- `info.json` — displayName, models, type, compatible, md5
-- `FIRM.bin` — Image (MD5-Abgleich)
-- optional `params.txt` — Changelog / Parameter
-
-Andere ZIPs: Einträge werden trotzdem auf ASCII-Strings gescannt.
-
-## Was die Auswertung liefert
-
-- Metadaten und MD5-Konsistenz
-- Speed-/Region-/Compat-Zeilen aus params.txt
-- Custom-FW-Hinweise (SHFW/CFW/COMPAT)
-- Gesten-/Freischalthinweise (z. B. „throttle and brake“, „profile at boot“, „brake 6x“)
-
-Treffer sind **Datei-Hinweise**. Wirkung am Fahrzeug nur über BLE-Auslese / Vergleichstest.
-
-## Einstieg in der App
-
-„E-Scooter auslesen“ → „Firmware-ZIP auswerten“ oder Menüeintrag gleichen Namens.
+Kurz:
+- Formate: ZIP/ZIPv3, BIN, BIN.ENC, JSON, TXT
+- Read-only, kein Flashen
+- Verschlüsselung erkannt; Offline-Entschlüsselung nicht verfügbar
+- Referenzvergleich, Bewertung GRÜN/GELB/ROT/GRAU, PDF/JSON

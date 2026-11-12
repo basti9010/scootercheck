@@ -99,6 +99,23 @@ struct ContentView: View {
         unlockRescanPhase != .idle || powerCyclePhase != .idle
     }
 
+    /// Optionaler Kontext für Firmware-Forensik (kein Installationsnachweis).
+    private var firmwareVehicleContext: FirmwareVehicleContext? {
+        guard let result else { return nil }
+        return FirmwareVehicleContext(
+            manufacturer: "Segway-Ninebot / Xiaomi",
+            modelLabel: result.profile.shortLabel,
+            profileId: result.profile.rawValue,
+            serial: result.reading.serialDisplay ?? result.reading.serialVcu,
+            fwVcu: result.reading.fwVcu,
+            fwMcu: result.reading.fwMcu,
+            fwBle: result.reading.fwBle,
+            fwEsc: result.reading.fwEsc,
+            protocolNumber: session?.protocolNumber,
+            fromLiveReadout: true
+        )
+    }
+
     /// Seriennummer des aktuellen Scooters (Ergebnis oder laufende Auslese).
     private var currentScooterSerial: String? {
         let candidates = [
@@ -223,8 +240,8 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            .sheet(isPresented: $showFirmwareZipInspector) {
-                FirmwareZipInspectorView()
+            .fullScreenCover(isPresented: $showFirmwareZipInspector) {
+                FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
@@ -483,13 +500,13 @@ struct ContentView: View {
             Button {
                 showFirmwareZipInspector = true
             } label: {
-                Label("Firmware-ZIP auswerten", systemImage: "doc.zipper")
+                Label("Firmware-Forensik", systemImage: "doc.badge.gearshape")
                     .font(Theme.buttonSecondary)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .tint(Theme.accent)
-            .accessibilityHint("Liest eine Flash-ZIP vom iPhone aus — ohne zu flashen")
+            .accessibilityHint("Lokale Firmwaredateien forensisch auswerten — ohne zu flashen")
         }
     }
 
@@ -2040,8 +2057,8 @@ struct ContentView: View {
                     navigateFromMenu(to: .home)
                 }
                 sideNavRow(
-                    title: "Firmware-ZIP auswerten",
-                    systemImage: "doc.zipper",
+                    title: "Firmware-Forensik",
+                    systemImage: "doc.badge.gearshape",
                     selected: false
                 ) {
                     setMenuOpen(false)

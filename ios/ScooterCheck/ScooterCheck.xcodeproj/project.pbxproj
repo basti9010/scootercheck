@@ -134,6 +134,16 @@
 		A10000000000000000000052 /* SceneKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B10000000000000000000052 /* SceneKit.framework */; };
 		A10000000000000000000053 /* ScootNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000053 /* ScootNavigation.swift */; };
 		A10000000000000000000054 /* ScootEdgeBackGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000054 /* ScootEdgeBackGesture.swift */; };
+		A100000000000000000000A1 /* FirmwareForensicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A1 /* FirmwareForensicModels.swift */; };
+		A100000000000000000000A2 /* FirmwareDigest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A2 /* FirmwareDigest.swift */; };
+		A100000000000000000000A3 /* FirmwarePackageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A3 /* FirmwarePackageLoader.swift */; };
+		A100000000000000000000A4 /* FirmwareCryptoAssessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A4 /* FirmwareCryptoAssessor.swift */; };
+		A100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift */; };
+		A100000000000000000000A6 /* FirmwareReferenceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A6 /* FirmwareReferenceStore.swift */; };
+		A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A7 /* FirmwareForensicScorer.swift */; };
+		A100000000000000000000F1 /* FirmwareForensicOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F1 /* FirmwareForensicOrchestrator.swift */; };
+		A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F2 /* FirmwareForensicPDF.swift */; };
+		A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F3 /* FirmwareDocumentPicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -267,6 +277,16 @@
 		B10000000000000000000049 /* BLEWatchRadarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000048 /* BLEWatchRadarUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarUI.swift; sourceTree = "<group>"; };
 		B10000000000000000000047 /* BLEWatchRadarCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarCore.swift; sourceTree = "<group>"; };
+		B100000000000000000000A1 /* FirmwareForensicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000A2 /* FirmwareDigest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDigest.swift; sourceTree = "<group>"; };
+		B100000000000000000000A3 /* FirmwarePackageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwarePackageLoader.swift; sourceTree = "<group>"; };
+		B100000000000000000000A4 /* FirmwareCryptoAssessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareCryptoAssessor.swift; sourceTree = "<group>"; };
+		B100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareBinaryStaticAnalyzer.swift; sourceTree = "<group>"; };
+		B100000000000000000000A6 /* FirmwareReferenceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReferenceStore.swift; sourceTree = "<group>"; };
+		B100000000000000000000A7 /* FirmwareForensicScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicScorer.swift; sourceTree = "<group>"; };
+		B100000000000000000000F1 /* FirmwareForensicOrchestrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicOrchestrator.swift; sourceTree = "<group>"; };
+		B100000000000000000000F2 /* FirmwareForensicPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDF.swift; sourceTree = "<group>"; };
+		B100000000000000000000F3 /* FirmwareDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDocumentPicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -372,10 +392,28 @@
 				B1000000000000000000000E /* Info.plist */,
 				B1000000000000000000000C /* Assets.xcassets */,
 				E10000000000000000000005 /* Integrity */,
+				E1000000000000000000000F /* FirmwareForensics */,
 				E10000000000000000000006 /* Ninebot */,
 				E10000000000000000000007 /* Xiaomi */,
 			);
 			path = ScooterCheck;
+			sourceTree = "<group>";
+		};
+		E1000000000000000000000F /* FirmwareForensics */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000000A1 /* FirmwareForensicModels.swift */,
+				B100000000000000000000A2 /* FirmwareDigest.swift */,
+				B100000000000000000000A3 /* FirmwarePackageLoader.swift */,
+				B100000000000000000000A4 /* FirmwareCryptoAssessor.swift */,
+				B100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift */,
+				B100000000000000000000A6 /* FirmwareReferenceStore.swift */,
+				B100000000000000000000A7 /* FirmwareForensicScorer.swift */,
+				B100000000000000000000F1 /* FirmwareForensicOrchestrator.swift */,
+				B100000000000000000000F2 /* FirmwareForensicPDF.swift */,
+				B100000000000000000000F3 /* FirmwareDocumentPicker.swift */,
+			);
+			path = FirmwareForensics;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000005 /* Integrity */ = {
@@ -618,6 +656,16 @@
 				A10000000000000000000071 /* VehicleApprovalCatalog.swift in Sources */,
 				A1000000000000000000008D /* MinimalZipReader.swift in Sources */,
 				A1000000000000000000008E /* FirmwareZipAnalyzer.swift in Sources */,
+				A100000000000000000000A1 /* FirmwareForensicModels.swift in Sources */,
+				A100000000000000000000A2 /* FirmwareDigest.swift in Sources */,
+				A100000000000000000000A3 /* FirmwarePackageLoader.swift in Sources */,
+				A100000000000000000000A4 /* FirmwareCryptoAssessor.swift in Sources */,
+				A100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift in Sources */,
+				A100000000000000000000A6 /* FirmwareReferenceStore.swift in Sources */,
+				A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */,
+				A100000000000000000000F1 /* FirmwareForensicOrchestrator.swift in Sources */,
+				A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */,
+				A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,

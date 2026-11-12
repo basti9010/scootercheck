@@ -548,19 +548,19 @@ private extension FAQCatalog {
         items: [
             FAQItem(
                 id: "firmware-zip",
-                question: "Kann ScooterCheck eine Flash-ZIP auswerten?",
+                question: "Kann ScooterCheck Firmwaredateien forensisch auswerten?",
                 segments: [
-                    .paragraph("Ja — unter „E-Scooter auslesen“ bzw. im Menü: „Firmware-ZIP auswerten“. Die App liest nur (kein Flashen)."),
-                    .paragraph("Ausgewertet werden typische ScooterHacking-ZIPv3-Inhalte (info.json, FIRM.bin, params.txt) sowie Text-/String-Hinweise im Image."),
+                    .paragraph("Ja — unter „E-Scooter auslesen“ bzw. im Menü: „Firmware-Forensik“. Die App liest nur lokal (kein Flashen)."),
+                    .paragraph("Unterstützt: ZIP/ZIPv3, BIN, BIN.ENC, JSON, TXT. Auswertung umfasst Metadaten, Prüfsummen, Entropie, Verschlüsselungsstatus, optionale Klartext-Binäranalyse, Referenzvergleich und PDF/JSON-Export."),
                     .bullets([
-                        "Zielmodell, Board-Typ, kompatible Boards, MD5-Abgleich",
-                        "Speed-/Region-/Compat-Parameter aus params.txt",
-                        "Hinweise auf Custom-FW (SHFW/CFW) und mögliche Gesten-/Freischaltstrings",
-                        "Wiederholungsmuster wie „brake 6x“ in Klartext-Strings",
+                        "ZIPv3: info.json, params.txt, FIRM.bin / FIRM.bin.enc",
+                        "Verschlüsselte Payloads: Inhaltliche Funktionsanalyse als nicht verfügbar markiert",
+                        "Referenzfirmware importieren und SHA-256/Byte-Vergleich",
+                        "Bewertung GRÜN/GELB/ROT/GRAU ohne automatische Rechtsaussage",
                     ]),
-                    .callout("Treffer sind Hinweise aus dem Dateiinhalt. Ob eine Geste am konkreten Scooter wirkt, bestätigt nur die BLE-Auslese / der Vergleichstest."),
+                    .callout("Importierte Dateien sind nicht automatisch die installierte Fahrzeugfirmware. „Panic“ im Dateinamen ist nur ein unverifizierter Hinweis."),
                 ],
-                keywords: ["zip", "firmware", "flash", "shu", "shfw", "cfw", "params", "kombination", "unlock"]
+                keywords: ["zip", "firmware", "forensik", "flash", "enc", "referenz", "sha256", "params", "vcu", "bin"]
             ),
             FAQItem(
                 id: "tiefe",
