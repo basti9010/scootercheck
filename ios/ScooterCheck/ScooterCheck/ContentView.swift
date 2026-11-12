@@ -740,6 +740,10 @@ struct ContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if ble.liveTelemetry.hasAnyValue || ble.isLiveTelemetryActive {
+                liveTelemetryCard(ble.liveTelemetry, active: ble.isLiveTelemetryActive)
+            }
+
             Text("Details zur Prüfung")
                 .font(Theme.sectionTitle)
                 .foregroundStyle(Theme.textPrimary)
@@ -1003,6 +1007,50 @@ struct ContentView: View {
             return nil
         }()
         try? history.save(current, scannedDevice: device)
+    }
+
+    /// Livedaten-Streifen (DarknessBot-Parität) nach erfolgreicher Enc2-Auslese.
+    @ViewBuilder
+    private func liveTelemetryCard(_ snap: LiveTelemetrySnapshot, active: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            HStack {
+                Text("Livedaten")
+                    .font(Theme.sectionTitle)
+                Spacer()
+                Text(active ? "live" : "zuletzt")
+                    .font(Theme.caption)
+                    .foregroundStyle(active ? Theme.accent : Theme.textMuted)
+            }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                liveMetric("Geschwindigkeit", snap.speedKmh.map { String(format: "%.1f km/h", $0) })
+                liveMetric("Batterie", snap.batteryPercent.map { "\($0) %" })
+                liveMetric("Spannung", snap.voltageV.map { String(format: "%.2f V", $0) })
+                liveMetric("Strom", snap.currentA.map { String(format: "%.2f A", $0) })
+                liveMetric("Leistung", snap.powerW.map { String(format: "%.0f W", $0) })
+                liveMetric("Restreichweite", snap.remainKm.map { String(format: "%.1f km", $0) })
+                liveMetric("Trip", snap.tripKm.map { String(format: "%.1f km", $0) })
+                liveMetric("Trip-Zeit", snap.tripMinutes.map { "\($0) min" })
+                liveMetric("Controller", snap.controllerTempC.map { String(format: "%.1f °C", $0) })
+                liveMetric("Batterie-Temp.", snap.batteryTempC.map { String(format: "%.1f °C", $0) })
+            }
+        }
+        .padding(Theme.Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func liveMetric(_ title: String, _ value: String?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(Theme.textMuted)
+            Text(value ?? "—")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.92))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Auffälligkeiten-Gruppe nur für Meta (Historie, Power-Cycle) — Klartext steht oben.

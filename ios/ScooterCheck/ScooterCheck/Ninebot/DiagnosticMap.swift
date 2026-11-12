@@ -130,6 +130,8 @@ enum DiagnosticMap {
         case firmware
         case battery
         case status
+        /// Häufig gepollte Livedaten (DarknessBot-Parität).
+        case live
     }
 
     struct Spec: Hashable {
@@ -150,10 +152,26 @@ enum DiagnosticMap {
     static func fields(for profile: ScooterProfile) -> [Spec] {
         if profile.usesG3RegisterMap {
             // Firmware früh: kurze BLE/VCU-Versionen vor langen Limit-/History-Blöcken.
+            // g3LiveFields nur für Poll — Dump enthält dieselben Register bereits in Limit/History/Battery.
             return g3IdentityFields + g3FirmwareFields + g3LimitFields + g3HistoryFields
                 + g3BatteryFields + g3StatusFields
         }
         return fields
+    }
+
+    /// Kompakte Poll-Liste für kontinuierliche Livedaten (nach Dump, Enc2-Session offen).
+    static func liveTelemetryFields(for profile: ScooterProfile) -> [Spec] {
+        if profile.usesG3RegisterMap {
+            return g3LiveFields
+        }
+        return [
+            Spec(id: "dis_speed", board: .dis, register: Nb.Register.currentSpeed, readLen: 2, category: .live),
+            Spec(id: "dis_battery", board: .dis, register: Nb.Register.batteryPercent, readLen: 2, category: .live),
+            Spec(id: "bms_voltage", board: .bms, register: Nb.Register.bmsVoltage, readLen: 2, category: .live),
+            Spec(id: "dis_power", board: .dis, register: Nb.Register.power, readLen: 2, category: .live),
+            Spec(id: "dis_range", board: .dis, register: Nb.Register.remainingRange, readLen: 2, category: .live),
+            Spec(id: "mcu_ctrl_temp", board: .mcu, register: Nb.Register.controllerTemp, readLen: 2, category: .live),
+        ]
     }
 
     // MARK: - Display (DIS 0x01)
@@ -202,6 +220,9 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_trip", board: .vcuG3, register: Nb.G3Register.singleMileage, readLen: 2, category: .history),
         Spec(id: "vcu_g3_runtime", board: .vcuG3, register: Nb.G3Register.runtime, readLen: 4, category: .history),
         Spec(id: "vcu_g3_ridetime", board: .vcuG3, register: Nb.G3Register.rideTime, readLen: 4, category: .history),
+        Spec(id: "vcu_g3_runtime_trip", board: .vcuG3, register: Nb.G3Register.runningTime, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_ridetime_trip", board: .vcuG3, register: Nb.G3Register.singleRideTime, readLen: 2, category: .history),
+        Spec(id: "vcu_g3_bodytemp", board: .vcuG3, register: Nb.G3Register.bodyTemp, readLen: 2, category: .history),
         Spec(id: "dis_odo", board: .dis, register: Nb.Register.odometer, readLen: 4, category: .history),
         Spec(id: "tft_odo", board: .tft, register: Nb.Register.odometer, readLen: 4, category: .history),
         Spec(id: "vcu_legacy_odo", board: .vcuG3, register: Nb.Register.odometer, readLen: 4, category: .history),
@@ -210,8 +231,27 @@ enum DiagnosticMap {
     private static let g3BatteryFields: [Spec] = [
         Spec(id: "vcu_g3_battery", board: .vcuG3, register: Nb.G3Register.batteryPercent, readLen: 2, category: .battery),
         Spec(id: "bms_g3_voltage", board: .bmsG3, register: 0x8C, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_current", board: .bmsG3, register: Nb.G3Register.bmsCurrent, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_temp", board: .bmsG3, register: Nb.G3Register.bmsTemp, readLen: 4, category: .battery),
         Spec(id: "bms_g3_soc", board: .bmsG3, register: 0x8F, readLen: 2, category: .battery),
         Spec(id: "bms_g3_cycles", board: .bmsG3, register: 0x59, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_remain_cap", board: .bmsG3, register: Nb.G3Register.bmsRemainCapacity, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_maxpower", board: .bmsG3, register: Nb.G3Register.bmsMaxPower, readLen: 2, category: .battery),
+        Spec(id: "bms_g3_timefull", board: .bmsG3, register: Nb.G3Register.bmsTimeFull, readLen: 2, category: .battery),
+    ]
+
+    /// DarknessBot-Parität: Speed, Batt, U/I, Temp, Reichweite, Trip-Zeiten — auch im Dump.
+    private static let g3LiveFields: [Spec] = [
+        Spec(id: "vcu_g3_speed", board: .vcuG3, register: Nb.G3Register.currentSpeed, readLen: 2, category: .live),
+        Spec(id: "vcu_g3_battery", board: .vcuG3, register: Nb.G3Register.batteryPercent, readLen: 2, category: .live),
+        Spec(id: "bms_g3_voltage", board: .bmsG3, register: 0x8C, readLen: 2, category: .live),
+        Spec(id: "bms_g3_current", board: .bmsG3, register: Nb.G3Register.bmsCurrent, readLen: 2, category: .live),
+        Spec(id: "vcu_g3_bodytemp", board: .vcuG3, register: Nb.G3Register.bodyTemp, readLen: 2, category: .live),
+        Spec(id: "bms_g3_temp", board: .bmsG3, register: Nb.G3Register.bmsTemp, readLen: 4, category: .live),
+        Spec(id: "vcu_g3_remain", board: .vcuG3, register: Nb.G3Register.remainingMileage, readLen: 2, category: .live),
+        Spec(id: "vcu_g3_trip", board: .vcuG3, register: Nb.G3Register.singleMileage, readLen: 2, category: .live),
+        Spec(id: "vcu_g3_runtime_trip", board: .vcuG3, register: Nb.G3Register.runningTime, readLen: 2, category: .live),
+        Spec(id: "vcu_g3_ridetime_trip", board: .vcuG3, register: Nb.G3Register.singleRideTime, readLen: 2, category: .live),
     ]
 
     private static let g3StatusFields: [Spec] = [
@@ -364,9 +404,33 @@ enum DiagnosticMap {
             }
             return Format.km.format(plausibleOdometerKm(data))
 
-        case "dis_trip_time":
+        case "dis_trip_time", "vcu_g3_runtime_trip", "vcu_g3_ridetime_trip":
             guard let raw = Nb.u16(data) else { return nil }
             return Format.minutes.format(Int(RegisterScale.minutesFromSeconds(raw).rounded()))
+
+        case "vcu_g3_bodytemp":
+            guard let raw = Nb.i16(data) else { return nil }
+            return String(format: "%.1f °C", RegisterScale.celsius(raw))
+
+        case "bms_g3_current":
+            guard let raw = Nb.i16(data) else { return nil }
+            return String(format: "%.2f A", Double(raw) / 100.0)
+
+        case "bms_g3_temp":
+            if let t = decodeBmsTempC(data) {
+                return String(format: "%.1f °C", t)
+            }
+            return Nb.hex(data)
+
+        case "bms_g3_remain_cap", "bms_g3_maxpower", "bms_g3_timefull":
+            guard let raw = Nb.u16(data) else { return nil }
+            if spec.id == "bms_g3_maxpower" {
+                return String(format: "%d W", Int(raw))
+            }
+            if spec.id == "bms_g3_timefull" {
+                return Format.minutes.format(Int(raw))
+            }
+            return Format.num.format(Int(raw)) + " mAh"
 
         case "dis_fw", "dis_mcu_fw", "dis_ecu_fw", "ble_fw", "mcu_fw", "bms_fw", "vcu_fw",
              "g3_ble_fw", "g3_vcu_fw", "g3_mcu_fw", "g3_mcu_fw_fb":
@@ -645,7 +709,37 @@ enum DiagnosticMap {
             if let raw = Nb.u16(data) { reading.batteryPercent = Int(raw) }
 
         case "bms_voltage", "bms_g3_voltage":
-            if let raw = Nb.u16(data) { reading.batteryVoltage = RegisterScale.volts(raw) }
+            if let raw = Nb.u16(data) {
+                reading.batteryVoltage = RegisterScale.volts(raw)
+                refreshComputedPower(into: &reading)
+            }
+
+        case "bms_g3_current":
+            if let raw = Nb.i16(data) {
+                reading.batteryCurrent = Double(raw) / 100.0
+                refreshComputedPower(into: &reading)
+            }
+
+        case "bms_g3_temp":
+            if let t = decodeBmsTempC(data) {
+                reading.batteryTempC = t
+            }
+
+        case "bms_g3_maxpower":
+            if let raw = Nb.u16(data), raw > 0 {
+                reading.peakPowerW = max(reading.peakPowerW ?? 0, Double(raw))
+            }
+
+        case "vcu_g3_bodytemp":
+            if let raw = Nb.i16(data) {
+                reading.mcuTempC = RegisterScale.celsius(raw)
+            }
+
+        case "vcu_g3_runtime_trip", "vcu_g3_ridetime_trip", "dis_trip_time":
+            if let raw = Nb.u16(data) {
+                let minutes = Int(RegisterScale.minutesFromSeconds(raw).rounded())
+                reading.rideTimeMinutes = max(reading.rideTimeMinutes ?? 0, minutes)
+            }
 
         case "bms_cycles", "bms_g3_cycles":
             if let raw = Nb.u16(data) { reading.chargeCycles = Int(raw) }
@@ -654,7 +748,10 @@ enum DiagnosticMap {
             if let raw = Nb.u16(data) { reading.batteryPercent = reading.batteryPercent ?? Int(raw) }
 
         case "dis_power":
-            if let raw = Nb.i16(data) { reading.batteryCurrent = Double(raw) / 100.0 }
+            // Legacy DIS 0xBD: Watt (nicht Strom).
+            if let raw = Nb.i16(data) {
+                reading.peakPowerW = max(reading.peakPowerW ?? 0, abs(Double(raw)))
+            }
 
         case "mcu_motor_temp":
             if let raw = Nb.i16(data) { reading.motorTempC = RegisterScale.celsius(raw) }
@@ -665,6 +762,28 @@ enum DiagnosticMap {
         default:
             break
         }
+    }
+
+    /// DarknessBot zeigt Leistung oft als U·I; hier aus BMS-Spannung und -Strom.
+    private static func refreshComputedPower(into reading: inout IntegrityReading) {
+        guard let v = reading.batteryVoltage, let a = reading.batteryCurrent else { return }
+        let watts = abs(v * a)
+        guard watts > 0, watts < 5000 else { return }
+        reading.peakPowerW = max(reading.peakPowerW ?? 0, watts)
+    }
+
+    /// BMS 0x96: typisch zwei Sensoren. Prefer (byte−20)°C, sonst LE16/10.
+    static func decodeBmsTempC(_ data: Data) -> Double? {
+        guard !data.isEmpty else { return nil }
+        if data.count >= 1 {
+            let t0 = Double(data[0]) - 20.0
+            if t0 >= -10, t0 <= 80 { return t0 }
+        }
+        if let raw = Nb.i16(Data(data.prefix(2))) {
+            let tenths = RegisterScale.celsius(raw)
+            if tenths >= -20, tenths <= 90 { return tenths }
+        }
+        return nil
     }
 
     /// Fahrzeug-SN (z. B. 1CGB…) vs. Modul-/MCU-Hardware-IDs (Z07…, Hex-MAC).

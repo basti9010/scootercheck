@@ -559,9 +559,10 @@ private extension FAQCatalog {
                         "Xiaomi Classic: Klartext-Protokoll (55 AA)",
                         "Xiaomi 3/4/5/6 (z. B. xiaomi.scooter.6): oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich",
                         "Navee / SoFlow: Marken- und Modellerkennung; Navee mit dokumentiertem Read-Frame-Codec — Live-Dump noch nicht freigegeben; keine Tuning-Writes",
+                        "Livedaten (nach Enc2-Dump): Geschwindigkeit, Batterie %, Spannung, Strom, Leistung (U·I), Restreichweite, Trip, Controller-/Batterie-Temperatur — Parität zu DarknessBot-KickScooter-Metriken (ohne EUC PWM/Pitch, ohne Writes)",
                     ]),
                 ],
-                keywords: ["enc2", "g3", "gt3", "xiaomi", "navee", "soflow", "auslese", "support"]
+                keywords: ["enc2", "g3", "gt3", "xiaomi", "navee", "soflow", "auslese", "support", "livedaten", "darknessbot"]
             ),
             FAQItem(
                 id: "seriennummern",

@@ -48,6 +48,10 @@ https://nootnooot.codeberg.page/segway-ninebot-ble/devices/
 4. **Navee**: Live-Auth + SN/FW/Status (0x74/0x73/0x70) an `NaveeProtocol` verdrahten; verified erst nach Gerätetest.
 5. **KuKirin / Vsett / Dualtron / SoFlow**: vorerst GATT-DIS / Universelle Diagnose; keine erfundenen Registerkarten oder Write-Imports.
 
+## DarknessBot-Livedaten (KickScooter)
+
+Siehe `docs/DARKNESSBOT_PARITY.md`. Store-Metriken (Speed, Peak/Avg, Odo, Restreichweite, Trip, Laufzeiten, Batt %, Controller-/Batterie-Temp, Power, Voltage; Strom via BMS) sind für Enc2/x3 als Dump + Live-Poll abgedeckt. EUC-only (PWM/Pitch) und App-Prognosen (NN) nicht.
+
 ## Abgrenzung
 
 - Quellen beschreiben oft auch **Writes** (Limit, Mode, OTA). ScooterCheck importiert davon nur **Lesepfade**.

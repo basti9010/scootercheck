@@ -42,6 +42,8 @@
 		A10000000000000000000008 /* Crypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* Crypto.swift */; };
 		A10000000000000000000009 /* Protocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* Protocol.swift */; };
 		A1000000000000000000000A /* DiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* DiagnosticMap.swift */; };
+		A1000000000000000000008B /* LiveTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008B /* LiveTelemetry.swift */; };
+		A1000000000000000000008C /* LiveTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008C /* LiveTelemetryTests.swift */; };
 		A1000000000000000000000B /* BleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* BleClient.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
 		A1000000000000000000000D /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* CoreBluetooth.framework */; };
@@ -229,6 +231,8 @@
 		B10000000000000000000086 /* UniversalDiagnosisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/UniversalDiagnosisView.swift; sourceTree = "<group>"; };
 		B10000000000000000000089 /* NaveeProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosis/NaveeProtocol.swift; sourceTree = "<group>"; };
 		B1000000000000000000008A /* NaveeProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NaveeProtocolTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000008B /* LiveTelemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTelemetry.swift; sourceTree = "<group>"; };
+		B1000000000000000000008C /* LiveTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTelemetryTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000087 /* scooter_diagnostic_profiles.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = scooter_diagnostic_profiles.json; sourceTree = "<group>"; };
 		B10000000000000000000073 /* VehicleApprovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleApprovalTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000088 /* UniversalDiagnosisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosisTests.swift; sourceTree = "<group>"; };
@@ -416,6 +420,7 @@
 				B10000000000000000000073 /* VehicleApprovalTests.swift */,
 				B10000000000000000000088 /* UniversalDiagnosisTests.swift */,
 				B1000000000000000000008A /* NaveeProtocolTests.swift */,
+				B1000000000000000000008C /* LiveTelemetryTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
@@ -430,6 +435,7 @@
 				B10000000000000000000008 /* Crypto.swift */,
 				B10000000000000000000009 /* Protocol.swift */,
 				B1000000000000000000000A /* DiagnosticMap.swift */,
+				B1000000000000000000008B /* LiveTelemetry.swift */,
 				B1000000000000000000000B /* BleClient.swift */,
 			);
 			path = Ninebot;
@@ -617,6 +623,7 @@
 				A10000000000000000000008 /* Crypto.swift in Sources */,
 				A10000000000000000000009 /* Protocol.swift in Sources */,
 				A1000000000000000000000A /* DiagnosticMap.swift in Sources */,
+				A1000000000000000000008B /* LiveTelemetry.swift in Sources */,
 				A1000000000000000000000B /* BleClient.swift in Sources */,
 				A1000000000000000000000F /* XiaomiProtocol.swift in Sources */,
 				A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */,
@@ -664,6 +671,7 @@
 				A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */,
 				A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */,
 				A1000000000000000000008A /* NaveeProtocolTests.swift in Sources */,
+				A1000000000000000000008C /* LiveTelemetryTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,
