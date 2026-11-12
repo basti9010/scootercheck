@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var showFAQ = false
     @State private var showPrivacy = false
     @State private var showSettings = false
+    @State private var showFirmwareZipInspector = false
     @ObservedObject private var appSettings = AppSettings.shared
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
@@ -221,6 +222,9 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showFirmwareZipInspector) {
+                FirmwareZipInspectorView()
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
@@ -475,6 +479,17 @@ struct ContentView: View {
                 hideNameless: $auslesenHideNameless,
                 showsHideNameless: !ble.showOnlyLikelyScooters
             )
+
+            Button {
+                showFirmwareZipInspector = true
+            } label: {
+                Label("Firmware-ZIP auswerten", systemImage: "doc.zipper")
+                    .font(Theme.buttonSecondary)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(Theme.accent)
+            .accessibilityHint("Liest eine Flash-ZIP vom iPhone aus — ohne zu flashen")
         }
     }
 
@@ -2023,6 +2038,14 @@ struct ContentView: View {
                     selected: screen == .home
                 ) {
                     navigateFromMenu(to: .home)
+                }
+                sideNavRow(
+                    title: "Firmware-ZIP auswerten",
+                    systemImage: "doc.zipper",
+                    selected: false
+                ) {
+                    setMenuOpen(false)
+                    showFirmwareZipInspector = true
                 }
                 if AppFeatureFlags.pedelecAuslesenVisible {
                     sideNavRow(

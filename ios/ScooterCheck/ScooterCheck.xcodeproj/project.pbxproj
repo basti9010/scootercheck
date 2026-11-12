@@ -44,6 +44,11 @@
 		A1000000000000000000000A /* DiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* DiagnosticMap.swift */; };
 		A1000000000000000000008B /* LiveTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008B /* LiveTelemetry.swift */; };
 		A1000000000000000000008C /* LiveTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008C /* LiveTelemetryTests.swift */; };
+		A1000000000000000000008D /* MinimalZipReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008D /* MinimalZipReader.swift */; };
+		A1000000000000000000008E /* FirmwareZipAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008E /* FirmwareZipAnalyzer.swift */; };
+		A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000008F /* FirmwareZipInspectorView.swift */; };
+		A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */; };
+		A1000000000000000000009B /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009B /* libz.tbd */; };
 		A1000000000000000000000B /* BleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* BleClient.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
 		A1000000000000000000000D /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* CoreBluetooth.framework */; };
@@ -233,6 +238,11 @@
 		B1000000000000000000008A /* NaveeProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NaveeProtocolTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000008B /* LiveTelemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTelemetry.swift; sourceTree = "<group>"; };
 		B1000000000000000000008C /* LiveTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTelemetryTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000008D /* MinimalZipReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinimalZipReader.swift; sourceTree = "<group>"; };
+		B1000000000000000000008E /* FirmwareZipAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareZipAnalyzer.swift; sourceTree = "<group>"; };
+		B1000000000000000000008F /* FirmwareZipInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareZipInspectorView.swift; sourceTree = "<group>"; };
+		B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareZipAnalyzerTests.swift; sourceTree = "<group>"; };
+		B1000000000000000000009B /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		B10000000000000000000087 /* scooter_diagnostic_profiles.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = scooter_diagnostic_profiles.json; sourceTree = "<group>"; };
 		B10000000000000000000073 /* VehicleApprovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleApprovalTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000088 /* UniversalDiagnosisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniversalDiagnosisTests.swift; sourceTree = "<group>"; };
@@ -269,6 +279,7 @@
 				A10000000000000000000030 /* CoreMotion.framework in Frameworks */,
 				A1000000000000000000004D /* ARKit.framework in Frameworks */,
 				A10000000000000000000052 /* SceneKit.framework in Frameworks */,
+				A1000000000000000000009B /* libz.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,6 +351,7 @@
 				B10000000000000000000069 /* ble_vendor_patterns.json */,
 				B10000000000000000000070 /* BLERadarSession.swift */,
 				B10000000000000000000071 /* VehicleApprovalCatalog.swift */,
+				B1000000000000000000008F /* FirmwareZipInspectorView.swift */,
 				B10000000000000000000072 /* vehicle_approval_catalog.json */,
 				B10000000000000000000080 /* ScooterDiagnosticProfile.swift */,
 				B10000000000000000000081 /* ScooterProtocolRegistry.swift */,
@@ -384,6 +396,8 @@
 				B10000000000000000000015 /* EvidenceEngine.swift */,
 				B10000000000000000000016 /* AttributionEngine.swift */,
 				B10000000000000000000018 /* EvidenceExplanationEngine.swift */,
+				B1000000000000000000008D /* MinimalZipReader.swift */,
+				B1000000000000000000008E /* FirmwareZipAnalyzer.swift */,
 			);
 			path = Integrity;
 			sourceTree = "<group>";
@@ -421,6 +435,7 @@
 				B10000000000000000000088 /* UniversalDiagnosisTests.swift */,
 				B1000000000000000000008A /* NaveeProtocolTests.swift */,
 				B1000000000000000000008C /* LiveTelemetryTests.swift */,
+				B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
@@ -458,6 +473,7 @@
 				B10000000000000000000030 /* CoreMotion.framework */,
 				B1000000000000000000004D /* ARKit.framework */,
 				B10000000000000000000052 /* SceneKit.framework */,
+				B1000000000000000000009B /* libz.tbd */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -600,6 +616,9 @@
 				A10000000000000000000047 /* BLEWatchRadarCore.swift in Sources */,
 				A10000000000000000000070 /* BLERadarSession.swift in Sources */,
 				A10000000000000000000071 /* VehicleApprovalCatalog.swift in Sources */,
+				A1000000000000000000008D /* MinimalZipReader.swift in Sources */,
+				A1000000000000000000008E /* FirmwareZipAnalyzer.swift in Sources */,
+				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,
 				A10000000000000000000082 /* OnlineProtocolDiscoveryService.swift in Sources */,
@@ -672,6 +691,7 @@
 				A10000000000000000000088 /* UniversalDiagnosisTests.swift in Sources */,
 				A1000000000000000000008A /* NaveeProtocolTests.swift in Sources */,
 				A1000000000000000000008C /* LiveTelemetryTests.swift in Sources */,
+				A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,

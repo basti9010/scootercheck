@@ -547,6 +547,22 @@ private extension FAQCatalog {
         symbolName: "dot.radiowaves.left.and.right",
         items: [
             FAQItem(
+                id: "firmware-zip",
+                question: "Kann ScooterCheck eine Flash-ZIP auswerten?",
+                segments: [
+                    .paragraph("Ja — unter „E-Scooter auslesen“ bzw. im Menü: „Firmware-ZIP auswerten“. Die App liest nur (kein Flashen)."),
+                    .paragraph("Ausgewertet werden typische ScooterHacking-ZIPv3-Inhalte (info.json, FIRM.bin, params.txt) sowie Text-/String-Hinweise im Image."),
+                    .bullets([
+                        "Zielmodell, Board-Typ, kompatible Boards, MD5-Abgleich",
+                        "Speed-/Region-/Compat-Parameter aus params.txt",
+                        "Hinweise auf Custom-FW (SHFW/CFW) und mögliche Gesten-/Freischaltstrings",
+                        "Wiederholungsmuster wie „brake 6x“ in Klartext-Strings",
+                    ]),
+                    .callout("Treffer sind Hinweise aus dem Dateiinhalt. Ob eine Geste am konkreten Scooter wirkt, bestätigt nur die BLE-Auslese / der Vergleichstest."),
+                ],
+                keywords: ["zip", "firmware", "flash", "shu", "shfw", "cfw", "params", "kombination", "unlock"]
+            ),
+            FAQItem(
                 id: "tiefe",
                 question: "Wie tief kann ScooterCheck auslesen?",
                 segments: [
