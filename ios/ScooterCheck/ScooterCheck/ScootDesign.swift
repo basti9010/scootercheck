@@ -212,10 +212,10 @@ struct ScootOutlineButton: View {
 
 // MARK: - Prüfbericht Action Panel
 
-/// Primärer Mint-Button für die Ergebnis-Bottom-Bar (Bericht speichern).
+/// Primärer Mint-Button für die Ergebnis-Bottom-Bar (Speichern / Teilen).
 struct ScootActionPrimaryButton: View {
     let title: String
-    var systemImage: String = "square.and.arrow.down"
+    var systemImage: String = "square.and.arrow.up"
     var enabled: Bool = true
     var busy: Bool = false
     let action: () -> Void

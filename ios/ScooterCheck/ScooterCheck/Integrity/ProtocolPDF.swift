@@ -77,6 +77,25 @@ enum ProtocolJSON {
 
 // MARK: - Protocol Pack
 
+/// Welche Dateien beim Speichern/Teilen mitgegeben werden.
+struct ProtocolExportSelection: Equatable, Sendable {
+    var berichtPDF: Bool = true
+    var rawPDF: Bool = true
+    var json: Bool = true
+
+    static let all = ProtocolExportSelection()
+
+    var isEmpty: Bool { !berichtPDF && !rawPDF && !json }
+
+    var summaryLabel: String {
+        var parts: [String] = []
+        if berichtPDF { parts.append("Bericht") }
+        if rawPDF { parts.append("Rohdaten") }
+        if json { parts.append("JSON") }
+        return parts.isEmpty ? "keine Datei" : parts.joined(separator: ", ")
+    }
+}
+
 enum ProtocolPack {
 
     struct PackURLs {
@@ -1036,18 +1055,102 @@ final class NamedShareFile: NSObject, UIActivityItemSource {
 // MARK: - SwiftUI Convenience
 
 extension View {
-    func shareIntegrityPack(session: CheckSession, result: IntegrityResult, isPresented: Binding<Bool>) -> some View {
-        modifier(IntegrityPackShareModifier(session: session, result: result, isPresented: isPresented))
+    func shareIntegrityPack(
+        session: CheckSession,
+        result: IntegrityResult,
+        selection: ProtocolExportSelection = .all,
+        isPresented: Binding<Bool>
+    ) -> some View {
+        modifier(IntegrityPackShareModifier(
+            session: session,
+            result: result,
+            selection: selection,
+            isPresented: isPresented
+        ))
     }
 
-    func sharePackURLs(_ packURLs: Binding<ProtocolPack.PackURLs?>, subject: String, isPresented: Binding<Bool>) -> some View {
-        modifier(PackURLsShareModifier(packURLs: packURLs, subject: subject, isPresented: isPresented))
+    func sharePackURLs(
+        _ packURLs: Binding<ProtocolPack.PackURLs?>,
+        subject: String,
+        selection: ProtocolExportSelection = .all,
+        isPresented: Binding<Bool>
+    ) -> some View {
+        modifier(PackURLsShareModifier(
+            packURLs: packURLs,
+            subject: subject,
+            selection: selection,
+            isPresented: isPresented
+        ))
+    }
+}
+
+/// Auswahl, welche Protokolldateien gespeichert/geteilt werden.
+struct ProtocolExportPickerSheet: View {
+    @Binding var selection: ProtocolExportSelection
+    var onCancel: () -> Void
+    var onContinue: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    toggleRow(
+                        title: "Prüfbericht (PDF)",
+                        subtitle: "Bewertete Auswertung mit Messwerten",
+                        isOn: $selection.berichtPDF
+                    )
+                    toggleRow(
+                        title: "Rohdaten (PDF)",
+                        subtitle: "Register mit Inhalt, ohne Urteil",
+                        isOn: $selection.rawPDF
+                    )
+                    toggleRow(
+                        title: "JSON",
+                        subtitle: "Maschinenlesbare Messdaten",
+                        isOn: $selection.json
+                    )
+                } footer: {
+                    Text("Als Nächstes kannst du in Dateien speichern, per AirDrop senden oder eine andere App wählen. Der Prüfbericht bleibt zusätzlich im App-Verlauf.")
+                }
+            }
+            .navigationTitle("Speichern / Teilen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Weiter") {
+                        onContinue()
+                    }
+                    .disabled(selection.isEmpty)
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func toggleRow(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.medium))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 2)
+        }
+        .tint(Theme.accent)
     }
 }
 
 private struct IntegrityPackShareModifier: ViewModifier {
     let session: CheckSession
     let result: IntegrityResult
+    var selection: ProtocolExportSelection
     @Binding var isPresented: Bool
     @State private var packURLs: ProtocolPack.PackURLs?
     @State private var errorMessage: String?
@@ -1057,14 +1160,18 @@ private struct IntegrityPackShareModifier: ViewModifier {
             .sheet(isPresented: $isPresented, onDismiss: { packURLs = nil; errorMessage = nil }) {
                 if let packURLs {
                     ActivityShare(
-                        items: shareItems(from: packURLs, protocolNumber: session.protocolNumber),
+                        items: ProtocolExportShareItems.make(
+                            from: packURLs,
+                            protocolNumber: session.protocolNumber,
+                            selection: selection
+                        ),
                         subject: "ScooterCheck Protokoll \(session.protocolNumber)"
                     )
                 } else if let errorMessage {
                     Text(errorMessage)
                         .padding()
                 } else {
-                    ProgressView("Protokoll für AirDrop wird erstellt…")
+                    ProgressView("Dateien werden vorbereitet…")
                         .task { await preparePack() }
                 }
             }
@@ -1072,7 +1179,7 @@ private struct IntegrityPackShareModifier: ViewModifier {
 
     private func preparePack() async {
         do {
-            // Dauerhaft im Offline-Verlauf ablegen, dann PDF+JSON teilen.
+            // Dauerhaft im Offline-Verlauf ablegen, dann gewählte Dateien teilen.
             var durable = session
             if durable.result == nil {
                 durable.result = result
@@ -1091,6 +1198,7 @@ private struct IntegrityPackShareModifier: ViewModifier {
 private struct PackURLsShareModifier: ViewModifier {
     @Binding var packURLs: ProtocolPack.PackURLs?
     let subject: String
+    var selection: ProtocolExportSelection
     @Binding var isPresented: Bool
 
     func body(content: Content) -> some View {
@@ -1098,7 +1206,11 @@ private struct PackURLsShareModifier: ViewModifier {
             .sheet(isPresented: $isPresented) {
                 if let packURLs {
                     ActivityShare(
-                        items: shareItems(from: packURLs, protocolNumber: subject),
+                        items: ProtocolExportShareItems.make(
+                            from: packURLs,
+                            protocolNumber: subject,
+                            selection: selection
+                        ),
                         subject: subject
                     )
                 } else {
@@ -1108,22 +1220,40 @@ private struct PackURLsShareModifier: ViewModifier {
     }
 }
 
-private func shareItems(from pack: ProtocolPack.PackURLs, protocolNumber: String) -> [Any] {
-    [
-        NamedShareFile(
-            url: pack.pdfURL,
-            title: "ScooterCheck \(protocolNumber) Bericht.pdf",
-            utType: "com.adobe.pdf"
-        ),
-        NamedShareFile(
-            url: pack.rawPdfURL,
-            title: "ScooterCheck \(protocolNumber) Rohdaten.pdf",
-            utType: "com.adobe.pdf"
-        ),
-        NamedShareFile(
-            url: pack.jsonURL,
-            title: "ScooterCheck \(protocolNumber) Daten.json",
-            utType: "public.json"
-        )
-    ]
+enum ProtocolExportShareItems {
+    static func make(
+        from pack: ProtocolPack.PackURLs,
+        protocolNumber: String,
+        selection: ProtocolExportSelection
+    ) -> [Any] {
+        var items: [Any] = []
+        if selection.berichtPDF {
+            items.append(
+                NamedShareFile(
+                    url: pack.pdfURL,
+                    title: "ScooterCheck \(protocolNumber) Bericht.pdf",
+                    utType: "com.adobe.pdf"
+                )
+            )
+        }
+        if selection.rawPDF {
+            items.append(
+                NamedShareFile(
+                    url: pack.rawPdfURL,
+                    title: "ScooterCheck \(protocolNumber) Rohdaten.pdf",
+                    utType: "com.adobe.pdf"
+                )
+            )
+        }
+        if selection.json {
+            items.append(
+                NamedShareFile(
+                    url: pack.jsonURL,
+                    title: "ScooterCheck \(protocolNumber) Daten.json",
+                    utType: "public.json"
+                )
+            )
+        }
+        return items
+    }
 }
