@@ -78,6 +78,7 @@
 		A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* ProtocolSubjectTests.swift */; };
 		A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */; };
 		A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* G3OdometerScaleTests.swift */; };
+		A100000000000000000000C1 /* VcuFirmwareVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C1 /* VcuFirmwareVersionTests.swift */; };
 		A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* PeakDisReportBugsTests.swift */; };
 		A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */; };
 		A10000000000000000000040 /* BLESearchCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000040 /* BLESearchCore.swift */; };
@@ -213,6 +214,7 @@
 		B1000000000000000000001B /* ProtocolSubjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolSubjectTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevatedLimitVerdictTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001D /* G3OdometerScaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G3OdometerScaleTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000C1 /* VcuFirmwareVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VcuFirmwareVersionTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftUnlockComboStoreTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001E /* PeakDisReportBugsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeakDisReportBugsTests.swift; sourceTree = "<group>"; };
 		C10000000000000000000002 /* ScooterCheckTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ScooterCheckTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -449,6 +451,7 @@
 				B1000000000000000000001B /* ProtocolSubjectTests.swift */,
 				B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */,
 				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
+				B100000000000000000000C1 /* VcuFirmwareVersionTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
 				B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */,
@@ -715,6 +718,7 @@
 				A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */,
 				A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */,
 				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,
+				A100000000000000000000C1 /* VcuFirmwareVersionTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
 				A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */,

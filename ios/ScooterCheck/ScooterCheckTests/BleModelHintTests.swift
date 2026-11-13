@@ -155,7 +155,8 @@ final class BleModelHintTests: XCTestCase {
         let entry = try XCTUnwrap(StockFirmwareCatalog.entry(for: .ninebotF3D))
         XCTAssertTrue(entry.ble.contains("0.4.5"))
         XCTAssertTrue(entry.mcu.contains("2.4.0"))
-        XCTAssertTrue(entry.vcu.contains("1.6.1") || entry.vcu.contains("97.1.87.1"))
+        XCTAssertTrue(entry.vcu.contains("1.6.1"))
+        XCTAssertFalse(entry.vcu.contains("97.1.87.1"))
     }
 
     func testF3ProDisplayAndVcuSerialsMatch() {
