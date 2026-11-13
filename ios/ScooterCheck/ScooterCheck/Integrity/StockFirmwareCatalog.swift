@@ -15,9 +15,7 @@ enum StockFirmwareCatalog {
     static let maxG3 = Entry(
         mcu: ["1.3.9", "1.3.15", "1.4.9", "1.4.12"],
         vcu: [
-            "1.4.8", "1.5.4", "1.5.5", "1.5.6", "1.5.8", "1.6.2",
-            // 4-Nibble-/Byte-Decodierungen aus BLE-Rohwerten
-            "3.170.76.1", "170.0.3", "0.3.170"
+            "1.4.8", "1.5.4", "1.5.5", "1.5.6", "1.5.8", "1.6.2"
         ],
         ble: ["0.3.5", "0.3.12", "0.3.14", "0.4.0"],
         bms: ["4.1.2.8", "4.1.3.0", "4.1.4.8", "4.1.6.8"]
@@ -43,9 +41,7 @@ enum StockFirmwareCatalog {
     static let ninebotF3 = Entry(
         mcu: ["2.4.0", "2.3.0", "2.2.0"],
         vcu: [
-            "1.6.1", "1.5.7", "1.5.0",
-            // 4-Nibble-Decodierung aus BLE-Rohwerten (z. B. 61015701 → 97.1.87.1)
-            "97.1.87.1"
+            "1.6.1", "1.5.7", "1.5.0"
         ],
         ble: ["0.4.5", "0.4.0", "0.3.14"],
         bms: ["4.1.6.8", "4.1.4.8", "4.1.3.0"]
@@ -198,7 +194,7 @@ enum StockFirmwareCatalog {
             ("fw.mcu", "MCU-Firmware", reading.fwMcu, catalog?.mcu, ["g3_mcu_fw", "g3_mcu_fw_fb", "mcu_fw", "dis_mcu_fw"]),
             ("fw.ble", "BLE-Firmware", reading.fwBle, catalog?.ble, ["g3_ble_fw", "ble_fw"]),
             ("fw.bms", "BMS-Firmware", reading.fwBms, catalog?.bms, ["g3_bms_fw", "bms_fw"]),
-            ("fw.vcu", "VCU-Firmware", reading.fwVcu, catalog?.vcu, ["g3_vcu_fw4", "g3_vcu_fw", "vcu_fw"]),
+            ("fw.vcu", "VCU-Firmware", reading.fwVcu, catalog?.vcu, ["g3_vcu_fw", "vcu_fw"]),
             ("fw.esc", "ESC-Firmware", reading.fwEsc, nil, ["dis_ecu_fw", "dis_fw"])
         ]
 

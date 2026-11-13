@@ -113,11 +113,6 @@ enum RegisterScale {
         return "\(a).\(b).\(c).\(d)"
     }
 
-    /// Vier Bytes → a.b.c.d (längere G3-Versionen wie VCU 10.10.0.3).
-    static func firmwareBytes(_ data: Data) -> String? {
-        guard data.count >= 4 else { return nil }
-        return "\(data[0]).\(data[1]).\(data[2]).\(data[3])"
-    }
 }
 
 // MARK: - Diagnostic register map
@@ -293,11 +288,10 @@ enum DiagnosticMap {
         Spec(id: "vcu_fw", board: .vcu, register: Nb.Register.disVersion, readLen: 2, category: .firmware),
     ]
 
-    /// Max G3: Board-/Register-Map laut öffentlichem G3-Flasher (+ 4-Byte-VCU-Versuch).
+    /// Max G3 / F3 / GT3: VCU-Version ist u16 packed major.minor.patch (wie MCU/BLE), nicht 4 Rohbytes.
     private static let g3FirmwareFields: [Spec] = [
         Spec(id: "g3_ble_fw", board: .ble, register: Nb.G3Register.bleVersion, readLen: 2, category: .firmware),
         Spec(id: "g3_vcu_fw", board: .vcuG3, register: Nb.G3Register.vcuVersion, readLen: 2, category: .firmware),
-        Spec(id: "g3_vcu_fw4", board: .vcuG3, register: Nb.G3Register.vcuVersion, readLen: 4, category: .firmware),
         Spec(id: "g3_mcu_fw", board: .mcuG3, register: Nb.G3Register.mcuVersion, readLen: 2, category: .firmware),
         Spec(id: "g3_mcu_fw_fb", board: .vcuG3, register: Nb.G3Register.mcuVersionFallback, readLen: 2, category: .firmware),
         Spec(id: "g3_bms_fw", board: .vcuG3, register: Nb.G3Register.bmsVersion, readLen: 2, category: .firmware),
@@ -440,9 +434,6 @@ enum DiagnosticMap {
         case "g3_bms_fw":
             guard let raw = Nb.u16(data) else { return nil }
             return RegisterScale.firmwareFourNibbles(raw)
-
-        case "g3_vcu_fw4":
-            return RegisterScale.firmwareBytes(data)
 
         case "dis_battery", "bms_soc", "vcu_g3_battery", "bms_g3_soc":
             guard let raw = Nb.u16(data) else { return nil }
@@ -690,9 +681,6 @@ enum DiagnosticMap {
 
         case "vcu_fw", "g3_vcu_fw":
             if let raw = Nb.u16(data) { reading.fwVcu = RegisterScale.firmware(raw) }
-
-        case "g3_vcu_fw4":
-            if let ver = RegisterScale.firmwareBytes(data) { reading.fwVcu = ver }
 
         case "dis_error", "vcu_g3_error", "mcu_g3_error":
             if let raw = Nb.u16(data) {
