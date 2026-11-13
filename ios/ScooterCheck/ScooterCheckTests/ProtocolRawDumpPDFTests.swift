@@ -39,4 +39,37 @@ final class ProtocolRawDumpPDFTests: XCTestCase {
         let rawBytes = try Data(contentsOf: pack.rawPdfURL)
         XCTAssertEqual(String(data: rawBytes.prefix(4), encoding: .ascii), "%PDF")
     }
+
+    func testExportSelectionFiltersShareItems() throws {
+        var reading = IntegrityReading()
+        reading.serialDisplay = "1CGBTESTEXPORT01"
+        reading.rawRegisters = [
+            RawRegister(address: "VCU", index: 0x46, name: "maxspd", valueHex: "2300", valueDecoded: "35 km/h")
+        ]
+        let result = IntegrityAnalyzer.analyze(reading: reading, profile: .ninebotF3D)
+        let session = CheckSession(profile: .ninebotF3D, result: result)
+        let pack = try ProtocolPack.makePack(session: session, result: result)
+
+        let all = ProtocolExportShareItems.make(from: pack, protocolNumber: "SC-TEST", selection: .all)
+        XCTAssertEqual(all.count, 3)
+
+        let onlyBericht = ProtocolExportShareItems.make(
+            from: pack,
+            protocolNumber: "SC-TEST",
+            selection: ProtocolExportSelection(berichtPDF: true, rawPDF: false, json: false)
+        )
+        XCTAssertEqual(onlyBericht.count, 1)
+        XCTAssertTrue((onlyBericht.first as? NamedShareFile)?.title.contains("Bericht") == true)
+
+        let onlyRaw = ProtocolExportShareItems.make(
+            from: pack,
+            protocolNumber: "SC-TEST",
+            selection: ProtocolExportSelection(berichtPDF: false, rawPDF: true, json: false)
+        )
+        XCTAssertEqual(onlyRaw.count, 1)
+        XCTAssertTrue((onlyRaw.first as? NamedShareFile)?.title.contains("Rohdaten") == true)
+
+        XCTAssertTrue(ProtocolExportSelection(berichtPDF: false, rawPDF: false, json: false).isEmpty)
+        XCTAssertEqual(ProtocolExportSelection.all.summaryLabel, "Bericht, Rohdaten, JSON")
+    }
 }

@@ -21,6 +21,9 @@ struct ContentView: View {
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
+    @State private var showExportPicker = false
+    @State private var exportSelection = ProtocolExportSelection.all
+    @State private var pendingShareAfterExportPicker = false
     @State private var historyShareItems: [Any] = []
     @State private var showHistoryShare = false
     @State private var busy = false
@@ -298,9 +301,28 @@ struct ContentView: View {
                     }
                 )
             }
+            .sheet(isPresented: $showExportPicker, onDismiss: {
+                if pendingShareAfterExportPicker {
+                    pendingShareAfterExportPicker = false
+                    showShare = true
+                }
+            }) {
+                ProtocolExportPickerSheet(
+                    selection: $exportSelection,
+                    onCancel: {
+                        pendingShareAfterExportPicker = false
+                        showExportPicker = false
+                    },
+                    onContinue: {
+                        pendingShareAfterExportPicker = true
+                        showExportPicker = false
+                    }
+                )
+            }
             .shareIntegrityPack(
                 session: session ?? CheckSession(profile: profile),
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
+                selection: exportSelection,
                 isPresented: $showShare
             )
             .sheet(isPresented: $showHistoryShare, onDismiss: { historyShareItems = [] }) {
@@ -1193,12 +1215,12 @@ struct ContentView: View {
     private var resultActionPanel: some View {
         VStack(spacing: 8) {
             ScootActionPrimaryButton(
-                title: "Bericht speichern",
-                systemImage: "square.and.arrow.down",
+                title: "Speichern / Teilen",
+                systemImage: "square.and.arrow.up",
                 enabled: primaryEnabled,
                 busy: busy && !isComparisonFlowActive
             ) {
-                persistCurrentSession()
+                openExportPicker()
             }
 
             if unlockRescanPhase == .awaitUnlock || unlockRescanPhase == .scanningB {
@@ -1242,21 +1264,12 @@ struct ContentView: View {
                 }
             }
 
-            HStack(spacing: 8) {
-                ScootActionChipButton(
-                    title: "Teilen",
-                    systemImage: "square.and.arrow.up"
-                ) {
-                    persistCurrentSession()
-                    showShare = true
-                }
-                ScootActionChipButton(
-                    title: "Zur Übersicht",
-                    systemImage: "list.bullet.rectangle"
-                ) {
-                    persistCurrentSession()
-                    goToOverview()
-                }
+            ScootActionChipButton(
+                title: "Zur Übersicht",
+                systemImage: "list.bullet.rectangle"
+            ) {
+                persistCurrentSession()
+                goToOverview()
             }
         }
         .padding(.horizontal, 16)
@@ -1302,7 +1315,7 @@ struct ContentView: View {
         case .overview:
             startNewCheck()
         case .result:
-            persistCurrentSession()
+            openExportPicker()
         case .find, .pedelec:
             break
         case .home:
@@ -1343,6 +1356,14 @@ struct ContentView: View {
             session = newSession
             persistSession(newSession)
         }
+    }
+
+    /// Ein Button → Auswahl Bericht/Rohdaten/JSON → Teilen/In Dateien speichern.
+    private func openExportPicker() {
+        persistCurrentSession()
+        exportSelection = .all
+        pendingShareAfterExportPicker = false
+        showExportPicker = true
     }
 
     private func goToOverview() {

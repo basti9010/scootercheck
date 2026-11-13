@@ -70,6 +70,7 @@ on:
       - cursor/pedelec-auswerten-b100
       - cursor/firmware-forensics-2-b100
       - cursor/vcu-version-decode-b100
+      - cursor/report-export-picker-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -96,7 +97,7 @@ jobs:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GITHUB_TOKEN: ${{ secrets.MATCH_GITHUB_TOKEN }}
-      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: VCU-Version korrekt (1.6.1 statt 97.1.87.1); Firmware-Forensik 2.0' }}"
+      TESTFLIGHT_CHANGELOG: "${{ github.event.inputs.changelog || 'ScooterCheck: Speichern/Teilen mit Auswahl (Bericht, Rohdaten, JSON); VCU-Version 1.6.1' }}"
 
     steps:
       - name: Checkout
