@@ -554,13 +554,14 @@ private extension FAQCatalog {
                     .paragraph("Unterstützt: ZIP/ZIPv3, BIN, BIN.ENC, JSON, TXT. Auswertung umfasst Metadaten, Prüfsummen, Entropie, Verschlüsselungsstatus, optionale Klartext-Binäranalyse, Referenzvergleich und PDF/JSON-Export."),
                     .bullets([
                         "ZIPv3: info.json, params.txt, FIRM.bin / FIRM.bin.enc",
-                        "Verschlüsselte Payloads: Inhaltliche Funktionsanalyse als nicht verfügbar markiert",
+                        "Deep Analysis: bekannte CFW-Signaturen und Speed-Konstanten (z. B. 22/99 km/h), Combos wo dokumentiert",
+                        "Verschlüsselte Payloads: ohne Decrypt nur Meta/Hash/Katalog — Server kann später Klartext liefern",
                         "Referenzfirmware importieren und SHA-256/Byte-Vergleich",
                         "Bewertung GRÜN/GELB/ROT/GRAU ohne automatische Rechtsaussage",
                     ]),
-                    .callout("Importierte Dateien sind nicht automatisch die installierte Fahrzeugfirmware. „Panic“ im Dateinamen ist nur ein unverifizierter Hinweis."),
+                    .callout("Importierte Dateien sind nicht automatisch die installierte Fahrzeugfirmware. „Panic“ im Dateinamen ist nur ein unverifizierter Hinweis. Server-KI darf nur dasselbe strukturierte Schema füllen wie die lokale Auswertung."),
                 ],
-                keywords: ["zip", "firmware", "forensik", "flash", "enc", "referenz", "sha256", "params", "vcu", "bin"]
+                keywords: ["zip", "firmware", "forensik", "flash", "enc", "referenz", "sha256", "params", "vcu", "bin", "limit", "deep", "server"]
             ),
             FAQItem(
                 id: "dual-source-panic",

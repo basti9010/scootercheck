@@ -54,6 +54,7 @@ struct FirmwareZipInspectorView: View {
                     if let report {
                         verdictBanner(report)
                         dualSourceSection(report)
+                        deepAnalysisSection(report)
                         packageSection(report)
                         contentSection(report)
                         cryptoSection(report)
@@ -309,6 +310,69 @@ struct FirmwareZipInspectorView: View {
             storedCombo: SoftUnlockComboStore.load(forSerial: (r.vehicleContext ?? vehicleContext)?.serial)
         )
         return DualSourcePanicCard(assessment: assessment)
+    }
+
+    @ViewBuilder
+    private func deepAnalysisSection(_ r: FirmwareForensicReport) -> some View {
+        if let deep = r.deepAnalysis {
+            sectionCard("Deep Analysis (Limits / Combos)") {
+                Text(deep.quality.summary)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                metaRow("Quellen", deep.sources.map(\.label).joined(separator: ", "))
+                if let maxK = deep.maxSpeedKmhInCode {
+                    metaRow("Max im Code/Katalog", "\(Int(maxK)) km/h")
+                }
+                if let legal = deep.legalCapKmhInCode {
+                    metaRow("Legal-Kappe", "\(Int(legal)) km/h")
+                }
+                if !deep.speedLimits.isEmpty {
+                    Text("Speed-Stufen")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.speedLimits) { s in
+                        Text("• \(Int(s.kmh)) km/h — \(s.role.label) (\(s.confidence.label))")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                if !deep.comboSummaries.isEmpty {
+                    Text("Combos")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.comboSummaries, id: \.self) { c in
+                        Text("• \(c)")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                if !deep.modeTransitions.isEmpty {
+                    Text("Moduswechsel")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.modeTransitions) { t in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t.title)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Auslöser: \(t.trigger)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                            Text("Wirkung: \(t.effect)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                }
+                Text("Server-Decrypt/Ghidra/KI: gleiches Schema — lokal bereits Katalog + Deterministik.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.top, 4)
+            }
+        }
     }
 
     private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {

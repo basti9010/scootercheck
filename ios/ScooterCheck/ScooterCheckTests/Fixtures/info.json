@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "firmware": {
+    "model": "g3",
+    "displayName": "Panicbutton (Starke-Tech.de)",
+    "enforceModel": true,
+    "type": "VCU",
+    "compatible": [
+      "g3_VCU_AT32"
+    ],
+    "encryption": "encrypted",
+    "md5": {
+      "enc": "0a567b134861a5f9f7e4683e63d8f4a8"
+    }
+  }
+}
+
+
+
