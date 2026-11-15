@@ -11,6 +11,9 @@ struct FirmwareVehicleContext: Equatable, Codable, Sendable {
     var fwMcu: String?
     var fwBle: String?
     var fwEsc: String?
+    var speedLimitKmh: Double?
+    var speedMaxKmh: Double?
+    var peakSpeedKmh: Double?
     var protocolNumber: String?
     /// True if context comes from a completed readout — still never proves the imported file is installed.
     var fromLiveReadout: Bool
