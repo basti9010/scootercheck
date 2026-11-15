@@ -1,6 +1,6 @@
 import Foundation
 
-/// Vertrag für optionalen Server: Decrypt → Ghidra → deterministischer Extract → optionale schema-KI.
+/// Vertrag für optionalen Server: Decrypt → Extract → Deep-Analysis-JSON.
 /// Die App bleibt offline-fähig; ohne Base-URL: `notConfigured`.
 protocol FirmwareServerAnalysisClienting: Sendable {
     var isConfigured: Bool { get }
@@ -8,54 +8,144 @@ protocol FirmwareServerAnalysisClienting: Sendable {
     func poll(jobId: String) async throws -> FirmwareAnalysisJobStatus
 }
 
-/// Platzhalter-Client — später HTTP gegen euren Server; gleiche Job-/Result-Typen.
-struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
-    /// Optional: z. B. aus Einstellungen / Managed Config.
-    var baseURL: URL?
+enum FirmwareServerAnalysisError: Error, LocalizedError {
+    case notConfigured
+    case badURL
+    case httpStatus(Int, String)
+    case decode(Error)
 
-    var isConfigured: Bool { baseURL != nil }
-
-    func submit(_ request: FirmwareAnalysisJobRequest, archiveData: Data) async throws -> FirmwareAnalysisJobStatus {
-        _ = archiveData
-        guard isConfigured else {
-            return FirmwareAnalysisJobStatus(
-                jobId: "",
-                state: .notConfigured,
-                progressPercent: 0,
-                message: "Kein Analyse-Server konfiguriert — lokal Katalog/Deterministik nutzen.",
-                result: nil,
-                errorCode: "SERVER_NOT_CONFIGURED"
-            )
+    var errorDescription: String? {
+        switch self {
+        case .notConfigured: return "Kein Analyse-Server konfiguriert."
+        case .badURL: return "Ungültige Server-URL."
+        case .httpStatus(let c, let b): return "Server-Fehler \(c): \(b)"
+        case .decode(let e): return "Antwort nicht lesbar: \(e.localizedDescription)"
         }
-        // HTTP-Upload folgt in einem späteren Schritt (Auth, TLS, Retention).
-        return FirmwareAnalysisJobStatus(
-            jobId: UUID().uuidString,
-            state: .queued,
-            progressPercent: 0,
-            message: "Job angelegt (Transport noch nicht implementiert).",
-            result: nil,
-            errorCode: "TRANSPORT_PENDING"
+    }
+}
+
+/// HTTP-Client gegen `server/firmware-analysis` (Upload → DECRYPT_CMD auf dem Server → JSON).
+struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
+    var baseURL: URL?
+    var apiToken: String?
+
+    init(baseURL: URL? = nil, apiToken: String? = nil) {
+        self.baseURL = baseURL
+        self.apiToken = apiToken
+    }
+
+    /// Liest URL/Token aus AppSettings (MainActor-Snapshot als Strings).
+    @MainActor
+    static func fromAppSettings() -> FirmwareServerAnalysisClient {
+        let s = AppSettings.shared
+        let url = s.firmwareAnalysisServerURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        return FirmwareServerAnalysisClient(
+            baseURL: URL(string: url),
+            apiToken: {
+                let t = s.firmwareAnalysisAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                return t.isEmpty ? nil : t
+            }()
         )
     }
 
+    var isConfigured: Bool {
+        guard let baseURL else { return false }
+        return !(baseURL.scheme?.isEmpty ?? true) && !(baseURL.host?.isEmpty ?? true)
+    }
+
+    func submit(_ request: FirmwareAnalysisJobRequest, archiveData: Data) async throws -> FirmwareAnalysisJobStatus {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL.appendingPathComponent("v1/firmware/jobs")
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 180
+        applyAuth(&req)
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        let metaData = try JSONEncoder().encode(request)
+        var body = Data()
+        body.append(multipartField(name: "meta_json", value: String(data: metaData, encoding: .utf8) ?? "{}", boundary: boundary))
+        body.append(multipartFile(
+            name: "archive",
+            filename: request.originalFileName.isEmpty ? "upload.bin" : request.originalFileName,
+            mime: "application/octet-stream",
+            fileData: archiveData,
+            boundary: boundary
+        ))
+        body.append(Data("--\(boundary)--\r\n".utf8))
+        req.httpBody = body
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        return try decodeStatus(data)
+    }
+
     func poll(jobId: String) async throws -> FirmwareAnalysisJobStatus {
-        guard isConfigured else {
-            return FirmwareAnalysisJobStatus(
-                jobId: jobId,
-                state: .notConfigured,
-                progressPercent: 0,
-                message: "Kein Analyse-Server konfiguriert.",
-                result: nil,
-                errorCode: "SERVER_NOT_CONFIGURED"
-            )
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL
+            .appendingPathComponent("v1/firmware/jobs")
+            .appendingPathComponent(jobId)
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 60
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        return try decodeStatus(data)
+    }
+
+    // MARK: - Helpers
+
+    private func applyAuth(_ req: inout URLRequest) {
+        if let apiToken, !apiToken.isEmpty {
+            req.setValue(apiToken, forHTTPHeaderField: "X-ScooterCheck-Token")
         }
-        return FirmwareAnalysisJobStatus(
-            jobId: jobId,
-            state: .failed,
-            progressPercent: 0,
-            message: "Polling noch nicht implementiert.",
-            result: nil,
-            errorCode: "TRANSPORT_PENDING"
-        )
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+    }
+
+    private func throwIfNeeded(_ response: URLResponse, data: Data) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw FirmwareServerAnalysisError.httpStatus(http.statusCode, body)
+        }
+    }
+
+    private func decodeStatus(_ data: Data) throws -> FirmwareAnalysisJobStatus {
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .custom { decoder in
+            let c = try decoder.singleValueContainer()
+            let s = try c.decode(String.self)
+            if let d = ISO8601DateFormatter().date(from: s) { return d }
+            let f = ISO8601DateFormatter()
+            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let d = f.date(from: s) { return d }
+            throw DecodingError.dataCorruptedError(in: c, debugDescription: "bad date \(s)")
+        }
+        do {
+            return try dec.decode(FirmwareAnalysisJobStatus.self, from: data)
+        } catch {
+            throw FirmwareServerAnalysisError.decode(error)
+        }
+    }
+
+    private func multipartField(name: String, value: String, boundary: String) -> Data {
+        var d = Data()
+        d.append(Data("--\(boundary)\r\n".utf8))
+        d.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
+        d.append(Data("\(value)\r\n".utf8))
+        return d
+    }
+
+    private func multipartFile(name: String, filename: String, mime: String, fileData: Data, boundary: String) -> Data {
+        var d = Data()
+        d.append(Data("--\(boundary)\r\n".utf8))
+        d.append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".utf8))
+        d.append(Data("Content-Type: \(mime)\r\n\r\n".utf8))
+        d.append(fileData)
+        d.append(Data("\r\n".utf8))
+        return d
     }
 }

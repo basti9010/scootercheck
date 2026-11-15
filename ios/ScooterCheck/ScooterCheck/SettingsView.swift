@@ -17,6 +17,7 @@ struct SettingsView: View {
                         displaySection
                         auslesenSection
                         findenSection
+                        firmwareServerSection
                         aboutSection
 
                         AppCopyrightFooter()
@@ -128,6 +129,60 @@ struct SettingsView: View {
                 title: "Haptik standardmäßig an",
                 subtitle: "Leichte Vibrationen bei Signaländerungen",
                 isOn: $settings.findProximityHapticsDefault
+            )
+        }
+    }
+
+    // MARK: - Firmware-Server
+
+    private var firmwareServerSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("Firmware-Analyse-Server")
+
+            Text("Optional: ZIP/ENC an euren Server senden. Dort läuft euer bereits installiertes Decrypt-Tool (DECRYPT_CMD); Keys bleiben auf dem Server.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("Basis-URL")
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.textPrimary)
+                TextField("https://fw.example.internal:8088", text: $settings.firmwareAnalysisServerURLString)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textBody)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
+
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("API-Token")
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.textPrimary)
+                SecureField("X-ScooterCheck-Token", text: $settings.firmwareAnalysisAPIToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textBody)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
             )
         }
     }
