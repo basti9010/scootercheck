@@ -1,0 +1,21 @@
+[Unit]
+Description=ScooterCheck Firmware Analysis Worker
+After=network.target
+
+[Service]
+Type=simple
+User=scootercheck
+Group=scootercheck
+WorkingDirectory=/opt/scootercheck/firmware-analysis
+EnvironmentFile=/etc/scootercheck/firmware-analysis.env
+ExecStart=/opt/scootercheck/firmware-analysis/.venv/bin/uvicorn app:APP --host 127.0.0.1 --port 8088
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/scootercheck/firmware-jobs
+
+[Install]
+WantedBy=multi-user.target

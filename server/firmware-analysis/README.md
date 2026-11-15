@@ -4,7 +4,29 @@ Nimmt ZIP/ENC von der App entgegen, ruft **euer bereits installiertes** Decrypt-
 
 Dieses Repo enthält **kein** ninebottea und **keine** Keys.
 
-## Server starten
+## Hetzner VPS (empfohlen)
+
+Auf dem Hetzner-Server (als root), Repo-Pfad anpassen:
+
+```bash
+# Code hinlegen
+sudo mkdir -p /opt/scootercheck
+sudo rsync -a server/firmware-analysis/ /opt/scootercheck/firmware-analysis/
+
+# Install + systemd
+sudo bash /opt/scootercheck/firmware-analysis/deploy/install-on-hetzner.sh
+
+# Decrypt-Wrapper (euer bereits installiertes Tool)
+sudo cp /opt/scootercheck/firmware-analysis/decrypt-firm.example.sh /opt/scootercheck/decrypt-firm.sh
+sudo nano /opt/scootercheck/decrypt-firm.sh   # euer Tool einbinden
+sudo nano /etc/scootercheck/firmware-analysis.env  # API_TOKEN + DECRYPT_CMD
+
+sudo systemctl restart scootercheck-fw
+```
+
+TLS: `deploy/nginx-fw.conf.example` + Certbot. In der App: `https://dein-hostname` + Token.
+
+## Lokal starten
 
 ```bash
 cd server/firmware-analysis
@@ -14,6 +36,7 @@ cp .env.example .env   # API_TOKEN + DECRYPT_CMD setzen
 export $(grep -v '^#' .env | xargs)
 uvicorn app:APP --host "${HOST:-127.0.0.1}" --port "${PORT:-8088}"
 ```
+
 
 ## DECRYPT_CMD
 
