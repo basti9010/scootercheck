@@ -205,6 +205,17 @@ enum FirmwareForensicOrchestrator {
             comparison: comparison
         )
 
+        let deep = buildDeepAnalysis(
+            meta: loaded.meta,
+            primaryData: primaryData,
+            primaryRole: primaryRole,
+            subjectSHA256: subjectSHA256,
+            encrypted: encrypted
+        )
+        if let deep {
+            evidence.append(contentsOf: deepEvidenceItems(deep))
+        }
+
         return FirmwareForensicReport(
             id: UUID().uuidString,
             analyzedAt: Date(),
@@ -224,8 +235,68 @@ enum FirmwareForensicOrchestrator {
             limits: limits,
             vehicleContext: vehicleContext,
             vehicleLinkNotes: vehicleNotes,
-            summary: summary
+            summary: summary,
+            deepAnalysis: deep
         )
+    }
+
+    private static func buildDeepAnalysis(
+        meta: FirmwarePackageMeta,
+        primaryData: Data?,
+        primaryRole: FirmwarePayloadRole?,
+        subjectSHA256: String,
+        encrypted: Bool
+    ) -> FirmwareDeepAnalysisResult? {
+        var parts: [FirmwareDeepAnalysisResult] = []
+
+        let md5 = primaryData.map { FirmwareDigest.md5Hex($0) }
+        if let entry = FirmwareKnownCFWCatalog.match(md5: md5, sha256: subjectSHA256) {
+            parts.append(FirmwareKnownCFWCatalog.deepAnalysis(for: entry, subjectSHA256: subjectSHA256))
+        }
+
+        // Klartext-BIN: deterministische Speed-Konstanten. ENC: kein Binärscan-Inhalt.
+        let scanData: Data? = (primaryRole == .firmPlain && !encrypted) ? primaryData : nil
+        let extracted = FirmwareSpeedSignatureExtractor.extract(
+            fromBinary: scanData,
+            decompiledText: nil,
+            subjectSHA256: subjectSHA256,
+            meta: meta
+        )
+        if extracted.quality.hasDeterministicBasis {
+            parts.append(extracted)
+        }
+
+        return FirmwareDeepAnalysisMerger.merge(parts)
+    }
+
+    private static func deepEvidenceItems(_ deep: FirmwareDeepAnalysisResult) -> [FirmwareEvidenceItem] {
+        var items: [FirmwareEvidenceItem] = []
+        if let maxK = deep.maxSpeedKmhInCode {
+            let legal = deep.legalCapKmhInCode.map { " · Legal-Kappe \(Int($0)) km/h" } ?? ""
+            items.append(.init(
+                id: "deep-speed",
+                category: .limitHint,
+                title: "Speed-Signaturen (Deep Analysis)",
+                detail: "Max im Code/Katalog \(Int(maxK)) km/h\(legal)",
+                evidence: deep.speedLimits.map { "\(Int($0.kmh))" }.joined(separator: ", "),
+                method: deep.sources.map(\.label).joined(separator: " + "),
+                verifiability: deep.quality.hasDeterministicBasis ? .indicative : .unverified,
+                confirmed: false
+            ))
+        }
+        if !deep.comboSummaries.isEmpty {
+            items.append(.init(
+                id: "deep-combo",
+                category: .modeHint,
+                title: "Dokumentierte Modus-Combos",
+                detail: deep.comboSummaries.joined(separator: " · "),
+                evidence: deep.notes.first ?? "Katalog/Decompile",
+                method: deep.sources.map(\.label).joined(separator: " + "),
+                verifiability: .indicative,
+                confirmed: false
+            ))
+        }
+        return items
     }
 
     private static func buildSummary(

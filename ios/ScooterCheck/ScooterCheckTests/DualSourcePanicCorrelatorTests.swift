@@ -127,7 +127,8 @@ final class DualSourcePanicCorrelatorTests: XCTestCase {
             limits: ["no flash"],
             vehicleContext: nil,
             vehicleLinkNotes: [],
-            summary: "test"
+            summary: "test",
+            deepAnalysis: nil
         )
     }
 

@@ -238,4 +238,6 @@ struct FirmwareForensicReport: Identifiable, Equatable, Codable, Sendable {
     var vehicleContext: FirmwareVehicleContext?
     var vehicleLinkNotes: [String]
     var summary: String
+    /// Limits/Combos aus Katalog, Binär-/Decompile-Scan oder Server (einheitliches Schema).
+    var deepAnalysis: FirmwareDeepAnalysisResult?
 }

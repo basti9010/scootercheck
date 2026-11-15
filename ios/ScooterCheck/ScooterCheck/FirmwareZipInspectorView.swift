@@ -24,6 +24,9 @@ struct FirmwareZipInspectorView: View {
     @State private var refHW = ""
     @State private var refFW = ""
     @State private var refOrigin = ""
+    @State private var serverStatusText: String?
+    @State private var isServerBusy = false
+    @ObservedObject private var appSettings = AppSettings.shared
 
     var body: some View {
         NavigationStack {
@@ -54,6 +57,7 @@ struct FirmwareZipInspectorView: View {
                     if let report {
                         verdictBanner(report)
                         dualSourceSection(report)
+                        deepAnalysisSection(report)
                         packageSection(report)
                         contentSection(report)
                         cryptoSection(report)
@@ -311,6 +315,117 @@ struct FirmwareZipInspectorView: View {
         return DualSourcePanicCard(assessment: assessment)
     }
 
+    @ViewBuilder
+    private func deepAnalysisSection(_ r: FirmwareForensicReport) -> some View {
+        if let deep = r.deepAnalysis {
+            sectionCard("Deep Analysis (Limits / Combos)") {
+                Text(deep.quality.summary)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                metaRow("Quellen", deep.sources.map(\.label).joined(separator: ", "))
+                if let maxK = deep.maxSpeedKmhInCode {
+                    metaRow("Max im Code/Katalog", "\(Int(maxK)) km/h")
+                }
+                if let legal = deep.legalCapKmhInCode {
+                    metaRow("Legal-Kappe", "\(Int(legal)) km/h")
+                }
+                if !deep.speedLimits.isEmpty {
+                    Text("Speed-Stufen")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.speedLimits) { s in
+                        Text("• \(Int(s.kmh)) km/h — \(s.role.label) (\(s.confidence.label))")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                if !deep.comboSummaries.isEmpty {
+                    Text("Combos")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.comboSummaries, id: \.self) { c in
+                        Text("• \(c)")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                if !deep.modeTransitions.isEmpty {
+                    Text("Moduswechsel")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.modeTransitions) { t in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t.title)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("Auslöser: \(t.trigger)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                            Text("Wirkung: \(t.effect)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                }
+                Text("Server-Decrypt: gleiches Schema — lokal Katalog/Deterministik, optional Upload.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .padding(.top, 4)
+
+                if FirmwareServerAnalysisClient.fromAppSettings().isConfigured {
+                    Button {
+                        Task { await uploadToAnalysisServer() }
+                    } label: {
+                        Label(
+                            isServerBusy ? "Server analysiert…" : "Auf Server entschlüsseln / analysieren",
+                            systemImage: "lock.open.iphone"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
+                    .disabled(isServerBusy || lastData == nil)
+                } else {
+                    Text("Server-URL unter Einstellungen setzen, dann erscheint hier der Upload.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                }
+                if let serverStatusText {
+                    Text(serverStatusText)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } else if FirmwareServerAnalysisClient.fromAppSettings().isConfigured, lastData != nil {
+            sectionCard("Deep Analysis (Server)") {
+                Text("Lokal keine Katalog-/Speed-Treffer. Server kann ENC mit eurem Decrypt-Tool öffnen.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Button {
+                    Task { await uploadToAnalysisServer() }
+                } label: {
+                    Label(
+                        isServerBusy ? "Server analysiert…" : "Auf Server entschlüsseln / analysieren",
+                        systemImage: "lock.open.iphone"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .disabled(isServerBusy)
+                if let serverStatusText {
+                    Text(serverStatusText)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
+                }
+            }
+        }
+    }
+
     private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {
         guard let ctx, ctx.fromLiveReadout else { return nil }
         var reading = IntegrityReading()
@@ -492,13 +607,86 @@ struct FirmwareZipInspectorView: View {
         )
         report = analyzed
         DualSourceCaseStore.saveForensic(analyzed)
-        if let models = analyzed.meta.models, refModel.isEmpty, let first = models.first {
+        if refModel.isEmpty, let first = analyzed.meta.models.first {
             refModel = first
         }
         if let t = analyzed.meta.type, refController.isEmpty || refController == "VCU" {
             refController = t
         }
         isBusy = false
+    }
+
+    @MainActor
+    private func uploadToAnalysisServer() async {
+        guard let data = lastData else { return }
+        let client = FirmwareServerAnalysisClient.fromAppSettings()
+        guard client.isConfigured else {
+            serverStatusText = "Keine Server-URL in den Einstellungen."
+            return
+        }
+        isServerBusy = true
+        serverStatusText = "Lade Datei hoch…"
+        errorText = nil
+        defer { isServerBusy = false }
+
+        let local = report
+        let req = FirmwareAnalysisJobRequest(
+            clientReportId: local?.id ?? UUID().uuidString,
+            originalFileName: lastFileName,
+            archiveSHA256: local?.archiveDigest.sha256 ?? FirmwareDigest.sha256Hex(data),
+            payloadSHA256: nil,
+            infoJSON: local?.meta.rawInfoJSON,
+            models: local?.meta.models ?? [],
+            controllerType: local?.meta.type,
+            allowDecrypt: true,
+            allowLLM: false
+        )
+        do {
+            let status = try await client.submit(req, archiveData: data)
+            serverStatusText = status.message
+            if status.state == .failed {
+                errorText = status.message
+                return
+            }
+            var final = status
+            if status.state != .completed, !status.jobId.isEmpty {
+                serverStatusText = "Warte auf Job \(status.jobId.prefix(8))…"
+                for _ in 0..<30 {
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                    final = try await client.poll(jobId: status.jobId)
+                    serverStatusText = final.message
+                    if final.state == .completed || final.state == .failed { break }
+                }
+            }
+            guard final.state == .completed, let remote = final.result,
+                  let validated = FirmwareDeepAnalysisMerger.validateServerResult(remote)
+                    ?? (remote.quality.hasDeterministicBasis ? remote : nil)
+            else {
+                errorText = final.message.isEmpty ? "Server lieferte kein verwertbares Ergebnis." : final.message
+                return
+            }
+            mergeServerDeepAnalysis(validated)
+            var bits: [String] = []
+            if final.plaintextSaved == true, let path = final.plaintextPath {
+                bits.append("Decrypt: \(path)")
+            }
+            if final.decompileSaved == true, let path = final.decompilePath {
+                bits.append("Ghidra: \(path)")
+            }
+            bits.append("\(validated.speedLimits.count) Speed-Stufen")
+            serverStatusText = bits.joined(separator: " · ")
+        } catch {
+            errorText = error.localizedDescription
+            serverStatusText = error.localizedDescription
+        }
+    }
+
+    private func mergeServerDeepAnalysis(_ remote: FirmwareDeepAnalysisResult) {
+        guard var current = report else { return }
+        let parts = [current.deepAnalysis, remote].compactMap { $0 }
+        current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remote
+        report = current
+        DualSourceCaseStore.saveForensic(current)
     }
 
     private func prepareReferenceImport(url: URL) {

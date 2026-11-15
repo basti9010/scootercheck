@@ -12,6 +12,8 @@ final class AppSettings: ObservableObject {
     private static let auslesenHideNamelessKey = "app.settings.auslesen.hideNameless.v1"
     private static let findAudioKey = "app.settings.find.proximityAudio.v1"
     private static let findHapticsKey = "app.settings.find.proximityHaptics.v1"
+    private static let firmwareServerURLKey = "app.settings.firmware.analysisServerURL.v1"
+    private static let firmwareServerTokenKey = "app.settings.firmware.analysisServerToken.v1"
 
     @Published var textSize: AppTextSize {
         didSet {
@@ -43,6 +45,16 @@ final class AppSettings: ObservableObject {
     /// Signal-Finder: Haptik standardmäßig aktiv.
     @Published var findProximityHapticsDefault: Bool {
         didSet { UserDefaults.standard.set(findProximityHapticsDefault, forKey: Self.findHapticsKey) }
+    }
+
+    /// Basis-URL des Firmware-Analyse-Servers (z. B. https://fw.example.internal:8088).
+    @Published var firmwareAnalysisServerURLString: String {
+        didSet { UserDefaults.standard.set(firmwareAnalysisServerURLString, forKey: Self.firmwareServerURLKey) }
+    }
+
+    /// Shared Secret für Header `X-ScooterCheck-Token` (leer = Server ohne Token-Check).
+    @Published var firmwareAnalysisAPIToken: String {
+        didSet { UserDefaults.standard.set(firmwareAnalysisAPIToken, forKey: Self.firmwareServerTokenKey) }
     }
 
     var appVersionLabel: String {
@@ -100,6 +112,8 @@ final class AppSettings: ObservableObject {
         auslesenHideNameless = loadedHideNameless
         findProximityAudioDefault = loadedAudio
         findProximityHapticsDefault = loadedHaptics
+        firmwareAnalysisServerURLString = defaults.string(forKey: Self.firmwareServerURLKey) ?? ""
+        firmwareAnalysisAPIToken = defaults.string(forKey: Self.firmwareServerTokenKey) ?? ""
 
         Theme.textScale = loadedTextSize.scale
     }

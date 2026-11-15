@@ -148,6 +148,12 @@
 		A100000000000000000000D1 /* DualSourcePanicCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D1 /* DualSourcePanicCorrelator.swift */; };
 		A100000000000000000000D2 /* DualSourcePanicCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D2 /* DualSourcePanicCard.swift */; };
 		A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */; };
+		A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */; };
+		A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */; };
+		A100000000000000000000E3 /* FirmwareKnownCFWCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E3 /* FirmwareKnownCFWCatalog.swift */; };
+		A100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift */; };
+		A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */; };
+		A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -295,6 +301,12 @@
 		B100000000000000000000D1 /* DualSourcePanicCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelator.swift; sourceTree = "<group>"; };
 		B100000000000000000000D2 /* DualSourcePanicCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCard.swift; sourceTree = "<group>"; };
 		B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelatorTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareSpeedSignatureExtractor.swift; sourceTree = "<group>"; };
+		B100000000000000000000E3 /* FirmwareKnownCFWCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareKnownCFWCatalog.swift; sourceTree = "<group>"; };
+		B100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisMerger.swift; sourceTree = "<group>"; };
+		B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareServerAnalysisClient.swift; sourceTree = "<group>"; };
+		B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -422,6 +434,11 @@
 				B100000000000000000000F3 /* FirmwareDocumentPicker.swift */,
 				B100000000000000000000D1 /* DualSourcePanicCorrelator.swift */,
 				B100000000000000000000D2 /* DualSourcePanicCard.swift */,
+				B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */,
+				B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */,
+				B100000000000000000000E3 /* FirmwareKnownCFWCatalog.swift */,
+				B100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift */,
+				B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */,
 			);
 			path = FirmwareForensics;
 			sourceTree = "<group>";
@@ -461,6 +478,7 @@
 				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
 				B100000000000000000000C1 /* VcuFirmwareVersionTests.swift */,
 				B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */,
+				B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
 				B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */,
@@ -680,6 +698,11 @@
 				A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */,
 				A100000000000000000000D1 /* DualSourcePanicCorrelator.swift in Sources */,
 				A100000000000000000000D2 /* DualSourcePanicCard.swift in Sources */,
+				A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */,
+				A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */,
+				A100000000000000000000E3 /* FirmwareKnownCFWCatalog.swift in Sources */,
+				A100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift in Sources */,
+				A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,
@@ -731,6 +754,7 @@
 				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,
 				A100000000000000000000C1 /* VcuFirmwareVersionTests.swift in Sources */,
 				A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */,
+				A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
 				A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */,
