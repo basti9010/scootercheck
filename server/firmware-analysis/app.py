@@ -31,8 +31,12 @@ APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.0.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 DECRYPT_CMD = os.environ.get("DECRYPT_CMD", "").strip()
-WORK_DIR = Path(os.environ.get("WORK_DIR", tempfile.gettempdir()) + "/scootercheck-fw-jobs")
+WORK_DIR = Path(os.environ.get("WORK_DIR", tempfile.gettempdir() + "/scootercheck-fw-jobs"))
+PLAINTEXT_STORE = Path(
+    os.environ.get("PLAINTEXT_STORE", str(Path(tempfile.gettempdir()) / "scootercheck-decrypted"))
+)
 WORK_DIR.mkdir(parents=True, exist_ok=True)
+PLAINTEXT_STORE.mkdir(parents=True, exist_ok=True)
 
 # In-memory job index (restart loses state — fine for v1; use Redis later).
 JOBS: dict[str, dict[str, Any]] = {}
@@ -139,6 +143,8 @@ def job_status_payload(job: dict[str, Any]) -> dict[str, Any]:
         "errorCode": job.get("errorCode"),
         "plaintextSHA256": job.get("plaintextSHA256"),
         "encSHA256": job.get("encSHA256"),
+        "plaintextPath": job.get("plaintextPath"),
+        "plaintextSaved": job.get("plaintextSaved", False),
     }
 
 
@@ -249,9 +255,21 @@ async def submit_job(
     notes.append(f"plaintextSHA256={plain_sha}")
     notes.append(f"plaintextBytes={len(plaintext)}")
 
+    # Durable copy: always keep decrypted file after successful ninebottea run.
+    safe_name = (meta.originalFileName or "upload").replace("/", "_")
+    stored = PLAINTEXT_STORE / f"{job_id}_{plain_sha[:12]}_{safe_name}.dec.bin"
+    shutil.copy2(out_bin, stored)
+    # Also keep a stable latest pointer per job
+    latest = Path(job["dir"]) / "FIRM.dec.bin"
+    if stored.resolve() != latest.resolve():
+        shutil.copy2(stored, latest)
+    job["plaintextPath"] = str(stored)
+    job["plaintextSaved"] = True
+    notes.append(f"plaintextSaved={stored}")
+
     job["state"] = "extracting"
     job["progressPercent"] = 75
-    job["message"] = "scanning speed signatures"
+    job["message"] = f"entschlüsselt und gespeichert: {stored.name}"
 
     result = deep_result(
         subject_sha256=enc_sha,
@@ -269,7 +287,9 @@ async def submit_job(
     job["result"] = result
     job["state"] = "completed"
     job["progressPercent"] = 100
-    job["message"] = "decrypt + deterministic extract complete"
+    job["message"] = (
+        f"Datei entschlüsselt und gespeichert ({len(plaintext)} Byte) → {stored}"
+    )
     job["errorCode"] = None
     return JSONResponse(job_status_payload(job))
 
@@ -288,9 +308,9 @@ def download_plaintext(job_id: str, _: None = Depends(require_token)):
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    path = Path(job["dir"]) / "FIRM.dec.bin"
+    path = Path(job.get("plaintextPath") or (Path(job["dir"]) / "FIRM.dec.bin"))
     if not path.exists():
         raise HTTPException(status_code=404, detail="plaintext not available")
     from fastapi.responses import FileResponse
 
-    return FileResponse(path, filename="FIRM.dec.bin", media_type="application/octet-stream")
+    return FileResponse(path, filename=path.name, media_type="application/octet-stream")

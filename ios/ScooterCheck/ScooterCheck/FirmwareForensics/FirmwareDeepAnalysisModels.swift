@@ -181,4 +181,8 @@ struct FirmwareAnalysisJobStatus: Equatable, Codable, Sendable {
     var message: String
     var result: FirmwareDeepAnalysisResult?
     var errorCode: String?
+    /// Server path of saved decrypted BIN (Hetzner store), if decrypt succeeded.
+    var plaintextPath: String? = nil
+    var plaintextSHA256: String? = nil
+    var plaintextSaved: Bool? = nil
 }

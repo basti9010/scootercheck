@@ -23,11 +23,31 @@ if [[ ! -f "$ENV_FILE" ]]; then
 API_TOKEN=change-me-long-random
 DECRYPT_CMD=/opt/scootercheck/decrypt-firm.sh
 WORK_DIR=/var/lib/scootercheck/firmware-jobs
+PLAINTEXT_STORE=/var/lib/scootercheck/decrypted
 HOST=127.0.0.1
 PORT=8088
 EOF
   chmod 600 "$ENV_FILE"
   echo "Created $ENV_FILE — set API_TOKEN and DECRYPT_CMD."
+fi
+
+mkdir -p /var/lib/scootercheck/decrypted
+chown -R scootercheck:scootercheck /var/lib/scootercheck/decrypted
+
+# Install decrypt wrapper if missing (edit NINEBOTTEA_BIN / CLI on the host).
+if [[ ! -f /opt/scootercheck/decrypt-firm.sh ]]; then
+  install -m 755 "$APP_DIR/decrypt-firm.example.sh" /opt/scootercheck/decrypt-firm.sh
+  echo "Installed /opt/scootercheck/decrypt-firm.sh — point NINEBOTTEA_BIN at your installed ninebottea."
+fi
+
+if [[ ! -f /etc/scootercheck/decrypt.env ]]; then
+  umask 077
+  cat >/etc/scootercheck/decrypt.env <<'EOF'
+# Path to already-installed ninebottea (or equivalent).
+NINEBOTTEA_BIN=ninebottea
+# Add KEY=... only on the server — never commit.
+EOF
+  chmod 600 /etc/scootercheck/decrypt.env
 fi
 
 apt-get update -y

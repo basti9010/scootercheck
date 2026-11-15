@@ -15,7 +15,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/scootercheck/firmware-jobs
+ReadWritePaths=/var/lib/scootercheck/firmware-jobs /var/lib/scootercheck/decrypted
 
 [Install]
 WantedBy=multi-user.target

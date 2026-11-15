@@ -666,7 +666,11 @@ struct FirmwareZipInspectorView: View {
                 return
             }
             mergeServerDeepAnalysis(validated)
-            serverStatusText = "Server-Analyse übernommen (\(validated.speedLimits.count) Speed-Stufen)."
+            if final.plaintextSaved == true, let path = final.plaintextPath {
+                serverStatusText = "Entschlüsselt & gespeichert: \(path) · \(validated.speedLimits.count) Speed-Stufen."
+            } else {
+                serverStatusText = "Server-Analyse übernommen (\(validated.speedLimits.count) Speed-Stufen)."
+            }
         } catch {
             errorText = error.localizedDescription
             serverStatusText = error.localizedDescription

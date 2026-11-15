@@ -38,16 +38,25 @@ uvicorn app:APP --host "${HOST:-127.0.0.1}" --port "${PORT:-8088}"
 ```
 
 
-## DECRYPT_CMD
+## Ablauf nach App-Upload
 
-Skript mit zwei Argumenten: `input.enc` → `output.bin`.
+1. App lädt ZIP/ENC hoch  
+2. Worker speichert Upload unter `WORK_DIR/<jobId>/`  
+3. Ruft `DECRYPT_CMD input.enc output.bin` auf (Wrapper → installiertes ninebottea)  
+4. Speichert Klartext unter `PLAINTEXT_STORE/<jobId>_<sha>_….dec.bin`  
+5. JSON + Pfad zurück; Download: `GET /v1/firmware/jobs/{id}/plaintext`
+
+## DECRYPT_CMD (ninebottea bereits installiert)
 
 ```bash
 cp decrypt-firm.example.sh /opt/scootercheck/decrypt-firm.sh
-# Skript so anpassen, dass es EUER installiertes Tool aufruft (Key nur aus Vault/Env)
 chmod +x /opt/scootercheck/decrypt-firm.sh
+# /etc/scootercheck/decrypt.env → NINEBOTTEA_BIN=/pfad/zu/ninebottea
+# Bei Bedarf eine Zeile im Wrapper an eure CLI anpassen: "$BIN" decrypt "$IN" "$OUT"
 export DECRYPT_CMD=/opt/scootercheck/decrypt-firm.sh
 ```
+
+Keys nur in `decrypt.env` auf dem Hetzner-Host — nicht in Git.
 
 ## App
 
@@ -58,5 +67,5 @@ Firmware-Forensik → „Auf Server entschlüsseln / analysieren“.
 
 - `POST /v1/firmware/jobs` multipart: `meta_json` + `archive`
 - `GET /v1/firmware/jobs/{id}`
-- `GET /v1/firmware/jobs/{id}/plaintext` (Klartext-BIN, authentifiziert)
+- `GET /v1/firmware/jobs/{id}/plaintext` (gespeicherter Klartext)
 - Header: `X-ScooterCheck-Token` wenn `API_TOKEN` gesetzt
