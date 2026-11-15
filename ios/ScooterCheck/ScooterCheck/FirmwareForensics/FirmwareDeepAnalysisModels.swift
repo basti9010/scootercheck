@@ -185,4 +185,7 @@ struct FirmwareAnalysisJobStatus: Equatable, Codable, Sendable {
     var plaintextPath: String? = nil
     var plaintextSHA256: String? = nil
     var plaintextSaved: Bool? = nil
+    /// Server path of Ghidra-exported decompiled C, if headless succeeded.
+    var decompilePath: String? = nil
+    var decompileSaved: Bool? = nil
 }

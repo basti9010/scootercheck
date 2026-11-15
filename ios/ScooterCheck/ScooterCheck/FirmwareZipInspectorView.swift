@@ -666,11 +666,15 @@ struct FirmwareZipInspectorView: View {
                 return
             }
             mergeServerDeepAnalysis(validated)
+            var bits: [String] = []
             if final.plaintextSaved == true, let path = final.plaintextPath {
-                serverStatusText = "Entschlüsselt & gespeichert: \(path) · \(validated.speedLimits.count) Speed-Stufen."
-            } else {
-                serverStatusText = "Server-Analyse übernommen (\(validated.speedLimits.count) Speed-Stufen)."
+                bits.append("Decrypt: \(path)")
             }
+            if final.decompileSaved == true, let path = final.decompilePath {
+                bits.append("Ghidra: \(path)")
+            }
+            bits.append("\(validated.speedLimits.count) Speed-Stufen")
+            serverStatusText = bits.joined(separator: " · ")
         } catch {
             errorText = error.localizedDescription
             serverStatusText = error.localizedDescription

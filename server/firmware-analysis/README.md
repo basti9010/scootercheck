@@ -42,9 +42,23 @@ uvicorn app:APP --host "${HOST:-127.0.0.1}" --port "${PORT:-8088}"
 
 1. App lädt ZIP/ENC hoch  
 2. Worker speichert Upload unter `WORK_DIR/<jobId>/`  
-3. Ruft `DECRYPT_CMD input.enc output.bin` auf (Wrapper → installiertes ninebottea)  
-4. Speichert Klartext unter `PLAINTEXT_STORE/<jobId>_<sha>_….dec.bin`  
-5. JSON + Pfad zurück; Download: `GET /v1/firmware/jobs/{id}/plaintext`
+3. `DECRYPT_CMD` → Klartext unter `PLAINTEXT_STORE/… .dec.bin`  
+4. Optional **Ghidra Headless** → Decompile unter `DECOMPILE_STORE/… .dec.c`  
+5. Speed-Scan (BIN + `.c`) → JSON zurück  
+6. Downloads: `/plaintext` und `/decompile`
+
+### Ghidra auf dem Hetzner
+
+```bash
+# Ghidra nach /opt/ghidra entpacken, dann in firmware-analysis.env:
+GHIDRA_HOME=/opt/ghidra
+ENABLE_GHIDRA=1
+# ARM Cortex-M / AT32-VCU Defaults:
+GHIDRA_PROCESSOR=ARM:LE:32:Cortex
+GHIDRA_BASE_ADDR=0x08000000
+```
+
+Skript: `ghidra_scripts/ExportAllDecompiled.java` (wird per `-postScript` ausgeführt).
 
 ## DECRYPT_CMD (ninebottea bereits installiert)
 

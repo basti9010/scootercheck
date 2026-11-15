@@ -24,15 +24,20 @@ API_TOKEN=change-me-long-random
 DECRYPT_CMD=/opt/scootercheck/decrypt-firm.sh
 WORK_DIR=/var/lib/scootercheck/firmware-jobs
 PLAINTEXT_STORE=/var/lib/scootercheck/decrypted
+DECOMPILE_STORE=/var/lib/scootercheck/decompiled
+ENABLE_GHIDRA=1
+GHIDRA_HOME=/opt/ghidra
+GHIDRA_PROCESSOR=ARM:LE:32:Cortex
+GHIDRA_BASE_ADDR=0x08000000
 HOST=127.0.0.1
 PORT=8088
 EOF
   chmod 600 "$ENV_FILE"
-  echo "Created $ENV_FILE — set API_TOKEN and DECRYPT_CMD."
+  echo "Created $ENV_FILE — set API_TOKEN, DECRYPT_CMD, GHIDRA_HOME."
 fi
 
-mkdir -p /var/lib/scootercheck/decrypted
-chown -R scootercheck:scootercheck /var/lib/scootercheck/decrypted
+mkdir -p /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
+chown -R scootercheck:scootercheck /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
 
 # Install decrypt wrapper if missing (edit NINEBOTTEA_BIN / CLI on the host).
 if [[ ! -f /opt/scootercheck/decrypt-firm.sh ]]; then

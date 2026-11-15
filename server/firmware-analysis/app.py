@@ -25,18 +25,27 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from ghidra_decompile import ghidra_configured, run_ghidra_decompile
 from speed_extract import deep_result
 
 APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.0.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 DECRYPT_CMD = os.environ.get("DECRYPT_CMD", "").strip()
+# Default: run Ghidra when configured; set ENABLE_GHIDRA=0 to skip.
+ENABLE_GHIDRA = os.environ.get("ENABLE_GHIDRA", "1").strip() not in ("0", "false", "False")
+GHIDRA_PROCESSOR = os.environ.get("GHIDRA_PROCESSOR", "ARM:LE:32:Cortex").strip()
+GHIDRA_BASE_ADDR = os.environ.get("GHIDRA_BASE_ADDR", "0x08000000").strip()
 WORK_DIR = Path(os.environ.get("WORK_DIR", tempfile.gettempdir() + "/scootercheck-fw-jobs"))
 PLAINTEXT_STORE = Path(
     os.environ.get("PLAINTEXT_STORE", str(Path(tempfile.gettempdir()) / "scootercheck-decrypted"))
 )
+DECOMPILE_STORE = Path(
+    os.environ.get("DECOMPILE_STORE", str(Path(tempfile.gettempdir()) / "scootercheck-decompiled"))
+)
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 PLAINTEXT_STORE.mkdir(parents=True, exist_ok=True)
+DECOMPILE_STORE.mkdir(parents=True, exist_ok=True)
 
 # In-memory job index (restart loses state — fine for v1; use Redis later).
 JOBS: dict[str, dict[str, Any]] = {}
@@ -145,6 +154,8 @@ def job_status_payload(job: dict[str, Any]) -> dict[str, Any]:
         "encSHA256": job.get("encSHA256"),
         "plaintextPath": job.get("plaintextPath"),
         "plaintextSaved": job.get("plaintextSaved", False),
+        "decompilePath": job.get("decompilePath"),
+        "decompileSaved": job.get("decompileSaved", False),
     }
 
 
@@ -153,6 +164,8 @@ def health() -> dict[str, Any]:
     return {
         "ok": True,
         "decryptConfigured": bool(DECRYPT_CMD),
+        "ghidraConfigured": ghidra_configured(),
+        "ghidraEnabled": ENABLE_GHIDRA,
         "time": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -267,9 +280,39 @@ async def submit_job(
     job["plaintextSaved"] = True
     notes.append(f"plaintextSaved={stored}")
 
+    decompiled_text: str | None = None
+    job["decompileSaved"] = False
+    job["decompilePath"] = None
+
+    if ENABLE_GHIDRA and ghidra_configured():
+        job["state"] = "decompiling"
+        job["progressPercent"] = 60
+        job["message"] = "Ghidra Headless decompiliert…"
+        out_c = DECOMPILE_STORE / f"{job_id}_{plain_sha[:12]}_{safe_name}.dec.c"
+        job_c = Path(job["dir"]) / "FIRM.dec.c"
+        ok_g, msg_g = run_ghidra_decompile(
+            stored,
+            out_c,
+            processor=GHIDRA_PROCESSOR,
+            base_addr=GHIDRA_BASE_ADDR,
+        )
+        notes.append(f"ghidra={msg_g}")
+        if ok_g:
+            shutil.copy2(out_c, job_c)
+            job["decompilePath"] = str(out_c)
+            job["decompileSaved"] = True
+            decompiled_text = out_c.read_text(encoding="utf-8", errors="replace")
+            job["message"] = f"Decompile gespeichert: {out_c.name}"
+        else:
+            job["message"] = f"Decrypt OK, Ghidra fehlgeschlagen: {msg_g}"
+    elif ENABLE_GHIDRA:
+        notes.append("ghidra=skipped (GHIDRA_HOME / GHIDRA_HEADLESS not set)")
+    else:
+        notes.append("ghidra=disabled (ENABLE_GHIDRA=0)")
+
     job["state"] = "extracting"
-    job["progressPercent"] = 75
-    job["message"] = f"entschlüsselt und gespeichert: {stored.name}"
+    job["progressPercent"] = 85
+    job["message"] = "Speed-Signaturen aus Klartext/Decompile…"
 
     result = deep_result(
         subject_sha256=enc_sha,
@@ -279,6 +322,7 @@ async def submit_job(
         plaintext=plaintext,
         decrypt_ok=decrypt_ok,
         notes=notes,
+        decompiled_text=decompiled_text,
     )
     # Mark source as server decrypt path
     if "serverDecompile" not in result["sources"]:
@@ -287,9 +331,10 @@ async def submit_job(
     job["result"] = result
     job["state"] = "completed"
     job["progressPercent"] = 100
-    job["message"] = (
-        f"Datei entschlüsselt und gespeichert ({len(plaintext)} Byte) → {stored}"
-    )
+    parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
+    if job.get("decompileSaved"):
+        parts.append(f"Ghidra .c → {job['decompilePath']}")
+    job["message"] = " · ".join(parts)
     job["errorCode"] = None
     return JSONResponse(job_status_payload(job))
 
@@ -314,3 +359,16 @@ def download_plaintext(job_id: str, _: None = Depends(require_token)):
     from fastapi.responses import FileResponse
 
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/decompile")
+def download_decompile(job_id: str, _: None = Depends(require_token)):
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    path = Path(job.get("decompilePath") or (Path(job["dir"]) / "FIRM.dec.c"))
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="decompile not available")
+    from fastapi.responses import FileResponse
+
+    return FileResponse(path, filename=path.name, media_type="text/plain")

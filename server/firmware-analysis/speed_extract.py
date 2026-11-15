@@ -21,6 +21,31 @@ KNOWN = [
 KNOWN_MAP = {p: (kmh, role) for p, kmh, role in KNOWN}
 
 
+def scan_decompiled_text(text: str) -> list[dict[str, Any]]:
+    """Find known packed immediates like 0x1600 / 0x6300 in Ghidra C export."""
+    import re
+
+    found: dict[int, dict[str, Any]] = {}
+    for m in re.finditer(r"0x([0-9a-fA-F]{3,4})\b", text):
+        try:
+            packed = int(m.group(1), 16)
+        except ValueError:
+            continue
+        if packed not in KNOWN_MAP or packed in found:
+            continue
+        kmh, role = KNOWN_MAP[packed]
+        found[packed] = {
+            "id": f"srv-c-{packed:04x}",
+            "kmh": kmh,
+            "packedU16": packed,
+            "role": role,
+            "evidence": f"Decompile-Immediate 0x{packed:04X}",
+            "source": "serverDecompile",
+            "confidence": "high",
+        }
+    return sorted(found.values(), key=lambda x: x["kmh"])
+
+
 def scan_binary(data: bytes) -> list[dict[str, Any]]:
     found: dict[int, dict[str, Any]] = {}
     for i in range(0, max(0, len(data) - 1)):
@@ -49,14 +74,27 @@ def deep_result(
     plaintext: bytes,
     decrypt_ok: bool,
     notes: list[str],
+    decompiled_text: str | None = None,
 ) -> dict[str, Any]:
     from datetime import datetime, timezone
 
     speeds = scan_binary(plaintext) if decrypt_ok and plaintext else []
+    if decompiled_text:
+        # Prefer union of binary + decompile immediates
+        by_packed = {s.get("packedU16"): s for s in speeds if s.get("packedU16") is not None}
+        for s in scan_decompiled_text(decompiled_text):
+            p = s.get("packedU16")
+            if p not in by_packed:
+                by_packed[p] = s
+        speeds = sorted(by_packed.values(), key=lambda x: x["kmh"])
+
     max_k = max((s["kmh"] for s in speeds), default=None)
     legal = min((s["kmh"] for s in speeds if s["role"] == "legalCap"), default=None)
-    sources = ["serverDecompile"] if decrypt_ok else []
+    sources = ["serverDecompile"] if decrypt_ok or decompiled_text else []
     has_det = bool(speeds)
+    summary = "Server-Decrypt + deterministischer Speed-Scan."
+    if decompiled_text:
+        summary = "Server-Decrypt + Ghidra-Decompile + Speed-Scan."
     return {
         "schemaVersion": 1,
         "producedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -81,9 +119,9 @@ def deep_result(
             "hasDeterministicBasis": has_det,
             "llmSchemaValidated": False,
             "summary": (
-                "Server-Decrypt + deterministischer Speed-Scan."
+                summary
                 if has_det
-                else "Decrypt/Scan ohne Speed-Treffer — Katalog in der App prüfen."
+                else "Decrypt/Decompile ohne Speed-Treffer — Katalog in der App prüfen."
             ),
         },
     }
