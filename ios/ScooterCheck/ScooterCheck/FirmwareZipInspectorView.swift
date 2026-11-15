@@ -53,6 +53,7 @@ struct FirmwareZipInspectorView: View {
                     }
                     if let report {
                         verdictBanner(report)
+                        dualSourceSection(report)
                         packageSection(report)
                         contentSection(report)
                         cryptoSection(report)
@@ -299,6 +300,31 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
+    private func dualSourceSection(_ r: FirmwareForensicReport) -> some View {
+        let reading = makeSyntheticReading(from: r.vehicleContext ?? vehicleContext)
+        let assessment = DualSourcePanicCorrelator.assess(
+            forensic: r,
+            reading: reading,
+            profile: nil,
+            storedCombo: SoftUnlockComboStore.load(forSerial: (r.vehicleContext ?? vehicleContext)?.serial)
+        )
+        return DualSourcePanicCard(assessment: assessment)
+    }
+
+    private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {
+        guard let ctx, ctx.fromLiveReadout else { return nil }
+        var reading = IntegrityReading()
+        reading.serialDisplay = ctx.serial
+        reading.fwVcu = ctx.fwVcu
+        reading.fwMcu = ctx.fwMcu
+        reading.fwBle = ctx.fwBle
+        reading.fwEsc = ctx.fwEsc
+        reading.speedLimitKmh = ctx.speedLimitKmh
+        reading.speedMaxKmh = ctx.speedMaxKmh
+        reading.peakSpeedKmh = ctx.peakSpeedKmh
+        return reading
+    }
+
     private func vehicleSection(_ r: FirmwareForensicReport) -> some View {
         sectionCard("Fahrzeugkontext (Auslese)") {
             Text("Die importierte Datei wird dem Prüfkontext nur zugeordnet — sie gilt nicht als installierte Firmware.")
@@ -457,17 +483,19 @@ struct FirmwareZipInspectorView: View {
     private func reanalyze() {
         guard let data = lastData else { return }
         isBusy = true
-        report = FirmwareForensicOrchestrator.analyze(
+        let analyzed = FirmwareForensicOrchestrator.analyze(
             fileName: lastFileName,
             data: data,
             references: references.records,
             preferredReferenceId: preferredReferenceId,
             vehicleContext: vehicleContext
         )
-        if let models = report?.meta.models, refModel.isEmpty, let first = models.first {
+        report = analyzed
+        DualSourceCaseStore.saveForensic(analyzed)
+        if let models = analyzed.meta.models, refModel.isEmpty, let first = models.first {
             refModel = first
         }
-        if let t = report?.meta.type, refController.isEmpty || refController == "VCU" {
+        if let t = analyzed.meta.type, refController.isEmpty || refController == "VCU" {
             refController = t
         }
         isBusy = false

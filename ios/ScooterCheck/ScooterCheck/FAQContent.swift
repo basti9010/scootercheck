@@ -563,6 +563,21 @@ private extension FAQCatalog {
                 keywords: ["zip", "firmware", "forensik", "flash", "enc", "referenz", "sha256", "params", "vcu", "bin"]
             ),
             FAQItem(
+                id: "dual-source-panic",
+                question: "Handy-Datei auffällig, Scooter wirkt seriennah — was tun?",
+                segments: [
+                    .paragraph("Typisches Panic-/Reset-Muster: Am Handy liegt eine Flash-/CFW-Datei, die Live-Auslese zeigt aber wieder Serienlimits. ScooterCheck korreliert beide Quellen unter „Dual-Source · Panic-/Reset“."),
+                    .bullets([
+                        "Firmware-Forensik der Handy-Datei (Besitz/Herkunft dokumentieren)",
+                        "Scooter parallel auslesen (Ist-Zustand)",
+                        "Vergleichstest: Aktivierungs-Kombi eingeben → erneut auslesen → optional Aus/An (Persistenz)",
+                        "Beide Berichte (Forensik + Prüfbericht) speichern/teilen",
+                    ]),
+                    .callout("Kombinationen stehen in verschlüsselten Images meist nicht als Klartext. Sie werden durch Vorher/Nachher-Auslese oder gespeicherte SN-Kombis gewonnen — nicht durch Raten aus ENC."),
+                ],
+                keywords: ["panic", "reset", "handy", "datei", "dual", "kombination", "soft unlock", "cfw"]
+            ),
+            FAQItem(
                 id: "tiefe",
                 question: "Wie tief kann ScooterCheck auslesen?",
                 segments: [

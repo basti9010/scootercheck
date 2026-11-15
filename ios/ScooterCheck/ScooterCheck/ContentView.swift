@@ -114,8 +114,20 @@ struct ContentView: View {
             fwMcu: result.reading.fwMcu,
             fwBle: result.reading.fwBle,
             fwEsc: result.reading.fwEsc,
+            speedLimitKmh: result.reading.speedLimitKmh,
+            speedMaxKmh: result.reading.speedMaxKmh,
+            peakSpeedKmh: result.reading.peakSpeedKmh,
             protocolNumber: session?.protocolNumber,
             fromLiveReadout: true
+        )
+    }
+
+    private var dualSourceAssessment: DualSourcePanicAssessment {
+        DualSourcePanicCorrelator.assess(
+            forensic: DualSourceCaseStore.loadForensic(),
+            reading: result?.reading,
+            profile: profile,
+            storedCombo: SoftUnlockComboStore.load(forSerial: currentScooterSerial)
         )
     }
 
@@ -797,6 +809,16 @@ struct ContentView: View {
             if ble.liveTelemetry.hasAnyValue || ble.isLiveTelemetryActive {
                 liveTelemetryCard(ble.liveTelemetry, active: ble.isLiveTelemetryActive)
             }
+
+            DualSourcePanicCard(
+                assessment: dualSourceAssessment,
+                onOpenForensics: { showFirmwareZipInspector = true },
+                onStartComparison: {
+                    if unlockRescanPhase == .idle, powerCyclePhase == .idle {
+                        startComparisonTest()
+                    }
+                }
+            )
 
             Text("Details zur Prüfung")
                 .font(Theme.sectionTitle)
