@@ -107,9 +107,40 @@ final class PeakDisReportBugsTests: XCTestCase {
         XCTAssertEqual(RegisterScale.liveSpeedKmh(0x2D00) ?? -1, 45.0, accuracy: 0.01)
     }
 
-    func testZT3ProUsesLegacyMapNotG3() {
-        XCTAssertFalse(ScooterProfile.zt3ProD.usesG3RegisterMap)
-        XCTAssertFalse(DiagnosticMap.fields(for: .zt3ProD).map(\.id).contains("vcu_g3_speed"))
+    func testLiveSpeedRejectsAsciiLikePackedGarbage() {
+        // SC-20261116-8A81191E: dis_speed Hex 3237 → LE 0x3732; High-Byte 55 ohne Padding.
+        XCTAssertNil(RegisterScale.liveSpeedKmh(0x3732))
+        var reading = IntegrityReading()
+        let speed = DiagnosticMap.Spec(
+            id: "dis_speed",
+            board: .dis,
+            register: Nb.Register.currentSpeed,
+            readLen: 2,
+            category: .history
+        )
+        DiagnosticMap.apply(spec: speed, data: Data([0x32, 0x37]), into: &reading)
+        XCTAssertNil(reading.speedCurrentKmh)
+        XCTAssertNil(reading.peakSpeedKmh)
+    }
+
+    func testRatedDoesNotSoftUnlockFromTenthsGarbage() {
+        var reading = IntegrityReading()
+        let rated = DiagnosticMap.Spec(
+            id: "dis_rated",
+            board: .dis,
+            register: Nb.Register.ratedSpeed,
+            readLen: 2,
+            category: .limit
+        )
+        // Hex 1414 → LE 0x1414; g3Stored → 20 km/h (High-Byte), nicht 514.
+        DiagnosticMap.apply(spec: rated, data: Data([0x14, 0x14]), into: &reading)
+        XCTAssertEqual(reading.speedRatedKmh ?? -1, 20.0, accuracy: 0.01)
+        XCTAssertNotEqual(reading.hiddenTuningDetected, true)
+    }
+
+    func testZT3ProUsesG3RegisterMap() {
+        XCTAssertTrue(ScooterProfile.zt3ProD.usesG3RegisterMap)
+        XCTAssertTrue(DiagnosticMap.fields(for: .zt3ProD).map(\.id).contains("vcu_g3_speed"))
         XCTAssertTrue(DiagnosticMap.fields(for: .zt3ProD).map(\.id).contains("dis_trip_max"))
     }
 

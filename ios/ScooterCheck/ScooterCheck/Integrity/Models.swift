@@ -213,8 +213,10 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 
     /// Welche Registerkarte bei der Auslese verwendet wird.
-    /// Max G3, F3 Pro und GT3 teilen die Enc2-/x3-VCU-Karte (Limits, Trip-Peak, FW).
-    var usesG3RegisterMap: Bool { family == .maxG3 || family == .ninebotF3 || family == .gt3 }
+    /// Max G3, F3 Pro, GT3 und ZT3 Pro (1K1D… / Z07-MCU) teilen die Enc2-/x3-VCU-Karte.
+    var usesG3RegisterMap: Bool {
+        family == .maxG3 || family == .ninebotF3 || family == .gt3 || family == .zt3Pro
+    }
 
     /// Serienmäßige höchste Leistungsstufe (nicht Eco/Drive/Sport-Label).
     /// F3 Pro / GT3: mehrere Fahrmodi ab Werk → max. Stufe 3 ist Serie; Max G3 DE typisch 1.

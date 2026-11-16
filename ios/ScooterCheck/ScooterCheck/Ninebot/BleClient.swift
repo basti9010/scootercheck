@@ -812,14 +812,16 @@ final class BleClient: NSObject, ObservableObject {
         dumpProfileHint = profile
 
         let name = cryptoName.isEmpty ? btName : cryptoName
-        let isMaxG3Family = profile.family == .maxG3
-            || profile.family == .ninebotF3
-            || name.uppercased().hasPrefix("1C")
-            || name.uppercased().hasPrefix("1EF")
+        let compactName = String(name.uppercased().filter { $0.isLetter || $0.isNumber })
+        // x3-VCU-Familie (G3/F3/GT3/ZT3) und SN-Präfixe: Enc2 nur über Nordic-UART.
+        let usesNordicEnc2Exclusive = profile.usesG3RegisterMap
+            || compactName.hasPrefix("1C")
+            || compactName.hasPrefix("1EF")
+            || compactName.hasPrefix("1K1")
 
-        // Max G3 (SHU/Flasher): ausschließlich Nordic-UART — Ninebot-Custom-UART
+        // Max G3 / ZT3 / F3 (SHU/Flasher): ausschließlich Nordic-UART — Ninebot-Custom-UART
         // timed out bisher und verdeckte den eigentlichen Nordic-Fehler.
-        if isMaxG3Family {
+        if usesNordicEnc2Exclusive {
             guard hasXiaomiPipe else {
                 fail(
                     "Nordic-UART fehlt"
@@ -1098,29 +1100,56 @@ final class BleClient: NSObject, ObservableObject {
         statusMessage = "Sende Identifikationssignal…"
 
         let gen = protocolGen
-        // Mehrere Kandidaten: G3 playSound + klassisches „Looking for scooter“.
-        let shots: [(Nb.Board, UInt8, Data)] = [
-            (.vcuG3, Nb.Identify.playSound, Data([0x01, 0x00])),
-            (.vcuG3, Nb.Identify.playSound, Data([0x01])),
-            (.mcuG3, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
-            (.mcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
-            (.dis, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
-            (.vcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00]))
-        ]
+        let useG3 = dumpProfileHint.usesG3RegisterMap
+        // x3 (G3/ZT3/F3/GT3): zuerst VCU playSound; Legacy: Looking-for auf DIS/VCU/MCU.
+        // Je Kandidat Write-NR und Write-with-response — manche FW ignorieren nur 0x03.
+        let boardsAndRegs: [(Nb.Board, UInt8, Data)] = useG3
+            ? [
+                (.vcuG3, Nb.Identify.playSound, Data([0x01, 0x00])),
+                (.vcuG3, Nb.Identify.playSound, Data([0x01])),
+                (.dis, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.mcuG3, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.ble, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.vcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.mcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00]))
+            ]
+            : [
+                (.dis, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.vcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.mcu, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.ble, Nb.Identify.lookingForScooter, Data([0x01, 0x00])),
+                (.vcuG3, Nb.Identify.playSound, Data([0x01, 0x00])),
+                (.mcuG3, Nb.Identify.lookingForScooter, Data([0x01, 0x00]))
+            ]
 
-        for (board, register, payload) in shots {
+        var sent = 0
+        for (board, register, payload) in boardsAndRegs {
             guard peripheral?.state == .connected else { break }
-            let plain = Nb.writeBytes(board: board, register: register, data: payload, noResponse: true, gen: gen)
-            do {
-                try await sendFireAndForget(plain: plain, crypto: crypto)
-            } catch {
-                // Nächsten Kandidaten versuchen
+            for noResponse in [true, false] {
+                let plain = Nb.writeBytes(
+                    board: board,
+                    register: register,
+                    data: payload,
+                    noResponse: noResponse,
+                    gen: gen
+                )
+                do {
+                    try await sendFireAndForget(plain: plain, crypto: crypto)
+                    sent += 1
+                } catch {
+                    // Nächsten Kandidaten versuchen
+                }
+                try? await Task.sleep(nanoseconds: 120_000_000)
             }
-            try? await Task.sleep(nanoseconds: 180_000_000)
+            try? await Task.sleep(nanoseconds: 80_000_000)
         }
 
         phase = .done
-        statusMessage = "Identifiziert — auf Piepton oder Blinken achten. Danach „Auslesen starten“."
+        if sent == 0 {
+            statusMessage = "Identifizieren: kein Signal gesendet (Verbindung?). Erneut versuchen oder Auslesen starten."
+        } else {
+            statusMessage = "Identifiziert — auf Piepton oder Blinken achten. Danach „Auslesen starten“."
+        }
     }
 
     private func sendFireAndForget(plain: Data, crypto: NbCrypto) async throws {
