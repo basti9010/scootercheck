@@ -289,6 +289,8 @@ final class BleClient: NSObject, ObservableObject {
     @Published private(set) var radarScanActive = false
     /// Im Hintergrund: Service-UUID-Filter statt `nil` (ehrliche iOS-Grenze).
     @Published private(set) var radarBackgroundFiltered = false
+    /// Nutzer hat „Suche stoppen“ gewählt — Watch/Radar-Timer darf nicht sofort neu starten.
+    @Published private(set) var userPausedScan = false
 
     var centralStatePoweredOn: Bool { central?.state == .poweredOn }
 
@@ -395,6 +397,7 @@ final class BleClient: NSObject, ObservableObject {
             phase = .failed
             return
         }
+        userPausedScan = false
         watchScanOnly = false
         // Verbundene Scooter werben oft nicht — trennen und als Seed behalten,
         // sonst bleibt „Erneut prüfen“ leer, obwohl das Handy noch verbunden ist.
@@ -436,6 +439,8 @@ final class BleClient: NSObject, ObservableObject {
     /// Kein zweiter CBCentralManager — erweitert denselben Scan.
     func ensureWatchScanRunning() {
         guard central.state == .poweredOn else { return }
+        // Nach manuellem Stopp auf Auslesen nicht still neu anwerfen.
+        guard !userPausedScan else { return }
         if phase == .scanning {
             return
         }
@@ -469,10 +474,17 @@ final class BleClient: NSObject, ObservableObject {
         statusMessage = "Bereit"
     }
 
+    /// Hebt eine Nutzer-Pause auf (z. B. Radar erneut geöffnet / „Scooter suchen“).
+    func clearUserScanPause() {
+        userPausedScan = false
+    }
+
     /// Radar-Session: Scan weiterlaufen lassen. Hintergrund → bekannte Service-UUIDs.
     /// Vordergrund → uneingeschränkt (`nil`), sofern erlaubt.
     func ensureRadarScanRunning(preferBackgroundFilter: Bool) {
         guard central.state == .poweredOn else { return }
+        // Nach „Suche stoppen“ nicht still neu starten — erst clearUserScanPause()/startScan().
+        guard !userPausedScan else { return }
         radarScanActive = true
         let wantFilter = preferBackgroundFilter
         if phase == .scanning {
@@ -654,16 +666,22 @@ final class BleClient: NSObject, ObservableObject {
         rssiAverageStore.average(id: device.id, fallback: device.rssi)
     }
 
-    func stopScan() {
+    /// - Parameter userInitiated: `true` bei „Suche stoppen“ — blockiert Watch/Radar-Auto-Resume.
+    func stopScan(userInitiated: Bool = false) {
         central.stopScan()
         stalePruneTask?.cancel()
         stalePruneTask = nil
         watchScanOnly = false
+        radarScanActive = false
+        if userInitiated {
+            userPausedScan = true
+        }
         if phase == .scanning {
             phase = .idle
-            statusMessage = "Scan beendet"
+            statusMessage = userInitiated ? "Suche gestoppt" : "Scan beendet"
         }
         // Kein automatischer Watch-Restart hier — würde connect/dump stören.
+        // BLEWatchService-Timer respektiert `userPausedScan`.
     }
 
     func connect(to device: ScannedDevice) async throws {

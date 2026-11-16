@@ -371,6 +371,8 @@ final class BLEWatchService: ObservableObject {
 
     func updateBackgroundScanIfNeeded() {
         guard let ble else { return }
+        // Nutzer hat auf Auslesen gestoppt — kein stiller Re-Scan bis „Scooter suchen“ / Radar.
+        if ble.userPausedScan { return }
         if BLERadarSessionStore.shared.sessionRequested {
             ble.ensureRadarScanRunning(
                 preferBackgroundFilter: BLERadarService.shared.isInBackground
@@ -732,6 +734,8 @@ final class BLERadarService: ObservableObject {
     func startSession(enableRadar: Bool = false) {
         sessionActive = true
         if enableRadar {
+            // Explizites Öffnen/Starten des Radars hebt eine Auslesen-Stop-Pause auf.
+            ble?.clearUserScanPause()
             setEnabled(true)
             sessionStore.beginSession()
             ble?.ensureRadarScanRunning(preferBackgroundFilter: isInBackground)

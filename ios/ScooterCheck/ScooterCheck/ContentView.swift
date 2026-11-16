@@ -424,8 +424,9 @@ struct ContentView: View {
             BLERadarService.shared.setForeground(phase == .active)
             if phase == .active {
                 Task { await BLENotificationService.shared.refreshAuthorization() }
-                // Persistierte Radar-Session nach Entsperren fortsetzen
-                if BLERadarSessionStore.shared.sessionRequested {
+                // Persistierte Radar-Session nach Entsperren fortsetzen —
+                // nicht wenn der Nutzer die Suche manuell gestoppt hat.
+                if BLERadarSessionStore.shared.sessionRequested, !ble.userPausedScan {
                     BLERadarService.shared.startSession(enableRadar: true)
                     ble.ensureRadarScanRunning(preferBackgroundFilter: false)
                 }
@@ -1561,10 +1562,10 @@ struct ContentView: View {
             break
         case .home:
             if ble.phase == .scanning {
-                ble.stopScan()
+                ble.stopScan(userInitiated: true)
                 markAuslesenSearchEntered()
                 // Gleichen Tap nicht als Neustart werten, wenn der Button unter dem Finger wechselt.
-                ignoreAuslesenStartUntil = Date().addingTimeInterval(0.5)
+                ignoreAuslesenStartUntil = Date().addingTimeInterval(0.8)
                 return
             }
             if ble.phase == .done {
@@ -2373,6 +2374,14 @@ struct ContentView: View {
                 ) {
                     navigateFromMenu(to: .home)
                 }
+                sideNavRow(
+                    title: "Firmware-Forensik",
+                    systemImage: "doc.badge.gearshape",
+                    selected: false
+                ) {
+                    setMenuOpen(false)
+                    showFirmwareZipInspector = true
+                }
                 if AppFeatureFlags.pedelecAuslesenVisible {
                     sideNavRow(
                         title: "Pedelec auslesen",
@@ -2529,6 +2538,7 @@ struct ContentView: View {
                 }
                 findDestination = .hub
                 screen = .find
+                ble.clearUserScanPause()
                 if ble.phase != .scanning {
                     ble.startScan()
                 }

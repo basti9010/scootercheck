@@ -81,6 +81,7 @@ on:
       - cursor/livecheck-prefill-b100
       - cursor/forensik-after-auslesen-b100
       - cursor/funbool-dual-source-b100
+      - cursor/auslesen-stop-stay-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
