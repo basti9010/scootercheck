@@ -550,7 +550,7 @@ private extension FAQCatalog {
                 id: "firmware-zip",
                 question: "Kann ScooterCheck Firmwaredateien forensisch auswerten?",
                 segments: [
-                    .paragraph("Ja — unter „E-Scooter auslesen“ bzw. im Menü: „Firmware-Forensik“. Die App liest nur lokal (kein Flashen)."),
+                    .paragraph("Ja — nach einer erfolgreichen Scooter-Auslese fragt die App, ob eine forensische Firmware-Datei vom Handy mit dem Prüfbericht kombiniert werden soll. Zusätzlich erreichbar über die Dual-Source-Karte im Protokoll. Die App liest nur lokal (kein Flashen)."),
                     .paragraph("Unterstützt: ZIP/ZIPv3, BIN, BIN.ENC, JSON, TXT. Auswertung umfasst Metadaten, Prüfsummen, Entropie, Verschlüsselungsstatus, optionale Klartext-Binäranalyse, Referenzvergleich und PDF/JSON-Export."),
                     .bullets([
                         "ZIPv3: info.json, params.txt, FIRM.bin / FIRM.bin.enc",
