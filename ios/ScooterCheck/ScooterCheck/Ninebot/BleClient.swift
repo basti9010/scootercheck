@@ -276,6 +276,9 @@ final class BleClient: NSObject, ObservableObject {
     /// DarknessBot-ähnliche Livedaten (Poll nach erfolgreichem Dump).
     @Published private(set) var liveTelemetry = LiveTelemetrySnapshot()
     @Published private(set) var isLiveTelemetryActive = false
+    /// Aktive LiveCheck-Aufzeichnung (Timeline bis Stop).
+    @Published private(set) var isLiveCheckRecording = false
+    @Published private(set) var liveCheckRecording: LiveCheckRecording?
     @Published private(set) var lastError: String?
     @Published private(set) var detectedStack: BleStack = .unknown
     /// Wenn true: Liste nur mit Namen, die nach Scooter aussehen. Sonst alle BLE-Geräte.
@@ -1728,16 +1731,61 @@ final class BleClient: NSObject, ObservableObject {
         }
     }
 
-    /// Stoppt den Live-Poll (Disconnect / neuer Scan).
+    /// Stoppt den Live-Poll (Disconnect / neuer Scan). Beendet ggf. die Aufzeichnung, behält die Daten zum Speichern.
     func stopLiveTelemetry() {
         liveTelemetryTask?.cancel()
         liveTelemetryTask = nil
         isLiveTelemetryActive = false
+        if isLiveCheckRecording {
+            finalizeLiveCheckRecording()
+        }
+    }
+
+    /// Startet eine LiveCheck-Aufzeichnung (Timeline bis Stop). Poll läuft weiter / wird gestartet.
+    func startLiveCheckRecording(protocolNumber: String?, serialDisplay: String?) {
+        var recording = LiveCheckRecording(
+            protocolNumber: protocolNumber,
+            serialDisplay: serialDisplay,
+            startedAt: Date()
+        )
+        if liveTelemetry.hasAnyValue {
+            recording.append(liveTelemetry)
+        }
+        liveCheckRecording = recording
+        isLiveCheckRecording = true
+        if !isLiveTelemetryActive, crypto != nil, peripheral?.state == .connected, phase == .done {
+            startLiveTelemetryPolling()
+        }
+        statusMessage = "LiveCheck läuft · Aufzeichnung gestartet"
+    }
+
+    /// Stoppt die Aufzeichnung, behält Samples für Speichern/Export.
+    func stopLiveCheckRecording() {
+        finalizeLiveCheckRecording()
+        if isLiveTelemetryActive {
+            statusMessage = "Livedaten aktiv · LiveCheck gestoppt"
+        }
+    }
+
+    /// Verwirft die aktuelle Aufzeichnung (nach Speichern oder Abbruch).
+    func clearLiveCheckRecording() {
+        isLiveCheckRecording = false
+        liveCheckRecording = nil
+    }
+
+    private func finalizeLiveCheckRecording() {
+        guard isLiveCheckRecording || liveCheckRecording != nil else { return }
+        isLiveCheckRecording = false
+        if var rec = liveCheckRecording, rec.endedAt == nil {
+            rec.endedAt = Date()
+            liveCheckRecording = rec
+        }
     }
 
     /// Startet periodisches Auslesen der DarknessBot-Kernmetriken (nur Lesen).
     private func startLiveTelemetryPolling() {
-        stopLiveTelemetry()
+        liveTelemetryTask?.cancel()
+        liveTelemetryTask = nil
         guard crypto != nil, peripheral?.state == .connected else { return }
         isLiveTelemetryActive = true
         let profile = dumpProfileHint
@@ -1773,7 +1821,13 @@ final class BleClient: NSObject, ObservableObject {
         }
         if snap.hasAnyValue {
             liveTelemetry = snap
-            statusMessage = "Livedaten aktiv · \(reading.rawRegisters.count) Register im Dump"
+            if isLiveCheckRecording, var rec = liveCheckRecording {
+                rec.append(snap)
+                liveCheckRecording = rec
+                statusMessage = "LiveCheck · \(rec.sampleCount) Punkte · \(reading.rawRegisters.count) Register"
+            } else {
+                statusMessage = "Livedaten aktiv · \(reading.rawRegisters.count) Register im Dump"
+            }
         }
     }
 
@@ -2220,6 +2274,8 @@ final class BleClient: NSObject, ObservableObject {
 
     private func resetSession() {
         stopLiveTelemetry()
+        clearLiveCheckRecording()
+        liveTelemetry = LiveTelemetrySnapshot()
         peripheral = nil
         writeChar = nil
         notifyChar = nil

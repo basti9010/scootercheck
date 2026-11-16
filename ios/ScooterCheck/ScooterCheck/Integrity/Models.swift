@@ -1147,6 +1147,23 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     """
 }
 
+/// Vorbelegung der Zuordnungsfelder bei erneutem Scan derselben SN.
+enum SubjectPrefill {
+    /// Aktuelle (nicht leere) Session hat Vorrang; sonst letzte gespeicherte Zuordnung.
+    static func resolve(preserving current: ProtocolSubject?, prior: ProtocolSubject?) -> (subject: ProtocolSubject, prefilled: Bool) {
+        if let current, !current.sanitized().isEmpty {
+            return (current.sanitized(), false)
+        }
+        if let prior {
+            let cleaned = prior.sanitized()
+            if !cleaned.isEmpty {
+                return (cleaned, true)
+            }
+        }
+        return (.empty, false)
+    }
+}
+
 struct ProtocolSubject: Codable, Hashable, Sendable {
     var lastName: String?
     var firstName: String?

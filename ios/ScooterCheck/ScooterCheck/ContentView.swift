@@ -51,6 +51,9 @@ struct ContentView: View {
     /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
     @State private var showSubjectPrompt = false
     @State private var pendingUnlockRescanAfterSubject = false
+    /// Zuordnung wurde aus vorheriger Prüfung derselben SN übernommen.
+    @State private var subjectWasPrefilled = false
+    @State private var liveCheckToast: String?
     /// Scooter gewählt → Profil bestätigen, dann auslesen.
     @State private var showProfileConfirm = false
     @State private var pendingDevice: ScannedDevice? = nil
@@ -806,8 +809,13 @@ struct ContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if ble.liveTelemetry.hasAnyValue || ble.isLiveTelemetryActive {
+            if ble.liveTelemetry.hasAnyValue || ble.isLiveTelemetryActive || ble.liveCheckRecording != nil {
                 liveTelemetryCard(ble.liveTelemetry, active: ble.isLiveTelemetryActive)
+            }
+            if let toast = liveCheckToast {
+                Text(toast)
+                    .font(.caption)
+                    .foregroundStyle(Theme.accent)
             }
 
             DualSourcePanicCard(
@@ -862,6 +870,19 @@ struct ContentView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .listRowBackground(Color.clear)
+                }
+                if subjectWasPrefilled {
+                    Section {
+                        Text("Übernommen aus letzter Prüfung derselben Seriennummer — bei Bedarf anpassen.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .listRowBackground(Color.clear)
+                        Button("Felder leeren") {
+                            updateSubject { $0 = .empty }
+                            subjectWasPrefilled = false
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
                 }
                 Section("Fahrzeug / Person") {
                     TextField("Kennzeichen", text: subjectStringBinding(\.licensePlate))
@@ -1085,7 +1106,7 @@ struct ContentView: View {
         try? history.save(current, scannedDevice: device)
     }
 
-    /// Livedaten-Streifen (DarknessBot-Parität) nach erfolgreicher Enc2-Auslese.
+    /// Livedaten-Streifen (DarknessBot-Parität) + LiveCheck-Aufzeichnung nach Enc2-Auslese.
     @ViewBuilder
     private func liveTelemetryCard(_ snap: LiveTelemetrySnapshot, active: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
@@ -1093,9 +1114,9 @@ struct ContentView: View {
                 Text("Livedaten")
                     .font(Theme.sectionTitle)
                 Spacer()
-                Text(active ? "live" : "zuletzt")
+                Text(ble.isLiveCheckRecording ? "rec" : (active ? "live" : "zuletzt"))
                     .font(Theme.caption)
-                    .foregroundStyle(active ? Theme.accent : Theme.textMuted)
+                    .foregroundStyle(ble.isLiveCheckRecording ? Theme.danger : (active ? Theme.accent : Theme.textMuted))
             }
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 liveMetric("Geschwindigkeit", snap.speedKmh.map { String(format: "%.1f km/h", $0) })
@@ -1109,11 +1130,80 @@ struct ContentView: View {
                 liveMetric("Controller", snap.controllerTempC.map { String(format: "%.1f °C", $0) })
                 liveMetric("Batterie-Temp.", snap.batteryTempC.map { String(format: "%.1f °C", $0) })
             }
+
+            if let recording = ble.liveCheckRecording {
+                Text(recording.summaryLine)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 10) {
+                if ble.isLiveCheckRecording {
+                    Button {
+                        ble.stopLiveCheckRecording()
+                        liveCheckToast = "LiveCheck gestoppt — speichern möglich"
+                    } label: {
+                        Label("Stop", systemImage: "stop.circle.fill")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.danger)
+                } else {
+                    Button {
+                        startLiveCheckSession()
+                    } label: {
+                        Label("LiveCheck", systemImage: "record.circle")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
+                    .disabled(!active && !snap.hasAnyValue)
+                }
+
+                if let recording = ble.liveCheckRecording, !ble.isLiveCheckRecording, recording.sampleCount > 0 {
+                    Button {
+                        saveLiveCheckRecording(recording)
+                    } label: {
+                        Label("Speichern", systemImage: "square.and.arrow.down")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
         }
         .padding(Theme.Space.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func startLiveCheckSession() {
+        let serial = session?.reading.serialDisplay
+            ?? result?.reading.serialDisplay
+            ?? ble.reading.serialDisplay
+        ble.startLiveCheckRecording(
+            protocolNumber: session?.protocolNumber,
+            serialDisplay: serial
+        )
+        liveCheckToast = "LiveCheck läuft — Stop beendet die Aufzeichnung"
+    }
+
+    private func saveLiveCheckRecording(_ recording: LiveCheckRecording) {
+        persistCurrentSession()
+        guard let current = session else {
+            liveCheckToast = "Keine Prüfung zum Anhängen — erst Auswertung abschließen"
+            return
+        }
+        do {
+            let urls = try history.saveLiveCheck(recording, for: current)
+            ble.clearLiveCheckRecording()
+            liveCheckToast = "LiveCheck gespeichert (\(recording.sampleCount) Punkte)"
+            historyShareItems = [urls.json, urls.csv]
+            showHistoryShare = true
+        } catch {
+            liveCheckToast = "LiveCheck speichern fehlgeschlagen"
+        }
     }
 
     @ViewBuilder
@@ -1743,7 +1833,14 @@ struct ContentView: View {
                 powerCycle: pc
             )
             result = analyzed
-            let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
+            let prefill = resolveSubjectPrefill(
+                forSerial: serial,
+                excludingSessionId: analyzed.sessionId,
+                preserving: session?.subject
+            )
+            subjectWasPrefilled = prefill.prefilled
+            var newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
+            newSession.subject = prefill.subject
             session = newSession
             persistSession(newSession)
             powerCyclePhase = .idle
@@ -1825,7 +1922,14 @@ struct ContentView: View {
                 unlockRescan: unlockReport
             )
             result = analyzed
-            let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
+            let prefill = resolveSubjectPrefill(
+                forSerial: serial,
+                excludingSessionId: analyzed.sessionId,
+                preserving: session?.subject
+            )
+            subjectWasPrefilled = prefill.prefilled
+            var newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: readingB, result: analyzed)
+            newSession.subject = prefill.subject
             session = newSession
             persistSession(newSession)
             // Erfolgreiche Freischaltung → Kombination für diese SN speichern.
@@ -1871,6 +1975,18 @@ struct ContentView: View {
         }
     }
 
+    /// Bekannter Scooter → Zuordnung aus letzter Prüfung vorbefüllen (editierbar).
+    private func resolveSubjectPrefill(
+        forSerial serial: String?,
+        excludingSessionId: UUID? = nil,
+        preserving current: ProtocolSubject?
+    ) -> (subject: ProtocolSubject, prefilled: Bool) {
+        SubjectPrefill.resolve(
+            preserving: current,
+            prior: history.priorSubject(forSerial: serial, excludingSessionId: excludingSessionId)
+        )
+    }
+
     private func finalizeAnalysis() {
         var reading = ble.reading
         guard ScooterVerification.isVerifiedScooterReading(reading) else {
@@ -1894,7 +2010,14 @@ struct ContentView: View {
             priorProtocolNumber: snapshot?.protocolNumber
         )
         result = analyzed
-        let newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
+        let prefill = resolveSubjectPrefill(
+            forSerial: serial,
+            excludingSessionId: analyzed.sessionId,
+            preserving: session?.subject
+        )
+        subjectWasPrefilled = prefill.prefilled
+        var newSession = CheckSession(id: analyzed.sessionId, profile: profile, reading: reading, result: analyzed)
+        newSession.subject = prefill.subject
         session = newSession
         persistSession(newSession)
         presentResultWithSubjectPrompt(triggerUnlockRescan: true)
