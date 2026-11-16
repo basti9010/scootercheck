@@ -220,10 +220,10 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 
     /// Serienmäßige höchste Leistungsstufe (nicht Eco/Drive/Sport-Label).
-    /// F3 Pro / GT3: mehrere Fahrmodi ab Werk → max. Stufe 3 ist Serie; Max G3 DE typisch 1.
+    /// F3 Pro / GT3 / ZT3 Pro: Eco/Drive/Sport ab Werk → max. Stufe 3 ist Serie; Max G3 DE typisch 1.
     var stockMaxGear: Int {
         switch family {
-        case .ninebotF3, .gt3:
+        case .ninebotF3, .gt3, .zt3Pro:
             return 3
         case .maxG3:
             return market == .us37 ? 3 : 1

@@ -2448,8 +2448,9 @@ struct ContentView: View {
     private func historySwipeActions(for entry: ProtocolHistoryStore.Entry) -> some View {
         // Trailing swipeActions: first declared sits at the trailing edge (rechts).
         // Gewünschte Sicht links→rechts: Öffnen · Teilen · Archiv/Restore · Löschen
+        // Swipe-Löschen: sofort, ohne zweiten Bestätigungsdialog (die Swipe-Aktion selbst ist die Bestätigung).
         Button(role: .destructive) {
-            requestHistoryDelete(ids: Set([entry.id]))
+            performHistoryDelete(ids: Set([entry.id]))
         } label: {
             Label("Löschen", systemImage: "trash")
         }
@@ -2704,12 +2705,21 @@ struct ContentView: View {
     private func confirmHistoryDelete() {
         let ids = pendingDeleteIds
         pendingDeleteIds = []
+        performHistoryDelete(ids: ids)
+    }
+
+    /// Löscht Prüfungen sofort (z. B. nach Swipe). Mehrfachauswahl über die Aktionsleiste bleibt beim Bestätigungsdialog.
+    private func performHistoryDelete(ids: Set<UUID>) {
         guard !ids.isEmpty else { return }
+        let count = ids.count
         withAnimation(.easeInOut(duration: 0.22)) {
             history.delete(ids: ids)
             selectedHistoryIds.subtract(ids)
             if selectedHistoryIds.isEmpty { historySelecting = false }
         }
+        presentHistoryToast(
+            count == 1 ? "Prüfung gelöscht" : "\(count) Prüfungen gelöscht"
+        )
     }
 
     private func presentHistoryToast(_ message: String) {
