@@ -78,6 +78,9 @@ on:
       - cursor/clear-enc2-password-b100
       - cursor/zero-start-detect-b100
       - cursor/region-code-detect-b100
+      - cursor/livecheck-prefill-b100
+      - cursor/forensik-after-auslesen-b100
+      - cursor/funbool-dual-source-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
