@@ -18,6 +18,7 @@ enum IntegrityAnalyzer {
         unlockRescan: UnlockRescanReport? = nil
     ) -> IntegrityResult {
         var reading = reading
+        backfillStartSpeedFromRawRegisters(&reading)
         normalizeSpeedUnlockFlag(&reading)
 
         let trackMatch = TrackClassifier.classify(reading: reading, profile: profile)
@@ -221,6 +222,34 @@ enum IntegrityAnalyzer {
             reading.hiddenTuningDetected = true
         } else if reading.hiddenTuningDetected == nil {
             reading.hiddenTuningDetected = false
+        }
+    }
+
+    /// Zero Start auch aus Rohregistern nachziehen (ältere Dumps / Builds ohne startSpeedKmh).
+    static func backfillStartSpeedFromRawRegisters(_ reading: inout IntegrityReading) {
+        guard reading.startSpeedKmh == nil else { return }
+        guard let raw = reading.rawRegisters.last(where: { $0.name == "vcu_g3_startspd" }) else { return }
+        if let decoded = raw.valueDecoded {
+            let digits = decoded
+                .replacingOccurrences(of: ",", with: ".")
+                .split(whereSeparator: { !$0.isNumber && $0 != "." && $0 != "-" })
+                .first
+                .flatMap { Double($0) }
+            if let kmh = digits, kmh >= 0, kmh <= 40 {
+                reading.startSpeedKmh = kmh
+                return
+            }
+        }
+        // Fallback: wire-order Hex → LE u16 (z. B. "0000", "0500").
+        let hex = raw.valueHex
+            .replacingOccurrences(of: "0x", with: "", options: .caseInsensitive)
+            .replacingOccurrences(of: " ", with: "")
+        guard hex.count == 4, let lo = UInt8(hex.prefix(2), radix: 16),
+              let hi = UInt8(hex.suffix(2), radix: 16) else { return }
+        let u = UInt16(lo) | (UInt16(hi) << 8)
+        let kmh = u <= 120 ? RegisterScale.kmhWhole(u) : RegisterScale.kmh(u)
+        if kmh >= 0, kmh <= 40 {
+            reading.startSpeedKmh = kmh
         }
     }
 

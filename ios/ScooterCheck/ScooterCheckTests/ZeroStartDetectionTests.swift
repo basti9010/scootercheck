@@ -71,4 +71,35 @@ final class ZeroStartDetectionTests: XCTestCase {
         XCTAssertEqual(zero?.evidenceClass, .indiz)
         XCTAssertTrue(zero?.auslesewert.contains("aktiv") == true)
     }
+
+    /// Wie Build 448-Dump: Register 0 km/h vorhanden, startSpeedKmh noch nil.
+    func testBackfillZeroStartFromRawRegister() {
+        var reading = IntegrityReading(
+            serialDisplay: "1K1DA2616P1917",
+            speedLimitKmh: 22,
+            gearMax: 3,
+            fwMcu: "1.5.2",
+            fwBle: "2.1.13",
+            fwBms: "4.1.6.8",
+            fwVcu: "1.5.5",
+            rawRegisters: [
+                RawRegister(
+                    address: "22-42",
+                    index: 66,
+                    name: "vcu_g3_startspd",
+                    valueHex: "0000",
+                    valueDecoded: "0.0 km/h"
+                )
+            ]
+        )
+        IntegrityAnalyzer.backfillStartSpeedFromRawRegisters(&reading)
+        XCTAssertEqual(reading.startSpeedKmh, 0, accuracy: 0.01)
+
+        let assessment = EvidenceEngine.evaluate(reading: reading, profile: .zt3ProD)
+        XCTAssertEqual(
+            assessment.results.first { $0.fact.markerID == "zero.start" }?.classification,
+            .indiz
+        )
+        XCTAssertNotEqual(assessment.verdict, .stock)
+    }
 }
