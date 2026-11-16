@@ -4,15 +4,27 @@ import XCTest
 final class ZeroStartDetectionTests: XCTestCase {
     func testStartSpeedZeroDecodedAsZeroStart() {
         var reading = IntegrityReading()
-        let data = Data([0x00, 0x00])
-        DiagnosticMap.apply("vcu_g3_startspd", data: data, into: &reading)
+        let spec = DiagnosticMap.Spec(
+            id: "vcu_g3_startspd",
+            board: .vcuG3,
+            register: Nb.G3Register.startSpeed,
+            readLen: 2,
+            category: .limit
+        )
+        DiagnosticMap.apply(spec: spec, data: Data([0x00, 0x00]), into: &reading)
         XCTAssertEqual(reading.startSpeedKmh, 0, accuracy: 0.01)
     }
 
     func testKickStartThresholdDecoded() {
         var reading = IntegrityReading()
-        let data = Data([0x05, 0x00]) // LE 5
-        DiagnosticMap.apply("vcu_g3_startspd", data: data, into: &reading)
+        let spec = DiagnosticMap.Spec(
+            id: "vcu_g3_startspd",
+            board: .vcuG3,
+            register: Nb.G3Register.startSpeed,
+            readLen: 2,
+            category: .limit
+        )
+        DiagnosticMap.apply(spec: spec, data: Data([0x05, 0x00]), into: &reading)
         XCTAssertEqual(reading.startSpeedKmh, 5, accuracy: 0.01)
     }
 
