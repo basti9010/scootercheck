@@ -3,10 +3,11 @@ import XCTest
 
 final class ElevatedLimitVerdictTests: XCTestCase {
 
-    func testStoredLimitOver22IsEindeutigAndLowScore() {
+    func testStoredLimitOverSuspectIsEindeutigAndLowScore() {
+        // DE: Serienlimit 22, Verdacht >25 — 26 ist eindeutig.
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
-            speedLimitKmh: 25,
+            speedLimitKmh: 26,
             peakSpeedKmh: 18,
             fwMcu: "1.0.0"
         )
@@ -20,11 +21,10 @@ final class ElevatedLimitVerdictTests: XCTestCase {
     }
 
     func testStoredLimitJustOverRatedButNotOverSuspectStaysCautious() {
-        // DE: rated 20, suspect 22 → 21.5 is over rated+1 path? 21.5 > 21 → fact exists
-        // 21.5 <= 22 → should NOT be eindeutig alone
+        // DE: rated 22 → fact ab >23; 23.5 ≤ suspect 25 → nicht eindeutig allein
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
-            speedLimitKmh: 21.5,
+            speedLimitKmh: 23.5,
             peakSpeedKmh: 18,
             fwMcu: "1.0.0"
         )
@@ -35,10 +35,10 @@ final class ElevatedLimitVerdictTests: XCTestCase {
         XCTAssertNotEqual(limit?.classification, .starkerHinweis)
     }
 
-    func testLimit23IsEindeutig() {
+    func testLimit26IsEindeutig() {
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
-            speedLimitKmh: 23,
+            speedLimitKmh: 26,
             fwMcu: "1.0.0"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .maxG3D)
@@ -46,10 +46,27 @@ final class ElevatedLimitVerdictTests: XCTestCase {
         XCTAssertLessThanOrEqual(assessment.score, 35)
     }
 
+    func testStockLimit22IsNotManipulation() {
+        let reading = IntegrityReading(
+            serialDisplay: "1K1DA2616P1917",
+            speedLimitKmh: 22,
+            speedMaxKmh: 22,
+            peakSpeedKmh: 18,
+            fwMcu: "1.5.2",
+            fwBle: "2.1.13",
+            fwBms: "4.1.6.8",
+            fwVcu: "1.5.5"
+        )
+        let assessment = EvidenceEngine.evaluate(reading: reading, profile: .zt3ProD)
+        XCTAssertNil(assessment.results.first { $0.fact.markerID == "speed.limit" })
+        XCTAssertNotEqual(assessment.verdict, .eindeutig)
+        XCTAssertEqual(ScooterProfile.zt3ProD.ratedMaxKmh, 22, accuracy: 0.01)
+    }
+
     func testStockLimitRemainsStock() {
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
-            speedLimitKmh: 20,
+            speedLimitKmh: 22,
             peakSpeedKmh: 18,
             fwMcu: "1.0.0"
         )

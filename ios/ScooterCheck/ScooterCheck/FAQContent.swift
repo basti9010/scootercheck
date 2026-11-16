@@ -104,7 +104,7 @@ private extension FAQCatalog {
                         "Bewerten",
                         "Dokumentieren (Prüfbericht als PDF und JSON)",
                     ]),
-                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), Segway SuperScooter GT3, ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4/5/6 (inkl. Mi-Home-ID xiaomi.scooter.6) — jeweils mit Marktprofilen (z. B. DE 20 km/h, EU 25 km/h, bei Max G3 zusätzlich US). Navee und SoFlow werden erkannt und über die universelle Diagnose geführt; ein freigegebener nativer Dump steht dort noch aus."),
+                    .paragraph("Unterstützte Modellfamilien (Stand App): Ninebot Max G2/G30/G3 (MAX3), Segway SuperScooter GT3, ZT3 Pro, F2/F3 Pro, E-/D-Serie sowie Xiaomi Classic (M365/Pro 2/Essential/1S) und Xiaomi 3/4/5/6 (inkl. Mi-Home-ID xiaomi.scooter.6) — jeweils mit Marktprofilen (z. B. DE Serienlimit 22 km/h, EU 25 km/h, bei Max G3 zusätzlich US). Navee und SoFlow werden erkannt und über die universelle Diagnose geführt; ein freigegebener nativer Dump steht dort noch aus."),
                 ],
                 keywords: ["diagnose", "bluetooth", "lesen", "pdf", "json", "ninebot", "xiaomi", "gt3", "navee", "soflow"]
             ),
