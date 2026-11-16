@@ -64,6 +64,8 @@ enum Nb {
         static let funBool: UInt8 = 0x1D
         static let funBool2: UInt8 = 0x1E
         static let funBool3: UInt8 = 0x1F
+        /// Custom Key (NootNooot rCustomKey) — Rohwert, keine öffentliche Bittabelle.
+        static let customKey: UInt8 = 0x4A
         static let encryptionFlag: UInt8 = 0xE8
         /// SHU „Random registers“ / CFW-Marker (NootNooot rRand / rMCURand, 6 Byte ASCII).
         static let rand: UInt8 = 0xE4

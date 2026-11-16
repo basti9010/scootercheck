@@ -577,7 +577,7 @@ enum ProtocolPDF {
             cursor = ensureSpace(context: context, y: cursor, needed: 50)
             cursor = drawSubheading("IV.e Konfiguration (nur Lesen)", at: cursor)
             cursor = drawText(
-                "Zero Start, Gang-Limits, FunBools, EncFlag — dokumentiert, keine Schreibfunktion.",
+                "Zero Start, Gang-Limits, FunBools (bekannte Bits), Custom Key, EncFlag — dokumentiert, keine Schreibfunktion.",
                 at: cursor,
                 font: bodyFont(size: 8),
                 color: Theme.UI.muted

@@ -158,6 +158,8 @@
 		A10000000000000000000A29 /* RescanDiffCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B29 /* RescanDiffCard.swift */; };
 		A10000000000000000000A2A /* ConfigRegistersCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2A /* ConfigRegistersCard.swift */; };
 		A10000000000000000000A2B /* RescanDiffAndConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2B /* RescanDiffAndConfigTests.swift */; };
+		A10000000000000000000A2C /* ConfigFlagDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2C /* ConfigFlagDecoder.swift */; };
+		A10000000000000000000A2D /* ConfigFlagDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2D /* ConfigFlagDecoderTests.swift */; };
 		A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */; };
 		A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */; };
 		A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */; };
@@ -322,6 +324,8 @@
 		B10000000000000000000B29 /* RescanDiffCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RescanDiffCard.swift; sourceTree = "<group>"; };
 		B10000000000000000000B2A /* ConfigRegistersCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigRegistersCard.swift; sourceTree = "<group>"; };
 		B10000000000000000000B2B /* RescanDiffAndConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RescanDiffAndConfigTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B2C /* ConfigFlagDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigFlagDecoder.swift; sourceTree = "<group>"; };
+		B10000000000000000000B2D /* ConfigFlagDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigFlagDecoderTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareSpeedSignatureExtractor.swift; sourceTree = "<group>"; };
@@ -473,6 +477,7 @@
 			children = (
 				B10000000000000000000004 /* Models.swift */,
 				B10000000000000000000005 /* Analyzer.swift */,
+				B10000000000000000000B2C /* ConfigFlagDecoder.swift */,
 				B10000000000000000000006 /* Tracks.swift */,
 				B10000000000000000000007 /* ProtocolPDF.swift */,
 				B1000000000000000000000F /* ProtocolHistoryStore.swift */,
@@ -535,6 +540,7 @@
 				B10000000000000000000B26 /* LiveCheckRecordingTests.swift */,
 				B10000000000000000000B27 /* PriorSubjectPrefillTests.swift */,
 				B10000000000000000000B2B /* RescanDiffAndConfigTests.swift */,
+				B10000000000000000000B2D /* ConfigFlagDecoderTests.swift */,
 				B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
@@ -755,6 +761,7 @@
 				A10000000000000000000094 /* RadarMapView.swift in Sources */,
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* Analyzer.swift in Sources */,
+				A10000000000000000000A2C /* ConfigFlagDecoder.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
 				A10000000000000000000007 /* ProtocolPDF.swift in Sources */,
 				A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */,
@@ -823,6 +830,7 @@
 				A10000000000000000000A26 /* LiveCheckRecordingTests.swift in Sources */,
 				A10000000000000000000A27 /* PriorSubjectPrefillTests.swift in Sources */,
 				A10000000000000000000A2B /* RescanDiffAndConfigTests.swift in Sources */,
+				A10000000000000000000A2D /* ConfigFlagDecoderTests.swift in Sources */,
 				A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,

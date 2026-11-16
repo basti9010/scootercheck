@@ -61,6 +61,8 @@ final class RescanDiffAndConfigTests: XCTestCase {
         XCTAssertTrue(result.facts.contains { $0.id == "config.fun" })
         XCTAssertEqual(result.facts.first { $0.id == "config.encflag" }?.status, .abweichend)
         XCTAssertEqual(result.facts.first { $0.id == "config.custom_key" }?.status, .nichtFeststellbar)
+        let fun = result.facts.first { $0.id == "config.fun" }
+        XCTAssertTrue(fun?.auslesewert.contains("0x00AA") == true)
     }
 
     func testDiagnosticMapAppliesGearAndConfigFlags() {

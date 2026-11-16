@@ -564,13 +564,27 @@ private extension FAQCatalog {
                 keywords: ["zip", "firmware", "forensik", "flash", "enc", "referenz", "sha256", "params", "vcu", "bin", "limit", "deep", "server"]
             ),
             FAQItem(
+                id: "funbool-bits",
+                question: "Was bedeuten FunBool / Bool-Register / Custom Key?",
+                segments: [
+                    .paragraph("Nach der Auslese zeigt die Karte „Konfiguration (nur Lesen)“ Rohwerte und — wo öffentlich dokumentiert — Bitlabels für rBool (0x1C) und FunBool (0x1D). FunBool2/3 und Custom Key (0x4A) bleiben Roh-Hex, weil keine vollständigen öffentlichen Bittabellen vorliegen."),
+                    .bullets([
+                        "Bekannte FunBool-Bits u. a.: Auto-Key-Lock, Park-/Sitz-Erkennung, Restreichweite anzeigen, Rückwärtsfahrt",
+                        "rBool: u. a. Entsperr-PIN aktiv",
+                        "Custom Key: nur dokumentierter Rohwert — ScooterCheck schreibt nichts",
+                    ]),
+                    .callout("Bitlabels folgen der NootNooot Command Reference und können modellabhängig invertiert sein. Keine Rechtsaussage allein aus gesetzten Bits."),
+                ],
+                keywords: ["funbool", "bool", "custom key", "config", "bits", "lock", "park", "nootnooot"]
+            ),
+            FAQItem(
                 id: "dual-source-panic",
                 question: "Handy-Datei auffällig, Scooter wirkt seriennah — was tun?",
                 segments: [
-                    .paragraph("Typisches Panic-/Reset-Muster: Am Handy liegt eine Flash-/CFW-Datei, die Live-Auslese zeigt aber wieder Serienlimits. ScooterCheck korreliert beide Quellen unter „Dual-Source · Panic-/Reset“."),
+                    .paragraph("Typisches Panic-/Reset-Muster: Am Handy liegt eine Flash-/CFW-Datei, die Live-Auslese zeigt aber wieder Serienlimits. ScooterCheck korreliert beide Quellen unter „Dual-Source · Panic-/Reset“. Nach der Auslese fragt die App optional nach einer Handy-Datei; später geht es auch über die Dual-Source-Karte."),
                     .bullets([
-                        "Firmware-Forensik der Handy-Datei (Besitz/Herkunft dokumentieren)",
-                        "Scooter parallel auslesen (Ist-Zustand)",
+                        "Scooter auslesen (Ist-Zustand)",
+                        "Optional forensische Handy-Datei verknüpfen (Besitz/Herkunft dokumentieren)",
                         "Vergleichstest: Aktivierungs-Kombi eingeben → erneut auslesen → optional Aus/An (Persistenz)",
                         "Beide Berichte (Forensik + Prüfbericht) speichern/teilen",
                     ]),

@@ -737,38 +737,101 @@ enum IntegrityAnalyzer {
             ))
         }
 
-        func flagRow(id: String, title: String, hex: String?, register: String) {
+        func flagRow(
+            id: String,
+            title: String,
+            hex: String?,
+            register: String,
+            decode: ((String) -> ConfigFlagDecoder.DecodeResult?)? = nil,
+            undecodedNote: String? = nil
+        ) {
             guard let hex else { return }
             let odd = hex.uppercased() == "0XFFFF" || hex.uppercased().hasPrefix("0XFF")
+            let decoded = decode?(hex)
+            let value = decoded?.displayValue ?? hex
+            let note: String = {
+                if let decoded {
+                    return "VCU \(register) — \(decoded.explanationSuffix) Keine Schreibfunktion."
+                }
+                if let undecodedNote {
+                    return "VCU \(register) — \(undecodedNote) Keine Schreibfunktion."
+                }
+                return "VCU \(register) — Bitmuster modellabhängig, keine Schreibfunktion in ScooterCheck."
+            }()
             facts.append(MeasuredFact(
                 id: id,
                 group: .config,
                 title: title,
-                auslesewert: hex,
+                auslesewert: value,
                 sollwert: "serienüblich / 0x0000…",
                 status: odd && id.contains("enc") ? .abweichend : .regelkonform,
-                bewertung: "Rohflag dokumentiert (nur Lesen)",
-                erlaeuterung: "VCU \(register) — Bitmuster modellabhängig, keine Schreibfunktion in ScooterCheck.",
+                bewertung: decoded?.activeLabels.isEmpty == false
+                    ? "Bekannte Bits dokumentiert (nur Lesen)"
+                    : "Rohflag dokumentiert (nur Lesen)",
+                erlaeuterung: note,
                 raw: hex
             ))
         }
-        flagRow(id: "config.bool", title: "Bool-Register", hex: reading.configBoolHex, register: "rBool 0x1C")
-        flagRow(id: "config.fun", title: "FunBool", hex: reading.configFunHex, register: "rFun 0x1D")
-        flagRow(id: "config.fun2", title: "FunBool2", hex: reading.configFun2Hex, register: "rFun2 0x1E")
-        flagRow(id: "config.fun3", title: "FunBool3", hex: reading.configFun3Hex, register: "rFun3 0x1F")
-        flagRow(id: "config.encflag", title: "EncFlag", hex: reading.configEncFlagHex, register: "rEncFlag 0xE8")
+        flagRow(
+            id: "config.bool",
+            title: "Bool-Register",
+            hex: reading.configBoolHex,
+            register: "rBool 0x1C",
+            decode: ConfigFlagDecoder.decodeBool
+        )
+        flagRow(
+            id: "config.fun",
+            title: "FunBool",
+            hex: reading.configFunHex,
+            register: "rFun 0x1D",
+            decode: ConfigFlagDecoder.decodeFunBool
+        )
+        flagRow(
+            id: "config.fun2",
+            title: "FunBool2",
+            hex: reading.configFun2Hex,
+            register: "rFun2 0x1E",
+            undecodedNote: "Keine öffentlichen Bitlabels (Fun2)."
+        )
+        flagRow(
+            id: "config.fun3",
+            title: "FunBool3",
+            hex: reading.configFun3Hex,
+            register: "rFun3 0x1F",
+            undecodedNote: "Keine öffentlichen Bitlabels (Fun3)."
+        )
+        flagRow(
+            id: "config.encflag",
+            title: "EncFlag",
+            hex: reading.configEncFlagHex,
+            register: "rEncFlag 0xE8"
+        )
 
-        facts.append(MeasuredFact(
-            id: "config.custom_key",
-            group: .config,
-            title: "Custom Key",
-            auslesewert: "nicht gemappt",
-            sollwert: "—",
-            status: .nichtFeststellbar,
-            bewertung: "kein bekanntes Read-Register in ScooterCheck",
-            erlaeuterung: "SHU zeigt Custom Key in der Config-UI; ScooterCheck schreibt ohnehin nicht und hat derzeit kein zugeordnetes Auslese-Register.",
-            raw: nil
-        ))
+        if let custom = reading.configCustomKeyHex {
+            facts.append(MeasuredFact(
+                id: "config.custom_key",
+                group: .config,
+                title: "Custom Key",
+                auslesewert: custom,
+                sollwert: "—",
+                status: .regelkonform,
+                bewertung: "Rohwert dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU rCustomKey 0x4A — kein öffentliches Bitmapping; ScooterCheck schreibt den Key nicht.",
+                raw: custom
+            ))
+        } else {
+            facts.append(MeasuredFact(
+                id: "config.custom_key",
+                group: .config,
+                title: "Custom Key",
+                auslesewert: "nicht ausgelesen",
+                sollwert: "—",
+                status: .nichtFeststellbar,
+                bewertung: "Register 0x4A in diesem Dump nicht vorhanden",
+                erlaeuterung: "Custom Key wird bei G3-Statusfeldern mitgelesen, wenn das Board antwortet.",
+                raw: nil
+            ))
+        }
 
         return facts
     }
