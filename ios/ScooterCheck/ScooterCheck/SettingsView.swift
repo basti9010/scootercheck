@@ -71,7 +71,7 @@ struct SettingsView: View {
             .onAppear {
                 pairingPasswordCount = BleClient.storedPairingPasswordCount()
             }
-            .onChange(of: clearPairingToast) { _, message in
+            .onChange(of: clearPairingToast) { message in
                 guard message != nil else { return }
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 1_800_000_000)
