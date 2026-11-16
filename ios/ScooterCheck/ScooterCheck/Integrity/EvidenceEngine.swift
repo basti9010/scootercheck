@@ -625,13 +625,33 @@ enum EvidenceEngine {
             ))
         }
 
+        let randMarkers = CfwHardwareForensics.suspiciousMarkers(from: reading)
+        if !randMarkers.isEmpty {
+            facts.append(EvidenceFact(
+                markerID: "fw.rand.cfw",
+                title: "CFW-Marker (Random-Register)",
+                source: "VCU",
+                register: "rRand 0xE4 / rMCURand 0xC7",
+                rawValue: rawHex(forNames: ["vcu_g3_rand", "vcu_g3_mcu_rand"], in: reading)
+                    ?? randMarkers.joined(separator: "|"),
+                interpretedValue: randMarkers.joined(separator: ", "),
+                expectedValue: "kein CFW-Marker (Serie)",
+                persistence: .persistent,
+                resetResistant: true,
+                confidence: 0.95,
+                knowledgeSource: .verifiedModSample,
+                knownModMatchId: "fw.rand.cfw.sh",
+                knownStockMatch: false
+            ))
+        }
+
         switch custom.level {
         case .confirmed:
             facts.append(EvidenceFact(
                 markerID: "fw.custom",
                 title: "Custom-/Mod-Firmware",
                 source: "MCU/BLE/BMS/VCU",
-                register: "Versionsregister",
+                register: randMarkers.isEmpty ? "Versionsregister" : "Versionsregister + rRand/rMCURand",
                 rawValue: fwRawCitation(reading),
                 interpretedValue: custom.summaryLine,
                 expectedValue: "Serienkatalog \(profile.shortLabel)",
@@ -741,6 +761,8 @@ enum EvidenceEngine {
     private static func classify(_ fact: EvidenceFact, profile: ScooterProfile) -> EvidenceResult {
         let initial: EvidenceClass
         switch fact.markerID {
+        case "fw.rand.cfw":
+            initial = .starkerHinweis
         case "fw.custom":
             initial = .starkerHinweis
         case "region.sn":
@@ -937,7 +959,9 @@ enum EvidenceEngine {
         _ = powerCycle
 
         // Technisch nachgewiesene Manipulation — niemals aus Score allein.
-        if stark.contains(where: { $0.fact.markerID == "fw.custom" }) { return .eindeutig }
+        if stark.contains(where: { $0.fact.markerID == "fw.custom" || $0.fact.markerID == "fw.rand.cfw" }) {
+            return .eindeutig
+        }
         // Gespeichertes Limit klar über Verdachtsschwelle = eindeutige Freigabe über Typ.
         if stark.contains(where: { $0.fact.markerID == "speed.limit" }) { return .eindeutig }
         if stark.count >= 1, correlations.contains(where: {

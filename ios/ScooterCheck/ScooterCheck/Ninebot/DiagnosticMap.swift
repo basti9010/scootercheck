@@ -278,6 +278,11 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_fun2", board: .vcuG3, register: Nb.G3Register.funBool2, readLen: 2, category: .status),
         Spec(id: "vcu_g3_fun3", board: .vcuG3, register: Nb.G3Register.funBool3, readLen: 2, category: .status),
         Spec(id: "vcu_g3_encflag", board: .vcuG3, register: Nb.G3Register.encryptionFlag, readLen: 2, category: .status),
+        // SHU Hardware details: Random registers + Chip-UIDs (NootNooot F3/G3 VCU map).
+        Spec(id: "vcu_g3_rand", board: .vcuG3, register: Nb.G3Register.rand, readLen: 6, category: .status),
+        Spec(id: "vcu_g3_mcu_rand", board: .vcuG3, register: Nb.G3Register.mcuRand, readLen: 6, category: .status),
+        Spec(id: "vcu_g3_cpuid", board: .vcuG3, register: Nb.G3Register.cpuId, readLen: 12, category: .status),
+        Spec(id: "vcu_g3_mcu_cpuid", board: .vcuG3, register: Nb.G3Register.mcuCpuId, readLen: 12, category: .status),
     ]
 
     private static let limitFields: [Spec] = [
@@ -372,6 +377,12 @@ enum DiagnosticMap {
         case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
             guard let raw = Nb.u16(data) else { return nil }
             return Format.code.format("0x\(String(format: "%04X", raw))")
+
+        case "vcu_g3_rand", "vcu_g3_mcu_rand":
+            return CfwHardwareForensics.printableAscii(from: data) ?? Nb.hex(data)
+
+        case "vcu_g3_cpuid", "vcu_g3_mcu_cpuid":
+            return CfwHardwareForensics.spacedHexUID(from: data) ?? Nb.hex(data)
 
         case "dis_trip_max", "tft_trip_max":
             guard let raw = Nb.u16(data),
@@ -675,6 +686,28 @@ enum DiagnosticMap {
                     reading.fwAppCustom = true
                 }
             }
+
+        case "vcu_g3_rand":
+            if let ascii = CfwHardwareForensics.printableAscii(from: data) {
+                reading.vcuRandMarker = ascii
+                if CfwHardwareForensics.isSuspiciousMarker(ascii) {
+                    reading.fwAppCustom = true
+                }
+            }
+
+        case "vcu_g3_mcu_rand":
+            if let ascii = CfwHardwareForensics.printableAscii(from: data) {
+                reading.mcuRandMarker = ascii
+                if CfwHardwareForensics.isSuspiciousMarker(ascii) {
+                    reading.fwAppCustom = true
+                }
+            }
+
+        case "vcu_g3_cpuid":
+            reading.vcuDeviceUid = CfwHardwareForensics.spacedHexUID(from: data)
+
+        case "vcu_g3_mcu_cpuid":
+            reading.mcuDeviceUid = CfwHardwareForensics.spacedHexUID(from: data)
 
         case "mcu_safe", "vcu_g3_safe", "mcu_g3_safe":
             if let raw = Nb.u16(data) {

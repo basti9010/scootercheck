@@ -133,7 +133,7 @@ enum AttributionEngine {
             catalogVersion: AttributionCatalog.version,
             method: .customFirmware,
             requiredMarkers: ["fw.custom"],
-            optionalMarkers: ["speed.limit", "speed.peak", "gear.max", "zero.start", "region.sn"],
+            optionalMarkers: ["fw.rand.cfw", "speed.limit", "speed.peak", "gear.max", "zero.start", "region.sn"],
             contradictingMarkers: [],
             minimumConfidence: 0.75,
             description: "Bekannter Custom-/Mod-Firmware-Fingerprint mit optionalen Tempo-Korrelationen."

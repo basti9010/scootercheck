@@ -228,6 +228,7 @@ enum TrackClassifier {
 
     static func hasCustomFirmware(_ reading: IntegrityReading) -> Bool {
         if reading.fwAppCustom == true { return true }
+        if !CfwHardwareForensics.suspiciousMarkers(from: reading).isEmpty { return true }
         let candidates = [reading.fwMcu, reading.fwBle, reading.fwBms, reading.fwVcu, reading.fwEsc]
         return candidates.contains { matchesFwRegex($0, regex: customFwRegex) }
     }

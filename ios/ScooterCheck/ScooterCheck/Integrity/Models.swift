@@ -762,6 +762,14 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var fwVcu: String?
     var fwEsc: String?
     var fwAppCustom: Bool?
+    /// VCU rRand (0xE4) als ASCII — SHU „Random registers“ (z. B. cjsSgk).
+    var vcuRandMarker: String?
+    /// VCU rMCURand (0xC7) als ASCII — oft CFW-Signatur (z. B. cfw.sh).
+    var mcuRandMarker: String?
+    /// VCU Chip-UID (rCPUId 0xDA), Hex.
+    var vcuDeviceUid: String?
+    /// MCU Chip-UID (rMCUCPUId 0xC0), Hex.
+    var mcuDeviceUid: String?
 
     // Batterie
     var batteryPercent: Int?
@@ -824,6 +832,10 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         fwVcu: String? = nil,
         fwEsc: String? = nil,
         fwAppCustom: Bool? = nil,
+        vcuRandMarker: String? = nil,
+        mcuRandMarker: String? = nil,
+        vcuDeviceUid: String? = nil,
+        mcuDeviceUid: String? = nil,
         batteryPercent: Int? = nil,
         batteryVoltage: Double? = nil,
         batteryCurrent: Double? = nil,
@@ -872,6 +884,10 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.fwVcu = fwVcu
         self.fwEsc = fwEsc
         self.fwAppCustom = fwAppCustom
+        self.vcuRandMarker = vcuRandMarker
+        self.mcuRandMarker = mcuRandMarker
+        self.vcuDeviceUid = vcuDeviceUid
+        self.mcuDeviceUid = mcuDeviceUid
         self.batteryPercent = batteryPercent
         self.batteryVoltage = batteryVoltage
         self.batteryCurrent = batteryCurrent

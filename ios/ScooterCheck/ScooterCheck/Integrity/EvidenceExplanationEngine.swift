@@ -140,6 +140,8 @@ enum EvidenceExplanationEngine {
             return "Frühere Freigabe nach dem Ausschalten nicht mehr vorhanden"
         case "fw.custom":
             return "Steuergeräte-Software weicht klar vom Serienstand ab"
+        case "fw.rand.cfw":
+            return "CFW-Signatur in Random-Registern (wie SHU, z. B. cfw.sh)"
         case "fw.unknown":
             return "Steuergeräte-Software entspricht keinem bekannten Serienstand"
         case "region.sn":
@@ -274,6 +276,17 @@ enum EvidenceExplanationEngine {
                 "In einem früheren Protokoll war eine erhöhte Freigabe sichtbar; nach dem Ausschalten ist sie nicht mehr feststellbar.",
                 "Kein anhaltender Unlock in der aktuellen Sitzung.",
                 "Passt zu einer nur vorübergehenden Freigabe.",
+                nil
+            )
+
+        case "fw.rand.cfw":
+            return pack(
+                "CFW-Marker in Hardware-Registern",
+                """
+                In den Random-Registern (rRand/rMCURand) steht eine Custom-Firmware-Signatur wie „cfw.sh“ — \
+                dieselben Werte wie unter SHU → Hardware details. Das ist ein starkes, persistentes Merkmal.
+                """,
+                "Bleibt nach Soft-Unlock/Panic typischerweise erhalten.",
                 nil
             )
 

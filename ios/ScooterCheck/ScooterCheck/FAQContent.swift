@@ -637,6 +637,7 @@ private extension FAQCatalog {
                         "Bekannte Serienversionen im Katalog",
                         "Unbekannte Versionen (Katalogtreffer fehlt)",
                         "Auffällige Versionsstrings / Custom-Firmware-Hinweise (textuelle Marker, kein Binärvergleich der gesamten Firmware)",
+                        "SHU-Random-Register (VCU rRand/rMCURand): CFW-Signaturen wie „cfw.sh“ sowie Chip-UIDs",
                     ]),
                     .paragraph("Zusätzlich kann eine Attribution heuristisch möglichen Methoden zuordnen (z. B. Custom-FW, Session-Unlock, Regionswechsel) — das ändert die Hauptbewertung nicht und ist kein Beweis für ein bestimmtes Tool."),
                 ],
