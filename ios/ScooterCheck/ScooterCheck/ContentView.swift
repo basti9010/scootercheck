@@ -55,6 +55,10 @@ struct ContentView: View {
     @State private var pendingUnlockRescanAfterSubject = false
     /// Zuordnung wurde aus vorheriger Prüfung derselben SN übernommen.
     @State private var subjectWasPrefilled = false
+    /// Nach erstem Auslesen-Scan nicht mehr zum Idle-Start zurückspringen.
+    @State private var hasEnteredAuslesenSearch = false
+    /// Verhindert, dass „Suche stoppen“ denselben Tap als „Scooter suchen“ neu startet.
+    @State private var ignoreAuslesenStartUntil: Date?
     @State private var liveCheckToast: String?
     /// Scooter gewählt → Profil bestätigen, dann auslesen.
     @State private var showProfileConfirm = false
@@ -155,9 +159,10 @@ struct ContentView: View {
         return nil
     }
 
-    /// Idle-Start ohne Scan; Geräte-UI sobald gesucht wird oder Geräte da sind.
+    /// Idle-Start ohne Scan; nach erstem Suchen bleibt die Auslesen-UI (auch bei Stop).
     private var showsStartLanding: Bool {
         screen == .home
+            && !hasEnteredAuslesenSearch
             && !isBusyPhase
             && ble.phase != .scanning
             && ble.phase != .done
@@ -1393,6 +1398,7 @@ struct ContentView: View {
                         ScootOutlineButton(title: "Suche stoppen", systemImage: "stop.fill") {
                             primaryAction()
                         }
+                        .id("auslesen-stop-scan")
                     } else if ble.phase == .done {
                         ScootPrimaryButton(
                             title: "Manipulation prüfen",
@@ -1402,15 +1408,17 @@ struct ContentView: View {
                         ) {
                             primaryAction()
                         }
+                        .id("auslesen-finalize")
                     } else {
                         ScootPrimaryButton(
                             title: "Scooter suchen",
                             systemImage: "magnifyingglass",
-                            enabled: primaryEnabled,
+                            enabled: primaryEnabled && !isAuslesenStartIgnored,
                             busy: busy || isBusyPhase
                         ) {
                             primaryAction()
                         }
+                        .id("auslesen-start-scan")
                     }
                 }
                 .padding(.horizontal, Theme.Space.page)
@@ -1527,6 +1535,15 @@ struct ContentView: View {
         auslesenHideNameless = appSettings.auslesenHideNameless
     }
 
+    private var isAuslesenStartIgnored: Bool {
+        guard let until = ignoreAuslesenStartUntil else { return false }
+        return Date() < until
+    }
+
+    private func markAuslesenSearchEntered() {
+        hasEnteredAuslesenSearch = true
+    }
+
     private func primaryAction() {
         switch screen {
         case .overview:
@@ -1538,6 +1555,9 @@ struct ContentView: View {
         case .home:
             if ble.phase == .scanning {
                 ble.stopScan()
+                markAuslesenSearchEntered()
+                // Gleichen Tap nicht als Neustart werten, wenn der Button unter dem Finger wechselt.
+                ignoreAuslesenStartUntil = Date().addingTimeInterval(0.5)
                 return
             }
             if ble.phase == .done {
@@ -1550,8 +1570,11 @@ struct ContentView: View {
                 }
                 return
             }
+            if isAuslesenStartIgnored { return }
+            ignoreAuslesenStartUntil = nil
             result = nil
             session = nil
+            markAuslesenSearchEntered()
             ble.startScan()
         }
     }
@@ -1591,6 +1614,8 @@ struct ContentView: View {
         historySelecting = false
         selectedHistoryIds = []
         historyShelf = .active
+        hasEnteredAuslesenSearch = false
+        ignoreAuslesenStartUntil = nil
         screen = .overview
         history.reload()
     }
@@ -1602,6 +1627,8 @@ struct ContentView: View {
         discoveredUnlockCombo = nil
         ble.disconnect()
         screen = .home
+        markAuslesenSearchEntered()
+        ignoreAuslesenStartUntil = nil
         ble.startScan()
     }
 
@@ -2477,6 +2504,8 @@ struct ContentView: View {
                 if screen == .result { persistCurrentSession() }
                 screen = .home
                 if ble.phase != .scanning, !isBusyPhase {
+                    markAuslesenSearchEntered()
+                    ignoreAuslesenStartUntil = nil
                     ble.startScan()
                 }
             case .overview:
