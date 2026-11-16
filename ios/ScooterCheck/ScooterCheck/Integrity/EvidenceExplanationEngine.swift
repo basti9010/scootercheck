@@ -286,6 +286,7 @@ enum EvidenceExplanationEngine {
                 In den Random-Registern (rRand/rMCURand) steht eine Custom-Firmware-Signatur wie „cfw.sh“ — \
                 dieselben Werte wie unter SHU → Hardware details. Das ist ein starkes, persistentes Merkmal.
                 """,
+                "Erwartet: kein CFW-Marker (Serie).",
                 "Bleibt nach Soft-Unlock/Panic typischerweise erhalten.",
                 nil
             )
