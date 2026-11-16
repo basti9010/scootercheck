@@ -209,7 +209,7 @@ enum FirmwareForensicOrchestrator {
             meta: loaded.meta,
             primaryData: primaryData,
             primaryRole: primaryRole,
-            subjectSHA256: subjectSHA256,
+            subjectSHA256: subjectSHA,
             encrypted: encrypted
         )
         if let deep {
