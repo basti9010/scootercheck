@@ -4,15 +4,31 @@ import Foundation
 /// Wird lokal angewendet, wenn ENC nicht lesbar ist — gleiche Qualität wie Forum+Lab-Auswertung.
 enum FirmwareKnownCFWCatalog {
 
+    struct SpeedLimitSpec: Equatable, Sendable {
+        var kmh: Double
+        var role: FirmwareSpeedLimitRole
+    }
+
+    struct TransitionSpec: Equatable, Sendable {
+        var title: String
+        var trigger: String
+        var effect: String
+    }
+
+    struct InputSpec: Equatable, Sendable {
+        var kind: FirmwareInputKind
+        var detail: String
+    }
+
     struct Entry: Equatable, Sendable {
         var md5Enc: String?
         var sha256Enc: String?
         var displayName: String
         var models: [String]
         var controllerType: String
-        var speedLimitsKmh: [(Double, FirmwareSpeedLimitRole)]
-        var transitions: [(title: String, trigger: String, effect: String)]
-        var inputs: [(FirmwareInputKind, String)]
+        var speedLimitsKmh: [SpeedLimitSpec]
+        var transitions: [TransitionSpec]
+        var inputs: [InputSpec]
         var comboSummaries: [String]
         var provenance: String
     }
@@ -25,35 +41,35 @@ enum FirmwareKnownCFWCatalog {
         models: ["g3"],
         controllerType: "VCU",
         speedLimitsKmh: [
-            (20, .legalCap),
-            (22, .legalCap),
-            (25, .regionOrMode),
-            (32, .intermediate),
-            (99, .openCap)
+            .init(kmh: 20, role: .legalCap),
+            .init(kmh: 22, role: .legalCap),
+            .init(kmh: 25, role: .regionOrMode),
+            .init(kmh: 32, role: .intermediate),
+            .init(kmh: 99, role: .openCap)
         ],
         transitions: [
-            (
-                "Power-Modus (offen)",
-                "Gas + Bremse halten und Power einschalten",
-                "Offene Limits (Code: u. a. 0x6300 ≈ 99 km/h)"
+            .init(
+                title: "Power-Modus (offen)",
+                trigger: "Gas + Bremse halten und Power einschalten",
+                effect: "Offene Limits (Code: u. a. 0x6300 ≈ 99 km/h)"
             ),
-            (
-                "StVZO-/Legal-Modus",
-                "Normal einschalten oder Reboot ohne Gas/Bremse; bzw. Panic-Button",
-                "Begrenzt auf legal-nahe Stufe (Code: u. a. 0x1600 ≈ 22 km/h)"
+            .init(
+                title: "StVZO-/Legal-Modus",
+                trigger: "Normal einschalten oder Reboot ohne Gas/Bremse; bzw. Panic-Button",
+                effect: "Begrenzt auf legal-nahe Stufe (Code: u. a. 0x1600 ≈ 22 km/h)"
             ),
-            (
-                "Fliegender Panic",
-                "Zugewiesener Custom-Button am Lenker während der Fahrt",
-                "Sofort zurück auf legal-nahe Begrenzung ohne sichtbaren Neustart"
+            .init(
+                title: "Fliegender Panic",
+                trigger: "Zugewiesener Custom-Button am Lenker während der Fahrt",
+                effect: "Sofort zurück auf legal-nahe Begrenzung ohne sichtbaren Neustart"
             )
         ],
         inputs: [
-            (.throttle, "Forum + Dual-Analog-Muster im Decompile (Schwelle ~400)"),
-            (.brake, "Forum + Dual-Analog-Muster im Decompile (Schwelle ~400)"),
-            (.power, "Einschalt-Kombi mit Gas+Bremse"),
-            (.customButton, "Forum: Panicbutton-ZIP — physischer Index im Code nicht beschriftet"),
-            (.dualAnalog, "FUN_000020ac: zwei Kanäle, Maske 3 = beide")
+            .init(kind: .throttle, detail: "Forum + Dual-Analog-Muster im Decompile (Schwelle ~400)"),
+            .init(kind: .brake, detail: "Forum + Dual-Analog-Muster im Decompile (Schwelle ~400)"),
+            .init(kind: .power, detail: "Einschalt-Kombi mit Gas+Bremse"),
+            .init(kind: .customButton, detail: "Forum: Panicbutton-ZIP — physischer Index im Code nicht beschriftet"),
+            .init(kind: .dualAnalog, detail: "FUN_000020ac: zwei Kanäle, Maske 3 = beide")
         ],
         comboSummaries: [
             "Aktivierung offen: Gas + Bremse + Power ein",
@@ -75,13 +91,13 @@ enum FirmwareKnownCFWCatalog {
     }
 
     static func deepAnalysis(for entry: Entry, subjectSHA256: String) -> FirmwareDeepAnalysisResult {
-        let speeds: [FirmwareSpeedLimitFinding] = entry.speedLimitsKmh.enumerated().map { idx, pair in
-            let packed = FirmwareSpeedSignatureExtractor.knownPackedSpeeds.first { abs($0.1 - pair.0) < 0.1 }?.0
+        let speeds: [FirmwareSpeedLimitFinding] = entry.speedLimitsKmh.enumerated().map { idx, lim in
+            let packed = FirmwareSpeedSignatureExtractor.knownPackedSpeeds.first { abs($0.1 - lim.kmh) < 0.1 }?.0
             return FirmwareSpeedLimitFinding(
-                id: "cat-spd-\(idx)-\(Int(pair.0))",
-                kmh: pair.0,
+                id: "cat-spd-\(idx)-\(Int(lim.kmh))",
+                kmh: lim.kmh,
                 packedU16: packed,
-                role: pair.1,
+                role: lim.role,
                 evidence: entry.provenance,
                 source: .knownCatalog,
                 confidence: .high
@@ -101,11 +117,11 @@ enum FirmwareKnownCFWCatalog {
         let inputs: [FirmwareInputHintFinding] = entry.inputs.enumerated().map { idx, i in
             .init(
                 id: "cat-in-\(idx)",
-                kind: i.0,
-                detail: i.1,
+                kind: i.kind,
+                detail: i.detail,
                 evidence: entry.provenance,
                 source: .knownCatalog,
-                confidence: i.0 == .customButton ? .medium : .high
+                confidence: i.kind == .customButton ? .medium : .high
             )
         }
         return FirmwareDeepAnalysisResult(
@@ -117,8 +133,8 @@ enum FirmwareKnownCFWCatalog {
             models: entry.models,
             controllerType: entry.controllerType,
             speedLimits: speeds,
-            maxSpeedKmhInCode: entry.speedLimitsKmh.map(\.0).max(),
-            legalCapKmhInCode: entry.speedLimitsKmh.filter { $0.1 == .legalCap }.map(\.0).min(),
+            maxSpeedKmhInCode: entry.speedLimitsKmh.map(\.kmh).max(),
+            legalCapKmhInCode: entry.speedLimitsKmh.filter { $0.role == .legalCap }.map(\.kmh).min(),
             modeTransitions: transitions,
             inputHints: inputs,
             comboSummaries: entry.comboSummaries,
