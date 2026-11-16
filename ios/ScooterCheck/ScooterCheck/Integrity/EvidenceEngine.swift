@@ -674,6 +674,25 @@ enum EvidenceEngine {
             ))
         }
 
+        // Zero Start: rStartSpeed == 0. DE/EU Serie typisch Kickstart (≥ 3 km/h).
+        if let start = reading.startSpeedKmh, start < 0.5, profile.market != .us37 {
+            facts.append(EvidenceFact(
+                markerID: "zero.start",
+                title: "Zero Start aktiv",
+                source: "VCU",
+                register: "startSpeed",
+                rawValue: rawHex(forNames: ["vcu_g3_startspd"], in: reading) ?? "0",
+                interpretedValue: "Anfahrschwelle 0 km/h (Zero Start)",
+                expectedValue: "Kickstart ≥ 3 km/h (Serie \(profile.shortLabel))",
+                persistence: .persistent,
+                resetResistant: true,
+                confidence: 0.85,
+                knowledgeSource: .referenceVehicle,
+                knownModMatchId: "zero.start.enabled",
+                knownStockMatch: false
+            ))
+        }
+
         if reading.safeLockActive == false {
             facts.append(EvidenceFact(
                 markerID: "safelock",
@@ -734,6 +753,9 @@ enum EvidenceEngine {
             } else {
                 initial = .abweichung
             }
+        case "zero.start":
+            // DE/EU: Zero Start ist nicht serienmäßig → Manipulationsindiz (Einstellungs-/SW-Eingriff).
+            initial = .indiz
         case "speed.session", "gear.max", "safelock", "fw.unknown", "session.reset":
             initial = fact.markerID == "session.reset" && fact.knownModMatchId != nil ? .indiz : .abweichung
         case let id where id.hasPrefix("serial.cross"):

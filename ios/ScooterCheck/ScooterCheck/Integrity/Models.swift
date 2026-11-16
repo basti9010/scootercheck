@@ -708,6 +708,8 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var speedRatedKmh: Double?
     var speedLimitKmh: Double?
     var peakSpeedKmh: Double?
+    /// Anfahr-/Kickstart-Schwelle (VCU rStartSpeed). 0 = Zero Start aktiv.
+    var startSpeedKmh: Double?
 
     // Kilometerstände / Fahrzeiten
     var odometerKm: Double?
@@ -773,6 +775,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         speedRatedKmh: Double? = nil,
         speedLimitKmh: Double? = nil,
         peakSpeedKmh: Double? = nil,
+        startSpeedKmh: Double? = nil,
         odometerKm: Double? = nil,
         tripKm: Double? = nil,
         remainKm: Double? = nil,
@@ -820,6 +823,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.speedRatedKmh = speedRatedKmh
         self.speedLimitKmh = speedLimitKmh
         self.peakSpeedKmh = peakSpeedKmh
+        self.startSpeedKmh = startSpeedKmh
         self.odometerKm = odometerKm
         self.tripKm = tripKm
         self.remainKm = remainKm

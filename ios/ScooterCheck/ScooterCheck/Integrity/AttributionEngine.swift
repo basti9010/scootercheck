@@ -133,7 +133,7 @@ enum AttributionEngine {
             catalogVersion: AttributionCatalog.version,
             method: .customFirmware,
             requiredMarkers: ["fw.custom"],
-            optionalMarkers: ["speed.limit", "speed.peak", "gear.max", "region.sn"],
+            optionalMarkers: ["speed.limit", "speed.peak", "gear.max", "zero.start", "region.sn"],
             contradictingMarkers: [],
             minimumConfidence: 0.75,
             description: "Bekannter Custom-/Mod-Firmware-Fingerprint mit optionalen Tempo-Korrelationen."
@@ -143,7 +143,7 @@ enum AttributionEngine {
             catalogVersion: AttributionCatalog.version,
             method: .licensedSoftwareUnlock,
             requiredMarkers: ["speed.limit"],
-            optionalMarkers: ["gear.max", "safelock", "region.sn", "speed.peak"],
+            optionalMarkers: ["gear.max", "zero.start", "safelock", "region.sn", "speed.peak"],
             contradictingMarkers: ["fw.custom", "fw.unknown"],
             minimumConfidence: 0.45,
             description: "Seriennahe Firmware mit persistenter Limit-/Gang-Änderung."
@@ -173,7 +173,7 @@ enum AttributionEngine {
             catalogVersion: AttributionCatalog.version,
             method: .configurationModification,
             requiredMarkers: ["speed.limit"],
-            optionalMarkers: ["gear.max", "safelock", "speed.peak"],
+            optionalMarkers: ["gear.max", "zero.start", "safelock", "speed.peak"],
             contradictingMarkers: ["fw.custom"],
             minimumConfidence: 0.4,
             description: "Persistente Parameterabweichung ohne Custom-FW-Fingerprint."

@@ -548,8 +548,14 @@ enum DiagnosticMap {
             }
 
         case "vcu_g3_startspd":
-            // Nur Anfahrgeschwindigkeit — niemals als Fahrtlimit übernehmen.
-            break
+            // Anfahrgeschwindigkeit / Zero Start — niemals als Fahrtlimit übernehmen.
+            // 0 km/h = Zero Start (Gas aus dem Stand); ≥ ~3 km/h = Kickstart (Serie DE/EU).
+            if let raw = Nb.u16(data) {
+                let kmh = raw <= 120 ? RegisterScale.kmhWhole(raw) : RegisterScale.kmh(raw)
+                if kmh >= 0, kmh <= 40 {
+                    reading.startSpeedKmh = kmh
+                }
+            }
 
         case "dis_rated", "vcu_g3_rated", "mcu_g3_rated":
             // Nenngeschwindigkeit — nie Soft-Unlock; nur plausible Werte (kein 514 aus 0x1414×0.1).

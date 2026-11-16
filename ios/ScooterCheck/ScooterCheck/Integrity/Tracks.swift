@@ -304,6 +304,15 @@ enum TrackClassifier {
             (reading.gearMax ?? 0) > profile.stockMaxGear
         },
         TrackPattern(
+            id: "shu.persistent.zero.start",
+            trackId: .shu,
+            weight: 0.4,
+            description: "Zero Start — nicht serienmäßig (Manipulationsindiz)"
+        ) { reading, profile in
+            guard profile.market != .us37 else { return false }
+            return (reading.startSpeedKmh ?? -1) < 0.5 && reading.startSpeedKmh != nil
+        },
+        TrackPattern(
             id: "shu.fw.catalog.miss",
             trackId: .webapp,
             weight: 0.2,

@@ -18,6 +18,7 @@ enum IntegrityAnalyzer {
         unlockRescan: UnlockRescanReport? = nil
     ) -> IntegrityResult {
         var reading = reading
+        backfillStartSpeedFromRawRegisters(&reading)
         normalizeSpeedUnlockFlag(&reading)
 
         let trackMatch = TrackClassifier.classify(reading: reading, profile: profile)
@@ -221,6 +222,34 @@ enum IntegrityAnalyzer {
             reading.hiddenTuningDetected = true
         } else if reading.hiddenTuningDetected == nil {
             reading.hiddenTuningDetected = false
+        }
+    }
+
+    /// Zero Start auch aus Rohregistern nachziehen (ältere Dumps / Builds ohne startSpeedKmh).
+    static func backfillStartSpeedFromRawRegisters(_ reading: inout IntegrityReading) {
+        guard reading.startSpeedKmh == nil else { return }
+        guard let raw = reading.rawRegisters.last(where: { $0.name == "vcu_g3_startspd" }) else { return }
+        if let decoded = raw.valueDecoded {
+            let digits = decoded
+                .replacingOccurrences(of: ",", with: ".")
+                .split(whereSeparator: { !$0.isNumber && $0 != "." && $0 != "-" })
+                .first
+                .flatMap { Double($0) }
+            if let kmh = digits, kmh >= 0, kmh <= 40 {
+                reading.startSpeedKmh = kmh
+                return
+            }
+        }
+        // Fallback: wire-order Hex → LE u16 (z. B. "0000", "0500").
+        let hex = raw.valueHex
+            .replacingOccurrences(of: "0x", with: "", options: .caseInsensitive)
+            .replacingOccurrences(of: " ", with: "")
+        guard hex.count == 4, let lo = UInt8(hex.prefix(2), radix: 16),
+              let hi = UInt8(hex.suffix(2), radix: 16) else { return }
+        let u = UInt16(lo) | (UInt16(hi) << 8)
+        let kmh = u <= 120 ? RegisterScale.kmhWhole(u) : RegisterScale.kmh(u)
+        if kmh >= 0, kmh <= 40 {
+            reading.startSpeedKmh = kmh
         }
     }
 
@@ -874,7 +903,7 @@ enum IntegrityAnalyzer {
         let stockMax = profile.stockMaxGear
         let modeOverStock = (reading.gearMode ?? 0) > stockMax
         let maxOverStock = (maxGear ?? 0) > stockMax
-        return [
+        var facts = [
             MeasuredFact(
                 id: "gear.mode",
                 group: .gear,
@@ -902,6 +931,27 @@ enum IntegrityAnalyzer {
                 raw: maxGear.map { String($0) }
             )
         ]
+
+        let start = reading.startSpeedKmh
+        let zeroStart = (start ?? -1) < 0.5 && start != nil
+        let flagZeroStart = zeroStart && profile.market != .us37
+        facts.append(MeasuredFact(
+            id: "zero.start",
+            group: .speed,
+            title: "Zero Start",
+            auslesewert: start.map { $0 < 0.5 ? "aktiv (0 km/h)" : Format.kmh.format(Optional($0)) } ?? "—",
+            sollwert: profile.market == .us37 ? "modellabhängig" : "Kickstart ≥ 3 km/h (Serie)",
+            status: start == nil
+                ? .nichtFeststellbar
+                : (flagZeroStart ? .erheblichAbweichend : .regelkonform),
+            bewertung: start == nil
+                ? "Nicht feststellbar"
+                : (flagZeroStart ? "Zero Start — nicht serienmäßig (Indiz)" : "Kickstart / Anfahrschwelle gesetzt"),
+            erlaeuterung: "Anfahrschwelle (VCU rStartSpeed). 0 km/h = Zero Start (Gas aus dem Stand). DE/EU-Serie hat das nicht — Hinweis auf Einstellungs-/Softwareeingriff.",
+            raw: start.map { String(format: "%.1f", $0) },
+            evidenceClass: flagZeroStart ? .indiz : nil
+        ))
+        return facts
     }
 
     private static func buildProtocolFacts(reading: IntegrityReading) -> [MeasuredFact] {
@@ -1225,11 +1275,12 @@ enum IntegrityAnalyzer {
                     rawHex: raw?.valueHex,
                     resetsOnPowerOff: false
                 )
-            case "speed.limit", "speed.max", "speed.peak":
+            case "speed.limit", "speed.max", "speed.peak", "zero.start":
                 let names: [String]
                 switch fact.id {
                 case "speed.peak": names = ["dis_trip_max", "tft_trip_max"]
                 case "speed.max": names = ["vcu_g3_maxspd", "vcu_g3_edmax"]
+                case "zero.start": names = ["vcu_g3_startspd"]
                 default: names = ["vcu_g3_maxspd", "dis_limit", "vcu_g3_edmax"]
                 }
                 let raw = names.compactMap { name in reading.rawRegisters.last(where: { $0.name == name }) }.first
@@ -1242,6 +1293,10 @@ enum IntegrityAnalyzer {
                 } else {
                     citation = fact.erlaeuterung
                 }
+                let enrichedClass: EvidenceClass = {
+                    if fact.id == "zero.start" { return .indiz }
+                    return fact.status == .erheblichAbweichend ? .indiz : .abweichung
+                }()
                 return MeasuredFact(
                     id: fact.id,
                     group: fact.group,
@@ -1253,7 +1308,7 @@ enum IntegrityAnalyzer {
                     erlaeuterung: citation,
                     raw: citation,
                     volatility: vol,
-                    evidenceClass: fact.status == .erheblichAbweichend ? .indiz : .abweichung,
+                    evidenceClass: enrichedClass,
                     sourceBoard: raw?.name.split(separator: "_").first.map(String.init) ?? "VCU",
                     sourceRegister: raw?.address ?? "—",
                     rawHex: raw?.valueHex,
