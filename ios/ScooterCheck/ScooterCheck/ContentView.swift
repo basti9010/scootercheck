@@ -829,6 +829,8 @@ struct ContentView: View {
             )
 
             HardwareForensicsCard(result: report)
+            RescanDiffCard(deltas: report.evidence.temporalDeltas)
+            ConfigRegistersCard(result: report)
 
             Text("Details zur Prüfung")
                 .font(Theme.sectionTitle)
@@ -1252,9 +1254,11 @@ struct ContentView: View {
     }
 
     /// Auffälligkeiten-Gruppe nur für Meta (Historie, Power-Cycle) — Klartext steht oben.
-    /// Hardware-Forensik hat eigene Karte — nicht nochmal als Fact-Gruppe.
+    /// Hardware-/Config-Karten haben eigene UI — nicht nochmal als Fact-Gruppe.
     private var detailFactGroups: [FactGroup] {
-        [.evidence] + FactGroup.allCases.filter { $0 != .evidence && $0 != .hardware }
+        [.evidence] + FactGroup.allCases.filter {
+            $0 != .evidence && $0 != .hardware && $0 != .config
+        }
     }
 
     /// Keine erneute Spiegelung von Kurzfassung / Attribution / redundanten Diffs.
@@ -1271,8 +1275,14 @@ struct ContentView: View {
                 if fact.id.hasPrefix("positive.") {
                     return false
                 }
-                // Hardware-Karte zeigt Region/Rand/UID/Boards bereits.
+                // Hardware-/Config-/Rescan-Karten zeigen das bereits.
                 if fact.group == .hardware || fact.id.hasPrefix("hw.") || fact.id == "fw.rand.marker" {
+                    return false
+                }
+                if fact.group == .config || fact.id.hasPrefix("config.") {
+                    return false
+                }
+                if fact.id.hasPrefix("history.delta.") {
                     return false
                 }
                 return true

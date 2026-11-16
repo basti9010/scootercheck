@@ -674,16 +674,36 @@ enum DiagnosticMap {
             }
 
         case "vcu_g3_sgear", "vcu_g3_egear", "vcu_g3_dgear":
-            if let raw = Nb.u16(data), raw > 0 {
-                reading.gearMax = max(reading.gearMax ?? 0, Int(raw))
+            if let raw = Nb.u16(data) {
+                let value = Int(raw)
+                switch spec.id {
+                case "vcu_g3_sgear": reading.gearLimitS = value
+                case "vcu_g3_egear": reading.gearLimitE = value
+                case "vcu_g3_dgear": reading.gearLimitD = value
+                default: break
+                }
+                if raw > 0 {
+                    reading.gearMax = max(reading.gearMax ?? 0, value)
+                }
             }
 
         case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
-            // Rohflags für Panic-resistente Heuristik (Bitmuster modellabhängig).
-            if let raw = Nb.u16(data), raw != 0 {
-                // Encryption-/Fun-Flags ≠ 0 allein kein belastbarer Hinweis — nur bei ungewöhnlichen Mustern.
-                if spec.id == "vcu_g3_encflag", raw == 0xFFFF || (raw & 0xFF00) == 0xFF00 {
-                    reading.fwAppCustom = true
+            // Rohflags für Panic-resistente Heuristik (Bitmuster modellabhängig) — nur Lesen.
+            if let raw = Nb.u16(data) {
+                let hex = "0x\(String(format: "%04X", raw))"
+                switch spec.id {
+                case "vcu_g3_bool": reading.configBoolHex = hex
+                case "vcu_g3_fun": reading.configFunHex = hex
+                case "vcu_g3_fun2": reading.configFun2Hex = hex
+                case "vcu_g3_fun3": reading.configFun3Hex = hex
+                case "vcu_g3_encflag": reading.configEncFlagHex = hex
+                default: break
+                }
+                if raw != 0 {
+                    // Encryption-/Fun-Flags ≠ 0 allein kein belastbarer Hinweis — nur bei ungewöhnlichen Mustern.
+                    if spec.id == "vcu_g3_encflag", raw == 0xFFFF || (raw & 0xFF00) == 0xFF00 {
+                        reading.fwAppCustom = true
+                    }
                 }
             }
 

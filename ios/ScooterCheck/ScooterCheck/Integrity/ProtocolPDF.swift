@@ -547,9 +547,55 @@ enum ProtocolPDF {
             }
         }
 
-        // IV.d Firmware
+        // IV.d Rescan-Diff
+        let deltas = result.evidence.temporalDeltas
+        if !deltas.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 50)
+            cursor = drawSubheading("IV.d Geändert seit letzter Prüfung", at: cursor)
+            if let proto = deltas.first?.priorProtocol {
+                cursor = drawText(
+                    "Vergleich mit \(proto).",
+                    at: cursor,
+                    font: bodyFont(size: 8),
+                    color: Theme.UI.muted
+                )
+            }
+            for delta in deltas {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+                cursor = drawText(
+                    "• \(delta.title): \(delta.previous) → \(delta.current)",
+                    at: cursor,
+                    font: bodyFont(size: 8),
+                    color: Theme.UI.warn
+                )
+            }
+        }
+
+        // IV.e Konfiguration (nur Lesen)
+        let configFacts = result.facts.filter { $0.group == .config || $0.id.hasPrefix("config.") }
+        if !configFacts.isEmpty {
+            cursor = ensureSpace(context: context, y: cursor, needed: 50)
+            cursor = drawSubheading("IV.e Konfiguration (nur Lesen)", at: cursor)
+            cursor = drawText(
+                "Zero Start, Gang-Limits, FunBools, EncFlag — dokumentiert, keine Schreibfunktion.",
+                at: cursor,
+                font: bodyFont(size: 8),
+                color: Theme.UI.muted
+            )
+            for fact in configFacts {
+                cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 2)
+                cursor = drawText(
+                    "• \(fact.title): \(fact.auslesewert) [\(fact.status.label)]",
+                    at: cursor,
+                    font: bodyFont(size: 8),
+                    color: Theme.UI.text
+                )
+            }
+        }
+
+        // IV.f Firmware
         cursor = ensureSpace(context: context, y: cursor, needed: 50)
-        cursor = drawSubheading("IV.d Firmware / Seriennummern", at: cursor)
+        cursor = drawSubheading("IV.f Firmware / Seriennummern", at: cursor)
         cursor = drawKeyValue("MCU-FW", value: result.reading.fwMcu ?? "—", at: cursor)
         cursor = drawKeyValue("BLE-FW", value: result.reading.fwBle ?? "—", at: cursor)
         cursor = drawKeyValue("VCU-FW", value: result.reading.fwVcu ?? "—", at: cursor)
@@ -568,9 +614,9 @@ enum ProtocolPDF {
             )
         }
 
-        // IV.e Evidenzmatrix
+        // IV.g Evidenzmatrix
         cursor = ensureSpace(context: context, y: cursor, needed: 50)
-        cursor = drawSubheading("IV.e Evidenzmatrix", at: cursor)
+        cursor = drawSubheading("IV.g Evidenzmatrix", at: cursor)
         for r in result.evidence.results {
             cursor = ensureSpace(context: context, y: cursor, needed: lineHeight * 3)
             cursor = drawText(
@@ -585,10 +631,10 @@ enum ProtocolPDF {
             }
         }
 
-        // IV.f Neutralisierungen
+        // IV.h Neutralisierungen
         let neutrals = result.evidence.results.flatMap(\.neutralizations)
         cursor = ensureSpace(context: context, y: cursor, needed: 40)
-        cursor = drawSubheading("IV.f Neutralisierungen", at: cursor)
+        cursor = drawSubheading("IV.h Neutralisierungen", at: cursor)
         if neutrals.isEmpty {
             cursor = drawText("Keine Neutralisierungen.", at: cursor, font: bodyFont(size: 9), color: Theme.UI.muted)
         } else {
@@ -604,9 +650,9 @@ enum ProtocolPDF {
             }
         }
 
-        // IV.g Power-Cycle
+        // IV.i Power-Cycle
         cursor = ensureSpace(context: context, y: cursor, needed: 40)
-        cursor = drawSubheading("IV.g Power-Cycle-Vergleich", at: cursor)
+        cursor = drawSubheading("IV.i Power-Cycle-Vergleich", at: cursor)
         if let pc = result.evidence.powerCycle {
             cursor = drawText(pc.summary, at: cursor, font: bodyFont(size: 9), color: Theme.UI.text)
             for row in pc.rows {
@@ -630,9 +676,9 @@ enum ProtocolPDF {
             )
         }
 
-        // IV.h Geheimkombination & Höchstgeschwindigkeit
+        // IV.j Geheimkombination & Höchstgeschwindigkeit
         cursor = ensureSpace(context: context, y: cursor, needed: 50)
-        cursor = drawSubheading("IV.h Geheimkombination & Höchstgeschwindigkeit", at: cursor)
+        cursor = drawSubheading("IV.j Geheimkombination & Höchstgeschwindigkeit", at: cursor)
         if let ur = result.unlockRescan {
             cursor = drawText(
                 "Geheimkombination vom Nutzer herausgefunden bzw. aus dem Speicher geladen, am Scooter eingegeben, danach erneut ausgelesen.",
@@ -654,9 +700,9 @@ enum ProtocolPDF {
             )
         }
 
-        // IV.i Fingerprint
+        // IV.k Fingerprint
         cursor = ensureSpace(context: context, y: cursor, needed: 50)
-        cursor = drawSubheading("IV.i Fingerprint / Hash / Katalogversion", at: cursor)
+        cursor = drawSubheading("IV.k Fingerprint / Hash / Katalogversion", at: cursor)
         cursor = drawKeyValue("Katalog", value: "v\(result.evidence.catalogVersion)", at: cursor)
         cursor = drawKeyValue("Fingerprint", value: result.evidence.fingerprint.digestSHA256, at: cursor)
         cursor = drawKeyValue("SHA-256 Auslese", value: result.reading.evidenceSha256 ?? "—", at: cursor)

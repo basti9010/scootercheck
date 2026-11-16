@@ -43,6 +43,7 @@ enum IntegrityAnalyzer {
             priorReading: priorReading,
             priorProtocolNumber: priorProtocolNumber
         )
+        facts += buildConfigRegisterFacts(reading: reading, profile: profile)
         facts += CustomFirmwareDiff.buildFacts(reading: reading, profile: profile)
         facts += buildOdometerFacts(reading: reading)
         facts += buildBatteryFacts(reading: reading)
@@ -690,6 +691,84 @@ enum IntegrityAnalyzer {
                 ))
             }
         }
+
+        return facts
+    }
+
+    /// Config-Register nur dokumentieren (SHU-Parität lesend — nie schreiben).
+    private static func buildConfigRegisterFacts(
+        reading: IntegrityReading,
+        profile: ScooterProfile
+    ) -> [MeasuredFact] {
+        var facts: [MeasuredFact] = []
+        let stockMax = profile.stockMaxGear
+
+        func gearRow(id: String, title: String, value: Int?, register: String) {
+            guard let value else { return }
+            let over = value > stockMax
+            facts.append(MeasuredFact(
+                id: id,
+                group: .config,
+                title: title,
+                auslesewert: "\(value)",
+                sollwert: "≤ \(stockMax) (Serie)",
+                status: over ? .abweichend : .regelkonform,
+                bewertung: over ? "über Serienfreigabe" : "dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU \(register) — Gang-/Leistungsstufe, nur ausgelesen.",
+                raw: "\(value)"
+            ))
+        }
+        gearRow(id: "config.gear.s", title: "S-Gang-Limit", value: reading.gearLimitS, register: "rSGear 0x6E")
+        gearRow(id: "config.gear.e", title: "E-Gang-Limit", value: reading.gearLimitE, register: "rEGear 0x79")
+        gearRow(id: "config.gear.d", title: "D-Gang-Limit", value: reading.gearLimitD, register: "rDGear 0x7A")
+
+        if let start = reading.startSpeedKmh {
+            let zero = start < 0.5
+            facts.append(MeasuredFact(
+                id: "config.zero.start",
+                group: .config,
+                title: "Zero Start / Anfahrschwelle",
+                auslesewert: zero ? "aktiv (0 km/h)" : Format.kmh.format(Optional(start)),
+                sollwert: profile.market == .us37 ? "modellabhängig" : "Kickstart ≥ 3 km/h",
+                status: (zero && profile.market != .us37) ? .erheblichAbweichend : .regelkonform,
+                bewertung: "dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU rStartSpeed 0x42 — gleiche Basis wie Zero-Start-Bewertung, hier als Config-Liste.",
+                raw: String(format: "%.1f", start)
+            ))
+        }
+
+        func flagRow(id: String, title: String, hex: String?, register: String) {
+            guard let hex else { return }
+            let odd = hex.uppercased() == "0XFFFF" || hex.uppercased().hasPrefix("0XFF")
+            facts.append(MeasuredFact(
+                id: id,
+                group: .config,
+                title: title,
+                auslesewert: hex,
+                sollwert: "serienüblich / 0x0000…",
+                status: odd && id.contains("enc") ? .abweichend : .regelkonform,
+                bewertung: "Rohflag dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU \(register) — Bitmuster modellabhängig, keine Schreibfunktion in ScooterCheck.",
+                raw: hex
+            ))
+        }
+        flagRow(id: "config.bool", title: "Bool-Register", hex: reading.configBoolHex, register: "rBool 0x1C")
+        flagRow(id: "config.fun", title: "FunBool", hex: reading.configFunHex, register: "rFun 0x1D")
+        flagRow(id: "config.fun2", title: "FunBool2", hex: reading.configFun2Hex, register: "rFun2 0x1E")
+        flagRow(id: "config.fun3", title: "FunBool3", hex: reading.configFun3Hex, register: "rFun3 0x1F")
+        flagRow(id: "config.encflag", title: "EncFlag", hex: reading.configEncFlagHex, register: "rEncFlag 0xE8")
+
+        facts.append(MeasuredFact(
+            id: "config.custom_key",
+            group: .config,
+            title: "Custom Key",
+            auslesewert: "nicht gemappt",
+            sollwert: "—",
+            status: .nichtFeststellbar,
+            bewertung: "kein bekanntes Read-Register in ScooterCheck",
+            erlaeuterung: "SHU zeigt Custom Key in der Config-UI; ScooterCheck schreibt ohnehin nicht und hat derzeit kein zugeordnetes Auslese-Register.",
+            raw: nil
+        ))
 
         return facts
     }

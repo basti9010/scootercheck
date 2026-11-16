@@ -1169,12 +1169,19 @@ enum EvidenceEngine {
             TrackClassifier.serialRegion(for: current.serialDisplay ?? current.serialVcu).label)
         add("fw.mcu", "MCU-FW", prior.fwMcu, current.fwMcu)
         add("fw.vcu", "VCU-FW", prior.fwVcu, current.fwVcu)
+        add("fw.ble", "BLE-FW", prior.fwBle, current.fwBle)
         add("limit", "Limit",
             prior.speedLimitKmh.map { Format.kmh.format(Optional($0)) },
             current.speedLimitKmh.map { Format.kmh.format(Optional($0)) })
+        add("max", "Max-Speed",
+            prior.speedMaxKmh.map { Format.kmh.format(Optional($0)) },
+            current.speedMaxKmh.map { Format.kmh.format(Optional($0)) })
         add("peak", "Trip-Peak",
             prior.peakSpeedKmh.map { Format.kmh.format(Optional($0)) },
             current.peakSpeedKmh.map { Format.kmh.format(Optional($0)) })
+        add("zero.start", "Zero Start",
+            Self.zeroStartLabel(prior.startSpeedKmh),
+            Self.zeroStartLabel(current.startSpeedKmh))
         add("gear", "Max-Gang", prior.gearMax.map(String.init), current.gearMax.map(String.init))
         add("uid.vcu", "VCU Device-UID", prior.vcuDeviceUid, current.vcuDeviceUid)
         add("uid.mcu", "MCU Device-UID", prior.mcuDeviceUid, current.mcuDeviceUid)
@@ -1187,6 +1194,13 @@ enum EvidenceEngine {
             currentRand.isEmpty ? nil : currentRand
         )
         return deltas
+    }
+
+    /// Anzeige für Zero-Start-Vergleich (0 km/h = aktiv).
+    static func zeroStartLabel(_ kmh: Double?) -> String? {
+        guard let kmh else { return nil }
+        if kmh < 0.5 { return "aktiv (0 km/h)" }
+        return Format.kmh.format(Optional(kmh))
     }
 
     static func baselineFingerprint(reading: IntegrityReading, profile: ScooterProfile) -> BaselineFingerprint {
