@@ -76,6 +76,7 @@ on:
       - cursor/de-stock-22kmh-b100
       - cursor/pruefungen-swipe-delete-b100
       - cursor/clear-enc2-password-b100
+      - cursor/zero-start-detect-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

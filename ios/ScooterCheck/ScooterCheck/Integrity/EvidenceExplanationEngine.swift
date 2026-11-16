@@ -124,6 +124,8 @@ enum EvidenceExplanationEngine {
         switch fact.markerID {
         case "gear.max":
             return "Mehr Leistungsstufen freigeschaltet als ab Werk vorgesehen (\(observed))"
+        case "zero.start":
+            return "Zero Start aktiv — Anfahren ohne Anschieben (Anfahrschwelle 0 km/h)"
         case "speed.limit":
             let soll = fact.expectedValue.map { " statt \($0)" } ?? ""
             if result.classification == .starkerHinweis {
@@ -310,6 +312,19 @@ enum EvidenceExplanationEngine {
                 """,
                 "Erwartet ab Werk: maximal Serienfreigabe (Wert \(fact.expectedValue ?? "1")).",
                 "Bleibt in der Regel gespeichert und verschwindet nicht durch Umschalten der Fahrmodi.",
+                nil
+            )
+
+        case "zero.start":
+            return pack(
+                "Zero Start aktiv",
+                """
+                Die Anfahrschwelle steht auf 0 km/h: Der Motor kann aus dem Stand per Gas anziehen \
+                (Zero Start), ohne vorheriges Anschieben. Bei DE-/EU-Serienmodellen ist typischerweise \
+                Kickstart vorgesehen (Anfahrschwelle ≥ ca. 3 km/h).
+                """,
+                "Erwartet ab Werk: Kickstart / Anfahrschwelle ≥ 3 km/h.",
+                "Persistente Einstellung im VCU — bleibt nach Aus- und Einschalten.",
                 nil
             )
 

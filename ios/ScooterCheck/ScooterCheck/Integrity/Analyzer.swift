@@ -874,7 +874,7 @@ enum IntegrityAnalyzer {
         let stockMax = profile.stockMaxGear
         let modeOverStock = (reading.gearMode ?? 0) > stockMax
         let maxOverStock = (maxGear ?? 0) > stockMax
-        return [
+        var facts = [
             MeasuredFact(
                 id: "gear.mode",
                 group: .gear,
@@ -902,6 +902,27 @@ enum IntegrityAnalyzer {
                 raw: maxGear.map { String($0) }
             )
         ]
+
+        let start = reading.startSpeedKmh
+        let zeroStart = (start ?? -1) < 0.5 && start != nil
+        let flagZeroStart = zeroStart && profile.market != .us37
+        facts.append(MeasuredFact(
+            id: "zero.start",
+            group: .speed,
+            title: "Zero Start",
+            auslesewert: start.map { $0 < 0.5 ? "aktiv (0 km/h)" : Format.kmh.format(Optional($0)) } ?? "—",
+            sollwert: profile.market == .us37 ? "modellabhängig" : "Kickstart ≥ 3 km/h (Serie)",
+            status: start == nil
+                ? .nichtFeststellbar
+                : (flagZeroStart ? .abweichend : .regelkonform),
+            bewertung: start == nil
+                ? "Nicht feststellbar"
+                : (flagZeroStart ? "Zero Start aktiv" : "Kickstart / Anfahrschwelle gesetzt"),
+            erlaeuterung: "Anfahrschwelle (VCU rStartSpeed). 0 km/h = Zero Start (Gas aus dem Stand ohne Anschieben). DE/EU-Serie verlangt typisch Kickstart.",
+            raw: start.map { String(format: "%.1f", $0) },
+            evidenceClass: flagZeroStart ? .abweichung : nil
+        ))
+        return facts
     }
 
     private static func buildProtocolFacts(reading: IntegrityReading) -> [MeasuredFact] {
@@ -1225,11 +1246,12 @@ enum IntegrityAnalyzer {
                     rawHex: raw?.valueHex,
                     resetsOnPowerOff: false
                 )
-            case "speed.limit", "speed.max", "speed.peak":
+            case "speed.limit", "speed.max", "speed.peak", "zero.start":
                 let names: [String]
                 switch fact.id {
                 case "speed.peak": names = ["dis_trip_max", "tft_trip_max"]
                 case "speed.max": names = ["vcu_g3_maxspd", "vcu_g3_edmax"]
+                case "zero.start": names = ["vcu_g3_startspd"]
                 default: names = ["vcu_g3_maxspd", "dis_limit", "vcu_g3_edmax"]
                 }
                 let raw = names.compactMap { name in reading.rawRegisters.last(where: { $0.name == name }) }.first
