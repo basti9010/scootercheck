@@ -4,6 +4,9 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var settings = AppSettings.shared
+    @State private var pairingPasswordCount = BleClient.storedPairingPasswordCount()
+    @State private var showClearPairingConfirm = false
+    @State private var clearPairingToast: String?
 
     var body: some View {
         NavigationStack {
@@ -32,7 +35,51 @@ struct SettingsView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 AppChromeSheetHeader { dismiss() }
             }
+            .confirmationDialog(
+                "Enc2-Passwörter löschen?",
+                isPresented: $showClearPairingConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Löschen", role: .destructive) {
+                    let removed = BleClient.clearAllStoredPairingPasswords()
+                    pairingPasswordCount = BleClient.storedPairingPasswordCount()
+                    clearPairingToast = removed == 0
+                        ? "Keine Passwörter gespeichert"
+                        : (removed == 1
+                            ? "1 Pairing-Passwort gelöscht"
+                            : "\(removed) Pairing-Passwörter gelöscht")
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                Text("Beim nächsten Auslesen dieses Geräts verlangt der Scooter wieder die Power-Taste. Nur App-Daten — kein iOS-Bluetooth-Bond.")
+            }
+            .overlay(alignment: .bottom) {
+                if let clearPairingToast {
+                    Text(clearPairingToast)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Theme.accent.opacity(0.95))
+                        .clipShape(Capsule())
+                        .padding(.bottom, 24)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .allowsHitTesting(false)
+                }
+            }
             .preferredColorScheme(.dark)
+            .onAppear {
+                pairingPasswordCount = BleClient.storedPairingPasswordCount()
+            }
+            .onChange(of: clearPairingToast) { message in
+                guard message != nil else { return }
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_800_000_000)
+                    withAnimation(.easeIn(duration: 0.2)) {
+                        clearPairingToast = nil
+                    }
+                }
+            }
         }
     }
 
@@ -105,6 +152,42 @@ struct SettingsView: View {
                     isOn: $settings.auslesenHideNameless
                 )
             }
+
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("Enc2-Pairing")
+                    .font(Theme.secondary)
+                    .foregroundStyle(Theme.textPrimary)
+                Text(
+                    pairingPasswordCount == 0
+                        ? "Kein gespeichertes Passwort — nächstes Pairing braucht die Power-Taste."
+                        : "\(pairingPasswordCount) gespeicherte\(pairingPasswordCount == 1 ? "s" : "") Passwort\(pairingPasswordCount == 1 ? "" : "e"). Löschen erzwingt wieder die Power-Taste."
+                )
+                .font(Theme.meta)
+                .foregroundStyle(Theme.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    showClearPairingConfirm = true
+                } label: {
+                    Text("Gespeicherte Passwörter löschen")
+                        .font(Theme.secondary.weight(.semibold))
+                        .foregroundStyle(Theme.danger)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+                .disabled(pairingPasswordCount == 0)
+                .opacity(pairingPasswordCount == 0 ? 0.45 : 1)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
         }
     }
 

@@ -2114,6 +2114,25 @@ final class BleClient: NSObject, ObservableObject {
         UserDefaults.standard.removeObject(forKey: passwordDefaultsKey)
     }
 
+    /// Löscht alle lokal gespeicherten Enc2-Pairing-Passwörter (Test: nächstes Pairing braucht wieder Power-Taste).
+    /// Betrifft nur App-UserDefaults — nicht den iOS-Bluetooth-Bond und nicht den Bond im Scooter.
+    @discardableResult
+    static func clearAllStoredPairingPasswords() -> Int {
+        let defaults = UserDefaults.standard
+        let keys = defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix(passwordKeyPrefix) }
+        for key in keys {
+            defaults.removeObject(forKey: key)
+        }
+        return keys.count
+    }
+
+    /// Anzahl gespeicherter Enc2-Passwörter (für Einstellungen / Diagnose).
+    static func storedPairingPasswordCount() -> Int {
+        UserDefaults.standard.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix(passwordKeyPrefix) }
+            .count
+    }
+
     // MARK: - Helpers
 
     private func boardLabel(_ board: Nb.Board) -> String {
