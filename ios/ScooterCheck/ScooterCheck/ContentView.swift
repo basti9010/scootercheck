@@ -969,7 +969,7 @@ struct ContentView: View {
                     finishForensicCombinePrompt(openInspector: true)
                 } label: {
                     Label("Ja, Datei hinzufügen", systemImage: "doc.badge.plus")
-                        .font(Theme.buttonPrimary)
+                        .font(Theme.button)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
