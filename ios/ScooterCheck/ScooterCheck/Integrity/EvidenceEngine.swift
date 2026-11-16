@@ -1176,6 +1176,16 @@ enum EvidenceEngine {
             prior.peakSpeedKmh.map { Format.kmh.format(Optional($0)) },
             current.peakSpeedKmh.map { Format.kmh.format(Optional($0)) })
         add("gear", "Max-Gang", prior.gearMax.map(String.init), current.gearMax.map(String.init))
+        add("uid.vcu", "VCU Device-UID", prior.vcuDeviceUid, current.vcuDeviceUid)
+        add("uid.mcu", "MCU Device-UID", prior.mcuDeviceUid, current.mcuDeviceUid)
+        let priorRand = CfwHardwareForensics.collectedMarkers(from: prior).sorted().joined(separator: " / ")
+        let currentRand = CfwHardwareForensics.collectedMarkers(from: current).sorted().joined(separator: " / ")
+        add(
+            "rand",
+            "Random-Register",
+            priorRand.isEmpty ? nil : priorRand,
+            currentRand.isEmpty ? nil : currentRand
+        )
         return deltas
     }
 
@@ -1187,7 +1197,10 @@ enum EvidenceEngine {
             "fwMcu": reading.fwMcu ?? "", "fwBle": reading.fwBle ?? "",
             "fwBms": reading.fwBms ?? "", "fwVcu": reading.fwVcu ?? "",
             "limit": reading.speedLimitKmh.map { String(format: "%.1f", $0) } ?? "",
-            "gearMax": reading.gearMax.map(String.init) ?? ""
+            "gearMax": reading.gearMax.map(String.init) ?? "",
+            "uidVcu": reading.vcuDeviceUid ?? "",
+            "uidMcu": reading.mcuDeviceUid ?? "",
+            "rand": CfwHardwareForensics.collectedMarkers(from: reading).sorted().joined(separator: "/")
         ]
         let canonical = fields.keys.sorted().map { "\($0)=\(fields[$0] ?? "")" }.joined(separator: "|")
         let digest = SHA256.hash(data: Data(canonical.utf8)).map { String(format: "%02x", $0) }.joined()

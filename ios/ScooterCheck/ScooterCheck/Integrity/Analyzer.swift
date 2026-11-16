@@ -37,7 +37,12 @@ enum IntegrityAnalyzer {
         facts += buildSerialFacts(reading: reading, profile: profile)
         facts += buildSpeedFacts(reading: reading, profile: profile)
         facts += buildFirmwareFacts(reading: reading, profile: profile)
-        facts += buildHardwareForensicsFacts(reading: reading, profile: profile)
+        facts += buildHardwareForensicsFacts(
+            reading: reading,
+            profile: profile,
+            priorReading: priorReading,
+            priorProtocolNumber: priorProtocolNumber
+        )
         facts += CustomFirmwareDiff.buildFacts(reading: reading, profile: profile)
         facts += buildOdometerFacts(reading: reading)
         facts += buildBatteryFacts(reading: reading)
@@ -565,16 +570,33 @@ enum IntegrityAnalyzer {
 
     private static func buildHardwareForensicsFacts(
         reading: IntegrityReading,
-        profile: ScooterProfile
+        profile: ScooterProfile,
+        priorReading: IntegrityReading? = nil,
+        priorProtocolNumber: String? = nil
     ) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
         let markers = CfwHardwareForensics.collectedMarkers(from: reading)
         let suspicious = CfwHardwareForensics.suspiciousMarkers(from: reading)
 
+        let regionProfile = TrackClassifier.resolveRegionProfile(for: reading)
+        let regionLabel = regionProfile?.shuStyleLabel
+            ?? TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu).label
+        facts.append(MeasuredFact(
+            id: "hw.region",
+            group: .hardware,
+            title: "Region (SN-Präfix)",
+            auslesewert: regionLabel,
+            sollwert: "modell-/markttypisch",
+            status: regionProfile == nil ? .nichtFeststellbar : .regelkonform,
+            bewertung: regionProfile == nil ? "kein Präfix erkannt" : "SHU-Style Label",
+            erlaeuterung: "Region aus SN-Präfix wie in SHU Hardware/Info — parallel zur Seriennummern-Bewertung.",
+            raw: TrackClassifier.preferredRegionSerial(from: reading)
+        ))
+
         if !markers.isEmpty {
             facts.append(MeasuredFact(
                 id: "fw.rand.marker",
-                group: .firmware,
+                group: .hardware,
                 title: "Random-Register (SHU)",
                 auslesewert: markers.joined(separator: " / "),
                 sollwert: "leer / serienüblich",
@@ -591,7 +613,7 @@ enum IntegrityAnalyzer {
         if let uid = reading.vcuDeviceUid {
             facts.append(MeasuredFact(
                 id: "hw.uid.vcu",
-                group: .serial,
+                group: .hardware,
                 title: "VCU Device-UID",
                 auslesewert: uid,
                 sollwert: "Chip-UID",
@@ -604,7 +626,7 @@ enum IntegrityAnalyzer {
         if let uid = reading.mcuDeviceUid {
             facts.append(MeasuredFact(
                 id: "hw.uid.mcu",
-                group: .serial,
+                group: .hardware,
                 title: "MCU Device-UID",
                 auslesewert: uid,
                 sollwert: "Chip-UID",
@@ -620,7 +642,7 @@ enum IntegrityAnalyzer {
             let line = boards.map { "\($0.label)=\($0.value)" }.joined(separator: ", ")
             facts.append(MeasuredFact(
                 id: "hw.board.types",
-                group: .serial,
+                group: .hardware,
                 title: "Board-Typen (abgeleitet)",
                 auslesewert: line,
                 sollwert: "modelltypisch",
@@ -629,6 +651,44 @@ enum IntegrityAnalyzer {
                 erlaeuterung: "Wie SHU „Board types“: aus Modellfamilie abgeleitet (nicht als Klartext-Register gelesen).",
                 raw: line
             ))
+        }
+
+        if let prior = priorReading {
+            let priorLabel = priorProtocolNumber.map { "Vorprüfung \($0)" } ?? "Vorprüfung"
+            func uidDiff(id: String, title: String, previous: String?, current: String?) {
+                guard let previous, let current, previous != current else { return }
+                facts.append(MeasuredFact(
+                    id: id,
+                    group: .hardware,
+                    title: title,
+                    auslesewert: current,
+                    sollwert: previous,
+                    status: .erheblichAbweichend,
+                    bewertung: "UID gewechselt — möglicher Boardtausch / Steuergerät-Wechsel",
+                    erlaeuterung: "\(priorLabel): Chip-UID weicht ab. Serienmäßige Geräte behalten dieselbe UID; ein Wechsel deutet auf getauschtes Board hin.",
+                    raw: "\(previous)→\(current)",
+                    evidenceClass: .starkerHinweis
+                ))
+            }
+            uidDiff(id: "hw.diff.uid.vcu", title: "VCU-UID vs. Vorprüfung", previous: prior.vcuDeviceUid, current: reading.vcuDeviceUid)
+            uidDiff(id: "hw.diff.uid.mcu", title: "MCU-UID vs. Vorprüfung", previous: prior.mcuDeviceUid, current: reading.mcuDeviceUid)
+
+            let priorMarkers = CfwHardwareForensics.collectedMarkers(from: prior).sorted().joined(separator: " / ")
+            let currentMarkers = markers.sorted().joined(separator: " / ")
+            if !priorMarkers.isEmpty || !currentMarkers.isEmpty, priorMarkers != currentMarkers {
+                facts.append(MeasuredFact(
+                    id: "hw.diff.rand",
+                    group: .hardware,
+                    title: "Random-Marker vs. Vorprüfung",
+                    auslesewert: currentMarkers.isEmpty ? "—" : currentMarkers,
+                    sollwert: priorMarkers.isEmpty ? "—" : priorMarkers,
+                    status: .abweichend,
+                    bewertung: "Marker geändert seit \(priorLabel)",
+                    erlaeuterung: "Änderung der SHU-Random-Register zwischen Prüfungen — CFW-Flash oder Reset möglich.",
+                    raw: "\(priorMarkers)→\(currentMarkers)",
+                    evidenceClass: .indiz
+                ))
+            }
         }
 
         return facts

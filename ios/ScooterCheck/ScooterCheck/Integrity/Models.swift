@@ -954,6 +954,7 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case serial = "Seriennummern"
     case speed = "Geschwindigkeit"
     case firmware = "Firmware"
+    case hardware = "Hardware-Forensik"
     case odometer = "Kilometerstand"
     case battery = "Batterie"
     case temperature = "Temperatur"

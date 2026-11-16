@@ -62,5 +62,68 @@ final class LiveCheckRecordingTests: XCTestCase {
         XCTAssertEqual(decoded.protocolNumber, "SC-TEST")
         XCTAssertEqual(decoded.sampleCount, 1)
         XCTAssertEqual(decoded.samples.first?.currentA ?? 0, -2.5, accuracy: 0.01)
+        XCTAssertFalse(decoded.events.isEmpty)
+    }
+
+    func testPeakAndThresholdEvents() {
+        var recording = LiveCheckRecording()
+        var snap = LiveTelemetrySnapshot()
+        snap.speedKmh = 18
+        snap.powerW = 400
+        snap.controllerTempC = 40
+        recording.append(snap)
+        XCTAssertTrue(recording.events.contains { $0.kind == .newPeakSpeed })
+        XCTAssertTrue(recording.alarmEvents.isEmpty)
+
+        snap.speedKmh = 27
+        snap.powerW = 1_500
+        snap.controllerTempC = 58
+        recording.append(snap)
+        XCTAssertEqual(recording.peakSpeedKmh ?? 0, 27, accuracy: 0.01)
+        XCTAssertEqual(recording.peakPowerW ?? 0, 1_500, accuracy: 0.5)
+        XCTAssertTrue(recording.events.contains { $0.kind == .thresholdSpeed })
+        XCTAssertTrue(recording.events.contains { $0.kind == .thresholdPower })
+        XCTAssertTrue(recording.events.contains { $0.kind == .thresholdControllerTemp })
+        XCTAssertEqual(recording.alarmEvents.count, 3)
+
+        // Schwellen nur einmal
+        snap.speedKmh = 30
+        recording.append(snap)
+        XCTAssertEqual(recording.events.filter { $0.kind == .thresholdSpeed }.count, 1)
+        XCTAssertTrue(recording.summaryLine.contains("Alarm"))
+    }
+
+    func testLiveAlertsForHotController() {
+        var recording = LiveCheckRecording()
+        var snap = LiveTelemetrySnapshot()
+        snap.controllerTempC = 72
+        recording.append(snap)
+        let alerts = recording.liveAlerts(for: snap)
+        XCTAssertTrue(alerts.contains { $0.contains("Controller") })
+    }
+
+    func testCsvIncludesEventsSection() {
+        var recording = LiveCheckRecording()
+        var snap = LiveTelemetrySnapshot()
+        snap.speedKmh = 26
+        recording.append(snap)
+        let csv = recording.csvString()
+        XCTAssertTrue(csv.contains("# events"))
+        XCTAssertTrue(csv.contains("thresholdSpeed") || csv.contains("newPeakSpeed"))
+    }
+
+    func testDecodeLegacyWithoutEvents() throws {
+        let id = UUID()
+        let json = """
+        {
+          "id": "\(id.uuidString)",
+          "startedAt": "2026-11-16T12:00:00Z",
+          "samples": [],
+          "peakSpeedKmh": 12.5
+        }
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(LiveCheckRecording.self, from: json)
+        XCTAssertEqual(decoded.events.count, 0)
+        XCTAssertEqual(decoded.peakSpeedKmh ?? 0, 12.5, accuracy: 0.01)
     }
 }

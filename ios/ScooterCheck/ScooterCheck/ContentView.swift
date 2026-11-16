@@ -828,6 +828,8 @@ struct ContentView: View {
                 }
             )
 
+            HardwareForensicsCard(result: report)
+
             Text("Details zur Prüfung")
                 .font(Theme.sectionTitle)
                 .foregroundStyle(Theme.textPrimary)
@@ -1132,10 +1134,40 @@ struct ContentView: View {
             }
 
             if let recording = ble.liveCheckRecording {
+                HStack(spacing: 10) {
+                    if let peak = recording.peakSpeedKmh {
+                        liveMetric("Session-Peak", String(format: "%.1f km/h", peak))
+                    }
+                    if let power = recording.peakPowerW {
+                        liveMetric("Peak-Leistung", String(format: "%.0f W", power))
+                    }
+                }
+                if let ctrl = recording.maxControllerTempC {
+                    liveMetric("Max Controller", String(format: "%.1f °C", ctrl))
+                }
+
+                let alerts = recording.liveAlerts(for: snap)
+                if !alerts.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(alerts, id: \.self) { line in
+                            Text(line)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.danger)
+                        }
+                    }
+                }
+
                 Text(recording.summaryLine)
                     .font(.caption2)
                     .foregroundStyle(Theme.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let lastAlarm = recording.events.last(where: \.isAlarm) {
+                    Text(lastAlarm.message)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             HStack(spacing: 10) {
@@ -1220,8 +1252,9 @@ struct ContentView: View {
     }
 
     /// Auffälligkeiten-Gruppe nur für Meta (Historie, Power-Cycle) — Klartext steht oben.
+    /// Hardware-Forensik hat eigene Karte — nicht nochmal als Fact-Gruppe.
     private var detailFactGroups: [FactGroup] {
-        [.evidence] + FactGroup.allCases.filter { $0 != .evidence }
+        [.evidence] + FactGroup.allCases.filter { $0 != .evidence && $0 != .hardware }
     }
 
     /// Keine erneute Spiegelung von Kurzfassung / Attribution / redundanten Diffs.
@@ -1236,6 +1269,10 @@ struct ContentView: View {
                 }
                 // Positive Einzeiler nur in der Übersicht/PDF — Details bleiben Messwerte.
                 if fact.id.hasPrefix("positive.") {
+                    return false
+                }
+                // Hardware-Karte zeigt Region/Rand/UID/Boards bereits.
+                if fact.group == .hardware || fact.id.hasPrefix("hw.") || fact.id == "fw.rand.marker" {
                     return false
                 }
                 return true

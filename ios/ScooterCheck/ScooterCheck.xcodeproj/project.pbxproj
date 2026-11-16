@@ -154,6 +154,7 @@
 		A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F3 /* FirmwareDocumentPicker.swift */; };
 		A100000000000000000000D1 /* DualSourcePanicCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D1 /* DualSourcePanicCorrelator.swift */; };
 		A100000000000000000000D2 /* DualSourcePanicCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D2 /* DualSourcePanicCard.swift */; };
+		A10000000000000000000A28 /* HardwareForensicsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B28 /* HardwareForensicsCard.swift */; };
 		A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */; };
 		A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */; };
 		A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */; };
@@ -314,6 +315,7 @@
 		B100000000000000000000F3 /* FirmwareDocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDocumentPicker.swift; sourceTree = "<group>"; };
 		B100000000000000000000D1 /* DualSourcePanicCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelator.swift; sourceTree = "<group>"; };
 		B100000000000000000000D2 /* DualSourcePanicCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCard.swift; sourceTree = "<group>"; };
+		B10000000000000000000B28 /* HardwareForensicsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareForensicsCard.swift; sourceTree = "<group>"; };
 		B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareSpeedSignatureExtractor.swift; sourceTree = "<group>"; };
@@ -364,6 +366,7 @@
 			children = (
 				B10000000000000000000001 /* ScooterCheckApp.swift */,
 				B10000000000000000000002 /* ContentView.swift */,
+				B10000000000000000000B28 /* HardwareForensicsCard.swift */,
 				B10000000000000000000003 /* Theme.swift */,
 				B10000000000000000000026 /* ScootDesign.swift */,
 				B10000000000000000000027 /* ScooterThumbnail.swift */,
@@ -719,6 +722,7 @@
 				A100000000000000000000F3 /* FirmwareDocumentPicker.swift in Sources */,
 				A100000000000000000000D1 /* DualSourcePanicCorrelator.swift in Sources */,
 				A100000000000000000000D2 /* DualSourcePanicCard.swift in Sources */,
+				A10000000000000000000A28 /* HardwareForensicsCard.swift in Sources */,
 				A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */,
 				A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */,
 				A100000000000000000000E3 /* FirmwareKnownCFWCatalog.swift in Sources */,
