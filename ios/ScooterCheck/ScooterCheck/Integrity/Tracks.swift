@@ -48,27 +48,123 @@ enum TrackClassifier {
         "N4GSD", "N4GSE", "N4GS", "DE", "EU"
     ]
 
-    static func serialRegion(for serial: String?) -> SerialRegion {
-        guard let serial = serial?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
-              !serial.isEmpty else { return .unknown }
-        // F3 Pro: 1EFH… (DIS/Fahrzeug), 1EFC… (VCU) — DE/EU nicht am Präfix getrennt; DE-Default.
-        if serial.hasPrefix("1EFH") || serial.hasPrefix("1EFC") || serial.hasPrefix("1EF") {
-            return .de
+    /// SN für Regionserkennung: Fahrzeug-/DIS-SN vor VCU-Board-SN (F3: 1EFH… vor 1EFC…).
+    static func preferredRegionSerial(from reading: IntegrityReading) -> String? {
+        let candidates = [
+            reading.serialDisplay,
+            reading.serialBle,
+            reading.serialExpected,
+            reading.serialVcu,
+            reading.serialMcu
+        ]
+        if let vehicle = candidates.compactMap({ normalizedSerial($0) }).first(where: {
+            $0.hasPrefix("1EFJ") || $0.hasPrefix("1EFK") || $0.hasPrefix("1EFH")
+                || $0.hasPrefix("1EFG") || $0.hasPrefix("1EFF")
+                || $0.hasPrefix("1K1") || $0.hasPrefix("1CG")
+                || $0.hasPrefix("N2") || $0.hasPrefix("N4G")
+        }) {
+            return vehicle
         }
-        // ZT3 Pro: 1K1D… = DE/D-Markt, 1K1E… = EU/E-Markt (neben N2DT/N2ET).
-        if serial.hasPrefix("1K1D") { return .de }
-        if serial.hasPrefix("1K1E") { return .eu }
-        // Max G3 / x3: 1CGB=DE, 1CGE=EU, 1CGC=US, 1CGD=RU (Joey's Wiki / MaxG3Tools).
-        if serial.hasPrefix("1CGB") { return .de }
-        if serial.hasPrefix("1CGE") { return .eu }
-        if serial.hasPrefix("1CGC") { return .us }
-        if serial.hasPrefix("1CGD") { return .us } // RU oft freier — als Nicht-DE behandeln
-        if serial.hasPrefix("1CG") { return .eu }
-        if usSerialPrefixes.contains(where: { serial.hasPrefix($0) }) { return .us }
-        if euSerialPrefixes.contains(where: { serial.hasPrefix($0) }) { return .de }
-        if serial.hasPrefix("N4GS") { return .eu }
-        if serial.hasPrefix("CN") || serial.hasPrefix("N4GSCN") { return .cn }
-        return .unknown
+        return candidates.compactMap { normalizedSerial($0) }.first
+    }
+
+    static func serialRegion(for serial: String?) -> SerialRegion {
+        resolveRegionProfile(for: serial)?.region ?? .unknown
+    }
+
+    static func serialRegion(for reading: IntegrityReading) -> SerialRegion {
+        resolveRegionProfile(for: reading)?.region ?? .unknown
+    }
+
+    static func resolveRegionProfile(for reading: IntegrityReading) -> SerialRegionProfile? {
+        resolveRegionProfile(for: preferredRegionSerial(from: reading))
+    }
+
+    /// SHU-kompatible Regions-/Marktzuordnung aus dem SN-Präfix (4. Stelle bei F3/G3).
+    static func resolveRegionProfile(for serial: String?) -> SerialRegionProfile? {
+        guard let serial = normalizedSerial(serial) else { return nil }
+
+        // F3 Pro (Fahrzeug/DIS): 1EFJ=DE, 1EFK=EU, 1EFH=Global 35, 1EFG=US 32, 1EFF=CN.
+        if serial.hasPrefix("1EFJ") {
+            return .init(region: .de, prefix: "1EFJ", familyLabel: "F3 Pro", marketName: "DE", ratedLimitKmh: 22)
+        }
+        if serial.hasPrefix("1EFK") {
+            return .init(region: .eu, prefix: "1EFK", familyLabel: "F3 Pro", marketName: "EU", ratedLimitKmh: 25)
+        }
+        if serial.hasPrefix("1EFH") {
+            return .init(region: .us, prefix: "1EFH", familyLabel: "F3 Pro", marketName: "Global", ratedLimitKmh: 35)
+        }
+        if serial.hasPrefix("1EFG") {
+            return .init(region: .us, prefix: "1EFG", familyLabel: "F3 Pro", marketName: "US", ratedLimitKmh: 32)
+        }
+        if serial.hasPrefix("1EFF") {
+            return .init(region: .cn, prefix: "1EFF", familyLabel: "F3 Pro", marketName: "CN", ratedLimitKmh: 32)
+        }
+        // F3 / VCU-Board-Präfixe: 1EFD=DE, 1EFE=EU, 1EFC=Global 35, 1EFB=US 32, 1EFA=CN.
+        if serial.hasPrefix("1EFD") {
+            return .init(region: .de, prefix: "1EFD", familyLabel: "F3", marketName: "DE", ratedLimitKmh: 22)
+        }
+        if serial.hasPrefix("1EFE") {
+            return .init(region: .eu, prefix: "1EFE", familyLabel: "F3", marketName: "EU", ratedLimitKmh: 25)
+        }
+        if serial.hasPrefix("1EFC") {
+            return .init(region: .us, prefix: "1EFC", familyLabel: "F3", marketName: "Global", ratedLimitKmh: 35)
+        }
+        if serial.hasPrefix("1EFB") {
+            return .init(region: .us, prefix: "1EFB", familyLabel: "F3", marketName: "US", ratedLimitKmh: 32)
+        }
+        if serial.hasPrefix("1EFA") {
+            return .init(region: .cn, prefix: "1EFA", familyLabel: "F3", marketName: "CN", ratedLimitKmh: 32)
+        }
+        if serial.hasPrefix("1EF") {
+            return .init(region: .unknown, prefix: String(serial.prefix(4)), familyLabel: "F3", marketName: "unbekannt", ratedLimitKmh: nil)
+        }
+
+        // ZT3 Pro: 1K1D… = DE, 1K1E… = EU.
+        if serial.hasPrefix("1K1D") {
+            return .init(region: .de, prefix: "1K1D", familyLabel: "ZT3 Pro", marketName: "DE", ratedLimitKmh: 22)
+        }
+        if serial.hasPrefix("1K1E") {
+            return .init(region: .eu, prefix: "1K1E", familyLabel: "ZT3 Pro", marketName: "EU", ratedLimitKmh: 25)
+        }
+
+        // Max G3: 1CGB=DE, 1CGE=EU, 1CGC=US, 1CGD=RU.
+        if serial.hasPrefix("1CGB") {
+            return .init(region: .de, prefix: "1CGB", familyLabel: "Max G3", marketName: "DE", ratedLimitKmh: 22)
+        }
+        if serial.hasPrefix("1CGE") {
+            return .init(region: .eu, prefix: "1CGE", familyLabel: "Max G3", marketName: "EU", ratedLimitKmh: 25)
+        }
+        if serial.hasPrefix("1CGC") {
+            return .init(region: .us, prefix: "1CGC", familyLabel: "Max G3", marketName: "US", ratedLimitKmh: 40)
+        }
+        if serial.hasPrefix("1CGD") {
+            return .init(region: .us, prefix: "1CGD", familyLabel: "Max G3", marketName: "RU", ratedLimitKmh: 40)
+        }
+        if serial.hasPrefix("1CG") {
+            return .init(region: .eu, prefix: String(serial.prefix(4)), familyLabel: "Max G3", marketName: "EU", ratedLimitKmh: 25)
+        }
+
+        if usSerialPrefixes.contains(where: { serial.hasPrefix($0) }) {
+            return .init(region: .us, prefix: String(serial.prefix(4)), familyLabel: "Ninebot", marketName: "US", ratedLimitKmh: nil)
+        }
+        if euSerialPrefixes.contains(where: { serial.hasPrefix($0) }) {
+            let deLike = serial.hasPrefix("N2DT") || serial.hasPrefix("N2D") || serial.hasPrefix("N4GSD") || serial.hasPrefix("DE")
+            return .init(
+                region: deLike ? .de : .eu,
+                prefix: String(serial.prefix(min(4, serial.count))),
+                familyLabel: "Ninebot",
+                marketName: deLike ? "DE" : "EU",
+                ratedLimitKmh: deLike ? 22 : 25
+            )
+        }
+        if serial.hasPrefix("N4GS") {
+            return .init(region: .eu, prefix: "N4GS", familyLabel: "Ninebot", marketName: "EU", ratedLimitKmh: 25)
+        }
+        if serial.hasPrefix("CN") || serial.hasPrefix("N4GSCN") {
+            return .init(region: .cn, prefix: String(serial.prefix(min(4, serial.count))), familyLabel: "Ninebot", marketName: "CN", ratedLimitKmh: nil)
+        }
+        return nil
     }
 
     static func serialsMismatch(_ a: String?, _ b: String?) -> Bool {
@@ -257,10 +353,13 @@ enum TrackClassifier {
             id: "shu.region.us.on.de",
             trackId: .shu,
             weight: 0.45,
-            description: "US-Region-SN auf DE-Sollprofil (Region-Unlock)"
+            description: "US-/Global-Region-SN auf DE-Sollprofil (Region-Unlock)"
         ) { reading, profile in
-            guard profile.family == .maxG3, profile.market == .de20 else { return false }
-            return serialRegion(for: reading.serialDisplay ?? reading.serialVcu) == .us
+            guard profile.market == .de20 else { return false }
+            guard profile.family == .maxG3 || profile.family == .ninebotF3 || profile.family == .zt3Pro else {
+                return false
+            }
+            return serialRegion(for: reading).isForeignToGermanStock
         },
         TrackPattern(
             id: "shu.soft.unlock.speed",
@@ -353,8 +452,8 @@ enum TrackClassifier {
             weight: 0.25,
             description: "US-Seriennummernpräfix bei EU-Typ"
         ) { reading, profile in
-            let region = serialRegion(for: reading.serialDisplay ?? reading.serialMcu)
-            return region == .us && profile.market == .de20
+            let region = serialRegion(for: reading)
+            return region.isForeignToGermanStock && profile.market == .de20
         },
 
         // --- SHU Dump ---

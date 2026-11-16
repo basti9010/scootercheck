@@ -295,57 +295,68 @@ enum IntegrityAnalyzer {
             raw: reading.serialMcu
         ))
 
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
-        let foreignUS = region == .us
+        let regionProfile = TrackClassifier.resolveRegionProfile(for: reading)
+        let region = regionProfile?.region ?? .unknown
+        let regionValue = regionProfile?.shuStyleLabel ?? region.label
         let expectedRegion: String = {
             switch (profile.family, profile.market) {
-            case (.ninebotF3, .de20): return "DE (1EFH… / 1EFC…)"
-            case (.ninebotF3, .eu25): return "EU (1EF… / F3E)"
-            case (.ninebotF3, .us37): return "US"
+            case (.ninebotF3, .de20): return "F3 Pro DE (1EFJ… / 1EFD…, 22 km/h)"
+            case (.ninebotF3, .eu25): return "F3 Pro EU (1EFK… / 1EFE…, 25 km/h)"
+            case (.ninebotF3, .us37): return "F3 Pro Global/US (1EFH… / 1EFC…)"
             case (.gt3, .de20): return "DE (GT3 / SuperScooter)"
             case (.gt3, .eu25): return "EU (GT3 / SuperScooter)"
             case (.gt3, .us37): return "US (GT3)"
-            case (.zt3Pro, .de20): return "DE (1K1D… / N2DT…)"
-            case (.zt3Pro, .eu25): return "EU (1K1E… / N2ET…)"
+            case (.zt3Pro, .de20): return "ZT3 Pro DE (1K1D… / N2DT…)"
+            case (.zt3Pro, .eu25): return "ZT3 Pro EU (1K1E… / N2ET…)"
             case (.zt3Pro, .us37): return "US (ZT3)"
-            case (_, .de20): return "DE (1CGB…)"
-            case (_, .eu25): return "EU (1CGE…)"
-            case (_, .us37): return "US (1CGC…)"
+            case (_, .de20): return "Max G3 DE (1CGB…, 22 km/h)"
+            case (_, .eu25): return "Max G3 EU (1CGE…, 25 km/h)"
+            case (_, .us37): return "Max G3 US (1CGC…)"
             }
         }()
         let regionStatus: FactStatus = {
             if region == .unknown { return .nichtFeststellbar }
             switch profile.market {
             case .de20:
-                return foreignUS ? .erheblichAbweichend : .regelkonform
+                if region == .de { return .regelkonform }
+                if region.isForeignToGermanStock { return .erheblichAbweichend }
+                return .abweichend // z. B. EU-Präfix auf DE-Soll
             case .us37:
                 return region == .us ? .regelkonform : .abweichend
             case .eu25:
-                return foreignUS ? .abweichend : .regelkonform
+                if region == .eu { return .regelkonform }
+                if region.isForeignToGermanStock { return .abweichend }
+                return region == .de ? .regelkonform : .abweichend
             }
         }()
         let regionAssessment: String = {
             switch (profile.market, region) {
             case (.de20, .us):
-                return "US-Region (1CGC) bei DE-Sollprofil — Region-Unlock prüfen"
+                return "\(regionValue) bei DE-Sollprofil — Region-Unlock / SHU-Regionwechsel prüfen"
+            case (.de20, .cn):
+                return "\(regionValue) bei DE-Sollprofil — Regionwechsel prüfen"
+            case (.de20, .eu):
+                return "\(regionValue) weicht vom DE-Sollpräfix ab"
+            case (.de20, .de):
+                return "\(regionValue) passend zum DE-Sollprofil"
             case (.us37, .us):
-                return "US-Region passend zum Max-G3-US-Profil"
+                return "\(regionValue) passend zum US-/Global-Sollprofil"
             case (.us37, _):
-                return "Region \(region.label) weicht vom US-Sollprofil ab"
+                return "Region \(regionValue) weicht vom US-/Global-Sollprofil ab"
             default:
-                return region.label
+                return regionValue
             }
         }()
         facts.append(MeasuredFact(
             id: "serial.region",
             group: .serial,
-            title: "Seriennummern-Region",
-            auslesewert: region.label,
+            title: "Region / Ländercode",
+            auslesewert: regionValue,
             sollwert: expectedRegion,
             status: regionStatus,
             bewertung: regionAssessment,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (ZT3: 1K1D/N2DT=DE, 1K1E/N2ET=EU; Max G3: 1CGB=DE; F3 Pro: 1EFH…/1EFC…).",
-            raw: reading.serialDisplay ?? reading.serialVcu
+            erlaeuterung: "Region aus SN-Präfix wie in SHU (F3 Pro: 1EFJ=DE, 1EFK=EU, 1EFH=Global 35; F3/VCU: 1EFD/E/C; Max G3: 1CGB/E/C; ZT3: 1K1D/E).",
+            raw: TrackClassifier.preferredRegionSerial(from: reading)
         ))
 
         for (field, title, value) in [
@@ -1247,7 +1258,9 @@ enum IntegrityAnalyzer {
                     case (.zt3Pro, .de20): return "DE 1K1D…/N2DT…"
                     case (.zt3Pro, .eu25): return "EU 1K1E…/N2ET…"
                     case (.zt3Pro, .us37): return "US ZT3"
-                    case (.ninebotF3, _): return "DE/EU 1EF…"
+                    case (.ninebotF3, .de20): return "DE 1EFJ…/1EFD…"
+                    case (.ninebotF3, .eu25): return "EU 1EFK…/1EFE…"
+                    case (.ninebotF3, _): return "Global/US 1EFH…/1EFC…"
                     case (_, .de20): return "DE 1CGB…"
                     case (_, .us37): return "US 1CGC…"
                     default: return "EU"

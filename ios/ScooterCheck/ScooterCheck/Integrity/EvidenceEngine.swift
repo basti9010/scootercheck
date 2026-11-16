@@ -519,7 +519,8 @@ enum EvidenceEngine {
         var facts: [EvidenceFact] = []
         let threshold = SoftUnlockSettings.thresholdKmhSnapshot()
         let rated = profile.ratedMaxKmh
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+        let regionProfile = TrackClassifier.resolveRegionProfile(for: reading)
+        let region = regionProfile?.region ?? .unknown
         let custom = CustomFirmwareDiff.analyze(reading: reading, profile: profile)
         let limit = reading.speedLimitKmh ?? reading.speedMaxKmh
         let peak = reading.peakSpeedKmh
@@ -527,35 +528,40 @@ enum EvidenceEngine {
             || (limit ?? 0) >= threshold
             || (peak ?? 0) >= threshold
 
-        if region == .us {
-            let sn = reading.serialDisplay ?? reading.serialVcu ?? "—"
+        let foreignOnDE = profile.market == .de20 && region != .de && region != .unknown
+        let foreignOnUS = profile.market == .us37 && region != .us && region != .unknown
+        if foreignOnDE || foreignOnUS {
+            let sn = TrackClassifier.preferredRegionSerial(from: reading) ?? "—"
+            let label = regionProfile?.shuStyleLabel ?? region.label
             facts.append(EvidenceFact(
                 markerID: "region.sn",
-                title: "SN-Region",
+                title: "Region / Ländercode",
                 source: "VCU/DIS",
                 register: "SN 0x10",
-                rawValue: rawHex(forNames: ["vcu_g3_sn", "dis_sn", "vcu_sn"], in: reading) ?? sn,
-                interpretedValue: "US-Region (\(sn))",
+                rawValue: rawHex(forNames: ["vcu_g3_sn", "dis_sn", "vcu_sn", "ble_sn"], in: reading) ?? sn,
+                interpretedValue: "\(label) (\(sn))",
                 expectedValue: {
                     switch (profile.family, profile.market) {
-                    case (.ninebotF3, .de20): return "DE (1EFH… / 1EFC…)"
-                    case (.ninebotF3, .eu25): return "EU (1EF…)"
-                    case (.ninebotF3, .us37): return "US"
+                    case (.ninebotF3, .de20): return "F3 Pro DE (1EFJ… / 1EFD…)"
+                    case (.ninebotF3, .eu25): return "F3 Pro EU (1EFK… / 1EFE…)"
+                    case (.ninebotF3, .us37): return "F3 Pro Global/US (1EFH… / 1EFC…)"
                     case (.gt3, .de20): return "DE (GT3 / SuperScooter)"
                     case (.gt3, .eu25): return "EU (GT3 / SuperScooter)"
                     case (.gt3, .us37): return "US (GT3)"
-                    case (_, .de20): return "DE (1CGB…)"
-                    case (_, .eu25): return "EU (1CGE…) / marktüblich"
-                    case (_, .us37): return "US (1CGC…)"
+                    case (.zt3Pro, .de20): return "ZT3 Pro DE (1K1D…)"
+                    case (.zt3Pro, .eu25): return "ZT3 Pro EU (1K1E…)"
+                    case (_, .de20): return "Max G3 DE (1CGB…)"
+                    case (_, .eu25): return "Max G3 EU (1CGE…)"
+                    case (_, .us37): return "Max G3 US (1CGC…)"
                     }
                 }(),
                 persistence: .persistent,
                 resetResistant: true,
                 confidence: 0.92,
                 knowledgeSource: .referenceVehicle,
-                knownModMatchId: profile.market == .de20 ? "region.us.1CGC.on_de_profile" : nil,
-                // US-Profil + 1CGC ist kein Mod-Match.
-                knownStockMatch: profile.market != .de20
+                knownModMatchId: foreignOnDE ? "region.us.1CGC.on_de_profile" : nil,
+                // Passendes US-/Global-Präfix auf US-Profil ist kein Mod-Match.
+                knownStockMatch: !foreignOnDE
             ))
         }
 
@@ -862,14 +868,15 @@ enum EvidenceEngine {
         results.map { result in
             var r = result
             if r.fact.markerID == "region.sn" {
-                let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+                let region = TrackClassifier.serialRegion(for: reading)
                 guard region == .us else { return r }
                 let limit = reading.speedLimitKmh ?? reading.speedMaxKmh ?? 0
                 let peak = reading.peakSpeedKmh ?? 0
                 let tempoOk = limit <= profile.ratedMaxKmh + 1 && peak <= profile.ratedMaxKmh + 1
                 let fw = StockFirmwareCatalog.analyze(reading: reading, profile: profile)
                 let fwPlausible = fw.notInCatalogCount == 0 && fw.customCount == 0
-                let sn = (reading.serialDisplay ?? reading.serialVcu ?? "").uppercased()
+                let sn = (TrackClassifier.preferredRegionSerial(from: reading) ?? "").uppercased()
+                // Nur Max-G3-US-Stockform (1CGC) kann auf DE-Soll neutralisiert werden — nicht F3 Global.
                 let usShape = sn.hasPrefix("1CGC")
 
                 if profile.market == .de20, usShape, tempoOk, fwPlausible {

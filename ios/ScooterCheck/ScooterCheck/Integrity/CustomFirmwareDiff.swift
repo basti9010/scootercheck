@@ -153,7 +153,7 @@ enum CustomFirmwareDiff {
         }
 
         // --- Region ---
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+        let region = TrackClassifier.serialRegion(for: reading)
         if region == .us && profile.market == .de20 {
             suspected = true
             reasons.append("US-Region-SN auf DE-Sollprofil")
