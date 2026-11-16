@@ -2374,6 +2374,14 @@ struct ContentView: View {
                 ) {
                     navigateFromMenu(to: .home)
                 }
+                sideNavRow(
+                    title: "Firmware-Forensik",
+                    systemImage: "doc.badge.gearshape",
+                    selected: false
+                ) {
+                    setMenuOpen(false)
+                    showFirmwareZipInspector = true
+                }
                 if AppFeatureFlags.pedelecAuslesenVisible {
                     sideNavRow(
                         title: "Pedelec auslesen",
