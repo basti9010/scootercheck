@@ -55,6 +55,9 @@ enum TrackClassifier {
         if serial.hasPrefix("1EFH") || serial.hasPrefix("1EFC") || serial.hasPrefix("1EF") {
             return .de
         }
+        // ZT3 Pro: 1K1D… = DE/D-Markt, 1K1E… = EU/E-Markt (neben N2DT/N2ET).
+        if serial.hasPrefix("1K1D") { return .de }
+        if serial.hasPrefix("1K1E") { return .eu }
         // Max G3 / x3: 1CGB=DE, 1CGE=EU, 1CGC=US, 1CGD=RU (Joey's Wiki / MaxG3Tools).
         if serial.hasPrefix("1CGB") { return .de }
         if serial.hasPrefix("1CGE") { return .eu }

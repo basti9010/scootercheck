@@ -107,6 +107,12 @@ final class PeakDisReportBugsTests: XCTestCase {
         XCTAssertEqual(RegisterScale.liveSpeedKmh(0x2D00) ?? -1, 45.0, accuracy: 0.01)
     }
 
+    func testZT3ProUsesLegacyMapNotG3() {
+        XCTAssertFalse(ScooterProfile.zt3ProD.usesG3RegisterMap)
+        XCTAssertFalse(DiagnosticMap.fields(for: .zt3ProD).map(\.id).contains("vcu_g3_speed"))
+        XCTAssertTrue(DiagnosticMap.fields(for: .zt3ProD).map(\.id).contains("dis_trip_max"))
+    }
+
     // MARK: - Soft-Unlock report wording
 
     func testSoftUnlockFactShowsPeakWhenOnlyPeakCrossesThreshold() {

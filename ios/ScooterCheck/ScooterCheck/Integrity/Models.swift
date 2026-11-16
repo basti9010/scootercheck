@@ -177,8 +177,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     /// Typische Seriennummer-Präfixe für werkseitige Zuordnung.
     var stockSerialHints: [String] {
         switch self {
-        case .zt3ProD: return ["N2DT", "N2D"]
-        case .zt3ProE: return ["N2ET", "N2E"]
+        case .zt3ProD: return ["1K1D", "N2DT", "N2D"]
+        case .zt3ProE: return ["1K1E", "N2ET", "N2E"]
         case .maxG2D: return ["N4GSD", "N4GS", "G2", "MAXG2"]
         case .maxG2E: return ["N4GSE", "N4GS", "G2", "MAXG2"]
         case .maxG30D: return ["N4GSD", "N4GS", "N4G"]
@@ -302,6 +302,21 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
+        // ZT3 Pro — klassisch N2DT/N2ET; neuere Fahrgestell-SNs „1K1D…“ / „1K1E…“
+        // (vor Max-G3 „1C…“, damit 1K1D nicht als G3 landet)
+        if hay.contains("ZT3") || compact.hasPrefix("1K1D") || compact.hasPrefix("1K1E")
+            || compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET")
+            || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET") {
+            let eu = compact.hasPrefix("1K1E") || compact.hasPrefix("N2ET")
+                || hay.contains("N2ET") || hay.contains("ZT3E")
+                || hay.contains("25 KM") || hay.contains("25KM") || hay.contains("25KMH")
+            return BleModelHint(
+                title: "Ninebot ZT3 Pro",
+                shortBadge: "ZT3 Pro",
+                profile: eu ? .zt3ProE : .zt3ProD
+            )
+        }
+
         // Max G3 / MAX3 — BLE-IDs wie „1CGBF2531C0230“ (ohne „G3“ im Klartext)
         if compact.hasPrefix("1CGB") {
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: .maxG3D)
@@ -322,16 +337,6 @@ struct BleModelHint: Equatable, Sendable {
             let eu = hay.contains("G3E") || hay.contains("25 KM") || hay.contains("25KM")
             let profile: ScooterProfile = eu ? .maxG3E : .maxG3D
             return BleModelHint(title: "Ninebot Max G3", shortBadge: "Max G3", profile: profile)
-        }
-
-        if hay.contains("ZT3") || hay.hasPrefix("N2DT") || hay.hasPrefix("N2ET")
-            || compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") {
-            let eu = hay.contains("N2E") || hay.contains("25")
-            return BleModelHint(
-                title: "Ninebot ZT3 Pro",
-                shortBadge: "ZT3 Pro",
-                profile: eu ? .zt3ProE : .zt3ProD
-            )
         }
 
         // Max G2 vor G30, damit „G2“ nicht als G30 landet

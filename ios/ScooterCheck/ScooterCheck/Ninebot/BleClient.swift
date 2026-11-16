@@ -328,6 +328,8 @@ final class BleClient: NSObject, ObservableObject {
     private var enc2PipeIsNordic = false
     /// Profil-Hinweis für Register-Map (z. B. Max-G3-Board-Adressen).
     private var dumpProfileHint: ScooterProfile = .maxG3D
+    /// Einmalige Dump-Neustart-Erlaubnis, wenn SN/BLE das Profil korrigiert (z. B. 1K1D → ZT3 statt Max G3).
+    private var dumpProfileRefineAllowed = true
     /// Letztes Scan-Gerät für einen Reconnect-Versuch nach Abbruch.
     private var lastConnectDevice: ScannedDevice?
     /// Öffentlich für Verlauf/Wiedererkennung (SN + BLE-UUID merken).
@@ -778,6 +780,7 @@ final class BleClient: NSObject, ObservableObject {
         }
 
         dumpProfileHint = profile
+        dumpProfileRefineAllowed = true
         if isAuthenticatedForDump, detectedStack == .ninebotEnc2 || crypto != nil {
             await dump()
             return
@@ -1513,10 +1516,13 @@ final class BleClient: NSObject, ObservableObject {
         detectedStack = .ninebotEnc2
 
         // Max G3: BLE-Name ist oft schon die Geräte-ID (wie in SHU).
-        if let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {
+        let bleIdentity = cryptoName.isEmpty ? btName : cryptoName
+        if let id = BleModelHint.compactScooterId(from: bleIdentity) {
             reading.serialDisplay = id
             reading.serialBle = reading.serialBle ?? id
         }
+        // SN/BLE-Präfix schlägt Default Max-G3 (z. B. ZT3 Pro 1K1D…).
+        _ = refineDumpProfileHintIfNeeded(bleName: bleIdentity, serial: reading.serialDisplay)
 
         var evidence = Data()
         let useG3 = dumpProfileHint.usesG3RegisterMap
@@ -1567,6 +1573,9 @@ final class BleClient: NSObject, ObservableObject {
                 evidence.append(spec.key.data(using: .utf8) ?? Data())
                 evidence.append(parsed.data)
                 DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+                if await restartDumpIfProfileMapChanged(bleName: bleIdentity) {
+                    return
+                }
             } else {
                 consecutiveFails += 1
                 boardFailCounts[spec.board.rawValue, default: 0] += 1
@@ -1588,6 +1597,9 @@ final class BleClient: NSObject, ObservableObject {
                         evidence.append(spec.key.data(using: .utf8) ?? Data())
                         evidence.append(parsed.data)
                         DiagnosticMap.apply(spec: spec, data: parsed.data, into: &reading)
+                        if await restartDumpIfProfileMapChanged(bleName: bleIdentity) {
+                            return
+                        }
                     }
                 }
 
@@ -1625,6 +1637,11 @@ final class BleClient: NSObject, ObservableObject {
            let id = BleModelHint.compactScooterId(from: cryptoName.isEmpty ? btName : cryptoName) {
             reading.serialDisplay = id
         }
+        // Nach Dump: Profil an SN anpassen (Analyse/Live-Telemetrie), auch ohne Kartenwechsel.
+        _ = refineDumpProfileHintIfNeeded(
+            bleName: bleIdentity,
+            serial: reading.serialDisplay ?? reading.serialVcu
+        )
 
         if !gotAny {
             fail(
@@ -1638,6 +1655,30 @@ final class BleClient: NSObject, ObservableObject {
         liveTelemetryLengthMode = lengthMode
         seedLiveTelemetryFromReading()
         startLiveTelemetryPolling()
+    }
+
+    /// Korrigiert `dumpProfileHint`, wenn BLE-Name/SN ein anderes Modell belegen (z. B. ZT3 `1K1D` vs. Default Max G3).
+    @discardableResult
+    private func refineDumpProfileHintIfNeeded(bleName: String?, serial: String?) -> Bool {
+        guard let suggested = ScooterProfile.suggested(fromBluetoothName: bleName, serial: serial) else {
+            return false
+        }
+        let mapChanged = suggested.usesG3RegisterMap != dumpProfileHint.usesG3RegisterMap
+        let familyChanged = suggested.family != dumpProfileHint.family
+        guard mapChanged || familyChanged || suggested != dumpProfileHint else { return false }
+        dumpProfileHint = suggested
+        return mapChanged
+    }
+
+    /// Wenn die SN erst mitten im Dump die Registerkarte widerlegt: einmal mit korrektem Profil neu lesen.
+    private func restartDumpIfProfileMapChanged(bleName: String?) async -> Bool {
+        guard dumpProfileRefineAllowed else { return false }
+        let serial = reading.serialDisplay ?? reading.serialVcu ?? reading.serialMcu
+        guard refineDumpProfileHintIfNeeded(bleName: bleName, serial: serial) else { return false }
+        dumpProfileRefineAllowed = false
+        statusMessage = "Profil korrigiert (\(dumpProfileHint.shortLabel)) — lese erneut…"
+        await dump()
+        return true
     }
 
     private func seedLiveTelemetryFromReading() {
@@ -2198,7 +2239,8 @@ final class BleClient: NSObject, ObservableObject {
             // Max G3 Advertisement-IDs, z. B. 1CGBF2531C0230
             return true
         }
-        if compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") || compact.hasPrefix("N2FS")
+        if compact.hasPrefix("1K1D") || compact.hasPrefix("1K1E")
+            || compact.hasPrefix("N2DT") || compact.hasPrefix("N2ET") || compact.hasPrefix("N2FS")
             || compact.hasPrefix("N2DS") || compact.hasPrefix("N2ES") || compact.hasPrefix("N4GS")
             || compact.hasPrefix("XN4B") {
             return true
