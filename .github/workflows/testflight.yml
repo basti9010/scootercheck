@@ -75,6 +75,7 @@ on:
       - cursor/zt3-g3-map-identify-b100
       - cursor/de-stock-22kmh-b100
       - cursor/pruefungen-swipe-delete-b100
+      - cursor/clear-enc2-password-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
