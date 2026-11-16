@@ -19,6 +19,7 @@ enum IntegrityAnalyzer {
     ) -> IntegrityResult {
         var reading = reading
         backfillStartSpeedFromRawRegisters(&reading)
+        backfillCfwMarkersFromRawRegisters(&reading)
         normalizeSpeedUnlockFlag(&reading)
 
         let trackMatch = TrackClassifier.classify(reading: reading, profile: profile)
@@ -36,6 +37,7 @@ enum IntegrityAnalyzer {
         facts += buildSerialFacts(reading: reading, profile: profile)
         facts += buildSpeedFacts(reading: reading, profile: profile)
         facts += buildFirmwareFacts(reading: reading, profile: profile)
+        facts += buildHardwareForensicsFacts(reading: reading, profile: profile)
         facts += CustomFirmwareDiff.buildFacts(reading: reading, profile: profile)
         facts += buildOdometerFacts(reading: reading)
         facts += buildBatteryFacts(reading: reading)
@@ -253,6 +255,29 @@ enum IntegrityAnalyzer {
         }
     }
 
+    /// SHU-Random-Register / UIDs aus Rohdaten nachziehen und CFW-Flag setzen.
+    static func backfillCfwMarkersFromRawRegisters(_ reading: inout IntegrityReading) {
+        if reading.vcuRandMarker == nil,
+           let raw = reading.rawRegisters.last(where: { $0.name == "vcu_g3_rand" }) {
+            reading.vcuRandMarker = raw.valueDecoded ?? CfwHardwareForensics.asciiFromHex(raw.valueHex)
+        }
+        if reading.mcuRandMarker == nil,
+           let raw = reading.rawRegisters.last(where: { $0.name == "vcu_g3_mcu_rand" }) {
+            reading.mcuRandMarker = raw.valueDecoded ?? CfwHardwareForensics.asciiFromHex(raw.valueHex)
+        }
+        if reading.vcuDeviceUid == nil,
+           let raw = reading.rawRegisters.last(where: { $0.name == "vcu_g3_cpuid" }) {
+            reading.vcuDeviceUid = raw.valueDecoded ?? raw.valueHex
+        }
+        if reading.mcuDeviceUid == nil,
+           let raw = reading.rawRegisters.last(where: { $0.name == "vcu_g3_mcu_cpuid" }) {
+            reading.mcuDeviceUid = raw.valueDecoded ?? raw.valueHex
+        }
+        if CfwHardwareForensics.suspiciousMarkers(from: reading).isEmpty == false {
+            reading.fwAppCustom = true
+        }
+    }
+
     private static func buildSerialFacts(reading: IntegrityReading, profile: ScooterProfile) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
         let sollSN = reading.serialExpected ?? profile.stockSerialHints.first ?? "—"
@@ -295,57 +320,68 @@ enum IntegrityAnalyzer {
             raw: reading.serialMcu
         ))
 
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
-        let foreignUS = region == .us
+        let regionProfile = TrackClassifier.resolveRegionProfile(for: reading)
+        let region = regionProfile?.region ?? .unknown
+        let regionValue = regionProfile?.shuStyleLabel ?? region.label
         let expectedRegion: String = {
             switch (profile.family, profile.market) {
-            case (.ninebotF3, .de20): return "DE (1EFH… / 1EFC…)"
-            case (.ninebotF3, .eu25): return "EU (1EF… / F3E)"
-            case (.ninebotF3, .us37): return "US"
+            case (.ninebotF3, .de20): return "F3 Pro DE (1EFJ… / 1EFD…, 22 km/h)"
+            case (.ninebotF3, .eu25): return "F3 Pro EU (1EFK… / 1EFE…, 25 km/h)"
+            case (.ninebotF3, .us37): return "F3 Pro Global/US (1EFH… / 1EFC…)"
             case (.gt3, .de20): return "DE (GT3 / SuperScooter)"
             case (.gt3, .eu25): return "EU (GT3 / SuperScooter)"
             case (.gt3, .us37): return "US (GT3)"
-            case (.zt3Pro, .de20): return "DE (1K1D… / N2DT…)"
-            case (.zt3Pro, .eu25): return "EU (1K1E… / N2ET…)"
+            case (.zt3Pro, .de20): return "ZT3 Pro DE (1K1D… / N2DT…)"
+            case (.zt3Pro, .eu25): return "ZT3 Pro EU (1K1E… / N2ET…)"
             case (.zt3Pro, .us37): return "US (ZT3)"
-            case (_, .de20): return "DE (1CGB…)"
-            case (_, .eu25): return "EU (1CGE…)"
-            case (_, .us37): return "US (1CGC…)"
+            case (_, .de20): return "Max G3 DE (1CGB…, 22 km/h)"
+            case (_, .eu25): return "Max G3 EU (1CGE…, 25 km/h)"
+            case (_, .us37): return "Max G3 US (1CGC…)"
             }
         }()
         let regionStatus: FactStatus = {
             if region == .unknown { return .nichtFeststellbar }
             switch profile.market {
             case .de20:
-                return foreignUS ? .erheblichAbweichend : .regelkonform
+                if region == .de { return .regelkonform }
+                if region.isForeignToGermanStock { return .erheblichAbweichend }
+                return .abweichend // z. B. EU-Präfix auf DE-Soll
             case .us37:
                 return region == .us ? .regelkonform : .abweichend
             case .eu25:
-                return foreignUS ? .abweichend : .regelkonform
+                if region == .eu { return .regelkonform }
+                if region.isForeignToGermanStock { return .abweichend }
+                return region == .de ? .regelkonform : .abweichend
             }
         }()
         let regionAssessment: String = {
             switch (profile.market, region) {
             case (.de20, .us):
-                return "US-Region (1CGC) bei DE-Sollprofil — Region-Unlock prüfen"
+                return "\(regionValue) bei DE-Sollprofil — Region-Unlock / SHU-Regionwechsel prüfen"
+            case (.de20, .cn):
+                return "\(regionValue) bei DE-Sollprofil — Regionwechsel prüfen"
+            case (.de20, .eu):
+                return "\(regionValue) weicht vom DE-Sollpräfix ab"
+            case (.de20, .de):
+                return "\(regionValue) passend zum DE-Sollprofil"
             case (.us37, .us):
-                return "US-Region passend zum Max-G3-US-Profil"
+                return "\(regionValue) passend zum US-/Global-Sollprofil"
             case (.us37, _):
-                return "Region \(region.label) weicht vom US-Sollprofil ab"
+                return "Region \(regionValue) weicht vom US-/Global-Sollprofil ab"
             default:
-                return region.label
+                return regionValue
             }
         }()
         facts.append(MeasuredFact(
             id: "serial.region",
             group: .serial,
-            title: "Seriennummern-Region",
-            auslesewert: region.label,
+            title: "Region / Ländercode",
+            auslesewert: regionValue,
             sollwert: expectedRegion,
             status: regionStatus,
             bewertung: regionAssessment,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (ZT3: 1K1D/N2DT=DE, 1K1E/N2ET=EU; Max G3: 1CGB=DE; F3 Pro: 1EFH…/1EFC…).",
-            raw: reading.serialDisplay ?? reading.serialVcu
+            erlaeuterung: "Region aus SN-Präfix wie in SHU (F3 Pro: 1EFJ=DE, 1EFK=EU, 1EFH=Global 35; F3/VCU: 1EFD/E/C; Max G3: 1CGB/E/C; ZT3: 1K1D/E).",
+            raw: TrackClassifier.preferredRegionSerial(from: reading)
         ))
 
         for (field, title, value) in [
@@ -503,6 +539,13 @@ enum IntegrityAnalyzer {
             ))
         }
 
+        let cfwMarkers = CfwHardwareForensics.suspiciousMarkers(from: reading)
+        let customNote: String = {
+            if cfwMarkers.isEmpty {
+                return "Flag für nicht-werkseitige Firmware-Installation."
+            }
+            return "Custom-FW-Marker in Random-Registern: \(cfwMarkers.joined(separator: ", ")) (wie SHU Hardware details)."
+        }()
         facts.append(MeasuredFact(
             id: "fw.app.custom",
             group: .firmware,
@@ -510,10 +553,83 @@ enum IntegrityAnalyzer {
             auslesewert: reading.fwAppCustom == true ? "gesetzt" : (reading.fwAppCustom == false ? "nicht gesetzt" : "—"),
             sollwert: "nicht gesetzt",
             status: reading.fwAppCustom == true ? .erheblichAbweichend : (reading.fwAppCustom == nil ? .nichtFeststellbar : .regelkonform),
-            bewertung: reading.fwAppCustom == true ? "Custom-Firmware aktiv" : "Serienzustand",
-            erlaeuterung: "Flag für nicht-werkseitige Firmware-Installation.",
+            bewertung: reading.fwAppCustom == true
+                ? (cfwMarkers.isEmpty ? "Custom-Firmware aktiv" : "Custom-FW (\(cfwMarkers.joined(separator: ", ")))")
+                : "Serienzustand",
+            erlaeuterung: customNote,
             raw: reading.fwAppCustom.map { String($0) }
         ))
+
+        return facts
+    }
+
+    private static func buildHardwareForensicsFacts(
+        reading: IntegrityReading,
+        profile: ScooterProfile
+    ) -> [MeasuredFact] {
+        var facts: [MeasuredFact] = []
+        let markers = CfwHardwareForensics.collectedMarkers(from: reading)
+        let suspicious = CfwHardwareForensics.suspiciousMarkers(from: reading)
+
+        if !markers.isEmpty {
+            facts.append(MeasuredFact(
+                id: "fw.rand.marker",
+                group: .firmware,
+                title: "Random-Register (SHU)",
+                auslesewert: markers.joined(separator: " / "),
+                sollwert: "leer / serienüblich",
+                status: suspicious.isEmpty ? .abweichend : .erheblichAbweichend,
+                bewertung: suspicious.isEmpty
+                    ? "ASCII-Marker ohne bekannte CFW-Signatur"
+                    : "CFW-Signatur (\(suspicious.joined(separator: ", ")))",
+                erlaeuterung: "VCU rRand (0xE4) / rMCURand (0xC7) — dieselben „Random registers“ wie in SHU Hardware details. „cfw.sh“ u. ä. sind Custom-Firmware-Marker.",
+                raw: [reading.vcuRandMarker, reading.mcuRandMarker].compactMap { $0 }.joined(separator: "|"),
+                evidenceClass: suspicious.isEmpty ? .info : .starkerHinweis
+            ))
+        }
+
+        if let uid = reading.vcuDeviceUid {
+            facts.append(MeasuredFact(
+                id: "hw.uid.vcu",
+                group: .serial,
+                title: "VCU Device-UID",
+                auslesewert: uid,
+                sollwert: "Chip-UID",
+                status: .regelkonform,
+                bewertung: "ausgelesen",
+                erlaeuterung: "VCU rCPUId (0xDA) — eindeutige Controller-ID wie in SHU Hardware details.",
+                raw: uid
+            ))
+        }
+        if let uid = reading.mcuDeviceUid {
+            facts.append(MeasuredFact(
+                id: "hw.uid.mcu",
+                group: .serial,
+                title: "MCU Device-UID",
+                auslesewert: uid,
+                sollwert: "Chip-UID",
+                status: .regelkonform,
+                bewertung: "ausgelesen",
+                erlaeuterung: "VCU rMCUCPUId (0xC0) — MCU-Chip-UID wie in SHU Hardware details.",
+                raw: uid
+            ))
+        }
+
+        let boards = CfwHardwareForensics.inferredBoardTypes(for: profile)
+        if !boards.isEmpty {
+            let line = boards.map { "\($0.label)=\($0.value)" }.joined(separator: ", ")
+            facts.append(MeasuredFact(
+                id: "hw.board.types",
+                group: .serial,
+                title: "Board-Typen (abgeleitet)",
+                auslesewert: line,
+                sollwert: "modelltypisch",
+                status: .regelkonform,
+                bewertung: "ZIPv3-/SHU-Board-Referenz",
+                erlaeuterung: "Wie SHU „Board types“: aus Modellfamilie abgeleitet (nicht als Klartext-Register gelesen).",
+                raw: line
+            ))
+        }
 
         return facts
     }
@@ -1247,7 +1363,9 @@ enum IntegrityAnalyzer {
                     case (.zt3Pro, .de20): return "DE 1K1D…/N2DT…"
                     case (.zt3Pro, .eu25): return "EU 1K1E…/N2ET…"
                     case (.zt3Pro, .us37): return "US ZT3"
-                    case (.ninebotF3, _): return "DE/EU 1EF…"
+                    case (.ninebotF3, .de20): return "DE 1EFJ…/1EFD…"
+                    case (.ninebotF3, .eu25): return "EU 1EFK…/1EFE…"
+                    case (.ninebotF3, _): return "Global/US 1EFH…/1EFC…"
                     case (_, .de20): return "DE 1CGB…"
                     case (_, .us37): return "US 1CGC…"
                     default: return "EU"

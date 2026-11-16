@@ -69,12 +69,16 @@
 		A10000000000000000000024 /* KnownScooterAliasTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000024 /* KnownScooterAliasTests.swift */; };
 		A10000000000000000000025 /* IdentifyCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000025 /* IdentifyCommandTests.swift */; };
 		A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CustomFirmwareDiff.swift */; };
+		A10000000000000000000A23 /* CfwHardwareForensics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B23 /* CfwHardwareForensics.swift */; };
 		A10000000000000000000014 /* EvidenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* EvidenceEngine.swift */; };
 		A10000000000000000000015 /* AttributionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* AttributionEngine.swift */; };
 		A10000000000000000000016 /* AttributionEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* AttributionEngineTests.swift */; };
 		A10000000000000000000017 /* EvidenceExplanationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* EvidenceExplanationEngine.swift */; };
 		A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */; };
 		A10000000000000000000019 /* BleModelHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* BleModelHintTests.swift */; };
+		A10000000000000000000A21 /* RegionCodeDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B21 /* RegionCodeDetectionTests.swift */; };
+		A10000000000000000000A22 /* ZeroStartDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B22 /* ZeroStartDetectionTests.swift */; };
+		A10000000000000000000A24 /* CfwHardwareForensicsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B24 /* CfwHardwareForensicsTests.swift */; };
 		A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* ProtocolSubjectTests.swift */; };
 		A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */; };
 		A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* G3OdometerScaleTests.swift */; };
@@ -214,12 +218,16 @@
 		B10000000000000000000024 /* KnownScooterAliasTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnownScooterAliasTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000025 /* IdentifyCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifyCommandTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* CustomFirmwareDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFirmwareDiff.swift; sourceTree = "<group>"; };
+		B10000000000000000000B23 /* CfwHardwareForensics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CfwHardwareForensics.swift; sourceTree = "<group>"; };
 		B10000000000000000000015 /* EvidenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000016 /* AttributionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000017 /* AttributionEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributionEngineTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000018 /* EvidenceExplanationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceExplanationEngine.swift; sourceTree = "<group>"; };
 		B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvidenceExplanationEngineTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001A /* BleModelHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleModelHintTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B21 /* RegionCodeDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionCodeDetectionTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B22 /* ZeroStartDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZeroStartDetectionTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B24 /* CfwHardwareForensicsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CfwHardwareForensicsTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001B /* ProtocolSubjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolSubjectTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElevatedLimitVerdictTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000001D /* G3OdometerScaleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G3OdometerScaleTests.swift; sourceTree = "<group>"; };
@@ -458,6 +466,7 @@
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
 				B10000000000000000000021 /* StockFirmwareCatalogRemote.swift */,
 				B10000000000000000000014 /* CustomFirmwareDiff.swift */,
+				B10000000000000000000B23 /* CfwHardwareForensics.swift */,
 				B10000000000000000000015 /* EvidenceEngine.swift */,
 				B10000000000000000000016 /* AttributionEngine.swift */,
 				B10000000000000000000018 /* EvidenceExplanationEngine.swift */,
@@ -473,6 +482,9 @@
 				B10000000000000000000017 /* AttributionEngineTests.swift */,
 				B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */,
 				B1000000000000000000001A /* BleModelHintTests.swift */,
+				B10000000000000000000B21 /* RegionCodeDetectionTests.swift */,
+				B10000000000000000000B22 /* ZeroStartDetectionTests.swift */,
+				B10000000000000000000B24 /* CfwHardwareForensicsTests.swift */,
 				B1000000000000000000001B /* ProtocolSubjectTests.swift */,
 				B1000000000000000000001C /* ElevatedLimitVerdictTests.swift */,
 				B1000000000000000000001D /* G3OdometerScaleTests.swift */,
@@ -736,6 +748,7 @@
 				A10000000000000000000012 /* StockFirmwareCatalog.swift in Sources */,
 				A10000000000000000000021 /* StockFirmwareCatalogRemote.swift in Sources */,
 				A10000000000000000000013 /* CustomFirmwareDiff.swift in Sources */,
+				A10000000000000000000A23 /* CfwHardwareForensics.swift in Sources */,
 				A10000000000000000000014 /* EvidenceEngine.swift in Sources */,
 				A10000000000000000000015 /* AttributionEngine.swift in Sources */,
 				A10000000000000000000017 /* EvidenceExplanationEngine.swift in Sources */,
@@ -749,6 +762,9 @@
 				A10000000000000000000016 /* AttributionEngineTests.swift in Sources */,
 				A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */,
 				A10000000000000000000019 /* BleModelHintTests.swift in Sources */,
+				A10000000000000000000A21 /* RegionCodeDetectionTests.swift in Sources */,
+				A10000000000000000000A22 /* ZeroStartDetectionTests.swift in Sources */,
+				A10000000000000000000A24 /* CfwHardwareForensicsTests.swift in Sources */,
 				A1000000000000000000001B /* ProtocolSubjectTests.swift in Sources */,
 				A1000000000000000000001C /* ElevatedLimitVerdictTests.swift in Sources */,
 				A1000000000000000000001D /* G3OdometerScaleTests.swift in Sources */,

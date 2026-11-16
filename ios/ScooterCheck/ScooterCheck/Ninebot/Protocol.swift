@@ -65,6 +65,12 @@ enum Nb {
         static let funBool2: UInt8 = 0x1E
         static let funBool3: UInt8 = 0x1F
         static let encryptionFlag: UInt8 = 0xE8
+        /// SHU „Random registers“ / CFW-Marker (NootNooot rRand / rMCURand, 6 Byte ASCII).
+        static let rand: UInt8 = 0xE4
+        static let mcuRand: UInt8 = 0xC7
+        /// Chip-UIDs (NootNooot rCPUId / rMCUCPUId, 12 Byte).
+        static let cpuId: UInt8 = 0xDA
+        static let mcuCpuId: UInt8 = 0xC0
 
         // BMS (Board 0x07) — DarknessBot Voltage/Current/Temp/Power-Parität.
         static let bmsCurrent: UInt8 = 0x8D

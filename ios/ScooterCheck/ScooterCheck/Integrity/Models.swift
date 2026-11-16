@@ -72,7 +72,7 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         case .gt3:
             return "Volle Enc2-Auslese mit G3/x3-VCU-Registerkarte (NootNooot HW-ID 257 / scootscoot gt3_pro). Kein eigener Serien-FW-Katalog."
         case .ninebotF3:
-            return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (F3 Pro: SN 1EFH… / VCU 1EFC…)."
+            return "Volle Enc2-Auslese inkl. G3-Registerkarte, Regionserkennung (1EFJ=DE / 1EFK=EU / 1EFH=Global) und Firmware-Katalog."
         case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotE, .ninebotD:
             return "Ninebot Enc2 — Registerkarte wie G30/Legacy; Firmware-Katalog ggf. eingeschränkt."
         case .xiaomiClassic:
@@ -191,8 +191,9 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .gt3E: return ["GT3", "SUPERSCOOTER", "NBW84", "GT3E"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
-        case .ninebotF3D: return ["1EFH", "1EFC", "N2FS", "N2F", "F3"]
-        case .ninebotF3E: return ["1EFH", "1EFC", "N2FS", "N2F", "F3", "F3E"]
+        // F3 Pro DE=1EFJ / EU=1EFK / Global=1EFH; VCU-Board oft 1EFD/E/C. 1EF* bleibt erkannt.
+        case .ninebotF3D: return ["1EFJ", "1EFD", "1EFH", "1EFC", "N2FS", "N2F", "F3"]
+        case .ninebotF3E: return ["1EFK", "1EFE", "1EFH", "1EFC", "N2FS", "N2F", "F3", "F3E"]
         case .ninebotED, .ninebotEE: return ["N2ES", "N2E", "E2", "E45", "E25"]
         case .ninebotDD: return ["N2DS", "N2D8", "D18", "D28", "D38"]
         case .ninebotDE: return ["N2DS", "N2D8", "D18", "D28", "D38"]
@@ -282,9 +283,10 @@ struct BleModelHint: Equatable, Sendable {
             return nil
         }
 
-        // F3 Pro — SN/BLE-IDs „1EFH…“ (Fahrzeug/DIS), „1EFC…“ (VCU); vor generischem 1C…-G3
-        if compact.hasPrefix("1EFH") || compact.hasPrefix("1EFC") || compact.hasPrefix("1EF") {
-            let eu = hay.contains("F3E") || hay.contains("25 KM") || hay.contains("25KM")
+        // F3 Pro — Präfix: 1EFJ=DE, 1EFK=EU, 1EFH=Global; VCU oft 1EFD/E/C. Vor 1C…-G3.
+        if compact.hasPrefix("1EF") {
+            let eu = compact.hasPrefix("1EFK") || compact.hasPrefix("1EFE")
+                || hay.contains("F3E") || hay.contains("25 KM") || hay.contains("25KM")
                 || hay.contains("25KMH")
             return BleModelHint(
                 title: "Ninebot F3 Pro",
@@ -656,10 +658,44 @@ enum SerialRegion: String, Codable, CaseIterable, Sendable {
         switch self {
         case .eu: return "Europa (EU)"
         case .de: return "Deutschland (DE)"
-        case .us: return "USA (US)"
+        case .us: return "USA / Global"
         case .cn: return "China (CN)"
         case .unknown: return "Nicht zuordenbar"
         }
+    }
+
+    /// Fremdregion gegenüber DE-Sollprofil (Unlock-/Region-Wechsel-Indiz).
+    var isForeignToGermanStock: Bool {
+        switch self {
+        case .us, .cn: return true
+        case .eu, .de, .unknown: return false
+        }
+    }
+}
+
+/// SHU-ähnliche Regionskennung aus SN-Präfix (z. B. „F3 Pro Global (35 km/h)“).
+struct SerialRegionProfile: Equatable, Sendable {
+    let region: SerialRegion
+    let prefix: String
+    let familyLabel: String
+    let marketName: String
+    let ratedLimitKmh: Int?
+
+    var shuStyleLabel: String {
+        if let ratedLimitKmh {
+            return "\(familyLabel) \(marketName) (\(ratedLimitKmh) km/h)"
+        }
+        return "\(familyLabel) \(marketName)"
+    }
+
+    var shortLabel: String {
+        if marketName == "Global", let ratedLimitKmh {
+            return "Global (\(ratedLimitKmh) km/h)"
+        }
+        if let ratedLimitKmh {
+            return "\(marketName) (\(ratedLimitKmh) km/h)"
+        }
+        return region.label
     }
 }
 
@@ -726,6 +762,14 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var fwVcu: String?
     var fwEsc: String?
     var fwAppCustom: Bool?
+    /// VCU rRand (0xE4) als ASCII — SHU „Random registers“ (z. B. cjsSgk).
+    var vcuRandMarker: String?
+    /// VCU rMCURand (0xC7) als ASCII — oft CFW-Signatur (z. B. cfw.sh).
+    var mcuRandMarker: String?
+    /// VCU Chip-UID (rCPUId 0xDA), Hex.
+    var vcuDeviceUid: String?
+    /// MCU Chip-UID (rMCUCPUId 0xC0), Hex.
+    var mcuDeviceUid: String?
 
     // Batterie
     var batteryPercent: Int?
@@ -788,6 +832,10 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         fwVcu: String? = nil,
         fwEsc: String? = nil,
         fwAppCustom: Bool? = nil,
+        vcuRandMarker: String? = nil,
+        mcuRandMarker: String? = nil,
+        vcuDeviceUid: String? = nil,
+        mcuDeviceUid: String? = nil,
         batteryPercent: Int? = nil,
         batteryVoltage: Double? = nil,
         batteryCurrent: Double? = nil,
@@ -836,6 +884,10 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.fwVcu = fwVcu
         self.fwEsc = fwEsc
         self.fwAppCustom = fwAppCustom
+        self.vcuRandMarker = vcuRandMarker
+        self.mcuRandMarker = mcuRandMarker
+        self.vcuDeviceUid = vcuDeviceUid
+        self.mcuDeviceUid = mcuDeviceUid
         self.batteryPercent = batteryPercent
         self.batteryVoltage = batteryVoltage
         self.batteryCurrent = batteryCurrent

@@ -196,12 +196,78 @@ final class BleModelHintTests: XCTestCase {
     func testF3ProDisplayAndVcuSerialsMatch() {
         XCTAssertFalse(TrackClassifier.serialsMismatch("1EFHE2515C0440", "1EFCE2515C0440"))
         XCTAssertTrue(TrackClassifier.sameEnc2VehicleBody("1EFHE2515C0440", "1EFCE2515C0440"))
-        XCTAssertEqual(TrackClassifier.serialRegion(for: "1EFHE2515C0440"), .de)
+        // 1EFH / 1EFC = Global 35 (nicht DE — DE wäre 1EFJ / 1EFD)
+        XCTAssertEqual(TrackClassifier.serialRegion(for: "1EFHE2515C0440"), .us)
+        XCTAssertEqual(TrackClassifier.serialRegion(for: "1EFCE2515C0440"), .us)
     }
 
     func testZT3ProSerialRegion1K1() {
         XCTAssertEqual(TrackClassifier.serialRegion(for: "1K1DA2616P1917"), .de)
         XCTAssertEqual(TrackClassifier.serialRegion(for: "1K1EA2616P1917"), .eu)
+    }
+
+    func testF3RegionPrefixesMatchSHU() {
+        let global = TrackClassifier.resolveRegionProfile(for: "1EFHE2515C0440")
+        XCTAssertEqual(global?.region, .us)
+        XCTAssertEqual(global?.marketName, "Global")
+        XCTAssertEqual(global?.ratedLimitKmh, 35)
+        XCTAssertEqual(global?.shuStyleLabel, "F3 Pro Global (35 km/h)")
+
+        let vcuGlobal = TrackClassifier.resolveRegionProfile(for: "1EFCE2515C0440")
+        XCTAssertEqual(vcuGlobal?.shuStyleLabel, "F3 Global (35 km/h)")
+
+        let de = TrackClassifier.resolveRegionProfile(for: "1EFJE2515C0440")
+        XCTAssertEqual(de?.region, .de)
+        XCTAssertEqual(de?.shuStyleLabel, "F3 Pro DE (22 km/h)")
+
+        let eu = TrackClassifier.resolveRegionProfile(for: "1EFKE2515C0440")
+        XCTAssertEqual(eu?.region, .eu)
+        XCTAssertEqual(eu?.shuStyleLabel, "F3 Pro EU (25 km/h)")
+
+        let reading = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            serialVcu: "1EFCE2515C0440"
+        )
+        // Fahrzeug-/DIS-SN hat Vorrang vor VCU-Board-SN
+        XCTAssertEqual(
+            TrackClassifier.resolveRegionProfile(for: reading)?.shuStyleLabel,
+            "F3 Pro Global (35 km/h)"
+        )
+    }
+
+    func testF3GlobalOnDEProfileFlaggedAsRegionUnlock() {
+        let reading = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            serialVcu: "1EFCE2515C0440",
+            speedMaxKmh: 22,
+            speedLimitKmh: 22,
+            fwMcu: "1.5.7",
+            fwBle: "0.4.5",
+            fwVcu: "1.6.1"
+        )
+        let result = IntegrityAnalyzer.analyze(reading: reading, profile: .ninebotF3D)
+        let region = result.facts.first { $0.id == "serial.region" }
+        XCTAssertEqual(region?.status, .erheblichAbweichend, region?.bewertung ?? "")
+        XCTAssertTrue((region?.auslesewert ?? "").contains("Global"))
+        XCTAssertTrue((region?.auslesewert ?? "").contains("35"))
+
+        let evidence = EvidenceEngine.evaluate(reading: reading, profile: .ninebotF3D)
+        XCTAssertTrue(evidence.results.contains { $0.fact.markerID == "region.sn" })
+    }
+
+    func testF3DEStockRegionNotFlagged() {
+        let reading = IntegrityReading(
+            serialDisplay: "1EFJE2515C0440",
+            serialVcu: "1EFDE2515C0440",
+            speedMaxKmh: 22,
+            speedLimitKmh: 22
+        )
+        let result = IntegrityAnalyzer.analyze(reading: reading, profile: .ninebotF3D)
+        let region = result.facts.first { $0.id == "serial.region" }
+        XCTAssertEqual(region?.status, .regelkonform, region?.bewertung ?? "")
+        XCTAssertTrue((region?.auslesewert ?? "").contains("DE"))
+        let evidence = EvidenceEngine.evaluate(reading: reading, profile: .ninebotF3D)
+        XCTAssertFalse(evidence.results.contains { $0.fact.markerID == "region.sn" })
     }
 
     func testF3ProGear3NotFlaggedAsUnlock() {

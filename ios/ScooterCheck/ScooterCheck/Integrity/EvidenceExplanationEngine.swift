@@ -19,7 +19,7 @@ enum TechnicalGlossary {
         case .ble: return "BLE: Bluetooth-Kommunikationsmodul"
         case .bms: return "BMS: Batteriemanagementsystem"
         case .firmware: return "Firmware: Software, die direkt auf einem Steuergerät läuft"
-        case .region: return "Region: interne Ländereinstellung des Fahrzeugs"
+        case .region: return "Region: Ländercode aus SN-Präfix (wie SHU), steuert Markt-/Limitprofil"
         case .speedLimit: return "Speed Limit: gespeichertes Geschwindigkeitslimit"
         case .peakSpeed: return "Peak Speed: höchste in der aktuellen Fahrt erfasste Geschwindigkeit"
         case .persistent: return "persistent: bleibt nach Aus- und Einschalten gespeichert"
@@ -140,6 +140,8 @@ enum EvidenceExplanationEngine {
             return "Frühere Freigabe nach dem Ausschalten nicht mehr vorhanden"
         case "fw.custom":
             return "Steuergeräte-Software weicht klar vom Serienstand ab"
+        case "fw.rand.cfw":
+            return "CFW-Signatur in Random-Registern (wie SHU, z. B. cfw.sh)"
         case "fw.unknown":
             return "Steuergeräte-Software entspricht keinem bekannten Serienstand"
         case "region.sn":
@@ -274,6 +276,18 @@ enum EvidenceExplanationEngine {
                 "In einem früheren Protokoll war eine erhöhte Freigabe sichtbar; nach dem Ausschalten ist sie nicht mehr feststellbar.",
                 "Kein anhaltender Unlock in der aktuellen Sitzung.",
                 "Passt zu einer nur vorübergehenden Freigabe.",
+                nil
+            )
+
+        case "fw.rand.cfw":
+            return pack(
+                "CFW-Marker in Hardware-Registern",
+                """
+                In den Random-Registern (rRand/rMCURand) steht eine Custom-Firmware-Signatur wie „cfw.sh“ — \
+                dieselben Werte wie unter SHU → Hardware details. Das ist ein starkes, persistentes Merkmal.
+                """,
+                "Erwartet: kein CFW-Marker (Serie).",
+                "Bleibt nach Soft-Unlock/Panic typischerweise erhalten.",
                 nil
             )
 
@@ -491,26 +505,39 @@ enum EvidenceExplanationEngine {
         }
 
         if !ids.contains("region.sn") {
-            let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
-            facts.append(MeasuredFact(
-                id: "positive.region.stock",
-                group: .evidence,
-                title: "Region entspricht dem Serienprofil",
-                auslesewert: region.label,
-                sollwert: {
-                    switch profile.market {
-                    case .de20: return "DE-Profil"
-                    case .eu25: return "EU-Profil"
-                    case .us37: return "US-Profil"
-                    }
-                }(),
-                status: .regelkonform,
-                bewertung: "unauffällig",
-                erlaeuterung: "Die interne Regionseinstellung passt zum erwarteten Serienprofil. (\(TechnicalGlossary.explanation(for: .region)))",
-                raw: nil,
-                volatility: .persistent,
-                evidenceClass: .info
-            ))
+            let regionProfile = TrackClassifier.resolveRegionProfile(for: reading)
+            let region = regionProfile?.region ?? .unknown
+            let matches: Bool = {
+                switch profile.market {
+                case .de20: return region == .de
+                case .eu25: return region == .eu || region == .de
+                case .us37: return region == .us
+                }
+            }()
+            if matches {
+                facts.append(MeasuredFact(
+                    id: "positive.region.stock",
+                    group: .evidence,
+                    title: "Region entspricht dem Serienprofil",
+                    auslesewert: regionProfile?.shuStyleLabel ?? region.label,
+                    sollwert: {
+                        switch (profile.family, profile.market) {
+                        case (.ninebotF3, .de20): return "F3 Pro DE (1EFJ…)"
+                        case (.ninebotF3, .eu25): return "F3 Pro EU (1EFK…)"
+                        case (.ninebotF3, .us37): return "F3 Pro Global/US"
+                        case (_, .de20): return "DE-Profil"
+                        case (_, .eu25): return "EU-Profil"
+                        case (_, .us37): return "US-/Global-Profil"
+                        }
+                    }(),
+                    status: .regelkonform,
+                    bewertung: "unauffällig",
+                    erlaeuterung: "Die Region aus dem SN-Präfix passt zum erwarteten Serienprofil. (\(TechnicalGlossary.explanation(for: .region)))",
+                    raw: TrackClassifier.preferredRegionSerial(from: reading),
+                    volatility: .persistent,
+                    evidenceClass: .info
+                ))
+            }
         }
 
         // Nur wenn ein Limit tatsächlich ausgelesen wurde und im Serienrahmen liegt —

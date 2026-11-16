@@ -60,6 +60,19 @@ enum CustomFirmwareDiff {
             confirmed = true
             reasons.append("Custom-App-Firmware-Flag gesetzt")
         }
+        let randMarkers = CfwHardwareForensics.suspiciousMarkers(from: reading)
+        if !randMarkers.isEmpty {
+            confirmed = true
+            reasons.append("SHU-Random-Register CFW-Marker: \(randMarkers.joined(separator: ", "))")
+            diffs.append(DiffItem(
+                id: "diff.fw.rand.marker",
+                title: "Random-Register (CFW)",
+                stockValue: "kein CFW-Marker",
+                observedValue: randMarkers.joined(separator: ", "),
+                severity: .erheblichAbweichend,
+                explanation: "rRand/rMCURand enthalten CFW-Signaturen wie in SHU Hardware details (z. B. cfw.sh)."
+            ))
+        }
         for component in fw.components {
             guard let version = component.version else { continue }
             switch component.match {
@@ -153,7 +166,7 @@ enum CustomFirmwareDiff {
         }
 
         // --- Region ---
-        let region = TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu)
+        let region = TrackClassifier.serialRegion(for: reading)
         if region == .us && profile.market == .de20 {
             suspected = true
             reasons.append("US-Region-SN auf DE-Sollprofil")
