@@ -59,8 +59,38 @@ final class ElevatedLimitVerdictTests: XCTestCase {
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .zt3ProD)
         XCTAssertNil(assessment.results.first { $0.fact.markerID == "speed.limit" })
+        XCTAssertNil(assessment.results.first { $0.fact.markerID == "fw.unknown" })
         XCTAssertNotEqual(assessment.verdict, .eindeutig)
         XCTAssertEqual(ScooterProfile.zt3ProD.ratedMaxKmh, 22, accuracy: 0.01)
+    }
+
+    /// gear.max = 3 ist Serie (Eco/Drive/Sport); 4 bleibt Auffälligkeit.
+    func testZT3StockGear3NotFlaggedBut4Is() {
+        let stock = IntegrityReading(
+            serialDisplay: "1K1DA2616P1917",
+            speedLimitKmh: 22,
+            gearMode: 3,
+            gearMax: 3,
+            fwMcu: "1.5.2",
+            fwBle: "2.1.13",
+            fwBms: "4.1.6.8",
+            fwVcu: "1.5.5"
+        )
+        let stockAssessment = EvidenceEngine.evaluate(reading: stock, profile: .zt3ProD)
+        XCTAssertNil(stockAssessment.results.first { $0.fact.markerID == "gear.max" })
+
+        let unlocked = IntegrityReading(
+            serialDisplay: "1K1DA2616P1917",
+            speedLimitKmh: 22,
+            gearMode: 4,
+            gearMax: 4,
+            fwMcu: "1.5.2",
+            fwBle: "2.1.13",
+            fwBms: "4.1.6.8",
+            fwVcu: "1.5.5"
+        )
+        let unlockedAssessment = EvidenceEngine.evaluate(reading: unlocked, profile: .zt3ProD)
+        XCTAssertNotNil(unlockedAssessment.results.first { $0.fact.markerID == "gear.max" })
     }
 
     func testStockLimitRemainsStock() {

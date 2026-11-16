@@ -170,6 +170,19 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertNil(StockFirmwareCatalog.entry(for: .gt3D))
     }
 
+    func testZT3ProStockGearAndCatalog() {
+        XCTAssertEqual(ScooterProfile.zt3ProD.stockMaxGear, 3)
+        XCTAssertEqual(ScooterProfile.zt3ProE.stockMaxGear, 3)
+        let entry = try XCTUnwrap(StockFirmwareCatalog.entry(for: .zt3ProD))
+        // Beobachtete DE-Serienauslese (1K1D…): MCU 1.5.2 / VCU 1.5.5 / BLE 2.1.13 / BMS 4.1.6.8
+        XCTAssertTrue(entry.mcu.contains("1.5.2"))
+        XCTAssertTrue(entry.vcu.contains("1.5.5"))
+        XCTAssertTrue(entry.ble.contains("2.1.13"))
+        XCTAssertTrue(entry.bms.contains("4.1.6.8"))
+        XCTAssertEqual(StockFirmwareCatalog.classify("1.5.5", in: entry.vcu), .listedStock)
+        XCTAssertEqual(StockFirmwareCatalog.classify("2.1.13", in: entry.ble), .listedStock)
+    }
+
     func testF3ProStockGearAndCatalog() {
         XCTAssertEqual(ScooterProfile.ninebotF3D.stockMaxGear, 3)
         XCTAssertEqual(ScooterProfile.maxG3D.stockMaxGear, 1)

@@ -29,12 +29,14 @@ enum StockFirmwareCatalog {
         bms: ["1.2.6", "1.3.0", "1.3.4", "1.4.0"]
     )
 
-    /// ZT3 Pro — beobachtete Serienstände (unvollständig).
+    /// ZT3 Pro — beobachtete Serienstände (unvollständig; Enc2/x3-Karte wie Max G3).
+    /// Neuere Stände (MCU 1.5.x, VCU 1.5.x, BLE 2.1.x, BMS 4.1.x) stammen aus DE-Serienauslesen
+    /// (z. B. SN 1K1D… mit Limit 22 km/h) und Max-G3-überlappenden BMS-/VCU-Versionen.
     static let zt3Pro = Entry(
-        mcu: ["1.0.0", "1.1.0", "1.2.0", "1.2.4"],
-        vcu: ["1.0.0", "1.1.0", "1.2.0"],
-        ble: ["0.9.0", "1.0.0", "1.0.4"],
-        bms: ["1.0.0", "1.1.0", "1.2.0"]
+        mcu: ["1.0.0", "1.1.0", "1.2.0", "1.2.4", "1.5.2"],
+        vcu: ["1.0.0", "1.1.0", "1.2.0", "1.5.4", "1.5.5", "1.5.6"],
+        ble: ["0.9.0", "1.0.0", "1.0.4", "2.1.13"],
+        bms: ["1.0.0", "1.1.0", "1.2.0", "4.1.2.8", "4.1.3.0", "4.1.4.8", "4.1.6.8"]
     )
 
     /// F3 / F3 Pro — beobachtete Serienstände (Enc2/x3-Karte, SN 1EFH… / 1EFC…).
