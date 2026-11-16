@@ -1729,6 +1729,7 @@ struct ContentView: View {
             if readingB.serialExpected == nil {
                 readingB.serialExpected = readingB.serialDisplay ?? scanA.serialDisplay
             }
+            applyProfileFromReadingIfNeeded(readingB)
             let pc = PowerCycleAnalyzer.compare(scanA: scanA, scanB: readingB, profile: profile)
             let serial = readingB.serialDisplay ?? readingB.serialVcu ?? scanA.serialDisplay
             let snapshot = history.priorSnapshot(forSerial: serial)
@@ -1805,6 +1806,7 @@ struct ContentView: View {
             if readingB.serialExpected == nil {
                 readingB.serialExpected = readingB.serialDisplay ?? scanA.serialDisplay
             }
+            applyProfileFromReadingIfNeeded(readingB)
             let unlockReport = UnlockRescanReport.make(
                 unlockCode: SoftUnlockSettings.unlockCodeSnapshot(),
                 thresholdKmh: SoftUnlockSettings.thresholdKmhSnapshot(),
@@ -1860,6 +1862,15 @@ struct ContentView: View {
         }
     }
 
+    /// SN-/BLE-Präfix korrigiert Default Max G3 (z. B. ZT3 Pro `1K1DA…`).
+    private func applyProfileFromReadingIfNeeded(_ reading: IntegrityReading) {
+        if let sn = reading.serialDisplay ?? reading.serialVcu,
+           let suggested = ScooterProfile.suggested(fromBluetoothName: nil, serial: sn),
+           suggested.family != profile.family || suggested.usesG3RegisterMap != profile.usesG3RegisterMap {
+            profile = suggested
+        }
+    }
+
     private func finalizeAnalysis() {
         var reading = ble.reading
         guard ScooterVerification.isVerifiedScooterReading(reading) else {
@@ -1872,6 +1883,7 @@ struct ContentView: View {
             reading.serialExpected = sn
         }
         let serial = reading.serialDisplay ?? reading.serialVcu ?? reading.serialBle
+        applyProfileFromReadingIfNeeded(reading)
         let snapshot = history.priorSnapshot(forSerial: serial)
         let priorUnlock = history.priorUnlockEvidence(forSerial: serial)
         let analyzed = IntegrityAnalyzer.analyze(

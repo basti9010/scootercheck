@@ -33,18 +33,34 @@ enum RegisterScale {
         return nil
     }
 
+    /// Absolute Plausibilitätsgrenze für E-Scooter-Tempo (Peak/Live). Darüber = Fehldecode.
+    static let maxPlausibleScooterKmh: Double = 100
+
+    /// Live-/Momentangeschwindigkeit: erst ×0.1 wenn plausibel, sonst G3-High-Byte-Packing.
+    static func liveSpeedKmh(_ raw: UInt16) -> Double? {
+        let tenths = Double(raw) / 10.0
+        if tenths >= 0, tenths < maxPlausibleScooterKmh {
+            return tenths
+        }
+        if let packed = g3StoredSpeedKmh(raw), packed < maxPlausibleScooterKmh {
+            return packed
+        }
+        return nil
+    }
+
     /// Trip-Spitze (rSigMaxSpeed): klassisch ×0.1 km/h; G3 oft High-Byte oder ganze km/h.
     /// Wichtig: Rohwerte wie `25`/`45` nicht als 2.5/4.5 km/h lesen (Ganzzahl-km/h bzw. G3).
     static func tripPeakKmh(_ raw: UInt16) -> Double? {
         guard raw > 0 else { return nil }
         let hi = Int((raw >> 8) & 0xFF)
         // G3 packed: High-Byte = km/h (0x2D00→45, 0x1616→22, 0x140F→20).
-        if hi >= 5, hi <= 80 {
-            return Double(hi)
+        // Nur wenn Low-Byte „Padding“ ist — sonst klassische ×0.1-Werte (z. B. 327=32.7).
+        if hi >= 5, hi <= 80, (raw & 0xFF) == 0 || (raw & 0xFF) == hi || (raw & 0xFF) <= 0x1F {
+            if Double(hi) <= maxPlausibleScooterKmh { return Double(hi) }
         }
         let tenths = Double(raw) / 10.0
         // Klassische DIS ×0.1: Rohwert typisch ≥ 50 (= 5.0 km/h).
-        if tenths >= 5, tenths <= 100 {
+        if tenths >= 5, tenths <= maxPlausibleScooterKmh {
             return tenths
         }
         // Ganze km/h auf manchen G3-Probes (z. B. raw 20…45).
@@ -543,7 +559,10 @@ enum DiagnosticMap {
         case "dis_trip_max", "tft_trip_max":
             // Tatsächliche Trip-Spitze (nicht konfiguriertes Limit). Nur DIS/Legacy-TFT —
             // nicht VCU 0x24 auf der G3-Karte (dort kein rSigMaxSpeed).
-            if let raw = Nb.u16(data), let kmh = RegisterScale.tripPeakKmh(raw), kmh > 0 {
+            if let raw = Nb.u16(data),
+               let kmh = RegisterScale.tripPeakKmh(raw),
+               kmh > 0,
+               kmh <= RegisterScale.maxPlausibleScooterKmh {
                 reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                 // Peak über Soft-Unlock-Schwelle = gefahrenes Tempo-Unlock.
                 markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
@@ -557,11 +576,11 @@ enum DiagnosticMap {
             break
 
         case "dis_speed", "vcu_g3_speed":
-            if let raw = Nb.u16(data) {
-                let kmh = RegisterScale.kmh(raw)
+            if let raw = Nb.u16(data), let kmh = RegisterScale.liveSpeedKmh(raw) {
                 reading.speedCurrentKmh = kmh
-                // Live-Speed während der Auslese kann die Trip-Spitze ergänzen.
-                if kmh >= 5 {
+                // Live-Speed nur bei plausiblen Werten in die Trip-Spitze übernehmen.
+                // Ungefiltertes raw/10 erzeugte Fehlpeaks (z. B. 1413 km/h).
+                if kmh >= 5, kmh <= RegisterScale.maxPlausibleScooterKmh {
                     reading.peakSpeedKmh = max(reading.peakSpeedKmh ?? 0, kmh)
                 }
             }

@@ -7,7 +7,7 @@
     {
       "id": "ninebot-enc2-native",
       "manufacturer": "Segway-Ninebot",
-      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "GT3", "SUPERSCOOTER", "F3", "1C", "1EF"],
+      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "GT3", "SUPERSCOOTER", "F3", "1C", "1EF", "1K1"],
       "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
       "protocolVersion": "enc2",
       "supportedReads": [

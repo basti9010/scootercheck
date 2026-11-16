@@ -93,6 +93,25 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertEqual(hint?.profile.family, .zt3Pro)
     }
 
+    func testZT3ProSerial1K1DNotMaxG3() {
+        // Bericht SC-20261116-2AE360E1: SN 1K1DA2616P1917 wurde als Max G3 gelesen.
+        let hint = BleModelHint.recognize(bleName: nil, serial: "1K1DA2616P1917")
+        XCTAssertEqual(hint?.profile, .zt3ProD)
+        XCTAssertEqual(hint?.shortBadge, "ZT3 Pro")
+        XCTAssertFalse(hint!.profile.usesG3RegisterMap)
+        XCTAssertEqual(
+            ScooterProfile.suggested(fromBluetoothName: nil, serial: "1K1DA2616P1917"),
+            .zt3ProD
+        )
+        XCTAssertTrue(BleClient.isLikelyScooterName("1K1DA2616P1917"))
+    }
+
+    func testZT3ProSerial1K1EIsEuMarket() {
+        let hint = BleModelHint.recognize(bleName: "1K1EA2616P1917")
+        XCTAssertEqual(hint?.profile, .zt3ProE)
+        XCTAssertFalse(hint!.profile.usesG3RegisterMap)
+    }
+
     func testAllFamiliesHaveSupportNotes() {
         for family in ScooterFamily.allCases {
             XCTAssertFalse(family.supportNote.isEmpty)
@@ -163,6 +182,11 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertFalse(TrackClassifier.serialsMismatch("1EFHE2515C0440", "1EFCE2515C0440"))
         XCTAssertTrue(TrackClassifier.sameEnc2VehicleBody("1EFHE2515C0440", "1EFCE2515C0440"))
         XCTAssertEqual(TrackClassifier.serialRegion(for: "1EFHE2515C0440"), .de)
+    }
+
+    func testZT3ProSerialRegion1K1() {
+        XCTAssertEqual(TrackClassifier.serialRegion(for: "1K1DA2616P1917"), .de)
+        XCTAssertEqual(TrackClassifier.serialRegion(for: "1K1EA2616P1917"), .eu)
     }
 
     func testF3ProGear3NotFlaggedAsUnlock() {

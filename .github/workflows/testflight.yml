@@ -71,6 +71,7 @@ on:
       - cursor/firmware-forensics-2-b100
       - cursor/vcu-version-decode-b100
       - cursor/report-export-picker-b100
+      - cursor/peak-speed-sanity-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
