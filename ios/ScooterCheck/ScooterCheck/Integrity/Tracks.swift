@@ -306,8 +306,8 @@ enum TrackClassifier {
         TrackPattern(
             id: "shu.persistent.zero.start",
             trackId: .shu,
-            weight: 0.25,
-            description: "Zero Start (Anfahrschwelle 0 km/h)"
+            weight: 0.4,
+            description: "Zero Start — nicht serienmäßig (Manipulationsindiz)"
         ) { reading, profile in
             guard profile.market != .us37 else { return false }
             return (reading.startSpeedKmh ?? -1) < 0.5 && reading.startSpeedKmh != nil

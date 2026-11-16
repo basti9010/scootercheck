@@ -753,7 +753,10 @@ enum EvidenceEngine {
             } else {
                 initial = .abweichung
             }
-        case "speed.session", "gear.max", "safelock", "fw.unknown", "session.reset", "zero.start":
+        case "zero.start":
+            // DE/EU: Zero Start ist nicht serienmäßig → Manipulationsindiz (Einstellungs-/SW-Eingriff).
+            initial = .indiz
+        case "speed.session", "gear.max", "safelock", "fw.unknown", "session.reset":
             initial = fact.markerID == "session.reset" && fact.knownModMatchId != nil ? .indiz : .abweichung
         case let id where id.hasPrefix("serial.cross"):
             initial = .indiz

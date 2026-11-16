@@ -125,7 +125,7 @@ enum EvidenceExplanationEngine {
         case "gear.max":
             return "Mehr Leistungsstufen freigeschaltet als ab Werk vorgesehen (\(observed))"
         case "zero.start":
-            return "Zero Start aktiv — Anfahren ohne Anschieben (Anfahrschwelle 0 km/h)"
+            return "Zero Start aktiv — nicht serienmäßig (Anfahrschwelle 0 km/h), Manipulationsindiz"
         case "speed.limit":
             let soll = fact.expectedValue.map { " statt \($0)" } ?? ""
             if result.classification == .starkerHinweis {
@@ -317,14 +317,15 @@ enum EvidenceExplanationEngine {
 
         case "zero.start":
             return pack(
-                "Zero Start aktiv",
+                "Zero Start — nicht serienmäßig",
                 """
-                Die Anfahrschwelle steht auf 0 km/h: Der Motor kann aus dem Stand per Gas anziehen \
-                (Zero Start), ohne vorheriges Anschieben. Bei DE-/EU-Serienmodellen ist typischerweise \
-                Kickstart vorgesehen (Anfahrschwelle ≥ ca. 3 km/h).
+                Die Anfahrschwelle steht auf 0 km/h: Zero Start (Gas aus dem Stand). \
+                Bei DE-/EU-Serienmodellen ist das nicht vorgesehen — dort gilt Kickstart \
+                (Anfahrschwelle ≥ ca. 3 km/h). Das ist ein Indiz für einen Einstellungs- \
+                oder Softwareeingriff, auch ohne erhöhtes Tempolimit.
                 """,
-                "Erwartet ab Werk: Kickstart / Anfahrschwelle ≥ 3 km/h.",
-                "Persistente Einstellung im VCU — bleibt nach Aus- und Einschalten.",
+                "Erwartet ab Werk: Kickstart / Anfahrschwelle ≥ 3 km/h (kein Zero Start).",
+                "Persistente VCU-Einstellung — bleibt nach Aus- und Einschalten.",
                 nil
             )
 

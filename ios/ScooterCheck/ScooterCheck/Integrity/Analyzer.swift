@@ -914,13 +914,13 @@ enum IntegrityAnalyzer {
             sollwert: profile.market == .us37 ? "modellabhängig" : "Kickstart ≥ 3 km/h (Serie)",
             status: start == nil
                 ? .nichtFeststellbar
-                : (flagZeroStart ? .abweichend : .regelkonform),
+                : (flagZeroStart ? .erheblichAbweichend : .regelkonform),
             bewertung: start == nil
                 ? "Nicht feststellbar"
-                : (flagZeroStart ? "Zero Start aktiv" : "Kickstart / Anfahrschwelle gesetzt"),
-            erlaeuterung: "Anfahrschwelle (VCU rStartSpeed). 0 km/h = Zero Start (Gas aus dem Stand ohne Anschieben). DE/EU-Serie verlangt typisch Kickstart.",
+                : (flagZeroStart ? "Zero Start — nicht serienmäßig (Indiz)" : "Kickstart / Anfahrschwelle gesetzt"),
+            erlaeuterung: "Anfahrschwelle (VCU rStartSpeed). 0 km/h = Zero Start (Gas aus dem Stand). DE/EU-Serie hat das nicht — Hinweis auf Einstellungs-/Softwareeingriff.",
             raw: start.map { String(format: "%.1f", $0) },
-            evidenceClass: flagZeroStart ? .abweichung : nil
+            evidenceClass: flagZeroStart ? .indiz : nil
         ))
         return facts
     }
@@ -1264,6 +1264,10 @@ enum IntegrityAnalyzer {
                 } else {
                     citation = fact.erlaeuterung
                 }
+                let enrichedClass: EvidenceClass = {
+                    if fact.id == "zero.start" { return .indiz }
+                    return fact.status == .erheblichAbweichend ? .indiz : .abweichung
+                }()
                 return MeasuredFact(
                     id: fact.id,
                     group: fact.group,
@@ -1275,7 +1279,7 @@ enum IntegrityAnalyzer {
                     erlaeuterung: citation,
                     raw: citation,
                     volatility: vol,
-                    evidenceClass: fact.status == .erheblichAbweichend ? .indiz : .abweichung,
+                    evidenceClass: enrichedClass,
                     sourceBoard: raw?.name.split(separator: "_").first.map(String.init) ?? "VCU",
                     sourceRegister: raw?.address ?? "—",
                     rawHex: raw?.valueHex,

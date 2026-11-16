@@ -654,7 +654,7 @@ private extension FAQCatalog {
                         "region.sn — Regions-/Serienhinweis vs. Profil",
                         "fw.custom / fw.unknown — Firmware-Auffälligkeiten",
                         "gear.max — freigeschaltete Gänge",
-                        "zero.start — Zero Start (Anfahrschwelle 0 km/h)",
+                        "zero.start — Zero Start (nicht serienmäßig, Manipulationsindiz)",
                         "safelock — SafeLock-Status (Soll: aktiv)",
                         "session.reset — früherer Unlock, Session-Hinweis inzwischen weg",
                         "serial.cross.* — Seriennummern-Konflikt zwischen Boards",

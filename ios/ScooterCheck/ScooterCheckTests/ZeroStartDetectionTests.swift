@@ -40,11 +40,9 @@ final class ZeroStartDetectionTests: XCTestCase {
             fwVcu: "1.5.5"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .zt3ProD)
-        XCTAssertNotNil(assessment.results.first { $0.fact.markerID == "zero.start" })
-        XCTAssertEqual(
-            assessment.results.first { $0.fact.markerID == "zero.start" }?.classification,
-            .abweichung
-        )
+        let zero = assessment.results.first { $0.fact.markerID == "zero.start" }
+        XCTAssertNotNil(zero)
+        XCTAssertEqual(zero?.classification, .indiz)
     }
 
     func testKickStartNotFlagged() {
@@ -69,7 +67,8 @@ final class ZeroStartDetectionTests: XCTestCase {
             profile: .zt3ProD
         ).facts
         let zero = facts.first { $0.id == "zero.start" }
-        XCTAssertEqual(zero?.status, .abweichend)
+        XCTAssertEqual(zero?.status, .erheblichAbweichend)
+        XCTAssertEqual(zero?.evidenceClass, .indiz)
         XCTAssertTrue(zero?.auslesewert.contains("aktiv") == true)
     }
 }
