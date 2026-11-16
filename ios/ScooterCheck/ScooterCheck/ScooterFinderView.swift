@@ -42,8 +42,26 @@ struct ScooterFinderView: View {
     private var isObserving: Bool { multiMonitor.isActive }
     private var isRadarBrowsing: Bool { radarBrowseMode && radar.isEnabled && !isFinding && !isObserving }
 
+    /// Radar-Modus zeigt immer die Radar-UI — nie die Geräte-Auswahl mit Empty-State.
+    /// Sonst blitzt beim Zurück („radarBrowseMode = false“) kurz „Keine E-Scooter…“ auf.
+    private var showsRadarBrowseUI: Bool {
+        mode == .radar && !isFinding && !isObserving
+    }
+
     private var showsHideNamelessFilter: Bool {
         !showOnlyScooters
+    }
+
+    /// Zurück zum Hub ohne Zwischen-Frame auf der Auswahlseite.
+    private func leaveRadarToHub(endSession: Bool) {
+        if endSession {
+            radar.endSession()
+            radarBrowseMode = false
+        } else {
+            // Hintergrundsuche fortsetzen — Mode erst in onDisappear zurücksetzen.
+            ble.ensureRadarScanRunning(preferBackgroundFilter: false)
+        }
+        onBackToHub?()
     }
 
     private var filteredDevices: [ScannedDevice] {
@@ -81,12 +99,11 @@ struct ScooterFinderView: View {
         ZStack {
             // Basis bleibt gemountet → Zurückwischen zeigt die vorherige Seite (State bleibt erhalten).
             Group {
-                if isRadarBrowsing {
+                if showsRadarBrowseUI {
                     radarBrowseContent
                         .scootEdgeBackGesture {
-                            radar.endSession()
-                            radarBrowseMode = false
-                            onBackToHub?()
+                            // Wie Header-Zurück: Session läuft im Hintergrund weiter.
+                            leaveRadarToHub(endSession: false)
                         }
                 } else {
                     selectionContent
@@ -505,9 +522,8 @@ struct ScooterFinderView: View {
                     subtitle: radar.scanState.headerCapabilityLine,
                     onBack: {
                         // Session bewusst NICHT beenden — Hintergrundsuche fortsetzen.
-                        radarBrowseMode = false
-                        ble.ensureRadarScanRunning(preferBackgroundFilter: false)
-                        onBackToHub?()
+                        // radarBrowseMode hier nicht auf false setzen (sonst Empty-State-Flash).
+                        leaveRadarToHub(endSession: false)
                     }
                 ) {
                     // Nur ein Einstellungszahnrad — Karte als eigene Zeile darunter.
@@ -612,9 +628,7 @@ struct ScooterFinderView: View {
                 }
 
                 Button {
-                    radar.endSession()
-                    radarBrowseMode = false
-                    onBackToHub?()
+                    leaveRadarToHub(endSession: true)
                 } label: {
                     Text("Radar beenden")
                         .font(Theme.caption.weight(.medium))

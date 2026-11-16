@@ -317,6 +317,51 @@ final class ProtocolHistoryStore: ObservableObject {
         return nil
     }
 
+    /// Letzte nicht-leere Zuordnung (Kennzeichen/Name/Geburtsdatum) derselben SN.
+    func priorSubject(
+        forSerial serial: String?,
+        excludingSessionId: UUID? = nil
+    ) -> ProtocolSubject? {
+        guard let serial else { return nil }
+        let needle = Self.normalizeSerial(serial)
+        guard needle.count >= 8 else { return nil }
+
+        for entry in entries {
+            if let excludingSessionId, entry.id == excludingSessionId { continue }
+            guard let entrySN = entry.serialDisplay, Self.serialsMatch(needle, entrySN) else { continue }
+            guard let session = loadSession(id: entry.id) else { continue }
+            let subject = session.subject.sanitized()
+            if !subject.isEmpty { return subject }
+        }
+        return nil
+    }
+
+    /// Speichert eine LiveCheck-Session neben dem Prüfprotokoll (JSON + CSV).
+    @discardableResult
+    func saveLiveCheck(_ recording: LiveCheckRecording, for session: CheckSession) throws -> (json: URL, csv: URL) {
+        let dir = packDirectory(for: session.protocolNumber)
+        try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+        var stored = recording
+        stored.protocolNumber = session.protocolNumber
+        if stored.serialDisplay == nil {
+            stored.serialDisplay = session.reading.serialDisplay ?? session.result?.reading.serialDisplay
+        }
+        if stored.endedAt == nil {
+            stored.endedAt = Date()
+        }
+        let jsonURL = dir.appendingPathComponent("livecheck.json")
+        let csvURL = dir.appendingPathComponent("livecheck.csv")
+        try encoder.encode(stored).write(to: jsonURL, options: .atomic)
+        try Data(stored.csvString().utf8).write(to: csvURL, options: .atomic)
+        return (jsonURL, csvURL)
+    }
+
+    func loadLiveCheck(forProtocolNumber protocolNumber: String) -> LiveCheckRecording? {
+        let url = packDirectory(for: protocolNumber).appendingPathComponent("livecheck.json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? decoder.decode(LiveCheckRecording.self, from: data)
+    }
+
     private static func normalizeSerial(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }

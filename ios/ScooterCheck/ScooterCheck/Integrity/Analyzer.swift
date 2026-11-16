@@ -37,7 +37,13 @@ enum IntegrityAnalyzer {
         facts += buildSerialFacts(reading: reading, profile: profile)
         facts += buildSpeedFacts(reading: reading, profile: profile)
         facts += buildFirmwareFacts(reading: reading, profile: profile)
-        facts += buildHardwareForensicsFacts(reading: reading, profile: profile)
+        facts += buildHardwareForensicsFacts(
+            reading: reading,
+            profile: profile,
+            priorReading: priorReading,
+            priorProtocolNumber: priorProtocolNumber
+        )
+        facts += buildConfigRegisterFacts(reading: reading, profile: profile)
         facts += CustomFirmwareDiff.buildFacts(reading: reading, profile: profile)
         facts += buildOdometerFacts(reading: reading)
         facts += buildBatteryFacts(reading: reading)
@@ -565,16 +571,33 @@ enum IntegrityAnalyzer {
 
     private static func buildHardwareForensicsFacts(
         reading: IntegrityReading,
-        profile: ScooterProfile
+        profile: ScooterProfile,
+        priorReading: IntegrityReading? = nil,
+        priorProtocolNumber: String? = nil
     ) -> [MeasuredFact] {
         var facts: [MeasuredFact] = []
         let markers = CfwHardwareForensics.collectedMarkers(from: reading)
         let suspicious = CfwHardwareForensics.suspiciousMarkers(from: reading)
 
+        let regionProfile = TrackClassifier.resolveRegionProfile(for: reading)
+        let regionLabel = regionProfile?.shuStyleLabel
+            ?? TrackClassifier.serialRegion(for: reading.serialDisplay ?? reading.serialVcu).label
+        facts.append(MeasuredFact(
+            id: "hw.region",
+            group: .hardware,
+            title: "Region (SN-Präfix)",
+            auslesewert: regionLabel,
+            sollwert: "modell-/markttypisch",
+            status: regionProfile == nil ? .nichtFeststellbar : .regelkonform,
+            bewertung: regionProfile == nil ? "kein Präfix erkannt" : "SHU-Style Label",
+            erlaeuterung: "Region aus SN-Präfix wie in SHU Hardware/Info — parallel zur Seriennummern-Bewertung.",
+            raw: TrackClassifier.preferredRegionSerial(from: reading)
+        ))
+
         if !markers.isEmpty {
             facts.append(MeasuredFact(
                 id: "fw.rand.marker",
-                group: .firmware,
+                group: .hardware,
                 title: "Random-Register (SHU)",
                 auslesewert: markers.joined(separator: " / "),
                 sollwert: "leer / serienüblich",
@@ -591,7 +614,7 @@ enum IntegrityAnalyzer {
         if let uid = reading.vcuDeviceUid {
             facts.append(MeasuredFact(
                 id: "hw.uid.vcu",
-                group: .serial,
+                group: .hardware,
                 title: "VCU Device-UID",
                 auslesewert: uid,
                 sollwert: "Chip-UID",
@@ -604,7 +627,7 @@ enum IntegrityAnalyzer {
         if let uid = reading.mcuDeviceUid {
             facts.append(MeasuredFact(
                 id: "hw.uid.mcu",
-                group: .serial,
+                group: .hardware,
                 title: "MCU Device-UID",
                 auslesewert: uid,
                 sollwert: "Chip-UID",
@@ -620,7 +643,7 @@ enum IntegrityAnalyzer {
             let line = boards.map { "\($0.label)=\($0.value)" }.joined(separator: ", ")
             facts.append(MeasuredFact(
                 id: "hw.board.types",
-                group: .serial,
+                group: .hardware,
                 title: "Board-Typen (abgeleitet)",
                 auslesewert: line,
                 sollwert: "modelltypisch",
@@ -630,6 +653,122 @@ enum IntegrityAnalyzer {
                 raw: line
             ))
         }
+
+        if let prior = priorReading {
+            let priorLabel = priorProtocolNumber.map { "Vorprüfung \($0)" } ?? "Vorprüfung"
+            func uidDiff(id: String, title: String, previous: String?, current: String?) {
+                guard let previous, let current, previous != current else { return }
+                facts.append(MeasuredFact(
+                    id: id,
+                    group: .hardware,
+                    title: title,
+                    auslesewert: current,
+                    sollwert: previous,
+                    status: .erheblichAbweichend,
+                    bewertung: "UID gewechselt — möglicher Boardtausch / Steuergerät-Wechsel",
+                    erlaeuterung: "\(priorLabel): Chip-UID weicht ab. Serienmäßige Geräte behalten dieselbe UID; ein Wechsel deutet auf getauschtes Board hin.",
+                    raw: "\(previous)→\(current)",
+                    evidenceClass: .starkerHinweis
+                ))
+            }
+            uidDiff(id: "hw.diff.uid.vcu", title: "VCU-UID vs. Vorprüfung", previous: prior.vcuDeviceUid, current: reading.vcuDeviceUid)
+            uidDiff(id: "hw.diff.uid.mcu", title: "MCU-UID vs. Vorprüfung", previous: prior.mcuDeviceUid, current: reading.mcuDeviceUid)
+
+            let priorMarkers = CfwHardwareForensics.collectedMarkers(from: prior).sorted().joined(separator: " / ")
+            let currentMarkers = markers.sorted().joined(separator: " / ")
+            if !priorMarkers.isEmpty || !currentMarkers.isEmpty, priorMarkers != currentMarkers {
+                facts.append(MeasuredFact(
+                    id: "hw.diff.rand",
+                    group: .hardware,
+                    title: "Random-Marker vs. Vorprüfung",
+                    auslesewert: currentMarkers.isEmpty ? "—" : currentMarkers,
+                    sollwert: priorMarkers.isEmpty ? "—" : priorMarkers,
+                    status: .abweichend,
+                    bewertung: "Marker geändert seit \(priorLabel)",
+                    erlaeuterung: "Änderung der SHU-Random-Register zwischen Prüfungen — CFW-Flash oder Reset möglich.",
+                    raw: "\(priorMarkers)→\(currentMarkers)",
+                    evidenceClass: .indiz
+                ))
+            }
+        }
+
+        return facts
+    }
+
+    /// Config-Register nur dokumentieren (SHU-Parität lesend — nie schreiben).
+    private static func buildConfigRegisterFacts(
+        reading: IntegrityReading,
+        profile: ScooterProfile
+    ) -> [MeasuredFact] {
+        var facts: [MeasuredFact] = []
+        let stockMax = profile.stockMaxGear
+
+        func gearRow(id: String, title: String, value: Int?, register: String) {
+            guard let value else { return }
+            let over = value > stockMax
+            facts.append(MeasuredFact(
+                id: id,
+                group: .config,
+                title: title,
+                auslesewert: "\(value)",
+                sollwert: "≤ \(stockMax) (Serie)",
+                status: over ? .abweichend : .regelkonform,
+                bewertung: over ? "über Serienfreigabe" : "dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU \(register) — Gang-/Leistungsstufe, nur ausgelesen.",
+                raw: "\(value)"
+            ))
+        }
+        gearRow(id: "config.gear.s", title: "S-Gang-Limit", value: reading.gearLimitS, register: "rSGear 0x6E")
+        gearRow(id: "config.gear.e", title: "E-Gang-Limit", value: reading.gearLimitE, register: "rEGear 0x79")
+        gearRow(id: "config.gear.d", title: "D-Gang-Limit", value: reading.gearLimitD, register: "rDGear 0x7A")
+
+        if let start = reading.startSpeedKmh {
+            let zero = start < 0.5
+            facts.append(MeasuredFact(
+                id: "config.zero.start",
+                group: .config,
+                title: "Zero Start / Anfahrschwelle",
+                auslesewert: zero ? "aktiv (0 km/h)" : Format.kmh.format(Optional(start)),
+                sollwert: profile.market == .us37 ? "modellabhängig" : "Kickstart ≥ 3 km/h",
+                status: (zero && profile.market != .us37) ? .erheblichAbweichend : .regelkonform,
+                bewertung: "dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU rStartSpeed 0x42 — gleiche Basis wie Zero-Start-Bewertung, hier als Config-Liste.",
+                raw: String(format: "%.1f", start)
+            ))
+        }
+
+        func flagRow(id: String, title: String, hex: String?, register: String) {
+            guard let hex else { return }
+            let odd = hex.uppercased() == "0XFFFF" || hex.uppercased().hasPrefix("0XFF")
+            facts.append(MeasuredFact(
+                id: id,
+                group: .config,
+                title: title,
+                auslesewert: hex,
+                sollwert: "serienüblich / 0x0000…",
+                status: odd && id.contains("enc") ? .abweichend : .regelkonform,
+                bewertung: "Rohflag dokumentiert (nur Lesen)",
+                erlaeuterung: "VCU \(register) — Bitmuster modellabhängig, keine Schreibfunktion in ScooterCheck.",
+                raw: hex
+            ))
+        }
+        flagRow(id: "config.bool", title: "Bool-Register", hex: reading.configBoolHex, register: "rBool 0x1C")
+        flagRow(id: "config.fun", title: "FunBool", hex: reading.configFunHex, register: "rFun 0x1D")
+        flagRow(id: "config.fun2", title: "FunBool2", hex: reading.configFun2Hex, register: "rFun2 0x1E")
+        flagRow(id: "config.fun3", title: "FunBool3", hex: reading.configFun3Hex, register: "rFun3 0x1F")
+        flagRow(id: "config.encflag", title: "EncFlag", hex: reading.configEncFlagHex, register: "rEncFlag 0xE8")
+
+        facts.append(MeasuredFact(
+            id: "config.custom_key",
+            group: .config,
+            title: "Custom Key",
+            auslesewert: "nicht gemappt",
+            sollwert: "—",
+            status: .nichtFeststellbar,
+            bewertung: "kein bekanntes Read-Register in ScooterCheck",
+            erlaeuterung: "SHU zeigt Custom Key in der Config-UI; ScooterCheck schreibt ohnehin nicht und hat derzeit kein zugeordnetes Auslese-Register.",
+            raw: nil
+        ))
 
         return facts
     }

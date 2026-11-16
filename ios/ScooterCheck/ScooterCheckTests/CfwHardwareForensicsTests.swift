@@ -100,4 +100,60 @@ final class CfwHardwareForensicsTests: XCTestCase {
         XCTAssertEqual(boards.first { $0.label == "VCU" }?.value, "f3_VCU_AT32")
         XCTAssertEqual(boards.first { $0.label == "MCU" }?.value, "x3_MCU_AT32")
     }
+
+    func testHardwareFactsUseHardwareGroupAndRegion() {
+        let reading = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            mcuRandMarker: "cfw.sh",
+            vcuDeviceUid: "AAAA BBBB CCCC DDDD EEEE FFFF"
+        )
+        let result = IntegrityAnalyzer.analyze(reading: reading, profile: .ninebotF3D)
+        XCTAssertTrue(result.facts.contains { $0.id == "hw.region" && $0.group == .hardware })
+        XCTAssertEqual(result.facts.first { $0.id == "fw.rand.marker" }?.group, .hardware)
+        XCTAssertEqual(result.facts.first { $0.id == "hw.uid.vcu" }?.group, .hardware)
+        XCTAssertEqual(result.facts.first { $0.id == "hw.board.types" }?.group, .hardware)
+    }
+
+    func testUidChangeVsPriorEmitsBoardSwapFact() {
+        let prior = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            vcuDeviceUid: "1111 2222 3333 4444 5555 6666",
+            mcuDeviceUid: "AAAA BBBB CCCC DDDD EEEE FFFF"
+        )
+        let current = IntegrityReading(
+            serialDisplay: "1EFHE2515C0440",
+            vcuDeviceUid: "9999 8888 7777 6666 5555 4444",
+            mcuDeviceUid: "AAAA BBBB CCCC DDDD EEEE FFFF"
+        )
+        let result = IntegrityAnalyzer.analyze(
+            reading: current,
+            profile: .ninebotF3D,
+            priorReading: prior,
+            priorProtocolNumber: "SC-PRIOR"
+        )
+        let diff = result.facts.first { $0.id == "hw.diff.uid.vcu" }
+        XCTAssertNotNil(diff)
+        XCTAssertEqual(diff?.status, .erheblichAbweichend)
+        XCTAssertTrue((diff?.bewertung ?? "").localizedCaseInsensitiveContains("Boardtausch"))
+
+        let deltas = EvidenceEngine.temporalDeltas(
+            current: current,
+            prior: prior,
+            priorProtocol: "SC-PRIOR"
+        )
+        XCTAssertTrue(deltas.contains { $0.id == "history.delta.uid.vcu" })
+        XCTAssertFalse(deltas.contains { $0.id == "history.delta.uid.mcu" })
+    }
+
+    func testRandMarkerChangeVsPrior() {
+        let prior = IntegrityReading(serialDisplay: "1EFHE2515C0440", mcuRandMarker: nil)
+        let current = IntegrityReading(serialDisplay: "1EFHE2515C0440", mcuRandMarker: "cfw.sh")
+        let result = IntegrityAnalyzer.analyze(
+            reading: current,
+            profile: .ninebotF3D,
+            priorReading: prior,
+            priorProtocolNumber: "SC-OLD"
+        )
+        XCTAssertTrue(result.facts.contains { $0.id == "hw.diff.rand" })
+    }
 }

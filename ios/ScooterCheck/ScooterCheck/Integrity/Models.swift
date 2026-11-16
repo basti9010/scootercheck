@@ -800,6 +800,16 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var physicalMarks: [String]
     var gearMode: Int?
     var gearMax: Int?
+    /// S-/E-/D-Gang-Limits (VCU 0x6E / 0x79 / 0x7A) — nur Dokumentation.
+    var gearLimitS: Int?
+    var gearLimitE: Int?
+    var gearLimitD: Int?
+    /// Config-Flags als Hex (Bool/Fun/Enc) — nur Lesen, nie Schreiben.
+    var configBoolHex: String?
+    var configFunHex: String?
+    var configFun2Hex: String?
+    var configFun3Hex: String?
+    var configEncFlagHex: String?
     var protocolGen: Int?
     /// Erkanntes BLE-Protokoll: `ninebotEnc2` | `xiaomiPlain` | `xiaomiEncrypted`
     var bleStack: String?
@@ -854,6 +864,14 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         physicalMarks: [String] = [],
         gearMode: Int? = nil,
         gearMax: Int? = nil,
+        gearLimitS: Int? = nil,
+        gearLimitE: Int? = nil,
+        gearLimitD: Int? = nil,
+        configBoolHex: String? = nil,
+        configFunHex: String? = nil,
+        configFun2Hex: String? = nil,
+        configFun3Hex: String? = nil,
+        configEncFlagHex: String? = nil,
         protocolGen: Int? = nil,
         bleStack: String? = nil,
         evidenceSha256: String? = nil,
@@ -906,6 +924,14 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.physicalMarks = physicalMarks
         self.gearMode = gearMode
         self.gearMax = gearMax
+        self.gearLimitS = gearLimitS
+        self.gearLimitE = gearLimitE
+        self.gearLimitD = gearLimitD
+        self.configBoolHex = configBoolHex
+        self.configFunHex = configFunHex
+        self.configFun2Hex = configFun2Hex
+        self.configFun3Hex = configFun3Hex
+        self.configEncFlagHex = configEncFlagHex
         self.protocolGen = protocolGen
         self.bleStack = bleStack
         self.evidenceSha256 = evidenceSha256
@@ -954,6 +980,8 @@ enum FactGroup: String, Codable, CaseIterable, Sendable {
     case serial = "Seriennummern"
     case speed = "Geschwindigkeit"
     case firmware = "Firmware"
+    case hardware = "Hardware-Forensik"
+    case config = "Konfiguration"
     case odometer = "Kilometerstand"
     case battery = "Batterie"
     case temperature = "Temperatur"
@@ -1145,6 +1173,23 @@ struct IntegrityResult: Codable, Hashable, Sendable {
     Der Score (Seriennähe 0–100: hoch = unauffällig, niedrig = eher getunt) verdichtet Feststellungen nur; das Kurzurteil folgt festen Regeln und nicht dem Score. Flüchtige Session-Marker \
     allein begründen keinen Manipulationshinweis.
     """
+}
+
+/// Vorbelegung der Zuordnungsfelder bei erneutem Scan derselben SN.
+enum SubjectPrefill {
+    /// Aktuelle (nicht leere) Session hat Vorrang; sonst letzte gespeicherte Zuordnung.
+    static func resolve(preserving current: ProtocolSubject?, prior: ProtocolSubject?) -> (subject: ProtocolSubject, prefilled: Bool) {
+        if let current, !current.sanitized().isEmpty {
+            return (current.sanitized(), false)
+        }
+        if let prior {
+            let cleaned = prior.sanitized()
+            if !cleaned.isEmpty {
+                return (cleaned, true)
+            }
+        }
+        return (.empty, false)
+    }
 }
 
 struct ProtocolSubject: Codable, Hashable, Sendable {
