@@ -50,6 +50,8 @@ struct ContentView: View {
     @State private var pulse = false
     /// Nach der Auswertung: Kennzeichen/Nutzer erfassen, bevor das Protokoll erscheint.
     @State private var showSubjectPrompt = false
+    /// Nach Zuordnung: optional forensische Handy-Datei mit der Auslese kombinieren.
+    @State private var showForensicCombinePrompt = false
     @State private var pendingUnlockRescanAfterSubject = false
     /// Zuordnung wurde aus vorheriger Prüfung derselben SN übernommen.
     @State private var subjectWasPrefilled = false
@@ -244,6 +246,7 @@ struct ContentView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
             .overlay { sideMenuOverlay }
             .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
+            .sheet(isPresented: $showForensicCombinePrompt) { forensicCombinePromptSheet }
             .sheet(isPresented: $showProfileConfirm, onDismiss: {
                 if !busy { pendingDevice = nil }
             }) {
@@ -533,17 +536,6 @@ struct ContentView: View {
                 hideNameless: $auslesenHideNameless,
                 showsHideNameless: !ble.showOnlyLikelyScooters
             )
-
-            Button {
-                showFirmwareZipInspector = true
-            } label: {
-                Label("Firmware-Forensik", systemImage: "doc.badge.gearshape")
-                    .font(Theme.buttonSecondary)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .tint(Theme.accent)
-            .accessibilityHint("Lokale Firmwaredateien forensisch auswerten — ohne zu flashen")
         }
     }
 
@@ -949,6 +941,66 @@ struct ContentView: View {
         .preferredColorScheme(.dark)
     }
 
+    /// Nach erfolgreicher Auslese: optional forensische Handy-Datei verknüpfen.
+    private var forensicCombinePromptSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                Image(systemName: "doc.badge.gearshape")
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity)
+
+                Text("Möchtest du eine forensische Firmware-Datei vom Handy mit dieser Auslese kombinieren?")
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+
+                Text("Optional. ZIP/BIN/ENC vom Sicherstellungsgerät werden lokal ausgewertet und mit dem Prüfbericht verknüpft — ohne zu flashen.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 8)
+
+                Button {
+                    finishForensicCombinePrompt(openInspector: true)
+                } label: {
+                    Label("Ja, Datei hinzufügen", systemImage: "doc.badge.plus")
+                        .font(Theme.buttonPrimary)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+
+                Button {
+                    finishForensicCombinePrompt(openInspector: false)
+                } label: {
+                    Text("Nein, weiter zum Protokoll")
+                        .font(Theme.buttonSecondary)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.textSecondary)
+            }
+            .padding(Theme.Space.page)
+            .navigationTitle("Firmware-Datei")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Überspringen") {
+                        finishForensicCombinePrompt(openInspector: false)
+                    }
+                }
+            }
+            .interactiveDismissDisabled(true)
+        }
+        .presentationDetents([.medium])
+        .preferredColorScheme(.dark)
+    }
+
     /// Nachträgliche Bearbeitung im Protokoll — nicht bewertungsrelevant.
     private var subjectAssignmentCard: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1001,29 +1053,21 @@ struct ContentView: View {
         .padding(.top, 4)
     }
 
-    /// Auswertung fertig → zuerst Zuordnungs-Popup, dann Protokoll.
+    /// Auswertung fertig → Zuordnung → optional Forensik-Datei → Protokoll.
     private func presentResultWithSubjectPrompt(triggerUnlockRescan: Bool = false, forcePrompt: Bool = true) {
         pendingUnlockRescanAfterSubject = triggerUnlockRescan
         let needsPrompt = forcePrompt || (session?.subject.isEmpty ?? true)
         if needsPrompt {
             showSubjectPrompt = true
         } else {
-            screen = .result
-            if triggerUnlockRescan, let analyzed = result {
-                maybeStartUnlockRescanAfterTuning(analyzed)
-            }
+            showForensicCombinePrompt = true
         }
     }
 
     private func finishSubjectPrompt() {
         persistCurrentSession()
         showSubjectPrompt = false
-        screen = .result
-        let shouldRescan = pendingUnlockRescanAfterSubject
-        pendingUnlockRescanAfterSubject = false
-        if shouldRescan, let analyzed = result {
-            maybeStartUnlockRescanAfterTuning(analyzed)
-        }
+        showForensicCombinePrompt = true
     }
 
     /// Zurück zur Prüfungsübersicht — vor dem Prüfbericht, Auslese bleibt gespeichert.
@@ -1031,7 +1075,21 @@ struct ContentView: View {
         pendingUnlockRescanAfterSubject = false
         persistCurrentSession()
         showSubjectPrompt = false
+        showForensicCombinePrompt = false
         goToOverview()
+    }
+
+    private func finishForensicCombinePrompt(openInspector: Bool) {
+        showForensicCombinePrompt = false
+        screen = .result
+        let shouldRescan = pendingUnlockRescanAfterSubject
+        pendingUnlockRescanAfterSubject = false
+        if openInspector {
+            showFirmwareZipInspector = true
+        }
+        if shouldRescan, let analyzed = result {
+            maybeStartUnlockRescanAfterTuning(analyzed)
+        }
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -2280,14 +2338,6 @@ struct ContentView: View {
                     selected: screen == .home
                 ) {
                     navigateFromMenu(to: .home)
-                }
-                sideNavRow(
-                    title: "Firmware-Forensik",
-                    systemImage: "doc.badge.gearshape",
-                    selected: false
-                ) {
-                    setMenuOpen(false)
-                    showFirmwareZipInspector = true
                 }
                 if AppFeatureFlags.pedelecAuslesenVisible {
                     sideNavRow(
