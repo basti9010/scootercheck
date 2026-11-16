@@ -23,10 +23,8 @@ struct LiveTelemetrySnapshot: Equatable, Sendable {
     mutating func apply(spec: DiagnosticMap.Spec, data: Data) {
         switch spec.id {
         case "vcu_g3_speed", "dis_speed":
-            if let raw = Nb.u16(data) {
-                let kmh = RegisterScale.kmh(raw)
-                if kmh >= 0, kmh < 120 { speedKmh = kmh }
-                else if let packed = RegisterScale.g3StoredSpeedKmh(raw) { speedKmh = packed }
+            if let raw = Nb.u16(data), let kmh = RegisterScale.liveSpeedKmh(raw) {
+                speedKmh = kmh
             }
         case "vcu_g3_battery", "dis_battery":
             if let raw = Nb.u16(data) { batteryPercent = Int(raw) }

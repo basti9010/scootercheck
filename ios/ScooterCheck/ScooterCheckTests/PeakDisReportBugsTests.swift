@@ -72,6 +72,41 @@ final class PeakDisReportBugsTests: XCTestCase {
         XCTAssertNil(reading.peakSpeedKmh)
     }
 
+    func testLiveSpeedDoesNotCreateInsanePeak() {
+        // Roh ×0.1 ohne Cap: 14130 → 1413 km/h — darf Peak nicht setzen.
+        var reading = IntegrityReading()
+        let speed = DiagnosticMap.Spec(
+            id: "vcu_g3_speed",
+            board: .vcuG3,
+            register: Nb.G3Register.currentSpeed,
+            readLen: 2,
+            category: .limit
+        )
+        DiagnosticMap.apply(spec: speed, data: Data([0x32, 0x37]), into: &reading) // 14130 LE
+        XCTAssertNil(reading.peakSpeedKmh)
+        XCTAssertNil(reading.speedCurrentKmh)
+    }
+
+    func testLiveSpeedTenthsStillUpdatesPeak() {
+        var reading = IntegrityReading()
+        let speed = DiagnosticMap.Spec(
+            id: "dis_speed",
+            board: .dis,
+            register: Nb.Register.currentSpeed,
+            readLen: 2,
+            category: .history
+        )
+        DiagnosticMap.apply(spec: speed, data: Data([0xC8, 0x00]), into: &reading) // 200 → 20.0
+        XCTAssertEqual(reading.speedCurrentKmh ?? -1, 20.0, accuracy: 0.01)
+        XCTAssertEqual(reading.peakSpeedKmh ?? -1, 20.0, accuracy: 0.01)
+    }
+
+    func testLiveSpeedKmhHelperRejectsInsaneTenths() {
+        XCTAssertNil(RegisterScale.liveSpeedKmh(14130))
+        XCTAssertEqual(RegisterScale.liveSpeedKmh(200) ?? -1, 20.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.liveSpeedKmh(0x2D00) ?? -1, 45.0, accuracy: 0.01)
+    }
+
     // MARK: - Soft-Unlock report wording
 
     func testSoftUnlockFactShowsPeakWhenOnlyPeakCrossesThreshold() {
