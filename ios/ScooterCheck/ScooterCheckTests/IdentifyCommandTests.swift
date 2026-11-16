@@ -31,4 +31,21 @@ final class IdentifyCommandTests: XCTestCase {
         XCTAssertEqual(frame[4], Nb.Board.vcuG3.rawValue)
         XCTAssertEqual(frame[6], Nb.Identify.playSound)
     }
+
+    func testPlaySoundAlsoAsWriteWithResponse() {
+        let frame = Nb.writeBytes(
+            board: .vcuG3,
+            register: Nb.Identify.playSound,
+            data: Data([0x01, 0x00]),
+            noResponse: false
+        )
+        XCTAssertEqual(frame[5], Nb.Cmd.write.rawValue)
+        XCTAssertEqual(frame[6], Nb.Identify.playSound)
+    }
+
+    func testZT3ProSharesG3IdentifyTargetBoard() {
+        XCTAssertTrue(ScooterProfile.zt3ProD.usesG3RegisterMap)
+        XCTAssertEqual(Nb.Board.vcuG3.rawValue, 0x16)
+        XCTAssertEqual(Nb.Identify.playSound, 0x77)
+    }
 }

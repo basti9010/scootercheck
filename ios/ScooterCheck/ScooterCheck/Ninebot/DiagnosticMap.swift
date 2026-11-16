@@ -36,14 +36,18 @@ enum RegisterScale {
     /// Absolute Plausibilitätsgrenze für E-Scooter-Tempo (Peak/Live). Darüber = Fehldecode.
     static let maxPlausibleScooterKmh: Double = 100
 
-    /// Live-/Momentangeschwindigkeit: erst ×0.1 wenn plausibel, sonst G3-High-Byte-Packing.
+    /// Live-/Momentangeschwindigkeit: erst ×0.1 wenn plausibel, sonst G3-High-Byte-Packing
+    /// nur mit Padding-Low-Byte (wie Trip-Peak) — sonst werden ASCII-Müllworte zu Schein-Peaks (z. B. `0x3732`→55).
     static func liveSpeedKmh(_ raw: UInt16) -> Double? {
         let tenths = Double(raw) / 10.0
         if tenths >= 0, tenths < maxPlausibleScooterKmh {
             return tenths
         }
-        if let packed = g3StoredSpeedKmh(raw), packed < maxPlausibleScooterKmh {
-            return packed
+        let hi = Int((raw >> 8) & 0xFF)
+        let lo = Int(raw & 0xFF)
+        if hi >= 5, hi <= 80, lo == 0 || lo == hi || lo <= 0x1F,
+           Double(hi) < maxPlausibleScooterKmh {
+            return Double(hi)
         }
         return nil
     }
@@ -159,7 +163,7 @@ enum DiagnosticMap {
 
     static let fields: [Spec] = identityFields + limitFields + historyFields + firmwareFields + batteryFields + statusFields
 
-    /// Profilabhängige Registerliste — Max G3 / F3 / GT3 teilen die x3-VCU-Karte.
+    /// Profilabhängige Registerliste — Max G3 / F3 / GT3 / ZT3 Pro teilen die x3-VCU-Karte.
     static func fields(for profile: ScooterProfile) -> [Spec] {
         if profile.usesG3RegisterMap {
             // Firmware früh: kurze BLE/VCU-Versionen vor langen Limit-/History-Blöcken.
@@ -548,12 +552,10 @@ enum DiagnosticMap {
             break
 
         case "dis_rated", "vcu_g3_rated", "mcu_g3_rated":
-            if let raw = Nb.u16(data) {
-                let kmh = RegisterScale.kmh(raw)
-                if kmh > 0 {
-                    reading.speedRatedKmh = max(reading.speedRatedKmh ?? 0, kmh)
-                    markSoftUnlockIfNeeded(kmh: kmh, into: &reading)
-                }
+            // Nenngeschwindigkeit — nie Soft-Unlock; nur plausible Werte (kein 514 aus 0x1414×0.1).
+            if let raw = Nb.u16(data), let kmh = RegisterScale.g3StoredSpeedKmh(raw),
+               kmh > 0, kmh <= RegisterScale.maxPlausibleScooterKmh {
+                reading.speedRatedKmh = max(reading.speedRatedKmh ?? 0, kmh)
             }
 
         case "dis_trip_max", "tft_trip_max":

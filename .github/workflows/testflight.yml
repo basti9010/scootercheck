@@ -72,6 +72,7 @@ on:
       - cursor/vcu-version-decode-b100
       - cursor/report-export-picker-b100
       - cursor/peak-speed-sanity-b100
+      - cursor/zt3-g3-map-identify-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

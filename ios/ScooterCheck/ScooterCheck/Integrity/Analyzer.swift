@@ -276,6 +276,9 @@ enum IntegrityAnalyzer {
             case (.gt3, .de20): return "DE (GT3 / SuperScooter)"
             case (.gt3, .eu25): return "EU (GT3 / SuperScooter)"
             case (.gt3, .us37): return "US (GT3)"
+            case (.zt3Pro, .de20): return "DE (1K1D… / N2DT…)"
+            case (.zt3Pro, .eu25): return "EU (1K1E… / N2ET…)"
+            case (.zt3Pro, .us37): return "US (ZT3)"
             case (_, .de20): return "DE (1CGB…)"
             case (_, .eu25): return "EU (1CGE…)"
             case (_, .us37): return "US (1CGC…)"
@@ -312,7 +315,7 @@ enum IntegrityAnalyzer {
             sollwert: expectedRegion,
             status: regionStatus,
             bewertung: regionAssessment,
-            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (Max G3: 1CGB=DE, 1CGE=EU, 1CGC=US; F3 Pro: 1EFH…/1EFC…).",
+            erlaeuterung: "Regionale Zuordnung anhand des SN-Präfixes (ZT3: 1K1D/N2DT=DE, 1K1E/N2ET=EU; Max G3: 1CGB=DE; F3 Pro: 1EFH…/1EFC…).",
             raw: reading.serialDisplay ?? reading.serialVcu
         ))
 
@@ -1189,10 +1192,21 @@ enum IntegrityAnalyzer {
                     ["vcu_g3_sn", "dis_sn", "vcu_sn"].contains($0.name)
                 })
                 let citation: String
+                let sollHint: String = {
+                    switch (profile.family, profile.market) {
+                    case (.zt3Pro, .de20): return "DE 1K1D…/N2DT…"
+                    case (.zt3Pro, .eu25): return "EU 1K1E…/N2ET…"
+                    case (.zt3Pro, .us37): return "US ZT3"
+                    case (.ninebotF3, _): return "DE/EU 1EF…"
+                    case (_, .de20): return "DE 1CGB…"
+                    case (_, .us37): return "US 1CGC…"
+                    default: return "EU"
+                    }
+                }()
                 if let raw {
-                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : (profile.market == .us37 ? "US 1CGC…" : "EU"))"
+                    citation = "\(raw.name) \(raw.address): Rohwert \(raw.valueHex); interpretiert als \(sn); Typ-Soll: \(sollHint)"
                 } else {
-                    citation = "SN-Quelle: \(sn); Typ-Soll: \(profile.market == .de20 ? "DE 1CGB…" : (profile.market == .us37 ? "US 1CGC…" : "EU"))"
+                    citation = "SN-Quelle: \(sn); Typ-Soll: \(sollHint)"
                 }
                 return MeasuredFact(
                     id: fact.id,

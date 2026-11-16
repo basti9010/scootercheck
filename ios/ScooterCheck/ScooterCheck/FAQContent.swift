@@ -587,7 +587,7 @@ private extension FAQCatalog {
                         "Ninebot Max G3: Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)",
                         "Segway SuperScooter GT3: Enc2 mit derselben x3-VCU-Registerkarte (NootNooot HW-ID 257); kein eigener Serien-FW-Katalog",
                         "Ninebot F3 Pro: Enc2-Auslese mit derselben G3-Registerkarte (SN 1EFH… / VCU 1EFC…)",
-                        "Ninebot Max G2, G30, ZT3 Pro, F-/E-/D-Serie: Enc2, Registerkarte ähnlich G30/Legacy; Firmware-Katalog ggf. eingeschränkt",
+                        "Ninebot Max G2, G30, F-/E-/D-Serie: Enc2, Registerkarte ähnlich G30/Legacy; ZT3 Pro: Enc2 mit x3-VCU-Karte wie Max G3 (Nordic-UART); Firmware-Katalog ggf. eingeschränkt",
                         "Xiaomi Classic: Klartext-Protokoll (55 AA)",
                         "Xiaomi 3/4/5/6 (z. B. xiaomi.scooter.6): oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich",
                         "Navee / SoFlow: Marken- und Modellerkennung; Navee mit dokumentiertem Read-Frame-Codec — Live-Dump noch nicht freigegeben; keine Tuning-Writes",

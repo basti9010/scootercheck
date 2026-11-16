@@ -98,7 +98,8 @@ final class BleModelHintTests: XCTestCase {
         let hint = BleModelHint.recognize(bleName: nil, serial: "1K1DA2616P1917")
         XCTAssertEqual(hint?.profile, .zt3ProD)
         XCTAssertEqual(hint?.shortBadge, "ZT3 Pro")
-        XCTAssertFalse(hint!.profile.usesG3RegisterMap)
+        // ZT3 Pro nutzt x3-VCU-Karte (Z07-MCU / VCU 0x16), nicht G30-Legacy.
+        XCTAssertTrue(hint!.profile.usesG3RegisterMap)
         XCTAssertEqual(
             ScooterProfile.suggested(fromBluetoothName: nil, serial: "1K1DA2616P1917"),
             .zt3ProD
@@ -109,7 +110,7 @@ final class BleModelHintTests: XCTestCase {
     func testZT3ProSerial1K1EIsEuMarket() {
         let hint = BleModelHint.recognize(bleName: "1K1EA2616P1917")
         XCTAssertEqual(hint?.profile, .zt3ProE)
-        XCTAssertFalse(hint!.profile.usesG3RegisterMap)
+        XCTAssertTrue(hint!.profile.usesG3RegisterMap)
     }
 
     func testAllFamiliesHaveSupportNotes() {
@@ -124,6 +125,7 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertTrue(ScooterProfile.ninebotF3D.usesG3RegisterMap)
         XCTAssertTrue(ScooterProfile.ninebotF3E.usesG3RegisterMap)
         XCTAssertTrue(ScooterProfile.gt3D.usesG3RegisterMap)
+        XCTAssertTrue(ScooterProfile.zt3ProD.usesG3RegisterMap)
         XCTAssertTrue(ScooterProfile.gt3E.usesNinebotEnc2)
         XCTAssertTrue(ScooterProfile.maxG2D.usesNinebotEnc2)
         XCTAssertFalse(ScooterProfile.xiaomiClassicD.usesNinebotEnc2)
