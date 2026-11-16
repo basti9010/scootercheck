@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var showPrivacy = false
     @State private var showSettings = false
     @State private var showFirmwareZipInspector = false
+    /// Erhöht nach Forensik-Import, damit Dual-Source neu bewertet wird.
+    @State private var dualSourceRevision = 0
     @ObservedObject private var appSettings = AppSettings.shared
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
@@ -132,7 +134,8 @@ struct ContentView: View {
     }
 
     private var dualSourceAssessment: DualSourcePanicAssessment {
-        DualSourcePanicCorrelator.assess(
+        _ = dualSourceRevision
+        return DualSourcePanicCorrelator.assess(
             forensic: DualSourceCaseStore.loadForensic(),
             reading: result?.reading,
             profile: profile,
@@ -266,7 +269,9 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            .fullScreenCover(isPresented: $showFirmwareZipInspector) {
+            .fullScreenCover(isPresented: $showFirmwareZipInspector, onDismiss: {
+                dualSourceRevision += 1
+            }) {
                 FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
@@ -815,15 +820,17 @@ struct ContentView: View {
                     .foregroundStyle(Theme.accent)
             }
 
-            DualSourcePanicCard(
-                assessment: dualSourceAssessment,
-                onOpenForensics: { showFirmwareZipInspector = true },
-                onStartComparison: {
-                    if unlockRescanPhase == .idle, powerCyclePhase == .idle {
-                        startComparisonTest()
+            if dualSourceAssessment.pattern != .insufficient {
+                DualSourcePanicCard(
+                    assessment: dualSourceAssessment,
+                    onOpenForensics: { showFirmwareZipInspector = true },
+                    onStartComparison: {
+                        if unlockRescanPhase == .idle, powerCyclePhase == .idle {
+                            startComparisonTest()
+                        }
                     }
-                }
-            )
+                )
+            }
 
             HardwareForensicsCard(result: report)
             RescanDiffCard(deltas: report.evidence.temporalDeltas)

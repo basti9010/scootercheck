@@ -277,6 +277,7 @@ enum DiagnosticMap {
         Spec(id: "vcu_g3_fun", board: .vcuG3, register: Nb.G3Register.funBool, readLen: 2, category: .status),
         Spec(id: "vcu_g3_fun2", board: .vcuG3, register: Nb.G3Register.funBool2, readLen: 2, category: .status),
         Spec(id: "vcu_g3_fun3", board: .vcuG3, register: Nb.G3Register.funBool3, readLen: 2, category: .status),
+        Spec(id: "vcu_g3_custom_key", board: .vcuG3, register: Nb.G3Register.customKey, readLen: 2, category: .status),
         Spec(id: "vcu_g3_encflag", board: .vcuG3, register: Nb.G3Register.encryptionFlag, readLen: 2, category: .status),
         // SHU Hardware details: Random registers + Chip-UIDs (NootNooot F3/G3 VCU map).
         Spec(id: "vcu_g3_rand", board: .vcuG3, register: Nb.G3Register.rand, readLen: 6, category: .status),
@@ -687,7 +688,7 @@ enum DiagnosticMap {
                 }
             }
 
-        case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_encflag":
+        case "vcu_g3_bool", "vcu_g3_fun", "vcu_g3_fun2", "vcu_g3_fun3", "vcu_g3_custom_key", "vcu_g3_encflag":
             // Rohflags für Panic-resistente Heuristik (Bitmuster modellabhängig) — nur Lesen.
             if let raw = Nb.u16(data) {
                 let hex = "0x\(String(format: "%04X", raw))"
@@ -696,6 +697,7 @@ enum DiagnosticMap {
                 case "vcu_g3_fun": reading.configFunHex = hex
                 case "vcu_g3_fun2": reading.configFun2Hex = hex
                 case "vcu_g3_fun3": reading.configFun3Hex = hex
+                case "vcu_g3_custom_key": reading.configCustomKeyHex = hex
                 case "vcu_g3_encflag": reading.configEncFlagHex = hex
                 default: break
                 }

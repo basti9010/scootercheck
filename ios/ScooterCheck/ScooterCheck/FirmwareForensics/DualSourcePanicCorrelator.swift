@@ -262,8 +262,8 @@ enum DualSourcePanicCorrelator {
             return "Bisher nur die Handy-Datei. Scooter parallel auslesen und mit dem Dual-Source-Muster abgleichen."
         case .liveOnly:
             return live.looksTuned
-                ? "Live-Auslese auffällig, keine korrelierte Handy-Datei. Firmware-Forensik ergänzen, falls Dateien am Handy gefunden werden."
-                : "Nur Live-Auslese, seriennah. Ohne Handy-Datei kein Panic-Muster feststellbar."
+                ? "Live-Auslese auffällig, noch keine Handy-Datei verknüpft. Optional forensische ZIP/BIN/ENC hinzufügen und erneut korrelieren."
+                : "Nur Live-Auslese (seriennah). Mit optionaler Handy-Datei lässt sich ein Panic-/Reset-Muster prüfen."
         case .insufficient:
             return "Zu wenig Daten für eine Dual-Source-Aussage."
         }
@@ -291,12 +291,13 @@ enum DualSourcePanicCorrelator {
             steps.append("Scooter jetzt auslesen und Dual-Source erneut auswerten.")
             steps.append("Forensikbericht der Datei bereits exportieren.")
         case .liveOnly:
-            steps.append("Falls am Handy ZIP/BIN/ENC gefunden: Firmware-Forensik starten und erneut korrelieren.")
+            steps.append("Optional: forensische Firmware-Datei vom Sicherstellungsgerät hinzufügen (nach der Auslese oder hier über „Firmware-Datei“).")
+            steps.append("Nach dem Import aktualisiert sich die Dual-Source-Korrelation automatisch.")
             if !hasCombo {
                 steps.append("Vergleichstest nur, wenn konkrete Kombi bekannt oder am Fahrzeug ausprobiert werden soll.")
             }
         case .insufficient:
-            steps.append("Zuerst Scooter auslesen und/oder gefundene Firmwaredatei forensisch auswerten.")
+            steps.append("Zuerst Scooter auslesen; danach optional eine gefundene Firmwaredatei verknüpfen.")
         }
 
         if !hasCombo {

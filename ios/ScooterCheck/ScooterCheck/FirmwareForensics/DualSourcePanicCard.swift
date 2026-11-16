@@ -45,11 +45,14 @@ struct DualSourcePanicCard: View {
             if onOpenForensics != nil || onStartComparison != nil {
                 HStack(spacing: 8) {
                     if let onOpenForensics {
-                        Button("Firmware-Datei", action: onOpenForensics)
-                            .buttonStyle(.bordered)
-                            .tint(Theme.accent)
+                        Button(
+                            assessment.pattern == .liveOnly ? "Datei hinzufügen" : "Firmware-Datei",
+                            action: onOpenForensics
+                        )
+                        .buttonStyle(.bordered)
+                        .tint(Theme.accent)
                     }
-                    if let onStartComparison {
+                    if let onStartComparison, assessment.pattern != .liveOnly || assessment.liveLooksTuned {
                         Button("Vergleichstest", action: onStartComparison)
                             .buttonStyle(.borderedProminent)
                             .tint(Theme.accent)

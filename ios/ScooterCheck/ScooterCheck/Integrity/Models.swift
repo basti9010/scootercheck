@@ -804,11 +804,12 @@ struct IntegrityReading: Codable, Hashable, Sendable {
     var gearLimitS: Int?
     var gearLimitE: Int?
     var gearLimitD: Int?
-    /// Config-Flags als Hex (Bool/Fun/Enc) — nur Lesen, nie Schreiben.
+    /// Config-Flags als Hex (Bool/Fun/Enc/Custom Key) — nur Lesen, nie Schreiben.
     var configBoolHex: String?
     var configFunHex: String?
     var configFun2Hex: String?
     var configFun3Hex: String?
+    var configCustomKeyHex: String?
     var configEncFlagHex: String?
     var protocolGen: Int?
     /// Erkanntes BLE-Protokoll: `ninebotEnc2` | `xiaomiPlain` | `xiaomiEncrypted`
@@ -871,6 +872,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         configFunHex: String? = nil,
         configFun2Hex: String? = nil,
         configFun3Hex: String? = nil,
+        configCustomKeyHex: String? = nil,
         configEncFlagHex: String? = nil,
         protocolGen: Int? = nil,
         bleStack: String? = nil,
@@ -931,6 +933,7 @@ struct IntegrityReading: Codable, Hashable, Sendable {
         self.configFunHex = configFunHex
         self.configFun2Hex = configFun2Hex
         self.configFun3Hex = configFun3Hex
+        self.configCustomKeyHex = configCustomKeyHex
         self.configEncFlagHex = configEncFlagHex
         self.protocolGen = protocolGen
         self.bleStack = bleStack

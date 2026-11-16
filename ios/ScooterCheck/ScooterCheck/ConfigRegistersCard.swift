@@ -54,7 +54,12 @@ struct ConfigRegistersCard: View {
                 .foregroundStyle(Theme.textPrimary)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
-            if fact.status != .regelkonform {
+            if fact.id == "config.bool" || fact.id == "config.fun" || fact.id.hasPrefix("config.fun") || fact.id == "config.custom_key" {
+                Text(fact.erlaeuterung)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if fact.status != .regelkonform {
                 Text(fact.bewertung)
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)

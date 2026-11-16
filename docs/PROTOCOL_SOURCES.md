@@ -52,6 +52,10 @@ https://nootnooot.codeberg.page/segway-ninebot-ble/devices/
 
 Siehe `docs/DARKNESSBOT_PARITY.md`. Store-Metriken (Speed, Peak/Avg, Odo, Restreichweite, Trip, Laufzeiten, Batt %, Controller-/Batterie-Temp, Power, Voltage; Strom via BMS) sind für Enc2/x3 als Dump + Live-Poll abgedeckt. EUC-only (PWM/Pitch) und App-Prognosen (NN) nicht.
 
+## Config-Flags (FunBool / Bool / Custom Key)
+
+NootNooot Command Reference (Toggle-Tabelle): bekannte Masken für `rBool` `0x1C` und `rFunBool` `0x1D` werden in ScooterCheck als Labels dekodiert (`ConfigFlagDecoder`). `rFunBool2`/`rFunBool3` und `rCustomKey` `0x4A` nur Roh-Hex — keine vollständigen öffentlichen Bittabellen. Nur Lesen.
+
 ## Abgrenzung
 
 - Quellen beschreiben oft auch **Writes** (Limit, Mode, OTA). ScooterCheck importiert davon nur **Lesepfade**.
