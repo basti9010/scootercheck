@@ -73,6 +73,7 @@ on:
       - cursor/report-export-picker-b100
       - cursor/peak-speed-sanity-b100
       - cursor/zt3-g3-map-identify-b100
+      - cursor/de-stock-22kmh-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

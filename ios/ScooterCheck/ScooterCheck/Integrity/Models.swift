@@ -2,7 +2,8 @@ import Foundation
 
 // MARK: - Scooter Profile
 
-/// Marktvariante: DE/L1e-B 20 km/h vs. EU 25 km/h.
+/// Marktvariante: DE (Serienlimit typ. 22 km/h) vs. EU 25 km/h.
+/// Typgenehmigung/Schild oft 20 km/h — werkseitiges Max-Limit bei Ninebot DE ist üblicherweise 22.
 enum ScooterMarket: String, Codable, Sendable {
     case de20
     case eu25
@@ -11,7 +12,7 @@ enum ScooterMarket: String, Codable, Sendable {
 
     var ratedMaxKmh: Double {
         switch self {
-        case .de20: return 20
+        case .de20: return 22
         case .eu25: return 25
         case .us37: return 37
         }
@@ -19,7 +20,7 @@ enum ScooterMarket: String, Codable, Sendable {
 
     var tuningSuspectKmh: Double {
         switch self {
-        case .de20: return 22
+        case .de20: return 25
         case .eu25: return 27
         case .us37: return 40
         }
@@ -27,7 +28,7 @@ enum ScooterMarket: String, Codable, Sendable {
 
     var tuningClearKmh: Double {
         switch self {
-        case .de20: return 25
+        case .de20: return 28
         case .eu25: return 32
         case .us37: return 45
         }

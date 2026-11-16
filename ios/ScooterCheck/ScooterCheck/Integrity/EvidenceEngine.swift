@@ -723,8 +723,8 @@ enum EvidenceEngine {
         case "speed.limit", "speed.peak":
             let value = readingSpeed(from: fact.interpretedValue)
             if fact.markerID == "speed.limit", let v = value, v > profile.tuningSuspectKmh {
-                // Aktives gespeichertes Limit über Verdachtsschwelle (DE: >22 km/h) =
-                // technisch eindeutige Freigabe über Typ — nicht nur „Auffälligkeit“.
+                // Aktives gespeichertes Limit über Verdachtsschwelle (DE: >25 km/h) =
+                // technisch eindeutige Freigabe über Serienlimit — nicht nur „Auffälligkeit“.
                 initial = .starkerHinweis
             } else if let v = value, v >= profile.tuningClearKmh {
                 initial = .indiz
