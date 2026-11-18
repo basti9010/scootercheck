@@ -21,6 +21,10 @@
 		A100000000000000000000A8 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A8 /* AppSettings.swift */; };
 		A100000000000000000000B4 /* AppFeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B4 /* AppFeatureFlags.swift */; };
 		A100000000000000000000A9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A9 /* SettingsView.swift */; };
+		A10000000000000000000C01 /* SupportedScooterModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000C01 /* SupportedScooterModels.swift */; };
+		A10000000000000000000C02 /* SupportedScooterModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000C02 /* SupportedScooterModelsView.swift */; };
+		A10000000000000000000C03 /* supported_scooter_models.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000C03 /* supported_scooter_models.json */; };
+		A10000000000000000000C04 /* SupportedScooterModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000C04 /* SupportedScooterModelsTests.swift */; };
 		A100000000000000000000B0 /* PedelecEvaluationCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B0 /* PedelecEvaluationCore.swift */; };
 		A100000000000000000000B1 /* PedelecEvaluationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B1 /* PedelecEvaluationView.swift */; };
 		A100000000000000000000B2 /* PedelecEvaluationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000B2 /* PedelecEvaluationTests.swift */; };
@@ -198,6 +202,10 @@
 		B100000000000000000000A8 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B100000000000000000000B4 /* AppFeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFeatureFlags.swift; sourceTree = "<group>"; };
 		B100000000000000000000A9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B10000000000000000000C01 /* SupportedScooterModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedScooterModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000C02 /* SupportedScooterModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedScooterModelsView.swift; sourceTree = "<group>"; };
+		B10000000000000000000C03 /* supported_scooter_models.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = supported_scooter_models.json; sourceTree = "<group>"; };
+		B10000000000000000000C04 /* SupportedScooterModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedScooterModelsTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000B0 /* PedelecEvaluationCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedelec/PedelecEvaluationCore.swift; sourceTree = "<group>"; };
 		B100000000000000000000B1 /* PedelecEvaluationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pedelec/PedelecEvaluationView.swift; sourceTree = "<group>"; };
 		B100000000000000000000B2 /* PedelecEvaluationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedelecEvaluationTests.swift; sourceTree = "<group>"; };
@@ -430,6 +438,9 @@
 				B100000000000000000000A8 /* AppSettings.swift */,
 				B100000000000000000000B4 /* AppFeatureFlags.swift */,
 				B100000000000000000000A9 /* SettingsView.swift */,
+				B10000000000000000000C01 /* SupportedScooterModels.swift */,
+				B10000000000000000000C02 /* SupportedScooterModelsView.swift */,
+				B10000000000000000000C03 /* supported_scooter_models.json */,
 				B100000000000000000000B0 /* PedelecEvaluationCore.swift */,
 				B100000000000000000000B1 /* PedelecEvaluationView.swift */,
 				B100000000000000000000B3 /* PedelecReadoutView.swift */,
@@ -550,6 +561,7 @@
 				B10000000000000000000017 /* AttributionEngineTests.swift */,
 				B10000000000000000000019 /* EvidenceExplanationEngineTests.swift */,
 				B1000000000000000000001A /* BleModelHintTests.swift */,
+				B10000000000000000000C04 /* SupportedScooterModelsTests.swift */,
 				B10000000000000000000B21 /* RegionCodeDetectionTests.swift */,
 				B10000000000000000000B22 /* ZeroStartDetectionTests.swift */,
 				B10000000000000000000B24 /* CfwHardwareForensicsTests.swift */,
@@ -718,6 +730,7 @@
 				A10000000000000000000069 /* ble_vendor_patterns.json in Resources */,
 				A10000000000000000000072 /* vehicle_approval_catalog.json in Resources */,
 				A10000000000000000000087 /* scooter_diagnostic_profiles.json in Resources */,
+				A10000000000000000000C03 /* supported_scooter_models.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -740,6 +753,8 @@
 				A100000000000000000000A8 /* AppSettings.swift in Sources */,
 				A100000000000000000000B4 /* AppFeatureFlags.swift in Sources */,
 				A100000000000000000000A9 /* SettingsView.swift in Sources */,
+				A10000000000000000000C01 /* SupportedScooterModels.swift in Sources */,
+				A10000000000000000000C02 /* SupportedScooterModelsView.swift in Sources */,
 				A100000000000000000000B0 /* PedelecEvaluationCore.swift in Sources */,
 				A100000000000000000000B1 /* PedelecEvaluationView.swift in Sources */,
 				A100000000000000000000B3 /* PedelecReadoutView.swift in Sources */,
@@ -853,6 +868,7 @@
 				A10000000000000000000016 /* AttributionEngineTests.swift in Sources */,
 				A10000000000000000000018 /* EvidenceExplanationEngineTests.swift in Sources */,
 				A10000000000000000000019 /* BleModelHintTests.swift in Sources */,
+				A10000000000000000000C04 /* SupportedScooterModelsTests.swift in Sources */,
 				A10000000000000000000A21 /* RegionCodeDetectionTests.swift in Sources */,
 				A10000000000000000000A22 /* ZeroStartDetectionTests.swift in Sources */,
 				A10000000000000000000A24 /* CfwHardwareForensicsTests.swift in Sources */,

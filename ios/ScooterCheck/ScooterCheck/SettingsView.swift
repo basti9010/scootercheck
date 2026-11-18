@@ -21,6 +21,7 @@ struct SettingsView: View {
                         auslesenSection
                         findenSection
                         firmwareServerSection
+                        supportedModelsSection
                         aboutSection
 
                         AppCopyrightFooter()
@@ -267,6 +268,43 @@ struct SettingsView: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
                     .stroke(Theme.border, lineWidth: Theme.Control.hairline)
             )
+        }
+    }
+
+    // MARK: - Modelle
+
+    private var supportedModelsSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("Fahrzeuge")
+
+            NavigationLink {
+                SupportedScooterModelsView()
+            } label: {
+                HStack(alignment: .center, spacing: Theme.Space.md) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Unterstützte Modelle")
+                            .font(Theme.cardTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("\(SupportedScooterModelsCatalog.readableCount) auslesbar · Ninebot & Xiaomi")
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.horizontal, Theme.Space.cardPadding)
+                .padding(.vertical, 11)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                        .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 

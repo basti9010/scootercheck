@@ -37,6 +37,24 @@ Dann `systemctl restart scootercheck-fw`. `GET /health` → `llmConfigured: true
 
 API-Key in der Claude Console unter **API-Keys** anlegen (`sk-ant-usr…` oder `sk-ant-api…`; nicht OAuth `sk-ant-oat…`, nicht Cursor-Account-Key). Auf dem Server: `setllmkey` (normalisiert Hetzner-Konsolen-`ß`→`-`). Key nie in Chat/Git legen.
 
+## OEM-Stock-Archiv (chronologisch)
+
+Öffentliche Original-Firmwares werden mit `sync_stock_firmwares.py` eingesammelt:
+
+- Quelle 1: `https://firmware.scooterhacking.org/` (klassische Ninebot/Xiaomi)
+- Quelle 2: `Rexzy67/X3-Firmware` Stock-Trees (G3 / F3 / GT3 / ZT3)
+
+Ablage: `stock-archive/{model}/{BLE|BMS|DRV|MCU|VCU}/YYYY-MM-DD_version_sha.bin`  
+Index: `stock-archive/index.json` (neueste zuerst) und `latest.json`.
+
+Deploy auf den Hetzner-Host:
+
+```bash
+STOCK_HOST=root@vps ./deploy_stock_archive.sh
+```
+
+Das registriert alle Binaries als `source=oem` unter `/var/lib/scootercheck/stock-fw/`.
+
 ## Stock-Diff (Schritt 2)
 
 Nach Decrypt vergleicht der Worker den Klartext mit `/var/lib/scootercheck/stock-fw/` (ENV `STOCK_FW_DIR`).

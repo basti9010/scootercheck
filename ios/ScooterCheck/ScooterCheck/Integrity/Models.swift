@@ -40,7 +40,14 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
     case maxG2
     case maxG30
     case maxG3
+    case maxG65
+    case gt1
+    case gt2
     case gt3
+    case p65
+    case p100
+    case airT15
+    case esx
     case ninebotF
     case ninebotF3
     case ninebotE
@@ -54,7 +61,14 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         case .maxG2: return "Ninebot Max G2"
         case .maxG30: return "Ninebot Max G30"
         case .maxG3: return "Ninebot Max G3 / MAX3"
+        case .maxG65: return "Ninebot Max G65"
+        case .gt1: return "Segway GT1"
+        case .gt2: return "Segway GT2"
         case .gt3: return "Segway SuperScooter GT3"
+        case .p65: return "Ninebot P65"
+        case .p100: return "Ninebot P100"
+        case .airT15: return "Ninebot Air T15"
+        case .esx: return "Ninebot ESx"
         case .ninebotF: return "Ninebot F2 / F-Serie"
         case .ninebotF3: return "Ninebot F3 / F3 Pro"
         case .ninebotE: return "Ninebot E-Serie"
@@ -70,13 +84,19 @@ enum ScooterFamily: String, CaseIterable, Codable, Sendable {
         case .maxG3:
             return "Volle Enc2-Auslese inkl. G3-Registerkarte und Firmware-Katalog (DE 1CGB / EU 1CGE / US 1CGC)."
         case .gt3:
-            return "Volle Enc2-Auslese mit G3/x3-VCU-Registerkarte (NootNooot HW-ID 257 / scootscoot gt3_pro). Kein eigener Serien-FW-Katalog."
+            return "Volle Enc2-Auslese mit G3/x3-VCU-Registerkarte (NootNooot HW-ID 257). OEM-FW-Archiv vorhanden."
+        case .gt1, .gt2:
+            return "Ninebot Enc2 (NootNooot GT1/GT2) — lesender Dump über Enc2-Handshake; Registerkarte Legacy/G30."
         case .ninebotF3:
             return "Volle Enc2-Auslese inkl. G3-Registerkarte, Regionserkennung (1EFJ=DE / 1EFK=EU / 1EFH=Global) und Firmware-Katalog."
+        case .p65, .p100, .maxG65:
+            return "Ninebot Enc2 (NootNooot) — lesender Dump; OEM-Binaries ggf. noch ohne öffentlichen Mirror."
+        case .airT15, .esx:
+            return "Ninebot Enc2-Probe (ältere Modelle oft Proto2) — Auslese wenn Enc2/gen2 antwortet; OEM-FW im Archiv."
         case .maxG2, .maxG30, .zt3Pro, .ninebotF, .ninebotE, .ninebotD:
-            return "Ninebot Enc2 — Registerkarte wie G30/Legacy; Firmware-Katalog ggf. eingeschränkt."
+            return "Ninebot Enc2 — Registerkarte wie G30/Legacy; Firmware-Katalog aus OEM-Archiv."
         case .xiaomiClassic:
-            return "Xiaomi Klartext (55 AA) — typisch M365 / Pro 2 / Essential / 1S."
+            return "Xiaomi Klartext (55 AA) — typisch M365 / Pro 2 / Essential / 1S / Lite."
         case .xiaomiRecent:
             return "Xiaomi 3/4 oft verschlüsselt (55 AB) — Auslese dann eingeschränkt oder nicht möglich."
         }
@@ -93,8 +113,22 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     case maxG3D
     case maxG3E
     case maxG3US
+    case maxG65D
+    case maxG65E
+    case gt1D
+    case gt1E
+    case gt2D
+    case gt2E
     case gt3D
     case gt3E
+    case p65D
+    case p65E
+    case p100D
+    case p100E
+    case airT15D
+    case airT15E
+    case esxD
+    case esxE
     case ninebotFD
     case ninebotFE
     case ninebotF3D
@@ -116,7 +150,14 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG2D, .maxG2E: return .maxG2
         case .maxG30D, .maxG30E: return .maxG30
         case .maxG3D, .maxG3E, .maxG3US: return .maxG3
+        case .maxG65D, .maxG65E: return .maxG65
+        case .gt1D, .gt1E: return .gt1
+        case .gt2D, .gt2E: return .gt2
         case .gt3D, .gt3E: return .gt3
+        case .p65D, .p65E: return .p65
+        case .p100D, .p100E: return .p100
+        case .airT15D, .airT15E: return .airT15
+        case .esxD, .esxE: return .esx
         case .ninebotFD, .ninebotFE: return .ninebotF
         case .ninebotF3D, .ninebotF3E: return .ninebotF3
         case .ninebotED, .ninebotEE: return .ninebotE
@@ -128,10 +169,12 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var market: ScooterMarket {
         switch self {
-        case .zt3ProD, .maxG2D, .maxG30D, .maxG3D, .gt3D, .ninebotFD, .ninebotF3D, .ninebotED, .ninebotDD,
+        case .zt3ProD, .maxG2D, .maxG30D, .maxG3D, .maxG65D, .gt1D, .gt2D, .gt3D, .p65D, .p100D,
+             .airT15D, .esxD, .ninebotFD, .ninebotF3D, .ninebotED, .ninebotDD,
              .xiaomiClassicD, .xiaomiRecentD:
             return .de20
-        case .zt3ProE, .maxG2E, .maxG30E, .maxG3E, .gt3E, .ninebotFE, .ninebotF3E, .ninebotEE, .ninebotDE,
+        case .zt3ProE, .maxG2E, .maxG30E, .maxG3E, .maxG65E, .gt1E, .gt2E, .gt3E, .p65E, .p100E,
+             .airT15E, .esxE, .ninebotFE, .ninebotF3E, .ninebotEE, .ninebotDE,
              .xiaomiClassicE, .xiaomiRecentE:
             return .eu25
         case .maxG3US:
@@ -154,8 +197,22 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG3D: return "Max G3 / MAX3 D"
         case .maxG3E: return "Max G3 / MAX3 E"
         case .maxG3US: return "Max G3 / MAX3 US"
+        case .maxG65D: return "Max G65 D"
+        case .maxG65E: return "Max G65 E"
+        case .gt1D: return "GT1 D"
+        case .gt1E: return "GT1 E"
+        case .gt2D: return "GT2 D"
+        case .gt2E: return "GT2 E"
         case .gt3D: return "GT3 D"
         case .gt3E: return "GT3 E"
+        case .p65D: return "P65 D"
+        case .p65E: return "P65 E"
+        case .p100D: return "P100 D"
+        case .p100E: return "P100 E"
+        case .airT15D: return "Air T15 D"
+        case .airT15E: return "Air T15 E"
+        case .esxD: return "ESx D"
+        case .esxE: return "ESx E"
         case .ninebotFD: return "F2 / F-Serie D"
         case .ninebotFE: return "F2 / F-Serie E"
         case .ninebotF3D: return "F3 Pro D"
@@ -187,18 +244,25 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
         case .maxG3D: return ["1CGB", "MAX3", "G3"]
         case .maxG3E: return ["1CGE", "MAX3", "G3"]
         case .maxG3US: return ["1CGC", "MAX3", "G3", "US"]
+        case .maxG65D, .maxG65E: return ["G65", "MAXG65", "N4GS"]
+        case .gt1D, .gt1E: return ["GT1", "SEGWAY GT1"]
+        case .gt2D, .gt2E: return ["GT2", "SEGWAY GT2"]
         case .gt3D: return ["GT3", "SUPERSCOOTER", "NBW84"]
         case .gt3E: return ["GT3", "SUPERSCOOTER", "NBW84", "GT3E"]
+        case .p65D, .p65E: return ["P65", "SEGWAY P65"]
+        case .p100D, .p100E: return ["P100", "P100S", "SEGWAY P100"]
+        case .airT15D, .airT15E: return ["T15", "AIR T15", "N2AT"]
+        case .esxD, .esxE: return ["ES1", "ES2", "ES3", "ES4", "ESX"]
         case .ninebotFD: return ["N2FS", "N2F", "F2"]
         case .ninebotFE: return ["N2FS", "N2F", "F2"]
         // F3 Pro DE=1EFJ / EU=1EFK / Global=1EFH; VCU-Board oft 1EFD/E/C. 1EF* bleibt erkannt.
         case .ninebotF3D: return ["1EFJ", "1EFD", "1EFH", "1EFC", "N2FS", "N2F", "F3"]
         case .ninebotF3E: return ["1EFK", "1EFE", "1EFH", "1EFC", "N2FS", "N2F", "F3", "F3E"]
-        case .ninebotED, .ninebotEE: return ["N2ES", "N2E", "E2", "E45", "E25"]
+        case .ninebotED, .ninebotEE: return ["N2ES", "N2E", "E2", "E3", "E45", "E25"]
         case .ninebotDD: return ["N2DS", "N2D8", "D18", "D28", "D38"]
         case .ninebotDE: return ["N2DS", "N2D8", "D18", "D28", "D38"]
         case .xiaomiClassicD, .xiaomiClassicE:
-            return ["16159", "25708", "M365", "PRO2", "1S", "ESSENTIAL"]
+            return ["16159", "25708", "M365", "PRO2", "1S", "ESSENTIAL", "LITE"]
         case .xiaomiRecentD, .xiaomiRecentE:
             return ["MI3", "MI4", "XIAOMI", "PRO3", "PRO4"]
         }
@@ -207,7 +271,8 @@ enum ScooterProfile: String, CaseIterable, Codable, Identifiable, Sendable {
     /// Ninebot Enc2 vs. Xiaomi Klartext (55 AA). Xiaomi 3/4 ggf. verschlüsselt (55 AB) — dann eingeschränkt.
     var usesNinebotEnc2: Bool {
         switch family {
-        case .zt3Pro, .maxG2, .maxG30, .maxG3, .gt3, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
+        case .zt3Pro, .maxG2, .maxG30, .maxG3, .maxG65, .gt1, .gt2, .gt3, .p65, .p100,
+             .airT15, .esx, .ninebotF, .ninebotF3, .ninebotE, .ninebotD:
             return true
         case .xiaomiClassic, .xiaomiRecent:
             return false
@@ -295,7 +360,7 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        // Segway SuperScooter GT3 — vor generischem „G3“ / 1C…-Max-G3
+        // Segway SuperScooter GT3 — vor GT1/GT2 und generischem „G3“
         if hay.contains("GT3") || hay.contains("SUPERSCOOTER") || compact.contains("NBW84")
             || hay.contains("GT3 PRO") || compact.contains("GT3PRO") {
             let eu = hay.contains("GT3E") || hay.contains("25 KM") || hay.contains("25KM")
@@ -305,6 +370,37 @@ struct BleModelHint: Equatable, Sendable {
                 shortBadge: "GT3",
                 profile: eu ? .gt3E : .gt3D
             )
+        }
+
+        if hay.range(of: #"\bGT2\b"#, options: .regularExpression) != nil || hay.contains("SEGWAY GT2") {
+            let eu = hay.contains("GT2E") || hay.contains("25 KM") || hay.contains("25KM")
+            return BleModelHint(title: "Segway GT2", shortBadge: "GT2", profile: eu ? .gt2E : .gt2D)
+        }
+        if hay.range(of: #"\bGT1\b"#, options: .regularExpression) != nil || hay.contains("SEGWAY GT1") {
+            let eu = hay.contains("GT1E") || hay.contains("25 KM") || hay.contains("25KM")
+            return BleModelHint(title: "Segway GT1", shortBadge: "GT1", profile: eu ? .gt1E : .gt1D)
+        }
+
+        if hay.contains("P100") || hay.contains("P100S") {
+            let eu = hay.contains("25 KM") || hay.contains("25KM") || hay.contains("P100E")
+            return BleModelHint(title: "Ninebot P100", shortBadge: "P100", profile: eu ? .p100E : .p100D)
+        }
+        if hay.range(of: #"\bP65\b"#, options: .regularExpression) != nil {
+            let eu = hay.contains("25 KM") || hay.contains("25KM") || hay.contains("P65E")
+            return BleModelHint(title: "Ninebot P65", shortBadge: "P65", profile: eu ? .p65E : .p65D)
+        }
+        if hay.contains("G65") || hay.contains("MAX G65") || hay.contains("MAXG65") {
+            let eu = hay.contains("G65E") || hay.contains("25 KM") || hay.contains("25KM")
+            return BleModelHint(title: "Ninebot Max G65", shortBadge: "G65", profile: eu ? .maxG65E : .maxG65D)
+        }
+        if hay.contains("T15") || hay.contains("AIR T15") {
+            let eu = hay.contains("T15E") || hay.contains("25 KM") || hay.contains("25KM")
+            return BleModelHint(title: "Ninebot Air T15", shortBadge: "T15", profile: eu ? .airT15E : .airT15D)
+        }
+        if hay.range(of: #"\bES[1-4]\b"#, options: .regularExpression) != nil
+            || hay.contains("ESX") || hay.contains("NINEBOT ES") {
+            let eu = hay.contains("25 KM") || hay.contains("25KM")
+            return BleModelHint(title: "Ninebot ESx", shortBadge: "ESx", profile: eu ? .esxE : .esxD)
         }
 
         // ZT3 Pro — klassisch N2DT/N2ET; neuere Fahrgestell-SNs „1K1D…“ / „1K1E…“
@@ -387,11 +483,12 @@ struct BleModelHint: Equatable, Sendable {
             )
         }
 
-        // E-Serie (nicht mit N2ET/ZT3 verwechseln — ZT3 bereits oben)
-        if hay.range(of: #"\bE(2[0-9]|4[0-9]|5[0-9])\b"#, options: .regularExpression) != nil
+        // E-Serie inkl. E2/E2 Plus / E3 (nicht mit N2ET/ZT3 verwechseln — ZT3 bereits oben)
+        if hay.range(of: #"\bE(2[0-9]|3|4[0-9]|5[0-9])\b"#, options: .regularExpression) != nil
+            || hay.contains("E2 PLUS") || hay.contains("E2/") || hay.contains("E3 PRO")
             || hay.contains("E-SERIES") || hay.contains("E SERIE")
             || compact.hasPrefix("N2ES") {
-            let eu = hay.contains("25") || hay.contains("E25") || hay.contains("E45E")
+            let eu = hay.contains("25") || hay.contains("E25") || hay.contains("E45E") || hay.contains("E3E")
             return BleModelHint(
                 title: "Ninebot E-Serie",
                 shortBadge: "E-Serie",
