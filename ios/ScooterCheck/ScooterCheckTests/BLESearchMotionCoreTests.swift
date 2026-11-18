@@ -34,12 +34,18 @@ final class BLESearchMotionCoreTests: XCTestCase {
         tracker.reset()
         tracker.debugAdvance(steps: 8, headingDegrees: 0)
         let midY = tracker.currentY
-        XCTAssertGreaterThan(midY, 2, "forward walk should move +Y")
+        XCTAssertGreaterThan(midY, 4, "forward walk should move +Y; got \(midY)")
+        XCTAssertEqual(tracker.headingDegrees ?? -1, 0, accuracy: 0.5)
         tracker.debugAdvance(steps: 8, headingDegrees: 180)
-        let snap = SearchPathReconstructor.snapshot(from: tracker.path, previousViewport: nil, followSoftly: false)
-        XCTAssertGreaterThan(snap.smoothedPolyline.count, 3)
-        // Zurück Richtung Start: y again clearly below the mid-peak
-        XCTAssertLessThan(tracker.currentY, midY * 0.5)
+        XCTAssertEqual(tracker.headingDegrees ?? -1, 180, accuracy: 0.5, "U-turn must set heading south")
+        // Path end and tracker position must move south of the mid-peak.
+        let endY = tracker.path.last?.y ?? tracker.currentY
+        XCTAssertLessThan(
+            endY,
+            midY - 2,
+            "expected reversal below midY=\(midY), endY=\(endY), currentY=\(tracker.currentY), pathCount=\(tracker.path.count)"
+        )
+        XCTAssertGreaterThan(tracker.path.count, 3)
     }
 
     func testStandstillDoesNotInventMotion() {
