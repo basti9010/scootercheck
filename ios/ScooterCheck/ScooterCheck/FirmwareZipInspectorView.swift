@@ -183,14 +183,18 @@ struct FirmwareZipInspectorView: View {
     }
 
     private func laypersonHeader(_ r: FirmwareForensicReport) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            Text("Schritt: \(r.deepAnalysis?.sources.contains(where: {
-                switch $0 {
-                case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
-                    return true
-                default: return false
-                }
-            }) == true ? "Server-Klartext ausgewertet" : "Lokal geprüft — Entschlüsselung optional")")
+        let hasServerDeep = r.deepAnalysis?.sources.contains(where: {
+            switch $0 {
+            case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
+                return true
+            default: return false
+            }
+        }) == true
+        let status = hasServerDeep
+            ? "Server-Klartext ausgewertet"
+            : "Lokal geprüft — Entschlüsselung optional"
+        return VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Ergebnis: \(status)")
                 .font(Theme.caption.weight(.semibold))
                 .foregroundStyle(Theme.accent)
             verdictBanner(r)
