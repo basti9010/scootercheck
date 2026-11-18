@@ -50,6 +50,23 @@ struct AuthUsersList: Codable, Sendable {
     let users: [AuthUser]
 }
 
+struct AuthDomain: Codable, Equatable, Identifiable, Sendable {
+    var id: String { domain }
+    let domain: String
+    let createdAt: String
+    let createdBy: String?
+
+    enum CodingKeys: String, CodingKey {
+        case domain
+        case createdAt = "created_at"
+        case createdBy = "created_by"
+    }
+}
+
+struct AuthDomainsList: Codable, Sendable {
+    let domains: [AuthDomain]
+}
+
 struct AuthAPIError: LocalizedError {
     let message: String
     var errorDescription: String? { message }

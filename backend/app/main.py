@@ -12,6 +12,9 @@ from jwt import InvalidTokenError
 from .db import get_db, init_db
 from .schemas import (
     AuthResponse,
+    DomainIn,
+    DomainOut,
+    DomainsListOut,
     LoginRequest,
     MessageOut,
     RegisterRequest,
@@ -143,11 +146,57 @@ def require_admin(user: Annotated[UserOut, Depends(require_active)]) -> UserOut:
     return user
 
 
+def normalize_domain(raw: str) -> str:
+    d = raw.strip().lower()
+    if d.startswith("@"):
+        d = d[1:]
+    d = d.strip(".")
+    if not d or "." not in d or " " in d or "@" in d:
+        raise HTTPException(status_code=400, detail="Ungültige Domain (z. B. polizei.bayern.de)")
+    return d
+
+
+def email_domain(email: str) -> str:
+    parts = email.strip().lower().split("@", 1)
+    if len(parts) != 2 or not parts[1]:
+        raise HTTPException(status_code=400, detail="Ungültige E-Mail")
+    return parts[1]
+
+
+def is_domain_allowed(domain: str) -> bool:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM allowed_domains WHERE domain = ? COLLATE NOCASE",
+            (domain,),
+        ).fetchone()
+    return row is not None
+
+
+def assert_email_allowed_for_registration(email: str) -> None:
+    """Admin-Seed-E-Mail immer erlaubt; sonst nur freigegebene Domains."""
+    if email.strip().lower() == settings.admin_email.strip().lower():
+        return
+    domain = email_domain(email)
+    with get_db() as conn:
+        count = conn.execute("SELECT COUNT(*) AS c FROM allowed_domains").fetchone()["c"]
+    if count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registrierung gesperrt: noch keine E-Mail-Domains freigegeben",
+        )
+    if not is_domain_allowed(domain):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Domain @{domain} ist nicht freigegeben",
+        )
+
+
 @app.post("/auth/register", response_model=AuthResponse)
 def register(body: RegisterRequest) -> AuthResponse:
     email = str(body.email).strip().lower()
     if fetch_user_by_email(email):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-Mail bereits registriert")
+    assert_email_allowed_for_registration(email)
 
     now = utc_now()
     user_id = str(uuid.uuid4())
@@ -275,3 +324,54 @@ def disable_user(
 @app.get("/session/check", response_model=MessageOut)
 def session_check(_: Annotated[UserOut, Depends(require_active)]) -> MessageOut:
     return MessageOut(message="ok")
+
+
+@app.get("/admin/domains", response_model=DomainsListOut)
+def list_domains(_: Annotated[UserOut, Depends(require_admin)]) -> DomainsListOut:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT domain, created_at, created_by FROM allowed_domains ORDER BY domain COLLATE NOCASE"
+        ).fetchall()
+    return DomainsListOut(
+        domains=[
+            DomainOut(domain=r["domain"], created_at=r["created_at"], created_by=r["created_by"])
+            for r in rows
+        ]
+    )
+
+
+@app.post("/admin/domains", response_model=DomainOut)
+def add_domain(
+    body: DomainIn,
+    admin: Annotated[UserOut, Depends(require_admin)],
+) -> DomainOut:
+    domain = normalize_domain(body.domain)
+    now = utc_now()
+    with get_db() as conn:
+        existing = conn.execute(
+            "SELECT domain FROM allowed_domains WHERE domain = ? COLLATE NOCASE",
+            (domain,),
+        ).fetchone()
+        if existing:
+            raise HTTPException(status_code=409, detail="Domain bereits freigegeben")
+        conn.execute(
+            "INSERT INTO allowed_domains (domain, created_at, created_by) VALUES (?, ?, ?)",
+            (domain, now, admin.id),
+        )
+    return DomainOut(domain=domain, created_at=now, created_by=admin.id)
+
+
+@app.delete("/admin/domains/{domain}", response_model=MessageOut)
+def remove_domain(
+    domain: str,
+    _: Annotated[UserOut, Depends(require_admin)],
+) -> MessageOut:
+    cleaned = normalize_domain(domain)
+    with get_db() as conn:
+        cur = conn.execute(
+            "DELETE FROM allowed_domains WHERE domain = ? COLLATE NOCASE",
+            (cleaned,),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Domain nicht gefunden")
+    return MessageOut(message=f"@{cleaned} entfernt")

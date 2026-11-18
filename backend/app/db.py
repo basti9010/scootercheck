@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+CREATE TABLE IF NOT EXISTS allowed_domains (
+    domain TEXT PRIMARY KEY COLLATE NOCASE,
+    created_at TEXT NOT NULL,
+    created_by TEXT
+);
 """
 
 

@@ -19,5 +19,10 @@ Leichtes User-Management für die iOS-App:
 | POST | `/admin/users/{id}/approve` | Admin |
 | POST | `/admin/users/{id}/reject` | Admin |
 | POST | `/admin/users/{id}/disable` | Admin |
+| GET | `/admin/domains` | Admin |
+| POST | `/admin/domains` `{ "domain": "polizei.bayern.de" }` | Admin |
+| DELETE | `/admin/domains/{domain}` | Admin |
+
+Registrierung nur mit freigegebener E-Mail-Domain (nach dem `@`). Ohne Domain-Einträge ist Registrierung gesperrt (Admin-Seed ausgenommen).
 
 Produktion hinter nginx: `https://api.tuningscanner.de/scootercheck/…`

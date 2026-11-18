@@ -2446,7 +2446,7 @@ struct ContentView: View {
                 }
                 if auth.isAdmin {
                     sideNavRow(
-                        title: "Benutzer freischalten",
+                        title: "Benutzer & Domains",
                         systemImage: "person.badge.shield.checkmark",
                         selected: false
                     ) {

@@ -100,7 +100,7 @@ struct AuthGateView: View {
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
                 .disabled(busy || email.isEmpty || password.count < 8)
 
-                Text("Nach der Registrierung schaltet ein Admin dein Konto frei.")
+                Text("Nur freigegebene Behörden-Domains (z. B. @polizei.bayern.de). Danach schaltet ein Admin dein Konto frei.")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textMuted)
                     .multilineTextAlignment(.center)
@@ -181,59 +181,38 @@ struct AuthGateView: View {
 struct AdminUsersView: View {
     @ObservedObject var auth: AuthSessionStore
     @Environment(\.dismiss) private var dismiss
+    @State private var tab: AdminTab = .users
     @State private var users: [AuthUser] = []
+    @State private var domains: [AuthDomain] = []
     @State private var filter: AuthUserStatus? = .pending
+    @State private var newDomain = ""
     @State private var busy = false
     @State private var errorText: String?
 
+    private enum AdminTab: String, CaseIterable {
+        case users = "Benutzer"
+        case domains = "Domains"
+    }
+
     var body: some View {
         List {
-            Picker("Filter", selection: $filter) {
-                Text("Offen").tag(Optional.some(AuthUserStatus.pending))
-                Text("Aktiv").tag(Optional.some(AuthUserStatus.active))
-                Text("Alle").tag(Optional<AuthUserStatus>.none)
+            Picker("Bereich", selection: $tab) {
+                ForEach(AdminTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
-            .onChange(of: filter) { _ in
-                Task { await reload() }
-            }
 
             if let errorText {
                 Text(errorText).foregroundStyle(Theme.danger)
             }
 
-            ForEach(users) { user in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(user.displayName?.isEmpty == false ? user.displayName! : user.email)
-                        .font(.headline)
-                    Text(user.email)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(user.role.rawValue) · \(user.status.rawValue)")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.accent)
-
-                    HStack {
-                        if user.status == .pending {
-                            Button("Freigeben") {
-                                Task { await act(approve: true, user) }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            Button("Ablehnen", role: .destructive) {
-                                Task { await act(approve: false, user) }
-                            }
-                        } else if user.status == .active, user.role != .admin {
-                            Button("Deaktivieren", role: .destructive) {
-                                Task { await disable(user) }
-                            }
-                        }
-                    }
-                }
-                .padding(.vertical, 4)
+            if tab == .users {
+                usersSection
+            } else {
+                domainsSection
             }
         }
-        .navigationTitle("Benutzer")
+        .navigationTitle(tab == .users ? "Benutzer" : "E-Mail-Domains")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -249,15 +228,149 @@ struct AdminUsersView: View {
             }
         }
         .task { await reload() }
+        .onChange(of: tab) { _ in
+            Task { await reload() }
+        }
+    }
+
+    @ViewBuilder
+    private var usersSection: some View {
+        Picker("Filter", selection: $filter) {
+            Text("Offen").tag(Optional.some(AuthUserStatus.pending))
+            Text("Aktiv").tag(Optional.some(AuthUserStatus.active))
+            Text("Alle").tag(Optional<AuthUserStatus>.none)
+        }
+        .pickerStyle(.segmented)
+        .listRowBackground(Color.clear)
+        .onChange(of: filter) { _ in
+            Task { await reloadUsers() }
+        }
+
+        ForEach(users) { user in
+            VStack(alignment: .leading, spacing: 8) {
+                Text(user.displayName?.isEmpty == false ? user.displayName! : user.email)
+                    .font(.headline)
+                Text(user.email)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("\(user.role.rawValue) · \(user.status.rawValue)")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.accent)
+
+                HStack {
+                    if user.status == .pending {
+                        Button("Freigeben") {
+                            Task { await act(approve: true, user) }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button("Ablehnen", role: .destructive) {
+                            Task { await act(approve: false, user) }
+                        }
+                    } else if user.status == .active, user.role != .admin {
+                        Button("Deaktivieren", role: .destructive) {
+                            Task { await disable(user) }
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    @ViewBuilder
+    private var domainsSection: some View {
+        Section {
+            Text("Nur diese Domains dürfen sich registrieren (nach dem @). Ohne Eintrag ist die Registrierung gesperrt.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .listRowBackground(Color.clear)
+        }
+
+        Section("Neue Domain") {
+            HStack {
+                Text("@")
+                    .foregroundStyle(.secondary)
+                TextField("polizei.bayern.de", text: $newDomain)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                Button("Freigeben") {
+                    Task { await addDomain() }
+                }
+                .disabled(busy || newDomain.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+
+        Section("Freigegeben") {
+            if domains.isEmpty {
+                Text("Noch keine Domains")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(domains) { item in
+                HStack {
+                    Text("@\(item.domain)")
+                    Spacer()
+                    Button(role: .destructive) {
+                        Task { await removeDomain(item.domain) }
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                }
+            }
+        }
     }
 
     private func reload() async {
+        if tab == .users {
+            await reloadUsers()
+        } else {
+            await reloadDomains()
+        }
+    }
+
+    private func reloadUsers() async {
         guard let token = auth.token else { return }
         busy = true
         defer { busy = false }
         do {
             users = try await AuthAPIClient.listUsers(token: token, status: filter)
             errorText = nil
+        } catch {
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func reloadDomains() async {
+        guard let token = auth.token else { return }
+        busy = true
+        defer { busy = false }
+        do {
+            domains = try await AuthAPIClient.listDomains(token: token)
+            errorText = nil
+        } catch {
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func addDomain() async {
+        guard let token = auth.token else { return }
+        let value = newDomain.trimmingCharacters(in: .whitespacesAndNewlines)
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await AuthAPIClient.addDomain(value, token: token)
+            newDomain = ""
+            await reloadDomains()
+        } catch {
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func removeDomain(_ domain: String) async {
+        guard let token = auth.token else { return }
+        do {
+            try await AuthAPIClient.removeDomain(domain, token: token)
+            await reloadDomains()
         } catch {
             errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
         }
@@ -271,7 +384,7 @@ struct AdminUsersView: View {
             } else {
                 _ = try await AuthAPIClient.reject(userId: user.id, token: token)
             }
-            await reload()
+            await reloadUsers()
         } catch {
             errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
         }
@@ -281,7 +394,7 @@ struct AdminUsersView: View {
         guard let token = auth.token else { return }
         do {
             _ = try await AuthAPIClient.disable(userId: user.id, token: token)
-            await reload()
+            await reloadUsers()
         } catch {
             errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
         }
