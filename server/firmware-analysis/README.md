@@ -20,12 +20,22 @@ Dieses Repo enthält **kein** ninebottea und **keine** Keys.
 In `/etc/scootercheck/firmware-analysis.env`:
 
 ```bash
-LLM_API_KEY=sk-...
-LLM_BASE_URL=https://api.openai.com/v1   # oder kompatibler Proxy
-LLM_MODEL=gpt-4o-mini
+# Anthropic (Claude Console — Guthaben/API-Key)
+LLM_PROVIDER=anthropic
+LLM_API_KEY=sk-ant-...
+LLM_BASE_URL=https://api.anthropic.com
+LLM_MODEL=claude-haiku-4-5-20251001
+
+# oder OpenAI-kompatibel:
+# LLM_PROVIDER=openai
+# LLM_API_KEY=sk-...
+# LLM_BASE_URL=https://api.openai.com/v1
+# LLM_MODEL=gpt-4o-mini
 ```
 
-Dann `systemctl restart scootercheck-fw`. `GET /health` → `llmConfigured: true`. Ohne Key läuft die Pipeline unverändert (Note `llm=skipped`).
+Dann `systemctl restart scootercheck-fw`. `GET /health` → `llmConfigured: true`, `llmProvider`. Ohne Key: Note `llm=skipped`.
+
+API-Key in der Claude Console unter **API-Keys** anlegen (nicht den Cursor-Account-Key). Key nie in Chat/Git legen — nur auf dem Server in die Env-Datei.
 
 ## Stock-Diff (Schritt 2)
 

@@ -324,6 +324,8 @@ struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var ghidraConfigured: Bool?
     var ghidraEnabled: Bool?
     var llmConfigured: Bool?
+    var llmProvider: String?
+    var llmModel: String?
     var jwtConfigured: Bool?
     var retentionDays: Int?
     var maxStoredJobs: Int?

@@ -31,7 +31,7 @@ from capstone_extract import (
     merge_capstone_into_result,
 )
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
-from llm_enrich import enrich_result, llm_configured
+from llm_enrich import _model as llm_model_name, enrich_result, llm_configured, llm_provider
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
 from speed_extract import deep_result
 from stock_diff import (
@@ -610,7 +610,8 @@ def health() -> dict[str, Any]:
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),
-        "llmModel": os.environ.get("LLM_MODEL", "gpt-4o-mini").strip() if llm_configured() else None,
+        "llmProvider": llm_provider() if llm_configured() else None,
+        "llmModel": (llm_model_name() if llm_configured() else None),
         "stockFwDir": str(stock_dir()),
         "stockRefCount": len(list_stock_refs()),
         "r2Configured": r2_configured(),

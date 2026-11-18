@@ -1,6 +1,7 @@
 """Optional schema-bound LLM enrichment after deterministic decrypt/Ghidra/combo scan.
 
-Requires LLM_API_KEY (OpenAI-compatible). Without key: no-op.
+Requires LLM_API_KEY (or ANTHROPIC_API_KEY / OPENAI_API_KEY). Without key: no-op.
+Providers: openai (Chat Completions) | anthropic (Messages API).
 Only fills/extends comboSummaries, modeTransitions, inputHints, notes — never invents speeds.
 """
 from __future__ import annotations
@@ -12,8 +13,10 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-DEFAULT_BASE_URL = "https://api.openai.com/v1"
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_BASE = "https://api.openai.com/v1"
+DEFAULT_ANTHROPIC_BASE = "https://api.anthropic.com"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 MAX_SNIPPET_CHARS = 14_000
 MAX_COMBOS = 12
 MAX_TRANSITIONS = 10
@@ -37,19 +40,47 @@ def llm_configured() -> bool:
     return bool(_api_key())
 
 
+def llm_provider() -> str:
+    """openai | anthropic — auto from LLM_PROVIDER, base URL, or key prefix."""
+    explicit = os.environ.get("LLM_PROVIDER", "").strip().lower()
+    if explicit in {"openai", "anthropic"}:
+        return explicit
+    base = os.environ.get("LLM_BASE_URL", "").strip().lower()
+    if "anthropic.com" in base:
+        return "anthropic"
+    key = _api_key()
+    if key.startswith("sk-ant-"):
+        return "anthropic"
+    if os.environ.get("ANTHROPIC_API_KEY", "").strip() and not os.environ.get("OPENAI_API_KEY", "").strip():
+        if not os.environ.get("LLM_API_KEY", "").strip() or os.environ.get("LLM_API_KEY", "").strip().startswith("sk-ant-"):
+            return "anthropic"
+    return "openai"
+
+
 def _api_key() -> str:
     return (
         os.environ.get("LLM_API_KEY", "").strip()
+        or os.environ.get("ANTHROPIC_API_KEY", "").strip()
         or os.environ.get("OPENAI_API_KEY", "").strip()
     )
 
 
 def _base_url() -> str:
-    return os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+    override = os.environ.get("LLM_BASE_URL", "").strip()
+    if override:
+        return override.rstrip("/")
+    if llm_provider() == "anthropic":
+        return DEFAULT_ANTHROPIC_BASE
+    return DEFAULT_OPENAI_BASE
 
 
 def _model() -> str:
-    return os.environ.get("LLM_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+    override = os.environ.get("LLM_MODEL", "").strip()
+    if override:
+        return override
+    if llm_provider() == "anthropic":
+        return DEFAULT_ANTHROPIC_MODEL
+    return DEFAULT_OPENAI_MODEL
 
 
 def select_decompile_snippet(decompiled_text: str | None, *, max_chars: int = MAX_SNIPPET_CHARS) -> str:
@@ -249,6 +280,12 @@ def _merge_validated(result: dict[str, Any], data: dict[str, Any]) -> dict[str, 
 
 
 def _chat(system: str, user: str) -> str:
+    if llm_provider() == "anthropic":
+        return _chat_anthropic(system, user)
+    return _chat_openai(system, user)
+
+
+def _chat_openai(system: str, user: str) -> str:
     body = json.dumps(
         {
             "model": _model(),
@@ -269,12 +306,50 @@ def _chat(system: str, user: str) -> str:
         },
         method="POST",
     )
+    data = _http_json(req)
+    return data["choices"][0]["message"]["content"]
+
+
+def _chat_anthropic(system: str, user: str) -> str:
+    # Messages API — https://docs.anthropic.com/en/api/messages
+    body = json.dumps(
+        {
+            "model": _model(),
+            "max_tokens": 2048,
+            "temperature": 0.1,
+            "system": system + "\n\nAntworte ausschließlich mit einem JSON-Objekt, ohne Markdown.",
+            "messages": [{"role": "user", "content": user}],
+        }
+    ).encode("utf-8")
+    base = _base_url()
+    # Accept either https://api.anthropic.com or .../v1
+    url = base if base.endswith("/v1/messages") else (
+        f"{base}/v1/messages" if base.endswith("/v1") else f"{base}/v1/messages"
+    )
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "x-api-key": _api_key(),
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    data = _http_json(req)
+    parts = data.get("content") or []
+    texts = [p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text"]
+    if not texts:
+        raise RuntimeError("anthropic response missing text content")
+    return "\n".join(texts)
+
+
+def _http_json(req: urllib.request.Request) -> dict[str, Any]:
     try:
         with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+            return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"HTTP {e.code}: {e.read()[:300]!r}") from e
-    return data["choices"][0]["message"]["content"]
 
 
 def _extract_json(text: str) -> dict[str, Any]:

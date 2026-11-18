@@ -34,9 +34,28 @@ class SelectSnippetTests(unittest.TestCase):
         self.assertLessEqual(len(snip), 800)
 
 
+class ProviderTests(unittest.TestCase):
+    def test_detect_anthropic_from_key(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {"LLM_API_KEY": "sk-ant-test", "LLM_PROVIDER": "", "LLM_BASE_URL": "", "ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": ""},
+            clear=False,
+        ):
+            self.assertEqual(llm_enrich.llm_provider(), "anthropic")
+            self.assertIn("anthropic.com", llm_enrich._base_url())
+
+    def test_explicit_openai(self) -> None:
+        with mock.patch.dict(os.environ, {"LLM_PROVIDER": "openai", "LLM_API_KEY": "sk-test"}, clear=False):
+            self.assertEqual(llm_enrich.llm_provider(), "openai")
+
+
 class EnrichMergeTests(unittest.TestCase):
     def test_noop_without_key(self) -> None:
-        with mock.patch.dict(os.environ, {"LLM_API_KEY": "", "OPENAI_API_KEY": ""}, clear=False):
+        with mock.patch.dict(
+            os.environ,
+            {"LLM_API_KEY": "", "OPENAI_API_KEY": "", "ANTHROPIC_API_KEY": ""},
+            clear=False,
+        ):
             # Force re-read via empty keys
             base = {"comboSummaries": ["a"], "notes": [], "sources": [], "quality": {}}
             out = llm_enrich.enrich_result(dict(base), decompiled_text=SAMPLE_C)

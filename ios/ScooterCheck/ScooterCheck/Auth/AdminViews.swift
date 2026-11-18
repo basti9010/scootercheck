@@ -335,8 +335,12 @@ struct AdminFirmwareUploadsView: View {
                     Text(workerStatusLine(workerHealth))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    if workerHealth.llmConfigured != true {
-                        Text("KI aus: LLM_API_KEY in /etc/scootercheck/firmware-analysis.env setzen, dann scootercheck-fw neu starten.")
+                    if workerHealth.llmConfigured == true {
+                        Text("KI: \(workerHealth.llmProvider ?? "?") · \(workerHealth.llmModel ?? "Default-Modell")")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.accent)
+                    } else {
+                        Text("KI aus: Anthropic/OpenAI-Key in /etc/scootercheck/firmware-analysis.env (LLM_API_KEY + LLM_PROVIDER), dann scootercheck-fw neu starten.")
                             .font(.caption2)
                             .foregroundStyle(Theme.warn)
                     }
