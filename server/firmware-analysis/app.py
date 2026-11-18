@@ -36,6 +36,7 @@ from capstone_extract import (
     capstone_configured,
     merge_capstone_into_result,
 )
+from cortex_m_ivt import analyze_firmware as ivt_analyze, merge_ivt_into_result
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from llm_enrich import (
     _model as llm_model_name,
@@ -47,6 +48,7 @@ from llm_enrich import (
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
 from speed_extract import deep_result
 from stock_diff import (
+    TRUSTED_SOURCES,
     compare_to_stock,
     delete_stock_ref,
     ensure_stock_dir,
@@ -580,7 +582,11 @@ def process_job(job_id: str) -> None:
     result = merge_capstone_into_result(result, cs_info)
     result = merge_yara_into_result(result, yr_info)
 
-    _update(job, progressPercent=86, message="Unicorn-Emulation (Speed-Fenster)…")
+    _update(job, progressPercent=85, message="Cortex-M IVT / Vektortabelle…")
+    ivt_info = ivt_analyze(stored)
+    result = merge_ivt_into_result(result, ivt_info)
+
+    _update(job, progressPercent=86, message="Unicorn-Emulation (IVT+Speed-Fenster)…")
     uni_info = unicorn_analyze(stored) if unicorn_configured() else {
         "ok": False,
         "speeds": [],
@@ -815,14 +821,30 @@ async def admin_upload_stock(
     model: str = Form(""),
     controllerType: str = Form("VCU"),
     version: str = Form(""),
+    source: str = Form("oem"),
+    region: str = Form(""),
+    notes: str = Form(""),
+    confirmOem: str = Form("false"),
     file: UploadFile = File(...),
     _: dict[str, Any] = Depends(require_admin),
 ) -> JSONResponse:
+    """Upload OEM/serial reference only. confirmOem must be true for source=oem|serial."""
     raw = await file.read()
     if not raw:
         raise HTTPException(status_code=400, detail="empty file")
     if len(raw) > 16 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="stock file too large (max 16 MiB)")
+    src = (source or "oem").strip().lower()
+    if src in TRUSTED_SOURCES and confirmOem.strip().lower() not in ("1", "true", "yes"):
+        raise HTTPException(
+            status_code=400,
+            detail="confirmOem=true erforderlich für OEM-/Serien-Stock (keine Fall-Uploads).",
+        )
+    if src == "case":
+        raise HTTPException(
+            status_code=400,
+            detail="source=case ist nicht als Stock-Referenz erlaubt.",
+        )
     ref = register_stock_file(
         raw,
         label=label or (file.filename or "stock"),
@@ -830,6 +852,9 @@ async def admin_upload_stock(
         controller_type=controllerType or "VCU",
         version=version or "",
         filename=file.filename,
+        source=src,
+        region=region or "",
+        notes=notes or "",
     )
     return JSONResponse({"ok": True, "ref": ref})
 
@@ -848,27 +873,70 @@ def admin_promote_job_stock(
     model: str = Query(""),
     controllerType: str = Query("VCU"),
     version: str = Query(""),
+    source: str = Query("oem"),
+    region: str = Query(""),
+    notes: str = Query(""),
+    confirmOem: bool = Query(False),
     _: dict[str, Any] = Depends(require_admin),
 ) -> JSONResponse:
     """Copy a job's decrypted plaintext into the stock library for future BinDiff.
 
-    Only use for known OEM/serial reference images — not for arbitrary case uploads,
-    or every re-upload of the same file will report stockDiff=identical.
+    Requires confirmOem=true. Rejects images with high-confidence CFW YARA hits.
+    Only OEM/serial sources become trusted compare targets.
     """
+    if not confirmOem:
+        raise HTTPException(
+            status_code=400,
+            detail="confirmOem=true erforderlich — nur echte OEM-/Serien-Klartexte promoten.",
+        )
+    src = (source or "oem").strip().lower()
+    if src not in TRUSTED_SOURCES:
+        raise HTTPException(
+            status_code=400,
+            detail="source muss oem oder serial sein (keine Fall-Uploads).",
+        )
     job = load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     path = Path(job.get("plaintextPath") or (Path(job["dir"]) / "FIRM.dec.bin"))
     if not path.is_file():
         raise HTTPException(status_code=404, detail="plaintext not available")
+
+    result = job.get("result") or {}
+    yara_hits = result.get("yaraMatches") or []
+    blocked = [
+        m
+        for m in yara_hits
+        if str(m.get("confidence") or "").lower() == "high"
+        and str(m.get("family") or m.get("rule") or "").lower()
+        not in {""}  # any high-confidence rule blocks
+    ]
+    # Explicit CFW families always block even if confidence medium
+    cfw_families = {"panicsystem", "scooterhacking", "esc-cfw", "soft-unlock"}
+    for m in yara_hits:
+        fam = str(m.get("family") or "").lower()
+        rule = str(m.get("rule") or "")
+        if fam in cfw_families or "CFW_" in rule or "Panic" in rule or "ScooterHacking" in rule:
+            if m not in blocked:
+                blocked.append(m)
+    if blocked:
+        names = ", ".join(sorted({str(m.get("rule")) for m in blocked[:6]}))
+        raise HTTPException(
+            status_code=409,
+            detail=f"Promote abgelehnt — CFW-/YARA-Treffer: {names}. Nur OEM ohne CFW-Marker.",
+        )
+
     raw = path.read_bytes()
     ref = register_stock_file(
         raw,
         label=label or (job.get("originalFileName") or f"stock-{job_id[:8]}"),
-        model=model or ((job.get("result") or {}).get("models") or ["unknown"])[0],
-        controller_type=controllerType or ((job.get("result") or {}).get("controllerType") or "VCU"),
+        model=model or ((result.get("models") or ["unknown"])[0]),
+        controller_type=controllerType or (result.get("controllerType") or "VCU"),
         version=version or "",
         filename=f"{job_id[:8]}.dec.bin",
+        source=src,
+        region=region or "",
+        notes=notes or f"promoted from job {job_id}",
     )
     return JSONResponse({"ok": True, "ref": ref})
 

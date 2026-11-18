@@ -177,7 +177,11 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         label: String = "",
         model: String = "",
         controllerType: String = "VCU",
-        version: String = ""
+        version: String = "",
+        source: String = "oem",
+        region: String = "",
+        notes: String = "",
+        confirmOem: Bool = true
     ) async throws -> FirmwareStockRef {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
         var comps = URLComponents(
@@ -192,6 +196,10 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
             URLQueryItem(name: "model", value: model),
             URLQueryItem(name: "controllerType", value: controllerType),
             URLQueryItem(name: "version", value: version),
+            URLQueryItem(name: "source", value: source),
+            URLQueryItem(name: "region", value: region),
+            URLQueryItem(name: "notes", value: notes),
+            URLQueryItem(name: "confirmOem", value: confirmOem ? "true" : "false"),
         ]
         guard let endpoint = comps?.url else { throw FirmwareServerAnalysisError.badURL }
         var req = URLRequest(url: endpoint)

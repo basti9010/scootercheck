@@ -125,7 +125,7 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         }
         if deep.sources.contains(where: {
             switch $0 {
-            case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverLLM:
+            case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
                 return true
             default:
                 return false

@@ -41,12 +41,17 @@ API-Key in der Claude Console unter **API-Keys** anlegen (`sk-ant-usr…` oder `
 
 Nach Decrypt vergleicht der Worker den Klartext mit `/var/lib/scootercheck/stock-fw/` (ENV `STOCK_FW_DIR`).
 
-- Dateien: `*.bin` / `*.dec.bin`, optional `manifest.json`
-- Admin: `GET/POST/DELETE /v1/firmware/admin/stock`
-- Ergebnis im Job: `result.stockDiff` (`identical` | `different` | `noReference`)
-- **Nur echte OEM-/Serien-Klartexte** als Stock hinterlegen. Fall-Uploads (z. B. dieselbe ZT3-ZIP) nicht als Referenz „promoten“ — sonst wirkt jeder Re-Upload fälschlich „Stock identisch“.
+- Dateien: `*.bin` / `*.dec.bin`, `manifest.json` mit `source` (`oem`|`serial`|`unknown`|`case`), optional `region`/`notes`
+- Vergleich nutzt **nur** `source=oem|serial` (Fall-Uploads werden ignoriert)
+- Admin: `GET/POST/DELETE /v1/firmware/admin/stock` — Upload braucht `confirmOem=true` für OEM/Serial
+- Promote: `POST .../promote-stock?confirmOem=true` — lehnt hohe CFW-YARA-Treffer ab
+- Ergebnis: `result.stockDiff` (`identical` | `different` | `noReference`) + `referenceSource`
 
-Ohne Referenzen: `noReference` — Pipeline sonst unverändert.
+Ohne trusted Referenzen: `noReference` — Pipeline sonst unverändert.
+
+## Cortex-M IVT (Schritt 2b)
+
+Nach Decrypt: Heuristik auf Vektortabelle (SP in SRAM, Reset Thumb in Flash). Ergebnis in `result.cortexMIvt`. Unicorn startet optional am Reset; angr nutzt Reset als `entry_point`.
 
 ## radare2 (Schritt 3)
 
@@ -63,7 +68,7 @@ apt-get install -y radare2
 
 - Ghidra `ExportSpeedXrefs.java` schreibt `.speeds.json` (Listing-Immediates → Function/Addr)
 - Capstone: ARM/Thumb-Disasm auf packed Speeds (`pip install capstone`)
-- YARA: `yara_rules/scooter_cfw.yar` (`pip install yara-python`)
+- YARA: `yara_rules/scooter_cfw.yar` — Speed-Immediates, PanicSystem, ScooterHacking/SHFW, ESC-CFW, Region-Hints (`pip install yara-python`)
 
 Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE=0` / `ENABLE_YARA=0`.
 

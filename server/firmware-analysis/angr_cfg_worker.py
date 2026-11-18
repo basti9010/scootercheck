@@ -171,6 +171,18 @@ def main() -> int:
         return 1
 
     data = bin_path.read_bytes()
+    entry_point = base
+    try:
+        from cortex_m_ivt import parse_ivt
+
+        ivt = parse_ivt(data, base=base)
+        if ivt.get("likely") and ivt.get("resetHandlerInt"):
+            # Thumb bit for angr entry
+            rh = int(ivt["resetHandlerInt"])
+            entry_point = rh | (1 if ivt.get("resetThumb") else 0)
+    except Exception:
+        pass
+
     known = {
         0x1400: (20.0, "legalCap"),
         0x1600: (22.0, "legalCap"),
@@ -202,7 +214,7 @@ def main() -> int:
                 "backend": "blob",
                 "arch": "ARMEL",
                 "base_addr": base,
-                "entry_point": base,
+                "entry_point": entry_point,
             },
             auto_load_libs=False,
         )

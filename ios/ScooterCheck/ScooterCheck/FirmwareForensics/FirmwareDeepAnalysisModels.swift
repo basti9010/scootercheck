@@ -32,6 +32,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var r2StringsSample: [String] = []
     /// YARA-Treffer vom Server (investigativ).
     var yaraMatches: [FirmwareYaraMatch] = []
+    /// Cortex-M Vektortabelle (Server-Heuristik).
+    var cortexMIvt: FirmwareCortexMIvt? = nil
 
     static let currentSchemaVersion = 1
 
@@ -54,6 +56,7 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
     case serverYara
     case serverEmulation
     case serverAngr
+    case serverIvt
     case serverLLM
     case liveVehicleContext
 
@@ -67,6 +70,7 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
         case .serverYara: return "Server-YARA"
         case .serverEmulation: return "Server-Unicorn"
         case .serverAngr: return "Server-Pfadanalyse"
+        case .serverIvt: return "Server-IVT"
         case .serverLLM: return "Server-KI (schema-gebunden)"
         case .liveVehicleContext: return "Live-Fahrzeugkontext"
         }
@@ -107,6 +111,7 @@ struct FirmwareYaraMatch: Equatable, Codable, Sendable, Identifiable {
     var rule: String
     var description: String
     var confidence: String
+    var family: String?
     var tags: [String]
     var strings: [String]
 
@@ -118,6 +123,7 @@ struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
     var referenceId: String?
     var referenceLabel: String?
     var referenceSHA256: String?
+    var referenceSource: String?
     var differingBytes: Int?
     var firstDiffOffset: Int?
     var subjectBytes: Int?
@@ -125,6 +131,8 @@ struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
     var percentDifferent: Double?
     var segments: [FirmwareStockDiffSegment]
     var note: String
+    var trustedRefCount: Int?
+    var totalRefCount: Int?
 }
 
 struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
@@ -133,10 +141,22 @@ struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
     var model: String
     var controllerType: String
     var version: String
+    var source: String?
+    var region: String?
+    var notes: String?
+    var trusted: Bool?
     var sha256: String
     var byteCount: Int
 }
 
+struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
+    var likely: Bool?
+    var flashBase: String?
+    var initialSP: String?
+    var resetHandler: String?
+    var resetFileOffset: Int?
+    var resetThumb: Bool?
+}
 struct FirmwareStockList: Equatable, Codable, Sendable {
     var stockFwDir: String?
     var refs: [FirmwareStockRef]

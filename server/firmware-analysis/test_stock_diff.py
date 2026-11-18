@@ -21,6 +21,7 @@ class StockDiffTests(unittest.TestCase):
                     model="zt3",
                     controller_type="VCU",
                     version="1.2.1",
+                    source="oem",
                 )
                 same = stock_diff.compare_to_stock(stock, models=["zt3"], controller_type="VCU")
                 self.assertEqual(same["outcome"], "identical")
@@ -49,6 +50,7 @@ class StockDiffTests(unittest.TestCase):
                     model="g3",
                     controller_type="VCU",
                     version="1.0.0",
+                    source="serial",
                 )
                 self.assertEqual(len(stock_diff.list_stock_refs()), 1)
                 self.assertTrue(stock_diff.delete_stock_ref(ref["id"]))

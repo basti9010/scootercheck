@@ -421,6 +421,7 @@ struct AdminFirmwareUploadsView: View {
     @State private var preview: FirmwareDecompilePreview?
     @State private var showPreview = false
     @State private var stockRefs: [FirmwareStockRef] = []
+    @State private var promoteConfirmJobId: String?
 
     var body: some View {
         List {
@@ -463,6 +464,9 @@ struct AdminFirmwareUploadsView: View {
                             Text("\(ref.model) · \(ref.controllerType) · \(ref.version) · \(ref.byteCount) B")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
+                            Text("source=\(ref.source ?? "unknown")\(ref.trusted == true ? " · trusted" : " · nicht für Diff")\(ref.region.map { $0.isEmpty ? "" : " · \($0)" } ?? "")")
+                                .font(.caption2)
+                                .foregroundStyle(ref.trusted == true ? Theme.accent : Theme.warn)
                             Button("Löschen", role: .destructive) {
                                 Task { await deleteStock(ref.id) }
                             }
@@ -531,7 +535,7 @@ struct AdminFirmwareUploadsView: View {
                             }
                             if job.plaintextSaved == true {
                                 Button("→ OEM-Stock") {
-                                    Task { await promoteStock(job.jobId) }
+                                    promoteConfirmJobId = job.jobId
                                 }
                                 .buttonStyle(.bordered)
                             }
@@ -558,6 +562,26 @@ struct AdminFirmwareUploadsView: View {
             }
         }
         .task { await reload() }
+        .confirmationDialog(
+            "Als OEM-/Serien-Stock hinterlegen?",
+            isPresented: Binding(
+                get: { promoteConfirmJobId != nil },
+                set: { if !$0 { promoteConfirmJobId = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Ja, echte OEM-/Serien-Referenz") {
+                if let id = promoteConfirmJobId {
+                    Task { await promoteStock(id) }
+                }
+                promoteConfirmJobId = nil
+            }
+            Button("Abbrechen", role: .cancel) {
+                promoteConfirmJobId = nil
+            }
+        } message: {
+            Text("Nur echte Werks-/Serien-Klartexte. Fall-Uploads und CFW (Panic/SHFW) werden serverseitig abgelehnt. Sonst wirkt jeder Re-Upload fälschlich „Stock identisch“.")
+        }
         .sheet(isPresented: $showPreview) {
             NavigationStack {
                 ScrollView {
@@ -627,8 +651,11 @@ struct AdminFirmwareUploadsView: View {
     private func promoteStock(_ jobId: String) async {
         do {
             let client = FirmwareServerAnalysisClient.fromAppSettings()
-            // Only genuine OEM/serial plaintext — never promote a case upload as stock.
-            _ = try await client.adminPromoteJobToStock(jobId: jobId)
+            _ = try await client.adminPromoteJobToStock(
+                jobId: jobId,
+                source: "oem",
+                confirmOem: true
+            )
             await reloadStats()
         } catch {
             errorText = error.localizedDescription

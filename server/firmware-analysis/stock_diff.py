@@ -3,7 +3,10 @@
 STOCK_FW_DIR layout (either):
   - flat:  zt3_vcu_1.2.1.bin  /  G3_VCU_stock.dec.bin
   - with manifest.json entries:
-      {"id","label","model","controllerType","version","file","sha256"?}
+      {"id","label","model","controllerType","version","source","region","file","sha256"?}
+
+`source` should be oem | serial | unknown | case.
+Default compare uses only oem/serial — case uploads must not become references.
 
 Does not prove installation — only that decrypted upload matches/differs from a known stock image.
 """
@@ -21,6 +24,8 @@ STOCK_FW_DIR = Path(
 )
 MAX_SEGMENTS = 12
 MAX_SEGMENT_SCAN = 2_000_000  # bytes scanned for segment list
+TRUSTED_SOURCES = frozenset({"oem", "serial"})
+ALLOWED_SOURCES = frozenset({"oem", "serial", "unknown", "case"})
 
 
 def stock_dir() -> Path:
@@ -42,6 +47,7 @@ def compare_to_stock(
     *,
     models: list[str] | None = None,
     controller_type: str | None = None,
+    include_untrusted: bool = False,
 ) -> dict[str, Any]:
     if not plaintext:
         return _result(
@@ -49,12 +55,26 @@ def compare_to_stock(
             note="Kein Klartext für Stock-Diff.",
         )
 
-    refs = _load_refs()
+    refs_all = _load_refs()
+    refs = refs_all if include_untrusted else [r for r in refs_all if _is_trusted(r)]
     if not refs:
+        if refs_all and not include_untrusted:
+            return _result(
+                outcome="noReference",
+                note=(
+                    f"{len(refs_all)} Stock-Datei(en) vorhanden, aber keine mit source=oem/serial. "
+                    "Fall-Uploads (source=case) werden für den Vergleich ignoriert."
+                ),
+                subjectBytes=len(plaintext),
+                trustedRefCount=0,
+                totalRefCount=len(refs_all),
+            )
         return _result(
             outcome="noReference",
-            note=f"Keine Stock-Images in {STOCK_FW_DIR} — Admin kann Referenzen hochladen.",
+            note=f"Keine OEM-/Serien-Stock-Images in {STOCK_FW_DIR} — Admin kann Referenzen hochladen.",
             subjectBytes=len(plaintext),
+            trustedRefCount=0,
+            totalRefCount=0,
         )
 
     subject_sha = hashlib.sha256(plaintext).hexdigest()
@@ -65,12 +85,15 @@ def compare_to_stock(
             referenceId=exact["id"],
             referenceLabel=exact["label"],
             referenceSHA256=exact["sha256"],
+            referenceSource=exact.get("source") or "unknown",
             differingBytes=0,
             firstDiffOffset=None,
             subjectBytes=len(plaintext),
             referenceBytes=exact["byteCount"],
             segments=[],
-            note=f"SHA-256 identisch mit Stock „{exact['label']}“.",
+            note=f"SHA-256 identisch mit Stock „{exact['label']}“ (source={exact.get('source') or 'unknown'}).",
+            trustedRefCount=len(refs),
+            totalRefCount=len(refs_all),
         )
 
     candidates = _filter_refs(refs, models=models or [], controller_type=controller_type)
@@ -105,6 +128,7 @@ def compare_to_stock(
         referenceId=best["id"],
         referenceLabel=best["label"],
         referenceSHA256=best["sha256"],
+        referenceSource=best.get("source") or "unknown",
         differingBytes=best_diff["differingBytes"],
         firstDiffOffset=best_diff["firstDiffOffset"],
         subjectBytes=len(plaintext),
@@ -112,9 +136,11 @@ def compare_to_stock(
         segments=best_diff["segments"],
         percentDifferent=pct,
         note=(
-            f"Byte-Diff gegen Stock „{best['label']}“: "
+            f"Byte-Diff gegen Stock „{best['label']}“ (source={best.get('source') or 'unknown'}): "
             f"{best_diff['differingBytes']} abweichende Bytes ({pct}%)."
         ),
+        trustedRefCount=len(refs),
+        totalRefCount=len(refs_all),
     )
 
 
@@ -126,13 +152,17 @@ def register_stock_file(
     controller_type: str,
     version: str,
     filename: str | None = None,
+    source: str = "oem",
+    region: str = "",
+    notes: str = "",
 ) -> dict[str, Any]:
     ensure_stock_dir()
+    src = _normalize_source(source)
     sha = hashlib.sha256(data).hexdigest()
     safe_model = _slug(model or "unknown")
     safe_type = _slug(controller_type or "VCU")
     safe_ver = _slug(version or "unk")
-    name = filename or f"{safe_model}_{safe_type}_{safe_ver}_{sha[:12]}.bin"
+    name = filename or f"{safe_model}_{safe_type}_{safe_ver}_{src}_{sha[:12]}.bin"
     name = Path(name).name.replace("/", "_")
     dest = STOCK_FW_DIR / name
     dest.write_bytes(data)
@@ -153,6 +183,9 @@ def register_stock_file(
         "model": model,
         "controllerType": controller_type,
         "version": version,
+        "source": src,
+        "region": (region or "").strip(),
+        "notes": (notes or "").strip(),
         "file": name,
         "sha256": sha,
         "byteCount": len(data),
@@ -214,6 +247,9 @@ def _load_refs() -> list[dict[str, Any]]:
                     "model": str(e.get("model") or ""),
                     "controllerType": str(e.get("controllerType") or e.get("type") or ""),
                     "version": str(e.get("version") or ""),
+                    "source": _normalize_source(str(e.get("source") or "unknown")),
+                    "region": str(e.get("region") or ""),
+                    "notes": str(e.get("notes") or ""),
                     "sha256": data_sha,
                     "byteCount": int(e.get("byteCount") or path.stat().st_size),
                     "path": str(path),
@@ -233,12 +269,16 @@ def _load_refs() -> list[dict[str, Any]]:
         if sha in by_sha:
             continue
         model, ctype, version = _parse_name(path.name)
+        # Flat files without manifest: treat as unknown (not auto-trusted).
         by_sha[sha] = {
             "id": sha[:16],
             "label": path.name,
             "model": model,
             "controllerType": ctype,
             "version": version,
+            "source": "unknown",
+            "region": "",
+            "notes": "",
             "sha256": sha,
             "byteCount": len(data),
             "path": str(path),
@@ -345,9 +385,30 @@ def _public_ref(r: dict[str, Any]) -> dict[str, Any]:
         "model": r.get("model") or "",
         "controllerType": r.get("controllerType") or "",
         "version": r.get("version") or "",
+        "source": _normalize_source(str(r.get("source") or "unknown")),
+        "region": r.get("region") or "",
+        "notes": r.get("notes") or "",
+        "trusted": _is_trusted(r),
         "sha256": r["sha256"],
         "byteCount": r["byteCount"],
     }
+
+
+def _normalize_source(source: str) -> str:
+    s = (source or "unknown").strip().lower()
+    if s in {"oem", "factory", "stock"}:
+        return "oem"
+    if s in {"serial", "serie", "production"}:
+        return "serial"
+    if s in {"case", "upload", "incident"}:
+        return "case"
+    if s in ALLOWED_SOURCES:
+        return s
+    return "unknown"
+
+
+def _is_trusted(r: dict[str, Any]) -> bool:
+    return _normalize_source(str(r.get("source") or "")) in TRUSTED_SOURCES
 
 
 def _result(**kwargs: Any) -> dict[str, Any]:
@@ -356,6 +417,7 @@ def _result(**kwargs: Any) -> dict[str, Any]:
         "referenceId": None,
         "referenceLabel": None,
         "referenceSHA256": None,
+        "referenceSource": None,
         "differingBytes": None,
         "firstDiffOffset": None,
         "subjectBytes": None,
@@ -363,6 +425,8 @@ def _result(**kwargs: Any) -> dict[str, Any]:
         "percentDifferent": None,
         "segments": [],
         "note": "",
+        "trustedRefCount": None,
+        "totalRefCount": None,
     }
     base.update(kwargs)
     return base
