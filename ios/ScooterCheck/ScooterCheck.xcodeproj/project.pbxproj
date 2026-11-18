@@ -174,6 +174,7 @@
 		A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */; };
 		A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E7 /* FirmwareForensicsHubView.swift */; };
 		A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E8 /* FirmwareComboExtractor.swift */; };
+		A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EB /* FirmwareComboPolicy.swift */; };
 		A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */; };
 		A100000000000000000000F5 /* ChangePasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F5 /* ChangePasswordView.swift */; };
 		A100000000000000000000F6 /* AdminUserEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F6 /* AdminUserEditView.swift */; };
@@ -351,6 +352,7 @@
 		B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareServerAnalysisClient.swift; sourceTree = "<group>"; };
 		B100000000000000000000E7 /* FirmwareForensicsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicsHubView.swift; sourceTree = "<group>"; };
 		B100000000000000000000E8 /* FirmwareComboExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareComboExtractor.swift; sourceTree = "<group>"; };
+		B100000000000000000000EB /* FirmwareComboPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareComboPolicy.swift; sourceTree = "<group>"; };
 		B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisBriefing.swift; sourceTree = "<group>"; };
 		B100000000000000000000F5 /* ChangePasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePasswordView.swift; sourceTree = "<group>"; };
 		B100000000000000000000F6 /* AdminUserEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminUserEditView.swift; sourceTree = "<group>"; };
@@ -509,6 +511,7 @@
 				B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */,
 				B100000000000000000000E7 /* FirmwareForensicsHubView.swift */,
 				B100000000000000000000E8 /* FirmwareComboExtractor.swift */,
+				B100000000000000000000EB /* FirmwareComboPolicy.swift */,
 				B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */,
 				B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */,
 			);
@@ -791,6 +794,7 @@
 				A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */,
 				A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */,
 				A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */,
+				A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */,
 				A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */,
 				A100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
