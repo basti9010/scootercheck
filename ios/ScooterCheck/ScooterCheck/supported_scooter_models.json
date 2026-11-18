@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-18",
+  "source": "ScooterHacking Utility Supported Models + ScooterCheck native stacks",
+  "sourceUrl": "https://wiki.scooterhacking.org/doku.php?id=zip3_reference",
+  "note": "readable=true means ScooterCheck attempts a native read-only dump (Ninebot Enc2 gen2/gen3 or Xiaomi 55 AA). Proto2-only models still probe Enc2; success depends on the vehicle firmware.",
+  "brands": [
+    {
+      "id": "ninebot",
+      "title": "Ninebot",
+      "models": [
+        {"id": "t15", "title": "Ninebot Air T15", "profileFamily": "airT15", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "t15", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "d18", "title": "Ninebot D18", "profileFamily": "ninebotD", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "d18", "hwProtocol": "Enc2"},
+        {"id": "d28", "title": "Ninebot D28", "profileFamily": "ninebotD", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "d28", "hwProtocol": "Enc2"},
+        {"id": "d38", "title": "Ninebot D38", "profileFamily": "ninebotD", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "d28", "hwProtocol": "Enc2"},
+        {"id": "e2", "title": "Ninebot E2/E2 Plus", "profileFamily": "ninebotE", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "e", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "e", "title": "Ninebot E2x/E4x", "profileFamily": "ninebotE", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "e", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "e3", "title": "Ninebot E3/E3 Pro", "profileFamily": "ninebotE", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "e", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "esx", "title": "Ninebot ESx", "profileFamily": "esx", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "esx", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "f", "title": "Ninebot F-series", "profileFamily": "ninebotF", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "f", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "f2", "title": "Ninebot F2", "profileFamily": "ninebotF", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "f2", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "f3", "title": "Ninebot F3", "profileFamily": "ninebotF3", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "f3", "hwProtocol": "Enc2"},
+        {"id": "f40ii", "title": "Ninebot F40 II", "profileFamily": "ninebotF", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "f", "hwProtocol": "Proto2/Enc2-probe"},
+        {"id": "gt1", "title": "Ninebot GT1", "profileFamily": "gt1", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": null, "hwProtocol": "Enc2"},
+        {"id": "gt2", "title": "Ninebot GT2", "profileFamily": "gt2", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": null, "hwProtocol": "Enc2"},
+        {"id": "gt3", "title": "Ninebot GT3", "profileFamily": "gt3", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "gt3", "hwProtocol": "Enc2"},
+        {"id": "g2", "title": "Ninebot Max G2", "profileFamily": "maxG2", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "g2", "hwProtocol": "Enc2"},
+        {"id": "g3", "title": "Ninebot Max G3", "profileFamily": "maxG3", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "g3", "hwProtocol": "Enc2"},
+        {"id": "max", "title": "Ninebot Max G30", "profileFamily": "maxG30", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "max", "hwProtocol": "Enc2"},
+        {"id": "g65", "title": "Ninebot Max G65", "profileFamily": "maxG65", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": null, "hwProtocol": "Enc2"},
+        {"id": "p100", "title": "Ninebot P100", "profileFamily": "p100", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": null, "hwProtocol": "Enc2"},
+        {"id": "p65", "title": "Ninebot P65", "profileFamily": "p65", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": null, "hwProtocol": "Enc2"},
+        {"id": "zt3", "title": "Ninebot ZT3", "profileFamily": "zt3Pro", "stack": "ninebotEnc2", "readable": true, "firmwareArchive": "zt3", "hwProtocol": "Enc2"}
+      ]
+    },
+    {
+      "id": "xiaomi",
+      "title": "Xiaomi",
+      "models": [
+        {"id": "1s", "title": "Mi Electric Scooter 1S", "profileFamily": "xiaomiClassic", "stack": "xiaomiPlain", "readable": true, "firmwareArchive": "1s", "hwProtocol": "55 AA"},
+        {"id": "mi3", "title": "Mi Electric Scooter 3", "profileFamily": "xiaomiRecent", "stack": "xiaomiPlain", "readable": true, "firmwareArchive": "mi3", "hwProtocol": "55 AA / ggf. 55 AB"},
+        {"id": "lite", "title": "Mi Electric Scooter Lite", "profileFamily": "xiaomiClassic", "stack": "xiaomiPlain", "readable": true, "firmwareArchive": "lite", "hwProtocol": "55 AA"},
+        {"id": "pro", "title": "Mi Electric Scooter Pro", "profileFamily": "xiaomiClassic", "stack": "xiaomiPlain", "readable": true, "firmwareArchive": "pro", "hwProtocol": "55 AA"},
+        {"id": "pro2", "title": "Mi Electric Scooter Pro 2", "profileFamily": "xiaomiClassic", "stack": "xiaomiPlain", "readable": true, "firmwareArchive": "pro2", "hwProtocol": "55 AA"},
+        {"id": "m365", "title": "Xiaomi M365", "profileFamily": "xiaomiClassic", "stack": "xiaomiPlain", "readable": true, "firmwareArchive": "m365", "hwProtocol": "55 AA"}
+      ]
+    }
+  ]
+}

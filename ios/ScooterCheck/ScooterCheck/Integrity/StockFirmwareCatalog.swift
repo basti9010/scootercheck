@@ -11,42 +11,54 @@ enum StockFirmwareCatalog {
         let bms: Set<String>
     }
 
-    /// Max G3 / MAX3 — Joey's Wiki + beobachtete Serienstände.
+    /// Max G3 / MAX3 — Rexzy67 Stock + Joey's Wiki / beobachtete Serienstände (Stand 2026-11-18).
     static let maxG3 = Entry(
-        mcu: ["1.3.9", "1.3.15", "1.4.9", "1.4.12"],
+        mcu: ["1.3.9", "1.3.15", "1.4.8", "1.4.9", "1.4.12", "1.5.0", "1.5.7"],
         vcu: [
-            "1.4.8", "1.5.4", "1.5.5", "1.5.6", "1.5.8", "1.6.2"
+            "1.4.8", "1.5.4", "1.5.5", "1.5.6", "1.5.8", "1.5.13", "1.5.15", "1.6.1", "1.6.2"
         ],
-        ble: ["0.3.5", "0.3.12", "0.3.14", "0.4.0"],
-        bms: ["4.1.2.8", "4.1.3.0", "4.1.4.8", "4.1.6.8"]
+        ble: ["0.3.5", "0.3.12", "0.3.14", "0.4.0", "0.4.5"],
+        bms: ["4.1.2.8", "4.1.3.0", "4.1.4.8", "4.1.5.5", "4.1.6.5", "4.1.6.8"]
     )
 
-    /// Bekannte Serienstände für Max G30 / G2 (öffentlich beobachtete Versionen — unvollständig).
+    /// Max G30 — ScooterHacking OEM-Mirror (neueste DRV 1.8.11 / BLE 1.1.7 / BMS 1.7.4.5).
     static let maxG30Family = Entry(
-        mcu: ["1.6.4", "1.7.0", "1.7.3", "1.8.2", "1.9.0"],
+        mcu: ["1.2.6", "1.4.5", "1.5.1", "1.5.4", "1.6.0", "1.6.3", "1.6.13", "1.7.0", "1.7.3", "1.8.2", "1.8.11", "1.9.0"],
         vcu: ["0.8.0", "0.9.0", "1.0.0", "1.1.0"],
-        ble: ["1.0.6", "1.1.0", "1.1.4", "1.2.0"],
-        bms: ["1.2.6", "1.3.0", "1.3.4", "1.4.0"]
+        ble: ["1.0.6", "1.1.0", "1.1.3", "1.1.4", "1.1.7", "1.2.0"],
+        bms: ["1.2.6", "1.3.0", "1.3.4", "1.4.0", "1.5.3", "1.5.5", "1.5.6", "1.5.8", "1.7.4.5"]
     )
 
-    /// ZT3 Pro — beobachtete Serienstände (unvollständig; Enc2/x3-Karte wie Max G3).
-    /// Neuere Stände (MCU 1.5.x, VCU 1.5.x, BLE 2.1.x, BMS 4.1.x) stammen aus DE-Serienauslesen
-    /// (z. B. SN 1K1D… mit Limit 22 km/h) und Max-G3-überlappenden BMS-/VCU-Versionen.
+    /// Max G2 — ScooterHacking OEM-Mirror (neueste DRV/BLE 1.11.x).
+    static let maxG2 = Entry(
+        mcu: ["1.4.4", "1.4.8", "1.5.1", "1.7.0", "1.7.8", "1.11.1"],
+        vcu: [],
+        ble: ["1.6.10", "1.7.8", "1.11.0"],
+        bms: ["1.7.5.3", "1.7.5.4", "1.7.5.5", "1.7.5.7"]
+    )
+
+    /// ZT3 Pro — Rexzy67 Stock + beobachtete Serienstände.
     static let zt3Pro = Entry(
-        mcu: ["1.0.0", "1.1.0", "1.2.0", "1.2.4", "1.5.2"],
-        vcu: ["1.0.0", "1.1.0", "1.2.0", "1.5.4", "1.5.5", "1.5.6"],
-        ble: ["0.9.0", "1.0.0", "1.0.4", "2.1.13"],
-        bms: ["1.0.0", "1.1.0", "1.2.0", "4.1.2.8", "4.1.3.0", "4.1.4.8", "4.1.6.8"]
+        mcu: ["1.0.0", "1.1.0", "1.2.0", "1.2.4", "1.4.3", "1.5.2"],
+        vcu: ["1.0.0", "1.1.0", "1.2.0", "1.4.11", "1.4.15", "1.5.2", "1.5.4", "1.5.5", "1.5.6"],
+        ble: ["0.9.0", "1.0.0", "1.0.4", "2.1.9", "2.1.12", "2.1.13"],
+        bms: ["1.0.0", "1.1.0", "1.2.0", "4.1.2.8", "4.1.3.0", "4.1.3.9", "4.1.4.8", "4.1.5.5", "4.1.6.8"]
     )
 
-    /// F3 / F3 Pro — beobachtete Serienstände (Enc2/x3-Karte, SN 1EFH… / 1EFC…).
+    /// F3 / F3 Pro — Rexzy67 Stock + beobachtete Serienstände.
     static let ninebotF3 = Entry(
-        mcu: ["2.4.0", "2.3.0", "2.2.0"],
-        vcu: [
-            "1.6.1", "1.5.7", "1.5.0"
-        ],
-        ble: ["0.4.5", "0.4.0", "0.3.14"],
-        bms: ["4.1.6.8", "4.1.4.8", "4.1.3.0"]
+        mcu: ["1.4.1", "1.4.12", "1.5.0", "2.2.0", "2.3.0", "2.4.0"],
+        vcu: ["1.5.0", "1.5.4", "1.5.6", "1.5.7", "1.5.8", "1.5.13", "1.6.1"],
+        ble: ["0.3.12", "0.3.14", "0.4.0", "0.4.5"],
+        bms: ["4.1.3.0", "4.1.4.8", "4.1.5.5", "4.1.6.8"]
+    )
+
+    /// GT3 — Rexzy67 Stock.
+    static let gt3 = Entry(
+        mcu: ["1.5.8"],
+        vcu: ["4.1.3.0"],
+        ble: ["0.2.4"],
+        bms: ["1.8.4", "4.1.3.0", "4.1.3.9", "4.1.5.5"]
     )
 
     static func entry(for profile: ScooterProfile) -> Entry? {
@@ -56,17 +68,43 @@ enum StockFirmwareCatalog {
         case .maxG3:
             bundled = maxG3
             remoteKey = "maxG3"
-        case .maxG30, .maxG2:
+        case .maxG30:
             bundled = maxG30Family
             remoteKey = "maxG30Family"
+        case .maxG2:
+            bundled = maxG2
+            remoteKey = "maxG2"
         case .zt3Pro:
             bundled = zt3Pro
             remoteKey = "zt3Pro"
         case .ninebotF3:
             bundled = ninebotF3
             remoteKey = "ninebotF3"
-        case .gt3, .ninebotF, .ninebotE, .ninebotD, .xiaomiClassic, .xiaomiRecent:
-            // GT3: x3-Map ja, aber kein freigegebener Serien-FW-Katalog (documentedOnly).
+        case .gt3:
+            bundled = gt3
+            remoteKey = "gt3"
+        case .ninebotF:
+            bundled = nil
+            remoteKey = "ninebotF"
+        case .ninebotE:
+            bundled = nil
+            remoteKey = "ninebotE"
+        case .ninebotD:
+            bundled = nil
+            remoteKey = "ninebotD"
+        case .esx:
+            bundled = nil
+            remoteKey = "ninebotEsx"
+        case .airT15:
+            bundled = nil
+            remoteKey = "airT15"
+        case .xiaomiClassic:
+            bundled = nil
+            remoteKey = "xiaomiClassic"
+        case .xiaomiRecent:
+            bundled = nil
+            remoteKey = "xiaomiRecent"
+        case .gt1, .gt2, .maxG65, .p65, .p100:
             bundled = nil
             remoteKey = nil
         }

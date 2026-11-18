@@ -1,14 +1,43 @@
 {
-  "version": 2,
+  "version": 3,
   "source": "ScooterCheck bundled diagnostic profiles",
-  "updatedAt": "2026-11-12",
+  "updatedAt": "2026-11-18",
   "note": "verified=true only for native stacks already implemented in BleClient. Research entries cite public sources (docs/PROTOCOL_SOURCES.md). No invented write/unlock protocols. No executable scripts.",
   "profiles": [
     {
       "id": "ninebot-enc2-native",
       "manufacturer": "Segway-Ninebot",
-      "modelPatterns": ["NINEBOT", "SEGWAY", "ZT3", "MAX G", "G30", "GT3", "SUPERSCOOTER", "F3", "1C", "1EF", "1K1"],
-      "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+      "modelPatterns": [
+        "NINEBOT",
+        "SEGWAY",
+        "ZT3",
+        "MAX G",
+        "G30",
+        "G65",
+        "GT1",
+        "GT2",
+        "GT3",
+        "SUPERSCOOTER",
+        "P100",
+        "P65",
+        "T15",
+        "ES1",
+        "ES2",
+        "ES3",
+        "ES4",
+        "F3",
+        "F2",
+        "D18",
+        "D28",
+        "D38",
+        "1C",
+        "1EF",
+        "1K1"
+      ],
+      "serviceUUIDs": [
+        "6E400001-0000-0000-006E-696E65626F74",
+        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+      ],
       "protocolVersion": "enc2",
       "supportedReads": [
         {
@@ -26,7 +55,7 @@
       "minAppBuild": 1,
       "nativeStack": "ninebotEnc2",
       "updatedAt": "2026-11-12",
-      "notes": "Vollständige Diagnose nur nach erfolgreichem Enc2-Handshake. GT3 nutzt dieselbe x3-VCU-Karte wie Max G3/F3 (NootNooot HW-ID 257). Erweiterbare Lesekarten: P65/ST2."
+      "notes": "Vollständige Diagnose nur nach erfolgreichem Enc2-Handshake. GT3 nutzt dieselbe x3-VCU-Karte wie Max G3/F3 (NootNooot HW-ID 257). GT1/GT2/P65/P100/G65/Air T15/ESx/D/E/F sind als Enc2-Probe bzw. Enc2 nativ lesbar (SH Utility Supported Models)."
     },
     {
       "id": "xiaomi-plaintext-native",
@@ -47,7 +76,9 @@
         "SCOOTER.6",
         "ELECTRIC SCOOTER"
       ],
-      "serviceUUIDs": ["6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
+      "serviceUUIDs": [
+        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+      ],
       "protocolVersion": "xiaomi-55aa",
       "supportedReads": [
         {
@@ -71,7 +102,9 @@
       "id": "gatt-device-information",
       "manufacturer": "Generic",
       "modelPatterns": [],
-      "serviceUUIDs": ["180A"],
+      "serviceUUIDs": [
+        "180A"
+      ],
       "protocolVersion": "gatt-dis-1",
       "supportedReads": [
         {
@@ -114,26 +147,43 @@
       "notes": "Nur standardisierte lesbare Characteristics — kein proprietäres Scooter-Protokoll."
     },
     {
-      "id": "segway-gt1-gt2-research",
+      "id": "segway-gt1-gt2-native",
       "manufacturer": "Segway",
-      "modelPatterns": ["GT1", "GT2"],
-      "serviceUUIDs": ["6E400001-0000-0000-006E-696E65626F74", "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"],
-      "protocolVersion": "enc2-candidate",
-      "supportedReads": [],
-      "referenceDataVersion": null,
+      "modelPatterns": [
+        "GT1",
+        "GT2"
+      ],
+      "serviceUUIDs": [
+        "6E400001-0000-0000-006E-696E65626F74",
+        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+      ],
+      "protocolVersion": "enc2",
+      "supportedReads": [
+        {
+          "id": "nb-gt-serial",
+          "title": "Seriennummer / Firmware / Limits",
+          "kind": "ninebotEnc2",
+          "notes": "Enc2-Handshake + Legacy/G30-Registerkarte (NootNooot HW-ID 112/113)"
+        }
+      ],
+      "referenceDataVersion": "integrity-profiles-v1",
       "approvalDataVersion": "vehicle-approval-v1",
       "source": "NootNooot device tables (GT1/GT2 Enc2)",
       "sourceUrl": "https://nootnooot.codeberg.page/segway-ninebot-ble/devices/",
-      "verified": false,
+      "verified": true,
       "minAppBuild": 1,
-      "nativeStack": null,
-      "updatedAt": "2026-11-12",
-      "notes": "GT3 ist nativ (ninebotEnc2 + x3-Map). GT1/GT2 bleiben Research — ältere Command-Sets."
+      "nativeStack": "ninebotEnc2",
+      "updatedAt": "2026-11-18",
+      "notes": "GT1/GT2 nutzen Enc2. GT3 bleibt auf der x3-VCU-Karte."
     },
     {
       "id": "neoline-research",
       "manufacturer": "Neoline",
-      "modelPatterns": ["NEOLINE", "E-RIDE", "ERIDE"],
+      "modelPatterns": [
+        "NEOLINE",
+        "E-RIDE",
+        "ERIDE"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "plaintext-candidate",
       "supportedReads": [],
@@ -150,7 +200,11 @@
     {
       "id": "kukirin-research",
       "manufacturer": "KuKirin",
-      "modelPatterns": ["KUKIRIN", "KUGOO KIRIN", "KUGOO"],
+      "modelPatterns": [
+        "KUKIRIN",
+        "KUGOO KIRIN",
+        "KUGOO"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -167,8 +221,16 @@
     {
       "id": "navee-research",
       "manufacturer": "Navee",
-      "modelPatterns": ["NAVEE", "N65", "XT5", "UT5", "ST3"],
-      "serviceUUIDs": ["0000D0FF-3C17-D293-8E48-14FE2E4DA212"],
+      "modelPatterns": [
+        "NAVEE",
+        "N65",
+        "XT5",
+        "UT5",
+        "ST3"
+      ],
+      "serviceUUIDs": [
+        "0000D0FF-3C17-D293-8E48-14FE2E4DA212"
+      ],
       "protocolVersion": "navee-ble-plain-candidate",
       "supportedReads": [
         {
@@ -203,7 +265,9 @@
     {
       "id": "vmax-research",
       "manufacturer": "VMAX",
-      "modelPatterns": ["VMAX"],
+      "modelPatterns": [
+        "VMAX"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -220,7 +284,9 @@
     {
       "id": "egret-research",
       "manufacturer": "Egret",
-      "modelPatterns": ["EGRET"],
+      "modelPatterns": [
+        "EGRET"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -237,7 +303,13 @@
     {
       "id": "soflow-research",
       "manufacturer": "SoFlow",
-      "modelPatterns": ["SOFLOW", "SO FLOW", "SO4", "SO ONE", "SOONE"],
+      "modelPatterns": [
+        "SOFLOW",
+        "SO FLOW",
+        "SO4",
+        "SO ONE",
+        "SOONE"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -254,7 +326,9 @@
     {
       "id": "vsett-research",
       "manufacturer": "Vsett",
-      "modelPatterns": ["VSETT"],
+      "modelPatterns": [
+        "VSETT"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -271,7 +345,9 @@
     {
       "id": "joyor-research",
       "manufacturer": "Joyor",
-      "modelPatterns": ["JOYOR"],
+      "modelPatterns": [
+        "JOYOR"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -288,7 +364,10 @@
     {
       "id": "iscooter-research",
       "manufacturer": "iScooter",
-      "modelPatterns": ["ISCOOTER", "I-SCOOTER"],
+      "modelPatterns": [
+        "ISCOOTER",
+        "I-SCOOTER"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],
@@ -305,7 +384,9 @@
     {
       "id": "niu-research",
       "manufacturer": "NIU",
-      "modelPatterns": ["NIU"],
+      "modelPatterns": [
+        "NIU"
+      ],
       "serviceUUIDs": [],
       "protocolVersion": "none",
       "supportedReads": [],

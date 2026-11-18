@@ -2340,7 +2340,9 @@ final class BleClient: NSObject, ObservableObject {
         // Marken / Modellnamen
         let tokens = [
             "NINEBOT", "SEGWAY", "ZT3", "G30", "MAX3", "MAX G3", "G3 PLUS", "MAX G2", "MAXG2",
-            "GT3", "SUPERSCOOTER", "NAVEE", "SOFLOW", "SO FLOW", "SO4", "SO ONE",
+            "MAX G65", "MAXG65", "G65", "GT1", "GT2", "GT3", "SUPERSCOOTER",
+            "P100", "P65", "T15", "AIR T15", "ES1", "ES2", "ES3", "ES4",
+            "NAVEE", "SOFLOW", "SO FLOW", "SO4", "SO ONE",
             "XIAOMI", "XIAOMI.SCOOTER", "M365", "MI ELECTRIC", "MI SCOOTER", "MISCOOTER",
             "SCOOTER 3", "SCOOTER 4", "SCOOTER 5", "SCOOTER 6", "PRO 2", "PRO2", "PRO 3", "PRO3",
             "ESSENTIAL", "KICKSCOOTER"
