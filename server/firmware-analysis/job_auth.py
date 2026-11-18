@@ -1,15 +1,22 @@
-"""Job ownership / authorization for firmware-analysis API (Phase 2.1).
+"""Job ownership / authorization for firmware-analysis API (Phase 2.1 / 2.2B).
 
 Rules:
 - JWT jobs are owned by `user:<sub>` (stable).
 - Shared API tokens alone are NOT a unique owner; require X-ScooterCheck-Client-Id.
-- Admins (JWT role=admin or shared API token used as admin) may access any job.
+- Admins: JWT role=admin, or API token when admin grant is enabled.
+- Client-Id is an ownership binder only — never proof of identity.
 - Legacy jobs without ownerPrincipal: JWT may access if createdByUserId/email matches;
   otherwise deny (no open access via job id alone).
 - Unauthorized → 404 (no job metadata leak).
+
+Migration (API_TOKEN_GRANTS_ADMIN):
+- default "1" keeps current ops scripts working (shared token ⇒ admin).
+- set "0" in production once clients use JWT for users; then shared API_TOKEN
+  is non-admin (jobs only via Client-Id ownership) unless ADMIN_API_TOKEN matches.
 """
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
@@ -18,12 +25,22 @@ from fastapi import Header, HTTPException
 _CLIENT_ID_RE = re.compile(r"^[A-Za-z0-9._:@-]{1,128}$")
 
 
+def _env_truthy(name: str, default: str = "0") -> bool:
+    return os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def api_token_grants_admin() -> bool:
+    """Whether the shared API_TOKEN authenticates as admin (compat default: yes)."""
+    return _env_truthy("API_TOKEN_GRANTS_ADMIN", "1")
+
+
 def is_admin(auth: dict[str, Any]) -> bool:
-    if auth.get("auth") == "api_token":
-        # Shared service token retains admin capability (existing require_admin behavior).
-        return True
     if auth.get("role") == "admin":
         return True
+    if auth.get("auth") == "api_token":
+        if auth.get("adminToken"):
+            return True
+        return api_token_grants_admin()
     return False
 
 

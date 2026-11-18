@@ -126,10 +126,20 @@ ANGR_SYMBOLIC=0            # 1 = kurze Local-Explore je Speed-Site
 
 Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angrTimeoutSec`, `angrMemMb`, `angrCfgDepth`, `angrSymbolic`.
 
-## Auth
+## Auth (Phase 2.1 / 2.2B)
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API
-- und/oder `X-ScooterCheck-Token` wenn `API_TOKEN` gesetzt
+- und/oder `X-ScooterCheck-Token` wenn `API_TOKEN` / `ADMIN_API_TOKEN` gesetzt
+- `X-ScooterCheck-Client-Id` bindet Jobs an einen Client-Principal (Ownership), ist **kein** Identitätsnachweis
+- Admin: JWT `role=admin`, oder `ADMIN_API_TOKEN`, oder (Kompatibilität) shared `API_TOKEN` solange `API_TOKEN_GRANTS_ADMIN=1` (Default)
+- Migration (ohne Prod-Token-Rotation in dieser Phase): App → JWT für Nutzer; Ops setzt `ADMIN_API_TOKEN`; dann `API_TOKEN_GRANTS_ADMIN=0` — shared Token nur noch mit Client-Id für eigene Jobs
+
+## Firmware-Identität / Auto-Funktionen (Phase 2.2B)
+
+- `firmware_identify.py` plausibilisiert Cortex-M-IVT (SP/Reset/Thumb) und schlägt Processor + Base vor — unsichere Layouts werden als `architectureUnknown` markiert
+- Ghidra `-preScript SeedCortexMEntryPoints.java` setzt IVT-Entry-Points (Thumb-Kontext), folgt Calls und scanned Literal-Pool-Thumb-Pointer (ohne manuelle Adressliste)
+- Optional weiterhin `CreateKnownThumbFunctions.java` nur für Ground-Truth-Validierung
+- ENV: `GHIDRA_AUTO_IDENTIFY=1` (Default), `GHIDRA_SEED_IVT=1` (Default)
 
 ## Hetzner
 

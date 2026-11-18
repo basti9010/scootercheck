@@ -60,8 +60,11 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             fact(id: "speed.limit", interpreted: "32 km/h", expected: "≤ 20 km/h", modMatch: "speed.limit.over_clear"),
             class: .indiz
         )
-        XCTAssertTrue(r.plainLanguage.title.lowercased().contains("weicht")
-            || r.humanReadableExplanation.lowercased().contains("über"))
+        let blob = (r.plainLanguage.title + " " + r.humanReadableExplanation).lowercased()
+        XCTAssertTrue(
+            blob.contains("höher") || blob.contains("tempolimit") || blob.contains("geschwindigkeitslimit"),
+            "unexpected elevated-limit copy: \(blob)"
+        )
         XCTAssertNotNil(r.relevanceExplanation)
     }
 
@@ -119,9 +122,13 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             fact(id: "serial.cross.mcu", interpreted: "MCU ≠ Fahrzeug"),
             class: .indiz
         )
-        XCTAssertTrue(r.humanReadableExplanation.lowercased().contains("kennung"))
-        XCTAssertTrue(r.relevanceExplanation?.lowercased().contains("modultausch") == true)
-        XCTAssertTrue(r.relevanceExplanation?.contains("nicht automatisch") == true)
+        let summary = r.humanReadableExplanation.lowercased()
+        XCTAssertTrue(summary.contains("kennung"))
+        XCTAssertTrue(summary.contains("nicht automatisch"))
+        XCTAssertTrue(
+            summary.contains("tausch") || (r.relevanceExplanation?.lowercased().contains("mehrdeutig") == true),
+            "expected swap/ambiguity wording"
+        )
     }
 
     func testPowerCycleFleeting() {

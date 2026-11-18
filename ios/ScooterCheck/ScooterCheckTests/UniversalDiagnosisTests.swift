@@ -219,10 +219,22 @@ final class UniversalDiagnosisTests: XCTestCase {
     // MARK: - Helpers
 
     private func loadProfiles() -> [ScooterDiagnosticProfile] {
-        let path = "/workspace/ios/ScooterCheck/ScooterCheck/scooter_diagnostic_profiles.json"
-        let data = try! Data(contentsOf: URL(fileURLWithPath: path))
-        let file = try! JSONDecoder().decode(ScooterDiagnosticProfileFile.self, from: data)
-        return file.profiles
+        // Must work on GitHub Actions hosts — never hardcode a Cursor VM path.
+        let candidates: [Bundle] = [
+            Bundle(for: ScooterProtocolRegistry.self),
+            .main,
+            Bundle(for: UniversalDiagnosisTests.self),
+        ]
+        for bundle in candidates {
+            if let url = bundle.url(forResource: "scooter_diagnostic_profiles", withExtension: "json"),
+               let data = try? Data(contentsOf: url),
+               let file = try? JSONDecoder().decode(ScooterDiagnosticProfileFile.self, from: data),
+               !file.profiles.isEmpty {
+                return file.profiles
+            }
+        }
+        XCTFail("scooter_diagnostic_profiles.json missing from app/test bundle")
+        return []
     }
 
     private func encodeRemoteProfile(id: String) -> Data {

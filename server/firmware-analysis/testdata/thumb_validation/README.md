@@ -6,4 +6,7 @@ No scooter logic. Built with a Python Thumb emitter (see `meta/ground_truth.json
 - `bin/version_a.bin` / `bin/version_b.bin` — base `0x08000000`, processor `ARM:LE:32:Cortex`
 - Expected diffs documented in `meta/ground_truth.json`
 
-Optional Ghidra preScript: `CreateKnownThumbFunctions.java` with `addr:name` pairs from ground truth.
+Automatic detection (Phase 2.2B): `SeedCortexMEntryPoints.java` seeds Reset from the Cortex-M IVT,
+sets Thumb context, and discovers callees via literal Thumb pointers / call following — no manual
+address list. Optional control script: `CreateKnownThumbFunctions.java` with `addr:name` pairs from
+ground truth (validation only).

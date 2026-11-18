@@ -36,13 +36,17 @@ DEPLOY_PY_FILES=(
   test_stock_diff.py
   test_function_diff.py
   test_job_auth.py
+  test_firmware_identify.py
+  test_auto_function_detection.py
+  test_api_auth_security.py
   test_reference_catalog.py
   test_ghidra_integration.py
   test_ghidra_export_fixtures.py
+  firmware_identify.py
   README.md
 )
 
-# Ghidra scripts (Phase 1 + 2)
+# Ghidra scripts (Phase 1 + 2 + 2.2B)
 DEPLOY_GHIDRA_SCRIPTS=(
   ghidra_scripts/ExportAllDecompiled.java
   ghidra_scripts/ExportSpeedXrefs.java
@@ -50,6 +54,7 @@ DEPLOY_GHIDRA_SCRIPTS=(
   ghidra_scripts/ExportFunctionAnalysis.java
   ghidra_scripts/ExportCallGraph.java
   ghidra_scripts/CreateKnownThumbFunctions.java
+  ghidra_scripts/SeedCortexMEntryPoints.java
 )
 
 SSH=(ssh -i "$SSH_IDENTITY" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new)

@@ -47,7 +47,9 @@ from function_diff import compare_function_analyses, summarize_diff_for_poll
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
 from job_auth import (
+    api_token_grants_admin,
     enrich_auth_with_client_id,
+    is_admin,
     ownership_fields_for_new_job,
     require_job_access,
 )
@@ -93,6 +95,8 @@ from zip_safe import (
 APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.5.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
+# Optional dedicated admin token (preferred over granting admin via shared API_TOKEN).
+ADMIN_API_TOKEN = os.environ.get("ADMIN_API_TOKEN", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256").strip() or "HS256"
 DECRYPT_CMD = os.environ.get("DECRYPT_CMD", "").strip()
@@ -188,8 +192,13 @@ def require_auth(
     bind jobs to a client principal. Without it, only admin can later access.
     """
     auth: dict[str, Any]
-    if API_TOKEN and x_scootercheck_token and x_scootercheck_token == API_TOKEN:
-        auth = {"auth": "api_token"}
+    if x_scootercheck_token:
+        if ADMIN_API_TOKEN and x_scootercheck_token == ADMIN_API_TOKEN:
+            auth = {"auth": "api_token", "adminToken": True}
+        elif API_TOKEN and x_scootercheck_token == API_TOKEN:
+            auth = {"auth": "api_token", "adminToken": False}
+        else:
+            raise HTTPException(status_code=401, detail="missing or invalid credentials")
     elif authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
         if not JWT_SECRET:
@@ -209,7 +218,7 @@ def require_auth(
             "email": payload.get("email"),
             "role": payload.get("role"),
         }
-    elif not API_TOKEN and not JWT_SECRET:
+    elif not API_TOKEN and not ADMIN_API_TOKEN and not JWT_SECRET:
         # Dev mode: open if nothing configured (still bind localhost in prod).
         auth = {"auth": "open"}
     else:
@@ -218,9 +227,7 @@ def require_auth(
 
 
 def require_admin(auth: dict[str, Any] = Depends(require_auth)) -> dict[str, Any]:
-    if auth.get("auth") == "api_token":
-        return auth
-    if auth.get("role") == "admin":
+    if is_admin(auth):
         return auth
     raise HTTPException(status_code=403, detail="admin only")
 
@@ -1006,6 +1013,8 @@ def health() -> dict[str, Any]:
         "ghidraEnabled": ENABLE_GHIDRA,
         "jwtConfigured": bool(JWT_SECRET),
         "apiTokenConfigured": bool(API_TOKEN),
+        "adminApiTokenConfigured": bool(ADMIN_API_TOKEN),
+        "apiTokenGrantsAdmin": api_token_grants_admin(),
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),
