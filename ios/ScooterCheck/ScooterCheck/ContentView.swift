@@ -977,13 +977,13 @@ struct ContentView: View {
                     .foregroundStyle(Theme.accent)
                     .frame(maxWidth: .infinity)
 
-                Text("Möchtest du eine forensische Firmware-Datei vom Handy mit dieser Auslese kombinieren?")
+                Text("Datei mit dieser Scooter-Auslese kombinieren?")
                     .font(Theme.body)
                     .foregroundStyle(Theme.textPrimary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
 
-                Text("Optional. ZIP/BIN/ENC vom Sicherstellungsgerät werden lokal ausgewertet und mit dem Prüfbericht verknüpft — ohne zu flashen.")
+                Text("Optionaler Kombinations-Modus: ZIP/BIN/ENC auswerten und dem Fahrzeugkontext zuordnen (Dual-Source). Alleinige Datei-Auswertung geht jederzeit über Firmware-Forensik im Menü.")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
