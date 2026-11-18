@@ -179,26 +179,40 @@ def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dic
         result["notes"] = notes
         return result
 
+    # Keep request/response small — large snippets often truncate mid-JSON (max_tokens).
+    speeds_compact = [
+        {"kmh": s.get("kmh"), "role": s.get("role"), "source": s.get("source")}
+        for s in (result.get("speedLimits") or [])[:20]
+        if isinstance(s, dict)
+    ]
+    snippet_for_llm = snippet[:8_000]
     payload = {
         "schemaVersion": 1,
-        "speedLimits": result.get("speedLimits") or [],
-        "existingCombos": result.get("comboSummaries") or [],
-        "existingTransitions": result.get("modeTransitions") or [],
-        "existingInputs": result.get("inputHints") or [],
-        "decompileSnippet": snippet,
-        "snippetChars": len(snippet),
+        "speedLimits": speeds_compact,
+        "existingCombos": (result.get("comboSummaries") or [])[:8],
+        "existingTransitions": [
+            {k: t.get(k) for k in ("title", "trigger", "effect")}
+            for t in (result.get("modeTransitions") or [])[:6]
+            if isinstance(t, dict)
+        ],
+        "existingInputs": [
+            {k: i.get(k) for k in ("kind", "detail")}
+            for i in (result.get("inputHints") or [])[:6]
+            if isinstance(i, dict)
+        ],
+        "decompileSnippet": snippet_for_llm,
+        "snippetChars": len(snippet_for_llm),
     }
     system = (
         "Du bist Firmware-Forensik-Assistent für ScooterCheck (Ninebot/Segway VCU/MCU). "
-        "Antworte NUR mit JSON: "
-        '{"comboSummaries":[str],"modeTransitions":[{"id","title","trigger","effect","evidence","confidence"}],'
-        '"inputHints":[{"id","kind","detail","evidence","confidence"}],"notes":[str]}. '
-        "kind ∈ throttle|brake|power|customButton|dualAnalog|unknown. "
+        "Antworte NUR mit einem kompakten JSON-Objekt (kein Markdown, keine Prosa). "
+        "Schema: "
+        '{"comboSummaries":[str≤120],"modeTransitions":[{"id","title","trigger","effect","evidence","confidence"}],'
+        '"inputHints":[{"id","kind","detail","evidence","confidence"}],"notes":[str≤120]}. '
+        "Limits: ≤4 comboSummaries, ≤4 modeTransitions, ≤4 inputHints, ≤3 notes. "
+        "evidence ≤80 Zeichen. kind ∈ throttle|brake|power|customButton|dualAnalog|unknown. "
         "confidence ∈ high|medium|low. "
-        "Keine Speed-km/h-Werte erfinden und keine neuen packed Speeds nennen. "
-        "Nur aus Snippet und existingSpeeds ableiten (Tastenfolgen, Moduswechsel, Eingaben). "
-        "evidence muss eine kurze Ankerzeile aus dem Snippet zitieren. "
-        "Kennzeichne Unsicherheit. Deutsch."
+        "Keine Speed-km/h-Werte erfinden. Nur Tastenfolgen/Moduswechsel/Eingaben aus Snippet. Deutsch."
     )
     try:
         raw = _chat(system, json.dumps(payload, ensure_ascii=False))
@@ -353,7 +367,7 @@ def _chat_anthropic(system: str, user: str) -> str:
     body = json.dumps(
         {
             "model": _model(),
-            "max_tokens": 2048,
+            "max_tokens": 4096,
             "temperature": 0.1,
             "system": system + "\n\nAntworte ausschließlich mit einem JSON-Objekt, ohne Markdown.",
             "messages": [{"role": "user", "content": user}],
@@ -378,11 +392,15 @@ def _chat_anthropic(system: str, user: str) -> str:
         method="POST",
     )
     data = _http_json(req)
+    stop = data.get("stop_reason")
     parts = data.get("content") or []
     texts = [p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text"]
     if not texts:
         raise RuntimeError("anthropic response missing text content")
-    return "\n".join(texts)
+    text = "\n".join(texts)
+    # stop_reason == max_tokens → truncated; _extract_json tries repair.
+    _ = stop
+    return text
 
 
 def _http_json(req: urllib.request.Request) -> dict[str, Any]:
@@ -405,7 +423,82 @@ def _extract_json(text: str) -> dict[str, Any]:
         end = text.rfind("}")
         if start >= 0 and end > start:
             text = text[start : end + 1]
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        repaired = _repair_truncated_json(text)
+        data = json.loads(repaired)
     if not isinstance(data, dict):
         raise ValueError("LLM JSON root must be object")
     return data
+
+
+def _repair_truncated_json(text: str) -> str:
+    """Best-effort close of truncated model JSON (cut mid-string / mid-array)."""
+    s = text.strip()
+    if not s.startswith("{"):
+        start = s.find("{")
+        if start < 0:
+            raise ValueError("no JSON object in LLM output")
+        s = s[start:]
+
+    # If truncated inside a string, close it.
+    in_str = False
+    escape = False
+    for ch in s:
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+    if in_str:
+        s += '"'
+
+    # Drop trailing incomplete key/value junk after last complete comma-separated item.
+    # Prefer cutting back to a safe terminator, then close brackets.
+    for cut in range(len(s), max(len(s) - 400, 0), -1):
+        candidate = s[:cut].rstrip()
+        if candidate.endswith((",", ":")):
+            candidate = candidate[:-1].rstrip()
+        # Close open braces/brackets
+        stack: list[str] = []
+        in_str = False
+        escape = False
+        balanced = True
+        for ch in candidate:
+            if in_str:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch in "{[":
+                stack.append(ch)
+            elif ch == "}":
+                if not stack or stack[-1] != "{":
+                    balanced = False
+                    break
+                stack.pop()
+            elif ch == "]":
+                if not stack or stack[-1] != "[":
+                    balanced = False
+                    break
+                stack.pop()
+        if not balanced or in_str:
+            continue
+        closers = "".join("}" if c == "{" else "]" for c in reversed(stack))
+        try:
+            data = json.loads(candidate + closers)
+            if isinstance(data, dict):
+                return candidate + closers
+        except json.JSONDecodeError:
+            continue
+    raise ValueError("could not repair truncated LLM JSON")

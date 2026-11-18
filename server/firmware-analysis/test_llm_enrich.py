@@ -168,6 +168,15 @@ class EnrichMergeTests(unittest.TestCase):
         self.assertEqual(out["comboSummaries"], ["Test-Kombi"])
         self.assertTrue(any("llm=schema-enriched" in n for n in out["notes"]))
 
+    def test_extract_repairs_truncated_string(self) -> None:
+        truncated = (
+            '{"comboSummaries":["ok"],"modeTransitions":[],'
+            '"inputHints":[],"notes":["dies ist abgeschnitt'
+        )
+        data = llm_enrich._extract_json(truncated)
+        self.assertEqual(data.get("comboSummaries"), ["ok"])
+        self.assertIn("notes", data)
+
 
 def json_dumps(obj: dict) -> str:
     import json
