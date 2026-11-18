@@ -320,6 +320,13 @@ struct FirmwareAdminStats: Equatable, Codable, Sendable {
     var users: [FirmwareAdminUserStats]
 }
 
+struct FirmwareLlmKeyStatus: Equatable, Codable, Sendable {
+    var present: Bool?
+    var usable: Bool?
+    var kind: String?
+    var hint: String?
+}
+
 /// Antwort von `GET /health` des Firmware-Workers (ohne Secrets).
 struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var ok: Bool
@@ -328,6 +335,7 @@ struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var ghidraConfigured: Bool?
     var ghidraEnabled: Bool?
     var llmConfigured: Bool?
+    var llmKeyStatus: FirmwareLlmKeyStatus?
     var llmProvider: String?
     var llmModel: String?
     var jwtConfigured: Bool?

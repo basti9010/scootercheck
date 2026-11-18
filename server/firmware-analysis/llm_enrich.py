@@ -37,7 +37,34 @@ _KEYWORD_RE = re.compile(
 
 
 def llm_configured() -> bool:
-    return bool(_api_key())
+    key = _api_key()
+    if not key:
+        return False
+    # Console/session tokens (sk-ant-usr-…) are not valid Messages API keys.
+    if key.startswith("sk-ant-usr"):
+        return False
+    return True
+
+
+def llm_key_status() -> dict[str, str | bool]:
+    """Diagnostics for /health — never includes the secret."""
+    key = _api_key()
+    if not key:
+        return {"present": False, "usable": False, "kind": "missing"}
+    if key.startswith("sk-ant-api"):
+        return {"present": True, "usable": True, "kind": "anthropic-api"}
+    if key.startswith("sk-ant-usr"):
+        return {
+            "present": True,
+            "usable": False,
+            "kind": "anthropic-usr",
+            "hint": "sk-ant-usr ist kein API-Key — in Claude Console unter API-Schlüssel einen sk-ant-api… Key erstellen",
+        }
+    if key.startswith("sk-ant-"):
+        return {"present": True, "usable": True, "kind": "anthropic-other"}
+    if key.startswith("sk-"):
+        return {"present": True, "usable": True, "kind": "openai-ish"}
+    return {"present": True, "usable": True, "kind": "other"}
 
 
 def llm_provider() -> str:
@@ -131,6 +158,14 @@ def select_decompile_snippet(decompiled_text: str | None, *, max_chars: int = MA
 
 
 def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dict[str, Any]:
+    status = llm_key_status()
+    if status.get("kind") == "anthropic-usr":
+        notes = list(result.get("notes") or [])
+        notes.append(
+            "llm=skipped (LLM_API_KEY ist sk-ant-usr… — bitte sk-ant-api… aus Claude Console API-Schlüssel setzen)"
+        )
+        result["notes"] = notes
+        return result
     if not llm_configured():
         return result
 

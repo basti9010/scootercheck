@@ -339,8 +339,12 @@ struct AdminFirmwareUploadsView: View {
                         Text("KI: \(workerHealth.llmProvider ?? "?") · \(workerHealth.llmModel ?? "Default-Modell")")
                             .font(.caption2)
                             .foregroundStyle(Theme.accent)
+                    } else if let hint = workerHealth.llmKeyStatus?.hint, !hint.isEmpty {
+                        Text(hint)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.warn)
                     } else {
-                        Text("KI aus: Anthropic/OpenAI-Key in /etc/scootercheck/firmware-analysis.env (LLM_API_KEY + LLM_PROVIDER), dann scootercheck-fw neu starten.")
+                        Text("KI aus: API-Key sk-ant-api… setzen via deploy/set-anthropic-api-key.sh (nicht sk-ant-usr).")
                             .font(.caption2)
                             .foregroundStyle(Theme.warn)
                     }

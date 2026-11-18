@@ -37,7 +37,13 @@ from capstone_extract import (
     merge_capstone_into_result,
 )
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
-from llm_enrich import _model as llm_model_name, enrich_result, llm_configured, llm_provider
+from llm_enrich import (
+    _model as llm_model_name,
+    enrich_result,
+    llm_configured,
+    llm_key_status,
+    llm_provider,
+)
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
 from speed_extract import deep_result
 from stock_diff import (
@@ -606,7 +612,10 @@ def process_job(job_id: str) -> None:
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
         result = enrich_result(result, decompiled_text=decompiled_text)
     elif meta.allowLLM:
-        result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")
+        # enrich_result also annotates bad key kinds (e.g. sk-ant-usr)
+        result = enrich_result(result, decompiled_text=decompiled_text)
+        if not any(str(n).startswith("llm=") for n in (result.get("notes") or [])):
+            result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")
 
     parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
     if r2_info.get("ok"):
@@ -650,6 +659,7 @@ def health() -> dict[str, Any]:
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),
+        "llmKeyStatus": llm_key_status(),
         "llmProvider": llm_provider() if llm_configured() else None,
         "llmModel": (llm_model_name() if llm_configured() else None),
         "stockFwDir": str(stock_dir()),
