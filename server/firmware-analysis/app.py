@@ -64,6 +64,13 @@ from unicorn_emulate import (
     unicorn_configured,
 )
 from yara_scan import merge_yara_into_result, scan_firmware as yara_scan, yara_configured
+from zip_safe import (
+    MAX_UPLOAD_BYTES,
+    ZipSafetyError,
+    inspect_zip,
+    safe_extract_member,
+    validate_upload_size,
+)
 
 APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.5.0")
 
@@ -212,6 +219,10 @@ def extract_enc_payload(archive_path: Path, dest_dir: Path) -> tuple[Path, dict[
     info: dict[str, Any] = {}
     suffix = archive_path.suffix.lower()
     if suffix == ".zip":
+        try:
+            inspect_zip(archive_path)
+        except ZipSafetyError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
         with zipfile.ZipFile(archive_path, "r") as zf:
             names = zf.namelist()
             enc_name = next(
@@ -223,13 +234,19 @@ def extract_enc_payload(archive_path: Path, dest_dir: Path) -> tuple[Path, dict[
             if enc_name is None:
                 raise HTTPException(status_code=400, detail="ZIP contains no .enc payload")
             enc_path = dest_dir / "FIRM.bin.enc"
-            with zf.open(enc_name) as src, enc_path.open("wb") as dst:
-                shutil.copyfileobj(src, dst)
+            try:
+                safe_extract_member(zf, enc_name, enc_path)
+            except ZipSafetyError as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
             info_name = next((n for n in names if n.lower().endswith("info.json")), None)
             if info_name:
-                raw = zf.read(info_name)
                 try:
+                    raw = zf.read(info_name)
+                    if len(raw) > 2 * 1024 * 1024:
+                        raise ZipSafetyError("info.json zu groß (>2 MiB).")
                     info = json.loads(raw.decode("utf-8"))
+                except ZipSafetyError as e:
+                    raise HTTPException(status_code=400, detail=str(e)) from e
                 except Exception:
                     info = {}
             return enc_path, info
@@ -820,8 +837,16 @@ async def submit_job(
     archive_path = job_dir / "upload" / safe_upload_name
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     raw = await archive.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="empty upload")
+    try:
+        validate_upload_size(raw, max_bytes=MAX_UPLOAD_BYTES)
+    except ZipSafetyError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    # Extra ZIP safety for .zip uploads (path traversal, zip bombs, symlinks).
+    if safe_upload_name.lower().endswith(".zip") or (archive.filename or "").lower().endswith(".zip"):
+        try:
+            inspect_zip(raw)
+        except ZipSafetyError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     archive_path.write_bytes(raw)
     archive_sha = sha256_bytes(raw)
 

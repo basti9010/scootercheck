@@ -12,13 +12,28 @@ enum FirmwareForensicScorer {
         }
 
         if let comparison, comparison.outcome == .identical {
-            return (.green, "SHA-256 stimmt mit einer importierten/gelisteten Referenz überein. Keine Byte-Abweichung festgestellt.")
+            // Identität ≠ OEM-Authentizität der Referenz.
+            let note = comparison.note.lowercased()
+            let looksVerified = note.contains("hersteller-/intern verifiziert")
+                || note.contains("oem-confirmed")
+                || (note.contains("verifiziert") && !note.contains("nicht") && !note.contains("unbestätigt"))
+            if looksVerified {
+                return (
+                    .green,
+                    "SHA-256 stimmt mit einer als authentisch gekennzeichneten OEM-Referenz überein. Keine Byte-Abweichung festgestellt."
+                )
+            }
+            return (
+                .yellow,
+                "SHA-identisch mit importierter/gelisteter Referenz — Firmwareidentität ja, Referenzvertrauen nicht herstellerseitig bestätigt (kein automatisches GRÜN)."
+            )
         }
 
         if let comparison, comparison.outcome == .different, (comparison.differingBytes ?? 0) > 0 {
+            // Byte-Diff allein ist kein ROT — Ursache (Update/Patch/Manipulation) offen.
             return (
-                .red,
-                "Byte-Vergleich gegen geeignete Referenz zeigt konkrete Abweichung (\(comparison.differingBytes ?? 0) Bytes). Keine automatische Bewertung als illegal."
+                .yellow,
+                "Byte-Vergleich gegen Referenz zeigt Abweichung (\(comparison.differingBytes ?? 0) Bytes). Ohne funktionalen Manipulationsnachweis keine ROT-Einstufung."
             )
         }
 

@@ -148,6 +148,16 @@ enum FirmwareComparer {
         }
 
         if let exact = references.first(where: { $0.sha256 == subjectSHA256 }) {
+            let trustNote: String = {
+                switch exact.verificationStatus {
+                case .verified:
+                    return " Referenzvertrauen: hersteller-/intern verifiziert."
+                case .catalogUnverified:
+                    return " Referenzvertrauen: Katalog (nicht unabhängig verifiziert)."
+                case .userImported:
+                    return " Referenzvertrauen: Nutzerimport (unbestätigt)."
+                }
+            }()
             return FirmwareComparisonResult(
                 outcome: .identical,
                 referenceId: exact.id,
@@ -155,7 +165,7 @@ enum FirmwareComparer {
                 differingBytes: 0,
                 firstDiffOffset: nil,
                 segments: [],
-                note: "SHA-256 identisch mit Referenz „\(label(exact))“."
+                note: "SHA-256 identisch mit Referenz „\(label(exact))“.\(trustNote)"
             )
         }
 

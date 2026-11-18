@@ -5,7 +5,13 @@ enum FirmwareDeepAnalysisMerger {
 
     static func merge(_ parts: [FirmwareDeepAnalysisResult]) -> FirmwareDeepAnalysisResult? {
         guard let first = parts.first else { return nil }
-        guard parts.count > 1 else { return first }
+        guard parts.count > 1 else {
+            var single = first
+            if single.classifiedFindings == nil {
+                single.classifiedFindings = FirmwareEvidenceClassifier.classify(from: single)
+            }
+            return single
+        }
 
         let sources = Set(parts.flatMap(\.sources))
         var speeds = first.speedLimits
@@ -39,7 +45,15 @@ enum FirmwareDeepAnalysisMerger {
         var seenYara = Set<String>()
         yara = yara.filter { seenYara.insert($0.rule).inserted }
 
-        return FirmwareDeepAnalysisResult(
+        // Optionale Server-Felder: vorhandene Werte behalten; fehlende dürfen nichts überschreiben.
+        let ivt = firstNonNil(parts.map(\.cortexMIvt))
+        let pinout = firstNonNil(parts.map(\.boardPinout))
+        var classified = parts.compactMap(\.classifiedFindings).flatMap { $0 }
+        if classified.isEmpty {
+            classified = []
+        }
+
+        var result = FirmwareDeepAnalysisResult(
             schemaVersion: FirmwareDeepAnalysisResult.currentSchemaVersion,
             producedAt: Date(),
             sources: Array(sources).sorted { $0.rawValue < $1.rawValue },
@@ -64,8 +78,15 @@ enum FirmwareDeepAnalysisMerger {
             ),
             stockDiff: stock,
             r2StringsSample: r2Strings,
-            yaraMatches: yara
+            yaraMatches: yara,
+            cortexMIvt: ivt,
+            boardPinout: pinout,
+            classifiedFindings: classified.isEmpty ? nil : classified
         )
+        if result.classifiedFindings == nil {
+            result.classifiedFindings = FirmwareEvidenceClassifier.classify(from: result)
+        }
+        return result
     }
 
     /// Validiert Server-/LLM-JSON: Schema-Version + mindestens ein Speed, Transition/Combo oder Stock-Diff.
@@ -76,6 +97,9 @@ enum FirmwareDeepAnalysisMerger {
             || !result.modeTransitions.isEmpty
             || !result.comboSummaries.isEmpty
             || stockHit
+            || result.cortexMIvt != nil
+            || result.boardPinout != nil
+            || !result.yaraMatches.isEmpty
         guard meaningful else { return nil }
         var copy = result
         if result.sources.contains(.serverLLM) {
@@ -97,7 +121,37 @@ enum FirmwareDeepAnalysisMerger {
                 confidence: t.confidence
             )
         }
+        // Fehlende optionale Felder nicht „löschen“ — validate arbeitet auf einer Kopie.
+        if copy.classifiedFindings == nil {
+            copy.classifiedFindings = FirmwareEvidenceClassifier.classify(from: copy)
+        }
         return copy
+    }
+
+    /// Behält vorhandene optionale Felder, wenn `incoming` sie nicht setzt.
+    static func coalesceOptionals(
+        base: FirmwareDeepAnalysisResult,
+        incoming: FirmwareDeepAnalysisResult
+    ) -> FirmwareDeepAnalysisResult {
+        var out = incoming
+        if out.cortexMIvt == nil { out.cortexMIvt = base.cortexMIvt }
+        if out.boardPinout == nil { out.boardPinout = base.boardPinout }
+        if out.stockDiff == nil { out.stockDiff = base.stockDiff }
+        if out.classifiedFindings == nil { out.classifiedFindings = base.classifiedFindings }
+        if out.yaraMatches.isEmpty, !base.yaraMatches.isEmpty {
+            out.yaraMatches = base.yaraMatches
+        }
+        if out.r2StringsSample.isEmpty, !base.r2StringsSample.isEmpty {
+            out.r2StringsSample = base.r2StringsSample
+        }
+        return out
+    }
+
+    private static func firstNonNil<T>(_ values: [T?]) -> T? {
+        for v in values {
+            if let v { return v }
+        }
+        return nil
     }
 
     private static func mergeSpeeds(_ into: inout [FirmwareSpeedLimitFinding], _ extra: [FirmwareSpeedLimitFinding]) {

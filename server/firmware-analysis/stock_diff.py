@@ -130,6 +130,7 @@ def compare_to_stock(
             limitRegionAffected=False,
             panicRegionAffected=False,
             regionNotes=[],
+            _ref=exact,
         )
 
     best: dict[str, Any] | None = None
@@ -182,6 +183,7 @@ def compare_to_stock(
             totalRefCount=len(refs_all),
             candidateRefCount=len(candidates),
             matchedModels=_ref_models(best),
+            _ref=best,
         )
 
     regions = _region_impact(
@@ -224,6 +226,7 @@ def compare_to_stock(
         limitRegionAffected=bool(regions.get("limitRegionAffected")),
         panicRegionAffected=bool(regions.get("panicRegionAffected")),
         regionNotes=list(regions.get("regionNotes") or []),
+        _ref=best,
     )
 
 
@@ -475,6 +478,7 @@ def _slug(s: str) -> str:
 
 
 def _public_ref(r: dict[str, Any]) -> dict[str, Any]:
+    trust = _trust_fields_for_ref(r)
     return {
         "id": r["id"],
         "label": r["label"],
@@ -488,6 +492,8 @@ def _public_ref(r: dict[str, Any]) -> dict[str, Any]:
         "trusted": _is_trusted(r),
         "sha256": r["sha256"],
         "byteCount": r["byteCount"],
+        "referenceTrust": trust["referenceTrust"],
+        "provenanceVerified": bool(trust["referenceProvenanceVerified"]),
     }
 
 
@@ -679,6 +685,44 @@ def _is_trusted(r: dict[str, Any]) -> bool:
     return _normalize_source(str(r.get("source") or "")) in TRUSTED_SOURCES
 
 
+def _trust_fields_for_ref(ref: dict[str, Any] | None) -> dict[str, Any]:
+    """Map stock source/provenance → client referenceTrust fields.
+
+    Important: `source=oem` in the community library must NOT auto-mean
+    manufacturer-verified provenance. Only an explicit `provenanceVerified`
+    (or notes marker) elevates trust to manufacturerVerified.
+    """
+    if not ref:
+        return {
+            "referenceTrust": "unknown",
+            "referenceProvenanceVerified": False,
+        }
+    src = _normalize_source(str(ref.get("source") or "unknown"))
+    notes = str(ref.get("notes") or "").lower()
+    label = str(ref.get("label") or "").lower()
+    explicit = bool(ref.get("provenanceVerified")) or "provenance=verified" in notes
+    if explicit:
+        return {
+            "referenceTrust": "manufacturerVerified",
+            "referenceProvenanceVerified": True,
+        }
+    if src == "serial" or "serial" in notes or "serie" in notes:
+        return {
+            "referenceTrust": "serialProduction",
+            "referenceProvenanceVerified": False,
+        }
+    # oem/stock/factory without explicit provenance → community library
+    if src in TRUSTED_SOURCES or "community" in notes or "rexzy" in label or "x3-firmware" in notes:
+        return {
+            "referenceTrust": "communityLibrary",
+            "referenceProvenanceVerified": False,
+        }
+    return {
+        "referenceTrust": "unknown",
+        "referenceProvenanceVerified": False,
+    }
+
+
 def _result(**kwargs: Any) -> dict[str, Any]:
     base = {
         "outcome": "skipped",
@@ -700,6 +744,12 @@ def _result(**kwargs: Any) -> dict[str, Any]:
         "limitRegionAffected": None,
         "panicRegionAffected": None,
         "regionNotes": [],
+        "referenceTrust": "unknown",
+        "referenceProvenanceVerified": False,
     }
+    # Auto-fill trust from an optional `_ref` helper key, then drop it.
+    ref = kwargs.pop("_ref", None)
+    if ref is not None and "referenceTrust" not in kwargs:
+        base.update(_trust_fields_for_ref(ref))
     base.update(kwargs)
     return base

@@ -14,6 +14,7 @@ final class AppSettings: ObservableObject {
     private static let findHapticsKey = "app.settings.find.proximityHaptics.v1"
     private static let firmwareServerURLKey = "app.settings.firmware.analysisServerURL.v1"
     private static let firmwareServerTokenKey = "app.settings.firmware.analysisServerToken.v1"
+    private static let firmwareAllowLLMKey = "app.settings.firmware.allowLLM.v1"
 
     @Published var textSize: AppTextSize {
         didSet {
@@ -55,6 +56,13 @@ final class AppSettings: ObservableObject {
     /// Shared Secret für Header `X-ScooterCheck-Token` (leer = Server ohne Token-Check).
     @Published var firmwareAnalysisAPIToken: String {
         didSet { UserDefaults.standard.set(firmwareAnalysisAPIToken, forKey: Self.firmwareServerTokenKey) }
+    }
+
+    /// Optional: schema-gebundene KI-Anreicherung auf dem Analyse-Server.
+    /// Standard `false` — Analyse bleibt ohne externe KI vollständig funktionsfähig.
+    /// Bei `true` können Decompile-Ausschnitte an einen externen KI-Dienst gehen.
+    @Published var firmwareAnalysisAllowLLM: Bool {
+        didSet { UserDefaults.standard.set(firmwareAnalysisAllowLLM, forKey: Self.firmwareAllowLLMKey) }
     }
 
     var appVersionLabel: String {
@@ -117,6 +125,12 @@ final class AppSettings: ObservableObject {
             ? FirmwareServerAnalysisClient.defaultBaseURLString
             : storedFWURL
         firmwareAnalysisAPIToken = defaults.string(forKey: Self.firmwareServerTokenKey) ?? ""
+        // Default false: kein opt-in → keine externen KI-Aufrufe.
+        if defaults.object(forKey: Self.firmwareAllowLLMKey) != nil {
+            firmwareAnalysisAllowLLM = defaults.bool(forKey: Self.firmwareAllowLLMKey)
+        } else {
+            firmwareAnalysisAllowLLM = false
+        }
 
         Theme.textScale = loadedTextSize.scale
     }

@@ -113,7 +113,31 @@ final class FirmwareZipAnalyzerTests: XCTestCase {
             references: [ref]
         )
         XCTAssertEqual(forensic.comparison?.outcome, .identical)
-        XCTAssertEqual(forensic.verdict, .green)
+        // Nutzerimport ohne Provenance → YELLOW (Identität ja, Referenzvertrauen offen).
+        XCTAssertEqual(forensic.verdict, .yellow)
+
+        let verifiedRef = FirmwareReferenceRecord(
+            id: "r2",
+            manufacturer: "Ninebot",
+            model: "max",
+            controllerType: "DRV",
+            hardwareVersion: "STM32",
+            firmwareVersion: "1.0",
+            sha256: FirmwareDigest.sha256Hex(firm),
+            md5: FirmwareDigest.md5Hex(firm),
+            byteCount: firm.count,
+            origin: "OEM lab",
+            verificationStatus: .verified,
+            createdAt: Date(),
+            plaintextBytes: firm
+        )
+        let forensicGreen = FirmwareForensicOrchestrator.analyze(
+            fileName: "same.zip",
+            data: zip,
+            references: [verifiedRef]
+        )
+        XCTAssertEqual(forensicGreen.comparison?.outcome, .identical)
+        XCTAssertEqual(forensicGreen.verdict, .green)
     }
 }
 
