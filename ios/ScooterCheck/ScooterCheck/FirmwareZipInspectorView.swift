@@ -30,7 +30,12 @@ struct FirmwareZipInspectorView: View {
     @State private var refOrigin = ""
     @State private var serverStatusText: String?
     @State private var isServerBusy = false
+    @State private var lastServerJobId: String?
+    @State private var decompilePreview: FirmwareDecompilePreview?
+    @State private var showDecompilePreview = false
     @ObservedObject private var appSettings = AppSettings.shared
+    /// Nach Dateiauswahl automatisch Server-Analyse starten, wenn konfiguriert.
+    private var autoServerAnalyze: Bool { true }
 
     var body: some View {
         NavigationStack {
@@ -108,6 +113,26 @@ struct FirmwareZipInspectorView: View {
             }
             .sheet(isPresented: $showShare) {
                 FirmwareShareSheet(items: shareItems)
+            }
+            .sheet(isPresented: $showDecompilePreview) {
+                NavigationStack {
+                    ScrollView {
+                        Text(decompilePreview?.preview ?? "")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .background(Theme.bg.ignoresSafeArea())
+                    .navigationTitle("Ghidra .c (Vorschau)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Schließen") { showDecompilePreview = false }
+                        }
+                    }
+                }
+                .preferredColorScheme(.dark)
             }
         }
     }
@@ -454,6 +479,17 @@ struct FirmwareZipInspectorView: View {
                         .foregroundStyle(Theme.warn)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                if lastServerJobId != nil {
+                    Button {
+                        Task { await loadDecompilePreview() }
+                    } label: {
+                        Label("Ghidra-.c Vorschau laden", systemImage: "doc.text")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.accent)
+                    .disabled(isServerBusy)
+                }
             }
         } else if FirmwareServerAnalysisClient.fromAppSettings().isConfigured, lastData != nil {
             sectionCard("Deep Analysis (Server)") {
@@ -638,11 +674,16 @@ struct FirmwareZipInspectorView: View {
             }
             lastFileName = url.lastPathComponent
             lastData = data
+            lastServerJobId = nil
+            decompilePreview = nil
             if refModel.isEmpty {
                 let lower = lastFileName.lowercased()
                 if lower.contains("zt3") { refModel = "zt3" }
             }
             reanalyze()
+            if autoServerAnalyze, FirmwareServerAnalysisClient.fromAppSettings().isConfigured {
+                Task { await uploadToAnalysisServer() }
+            }
         } catch {
             report = nil
             errorText = "Datei konnte nicht gelesen werden: \(error.localizedDescription)"
@@ -696,10 +737,11 @@ struct FirmwareZipInspectorView: View {
             models: local?.meta.models ?? [],
             controllerType: local?.meta.type,
             allowDecrypt: true,
-            allowLLM: false
+            allowLLM: true
         )
         do {
             let status = try await client.submit(req, archiveData: data)
+            lastServerJobId = status.jobId.isEmpty ? nil : status.jobId
             serverStatusText = status.message
             if status.state == .failed {
                 errorText = status.message
@@ -708,14 +750,14 @@ struct FirmwareZipInspectorView: View {
             var final = status
             if status.state != .completed, !status.jobId.isEmpty {
                 serverStatusText = "Warte auf Job \(status.jobId.prefix(8))…"
-                // Decrypt + Ghidra kann mehrere Minuten dauern.
+                // Decrypt + Ghidra (+ optional KI) kann mehrere Minuten dauern.
                 for _ in 0..<240 {
                     try await Task.sleep(nanoseconds: 2_000_000_000)
                     final = try await client.poll(jobId: status.jobId)
                     let pct = final.progressPercent
                     serverStatusText = pct > 0
-                        ? "\(final.message) (\(pct)%)"
-                        : final.message
+                        ? "\(final.state.label): \(final.message) (\(pct)%)"
+                        : "\(final.state.label): \(final.message)"
                     if final.state == .completed || final.state == .failed { break }
                 }
             }
@@ -728,18 +770,31 @@ struct FirmwareZipInspectorView: View {
             }
             mergeServerDeepAnalysis(validated)
             var bits: [String] = []
-            if final.plaintextSaved == true, let path = final.plaintextPath {
-                bits.append("Decrypt: \(path)")
-            }
-            if final.decompileSaved == true, let path = final.decompilePath {
-                bits.append("Ghidra: \(path)")
-            }
-            bits.append("\(validated.speedLimits.count) Speed-Stufen")
+            if final.plaintextSaved == true { bits.append("Decrypt OK") }
+            if final.decompileSaved == true { bits.append("Ghidra .c OK") }
+            if validated.sources.contains(.serverLLM) { bits.append("KI") }
+            bits.append("\(validated.speedLimits.count) Speed")
             bits.append("\(validated.comboSummaries.count) Kombi(s)")
             serverStatusText = bits.joined(separator: " · ")
+            if final.decompileSaved == true {
+                await loadDecompilePreview()
+            }
         } catch {
             errorText = error.localizedDescription
             serverStatusText = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func loadDecompilePreview() async {
+        guard let jobId = lastServerJobId else { return }
+        let client = FirmwareServerAnalysisClient.fromAppSettings()
+        do {
+            decompilePreview = try await client.decompilePreview(jobId: jobId)
+            showDecompilePreview = true
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 

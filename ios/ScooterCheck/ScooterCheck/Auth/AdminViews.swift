@@ -319,6 +319,8 @@ struct AdminFirmwareUploadsView: View {
     @State private var filterUser: String?
     @State private var busy = false
     @State private var errorText: String?
+    @State private var preview: FirmwareDecompilePreview?
+    @State private var showPreview = false
 
     var body: some View {
         List {
@@ -361,13 +363,13 @@ struct AdminFirmwareUploadsView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(jobs, id: \.jobId) { job in
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(job.originalFileName?.isEmpty == false ? job.originalFileName! : job.jobId)
                             .font(.headline)
                         Text(job.createdBy ?? "unbekannt")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text("\(job.state.rawValue) · Decrypt \(job.plaintextSaved == true ? "ja" : "nein") · Ghidra .c \(job.decompileSaved == true ? "ja" : "nein")")
+                        Text("\(job.state.label) · Decrypt \(job.plaintextSaved == true ? "ja" : "nein") · Ghidra .c \(job.decompileSaved == true ? "ja" : "nein")")
                             .font(.caption2)
                             .foregroundStyle(Theme.accent)
                         if !job.message.isEmpty {
@@ -375,6 +377,18 @@ struct AdminFirmwareUploadsView: View {
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(3)
+                        }
+                        HStack {
+                            if job.decompileSaved == true {
+                                Button("`.c` Vorschau") {
+                                    Task { await openPreview(job.jobId) }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                            Button("Löschen", role: .destructive) {
+                                Task { await deleteJob(job.jobId) }
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
                     .padding(.vertical, 2)
@@ -394,6 +408,23 @@ struct AdminFirmwareUploadsView: View {
             }
         }
         .task { await reload() }
+        .sheet(isPresented: $showPreview) {
+            NavigationStack {
+                ScrollView {
+                    Text(preview?.preview ?? "")
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
+                .navigationTitle("Ghidra .c")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Schließen") { showPreview = false }
+                    }
+                }
+            }
+        }
     }
 
     private func reload() async {
@@ -420,6 +451,29 @@ struct AdminFirmwareUploadsView: View {
             let client = FirmwareServerAnalysisClient.fromAppSettings()
             let list = try await client.adminListJobs(createdBy: filterUser, limit: 100)
             jobs = list.jobs
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func deleteJob(_ id: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            let client = FirmwareServerAnalysisClient.fromAppSettings()
+            try await client.adminDeleteJob(jobId: id)
+            await reload()
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func openPreview(_ id: String) async {
+        do {
+            let client = FirmwareServerAnalysisClient.fromAppSettings()
+            preview = try await client.decompilePreview(jobId: id)
+            showPreview = true
             errorText = nil
         } catch {
             errorText = error.localizedDescription

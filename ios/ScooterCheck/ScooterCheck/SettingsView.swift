@@ -222,7 +222,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             sectionLabel("Firmware-Analyse-Server")
 
-            Text("ZIP/ENC wird hochgeladen, auf dem Server mit ninebottea entschlüsselt und optional mit Ghidra decompiliert. Auth: dein Login (Bearer). Optionaler API-Token als Zusatz.")
+            Text("ZIP/ENC: ninebottea (tea/xtea) → Ghidra .c → Speed/Combos, optional KI wenn LLM_API_KEY auf dem Server. Dateiauswahl startet die Analyse automatisch. Auth: Login (Bearer); API-Token optional.")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

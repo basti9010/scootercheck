@@ -135,6 +135,39 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return try decode(FirmwareAdminStats.self, from: data)
     }
 
+    func adminDeleteJob(jobId: String) async throws {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL
+            .appendingPathComponent("v1/firmware/admin/jobs")
+            .appendingPathComponent(jobId)
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "DELETE"
+        req.timeoutInterval = 60
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+    }
+
+    func decompilePreview(jobId: String, maxChars: Int = 12_000) async throws -> FirmwareDecompilePreview {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        var comps = URLComponents(
+            url: baseURL
+                .appendingPathComponent("v1/firmware/jobs")
+                .appendingPathComponent(jobId)
+                .appendingPathComponent("decompile"),
+            resolvingAgainstBaseURL: false
+        )
+        comps?.queryItems = [URLQueryItem(name: "preview_chars", value: String(maxChars))]
+        guard let endpoint = comps?.url else { throw FirmwareServerAnalysisError.badURL }
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 60
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        return try decode(FirmwareDecompilePreview.self, from: data)
+    }
+
     // MARK: - Helpers
 
     private func applyAuth(_ req: inout URLRequest) {

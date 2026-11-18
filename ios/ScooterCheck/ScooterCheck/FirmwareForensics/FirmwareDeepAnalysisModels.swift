@@ -158,6 +158,27 @@ enum FirmwareAnalysisJobState: String, Codable, Sendable {
     case completed
     case failed
     case notConfigured
+
+    var label: String {
+        switch self {
+        case .queued: return "Warteschlange"
+        case .decrypting: return "Decrypt"
+        case .decompiling: return "Ghidra"
+        case .extracting: return "Auswertung"
+        case .llmEnrichment: return "KI"
+        case .completed: return "Fertig"
+        case .failed: return "Fehler"
+        case .notConfigured: return "Nicht konfiguriert"
+        }
+    }
+}
+
+struct FirmwareDecompilePreview: Equatable, Codable, Sendable {
+    var jobId: String
+    var path: String?
+    var totalChars: Int
+    var preview: String
+    var truncated: Bool
 }
 
 struct FirmwareAnalysisJobRequest: Equatable, Codable, Sendable {

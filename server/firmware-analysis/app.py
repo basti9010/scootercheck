@@ -26,9 +26,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from ghidra_decompile import ghidra_configured, run_ghidra_decompile
+from llm_enrich import enrich_result, llm_configured
 from speed_extract import deep_result
 
-APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.2.0")
+APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.3.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
@@ -497,9 +498,17 @@ def process_job(job_id: str) -> None:
     if "serverDecompile" not in result["sources"]:
         result["sources"] = list(result["sources"]) + ["serverDecompile"]
 
+    if meta.allowLLM and llm_configured():
+        _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
+        result = enrich_result(result, decompiled_text=decompiled_text)
+    elif meta.allowLLM:
+        result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")
+
     parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
     if job.get("decompileSaved"):
         parts.append(f"Ghidra .c → {job.get('decompilePath')}")
+    if "serverLLM" in (result.get("sources") or []):
+        parts.append("KI-Hinweise")
     _update(
         job,
         result=result,
@@ -522,6 +531,7 @@ def health() -> dict[str, Any]:
         "apiTokenConfigured": bool(API_TOKEN),
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
+        "llmConfigured": llm_configured(),
         "time": _utc_now().isoformat(),
     }
 
@@ -661,11 +671,36 @@ def download_plaintext(job_id: str, _: dict[str, Any] = Depends(require_auth)):
 
 
 @APP.get("/v1/firmware/jobs/{job_id}/decompile")
-def download_decompile(job_id: str, _: dict[str, Any] = Depends(require_auth)):
+def download_decompile(
+    job_id: str,
+    preview_chars: int = 0,
+    _: dict[str, Any] = Depends(require_auth),
+):
     job = load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     path = Path(job.get("decompilePath") or (Path(job["dir"]) / "FIRM.dec.c"))
     if not path.exists():
         raise HTTPException(status_code=404, detail="decompile not available")
+    if preview_chars and preview_chars > 0:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        limit = max(500, min(preview_chars, 200_000))
+        return JSONResponse(
+            {
+                "jobId": job_id,
+                "path": str(path),
+                "totalChars": len(text),
+                "preview": text[:limit],
+                "truncated": len(text) > limit,
+            }
+        )
     return FileResponse(path, filename=path.name, media_type="text/x-c")
+
+
+@APP.delete("/v1/firmware/admin/jobs/{job_id}")
+def admin_delete_job(job_id: str, _: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
+    job = load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    delete_job_artifacts(job)
+    return JSONResponse({"message": "deleted", "jobId": job_id})

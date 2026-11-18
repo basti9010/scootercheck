@@ -88,12 +88,13 @@ def deep_result(
                 by_packed[p] = s
         speeds = sorted(by_packed.values(), key=lambda x: x["kmh"])
 
-    from combo_extract import extract_combos
+    from combo_extract import extract_combos, xref_notes_for_speeds
 
     transitions, inputs, combos = extract_combos(
         speeds=speeds,
         decompiled_text=decompiled_text,
     )
+    xref = xref_notes_for_speeds(decompiled_text, speeds)
 
     max_k = max((s["kmh"] for s in speeds), default=None)
     legal = min((s["kmh"] for s in speeds if s["role"] == "legalCap"), default=None)
@@ -102,8 +103,10 @@ def deep_result(
     summary = "Server-Decrypt + deterministischer Speed-/Combo-Scan."
     if decompiled_text:
         summary = "Server-Decrypt + Ghidra-Decompile + Speed-/Combo-Scan."
+    notes = list(notes)
     if combos:
-        notes = list(notes) + [f"comboHints={len(combos)}"]
+        notes.append(f"comboHints={len(combos)}")
+    notes.extend(xref)
     return {
         "schemaVersion": 1,
         "producedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
