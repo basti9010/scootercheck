@@ -2,10 +2,14 @@ import SwiftUI
 
 /// Firmware-Forensik 2.0 — Read-Only, Dark UI (#12161C / #6BDBC2).
 struct FirmwareZipInspectorView: View {
+    var mode: FirmwareForensicsMode = .fileOnly
     var vehicleContext: FirmwareVehicleContext? = nil
+    var onBackToHub: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var references = FirmwareReferenceStore.shared
+
+    private var combinesWithReadout: Bool { mode == .withReadout }
 
     @State private var report: FirmwareForensicReport?
     @State private var errorText: String?
@@ -54,9 +58,15 @@ struct FirmwareZipInspectorView: View {
                             .font(Theme.caption)
                             .foregroundStyle(Theme.danger)
                     }
+                    if combinesWithReadout, vehicleContext == nil {
+                        missingReadoutBanner
+                    }
+
                     if let report {
                         verdictBanner(report)
-                        dualSourceSection(report)
+                        if combinesWithReadout {
+                            dualSourceSection(report)
+                        }
                         deepAnalysisSection(report)
                         packageSection(report)
                         contentSection(report)
@@ -64,7 +74,7 @@ struct FirmwareZipInspectorView: View {
                         technicalSection(report)
                         comparisonSection(report)
                         indicatorsSection(report)
-                        if vehicleContext != nil {
+                        if combinesWithReadout {
                             vehicleSection(report)
                         }
                         exportSection(report)
@@ -78,12 +88,18 @@ struct FirmwareZipInspectorView: View {
                 .padding(.top, Theme.Space.sm)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Firmware-Forensik")
+            .navigationTitle(combinesWithReadout ? "Mit Auslese" : "Datei allein")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
-                        .foregroundStyle(Theme.accent)
+                    Button(onBackToHub == nil ? "Schließen" : "Zurück") {
+                        if let onBackToHub {
+                            onBackToHub()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .foregroundStyle(Theme.accent)
                 }
             }
             .preferredColorScheme(.dark)
@@ -119,10 +135,33 @@ struct FirmwareZipInspectorView: View {
     }
 
     private var intro: some View {
-        Text("Lokale Firmwaredatei auswerten — nur lesend.")
-            .font(Theme.body)
-            .foregroundStyle(Theme.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text(combinesWithReadout
+                 ? "Firmware-Datei mit der Scooter-Auslese kombinieren — nur lesend."
+                 : "Firmware-Datei allein auswerten — lokal und optional per Server, ohne Fahrzeugbezug.")
+                .font(Theme.body)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(combinesWithReadout ? "Modus: Kombination" : "Modus: Datei allein")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+        }
+    }
+
+    private var missingReadoutBanner: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Keine Auslese vorhanden")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.warn)
+            Text("Lies zuerst einen E-Scooter aus. Du kannst die Datei trotzdem wählen — der Fahrzeugkontext fehlt dann.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     // MARK: - Sections
@@ -603,10 +642,12 @@ struct FirmwareZipInspectorView: View {
             data: data,
             references: references.records,
             preferredReferenceId: preferredReferenceId,
-            vehicleContext: vehicleContext
+            vehicleContext: combinesWithReadout ? vehicleContext : nil
         )
         report = analyzed
-        DualSourceCaseStore.saveForensic(analyzed)
+        if combinesWithReadout {
+            DualSourceCaseStore.saveForensic(analyzed)
+        }
         if refModel.isEmpty, let first = analyzed.meta.models.first {
             refModel = first
         }
@@ -690,7 +731,9 @@ struct FirmwareZipInspectorView: View {
         let parts = [current.deepAnalysis, remote].compactMap { $0 }
         current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remote
         report = current
-        DualSourceCaseStore.saveForensic(current)
+        if combinesWithReadout {
+            DualSourceCaseStore.saveForensic(current)
+        }
     }
 
     private func prepareReferenceImport(url: URL) {

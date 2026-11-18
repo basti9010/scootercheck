@@ -17,6 +17,8 @@ struct ContentView: View {
     @State private var showPrivacy = false
     @State private var showSettings = false
     @State private var showFirmwareZipInspector = false
+    /// `nil` = Hub; sonst direkter Einstieg (z. B. nach Auslese → Kombination).
+    @State private var firmwareForensicsInitialMode: FirmwareForensicsMode? = nil
     /// Erhöht nach Forensik-Import, damit Dual-Source neu bewertet wird.
     @State private var dualSourceRevision = 0
     @ObservedObject private var appSettings = AppSettings.shared
@@ -273,8 +275,13 @@ struct ContentView: View {
             }
             .fullScreenCover(isPresented: $showFirmwareZipInspector, onDismiss: {
                 dualSourceRevision += 1
+                firmwareForensicsInitialMode = nil
             }) {
-                FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
+                FirmwareForensicsHubView(
+                    vehicleContext: firmwareVehicleContext,
+                    initialMode: firmwareForensicsInitialMode,
+                    onClose: { showFirmwareZipInspector = false }
+                )
             }
             .sheet(isPresented: $showAdmin) {
                 NavigationStack {
@@ -831,7 +838,7 @@ struct ContentView: View {
             if dualSourceAssessment.pattern != .insufficient {
                 DualSourcePanicCard(
                     assessment: dualSourceAssessment,
-                    onOpenForensics: { showFirmwareZipInspector = true },
+                    onOpenForensics: { openFirmwareForensics(mode: .withReadout) },
                     onStartComparison: {
                         if unlockRescanPhase == .idle, powerCyclePhase == .idle {
                             startComparisonTest()
@@ -1105,11 +1112,17 @@ struct ContentView: View {
         let shouldRescan = pendingUnlockRescanAfterSubject
         pendingUnlockRescanAfterSubject = false
         if openInspector {
-            showFirmwareZipInspector = true
+            openFirmwareForensics(mode: .withReadout)
         }
         if shouldRescan, let analyzed = result {
             maybeStartUnlockRescanAfterTuning(analyzed)
         }
+    }
+
+    /// `mode == nil` → Hub (Datei allein / Mit Auslese); sonst direkter Einstieg.
+    private func openFirmwareForensics(mode: FirmwareForensicsMode?) {
+        firmwareForensicsInitialMode = mode
+        showFirmwareZipInspector = true
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -2387,7 +2400,7 @@ struct ContentView: View {
                     selected: false
                 ) {
                     setMenuOpen(false)
-                    showFirmwareZipInspector = true
+                    openFirmwareForensics(mode: nil)
                 }
                 if AppFeatureFlags.pedelecAuslesenVisible {
                     sideNavRow(
