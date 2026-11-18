@@ -612,7 +612,7 @@ def process_job(job_id: str) -> None:
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
         result = enrich_result(result, decompiled_text=decompiled_text)
     elif meta.allowLLM:
-        # enrich_result also annotates bad key kinds (e.g. sk-ant-usr)
+        # enrich_result also annotates bad key kinds (e.g. sk-ant-oat OAuth)
         result = enrich_result(result, decompiled_text=decompiled_text)
         if not any(str(n).startswith("llm=") for n in (result.get("notes") or [])):
             result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")

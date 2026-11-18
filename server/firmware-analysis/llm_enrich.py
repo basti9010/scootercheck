@@ -40,8 +40,8 @@ def llm_configured() -> bool:
     key = _api_key()
     if not key:
         return False
-    # Console/session tokens (sk-ant-usr-…) are not valid Messages API keys.
-    if key.startswith("sk-ant-usr"):
+    # OAuth / Claude Code setup tokens — not usable as Console API keys.
+    if key.startswith("sk-ant-oat") or key.startswith("eyJ"):
         return False
     return True
 
@@ -54,11 +54,14 @@ def llm_key_status() -> dict[str, str | bool]:
     if key.startswith("sk-ant-api"):
         return {"present": True, "usable": True, "kind": "anthropic-api"}
     if key.startswith("sk-ant-usr"):
+        # Newer Claude Console personal API keys (valid with x-api-key / Bearer).
+        return {"present": True, "usable": True, "kind": "anthropic-usr"}
+    if key.startswith("sk-ant-oat"):
         return {
             "present": True,
             "usable": False,
-            "kind": "anthropic-usr",
-            "hint": "sk-ant-usr ist kein API-Key — in Claude Console unter API-Schlüssel einen sk-ant-api… Key erstellen",
+            "kind": "anthropic-oauth",
+            "hint": "sk-ant-oat ist ein OAuth/Setup-Token — bitte API-Schlüssel (sk-ant-usr / sk-ant-api) verwenden",
         }
     if key.startswith("sk-ant-"):
         return {"present": True, "usable": True, "kind": "anthropic-other"}
@@ -161,11 +164,9 @@ def select_decompile_snippet(decompiled_text: str | None, *, max_chars: int = MA
 
 def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dict[str, Any]:
     status = llm_key_status()
-    if status.get("kind") == "anthropic-usr":
+    if status.get("kind") == "anthropic-oauth":
         notes = list(result.get("notes") or [])
-        notes.append(
-            "llm=skipped (LLM_API_KEY ist sk-ant-usr… — bitte sk-ant-api… aus Claude Console API-Schlüssel setzen)"
-        )
+        notes.append(f"llm=skipped ({status.get('hint')})")
         result["notes"] = notes
         return result
     if not llm_configured():
@@ -363,11 +364,14 @@ def _chat_anthropic(system: str, user: str) -> str:
     url = base if base.endswith("/v1/messages") else (
         f"{base}/v1/messages" if base.endswith("/v1") else f"{base}/v1/messages"
     )
+    key = _api_key()
     req = urllib.request.Request(
         url,
         data=body,
         headers={
-            "x-api-key": _api_key(),
+            # Prefer Bearer (current docs); keep x-api-key for compatibility.
+            "Authorization": f"Bearer {key}",
+            "x-api-key": key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         },

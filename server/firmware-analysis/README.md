@@ -35,7 +35,7 @@ LLM_MODEL=claude-haiku-4-5-20251001
 
 Dann `systemctl restart scootercheck-fw`. `GET /health` → `llmConfigured: true`, `llmProvider`. Ohne Key: Note `llm=skipped`.
 
-API-Key in der Claude Console unter **API-Keys** anlegen (nicht den Cursor-Account-Key). Key nie in Chat/Git legen — nur auf dem Server in die Env-Datei.
+API-Key in der Claude Console unter **API-Keys** anlegen (`sk-ant-usr…` oder `sk-ant-api…`; nicht OAuth `sk-ant-oat…`, nicht Cursor-Account-Key). Auf dem Server: `setllmkey` (normalisiert Hetzner-Konsolen-`ß`→`-`). Key nie in Chat/Git legen.
 
 ## Stock-Diff (Schritt 2)
 

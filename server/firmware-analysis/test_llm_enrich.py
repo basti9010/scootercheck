@@ -45,19 +45,31 @@ class ProviderTests(unittest.TestCase):
             self.assertTrue(llm_enrich.llm_configured())
             self.assertIn("anthropic.com", llm_enrich._base_url())
 
-    def test_reject_usr_session_key(self) -> None:
+    def test_accept_usr_personal_api_key(self) -> None:
         with mock.patch.dict(
             os.environ,
-            {"LLM_API_KEY": "sk-ant-usr-not-an-api-key", "ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": ""},
+            {"LLM_API_KEY": "sk-ant-usr-personal-api-key", "ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": ""},
+            clear=False,
+        ):
+            self.assertTrue(llm_enrich.llm_configured())
+            self.assertEqual(llm_enrich.llm_key_status().get("kind"), "anthropic-usr")
+
+    def test_normalize_console_eszett(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {"LLM_API_KEY": "skßantßusrßabc", "ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": ""},
+            clear=False,
+        ):
+            self.assertTrue(llm_enrich._api_key().startswith("sk-ant-usr-"))
+
+    def test_reject_oauth_token(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {"LLM_API_KEY": "sk-ant-oat01-token", "ANTHROPIC_API_KEY": "", "OPENAI_API_KEY": ""},
             clear=False,
         ):
             self.assertFalse(llm_enrich.llm_configured())
-            self.assertEqual(llm_enrich.llm_key_status().get("kind"), "anthropic-usr")
-            out = llm_enrich.enrich_result(
-                {"notes": [], "sources": [], "quality": {}},
-                decompiled_text="set_cap(0x1600);",
-            )
-            self.assertTrue(any("sk-ant-usr" in n for n in out["notes"]))
+            self.assertEqual(llm_enrich.llm_key_status().get("kind"), "anthropic-oauth")
 
     def test_explicit_openai(self) -> None:
         with mock.patch.dict(os.environ, {"LLM_PROVIDER": "openai", "LLM_API_KEY": "sk-test"}, clear=False):

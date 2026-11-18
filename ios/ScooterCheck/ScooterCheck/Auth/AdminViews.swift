@@ -344,7 +344,7 @@ struct AdminFirmwareUploadsView: View {
                             .font(.caption2)
                             .foregroundStyle(Theme.warn)
                     } else {
-                        Text("KI aus: API-Key sk-ant-api… setzen via deploy/set-anthropic-api-key.sh (nicht sk-ant-usr).")
+                        Text("KI aus: Claude-API-Key (sk-ant-usr… / sk-ant-api…) via setllmkey setzen.")
                             .font(.caption2)
                             .foregroundStyle(Theme.warn)
                     }
