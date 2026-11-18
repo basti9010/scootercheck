@@ -174,6 +174,7 @@ struct FirmwareSegmentDiff: Equatable, Codable, Sendable {
 }
 
 struct FirmwareComparisonResult: Equatable, Codable, Sendable {
+    /// Vergleichsstatus (comparisonStatus) — Identität / Diff / nicht möglich.
     var outcome: FirmwareComparisonOutcome
     var referenceId: String?
     var referenceLabel: String?
@@ -181,6 +182,32 @@ struct FirmwareComparisonResult: Equatable, Codable, Sendable {
     var firstDiffOffset: Int?
     var segments: [FirmwareSegmentDiff]
     var note: String
+    /// `FirmwareReferenceTrust.rawValue` — nie aus `note` ableiten.
+    var referenceTrust: String? = nil
+    /// Nur true bei explizit verifizierter Referenzherkunft.
+    var referenceProvenanceVerified: Bool? = nil
+    /// true nur bei belastbarem funktionalem Manipulationsnachweis (nicht Byte-Diff allein).
+    var functionalChangeVerified: Bool? = nil
+
+    /// Alias für Ampel-Dokumentation: Vergleichsstatus.
+    var comparisonStatus: FirmwareComparisonOutcome { outcome }
+
+    var resolvedReferenceTrust: FirmwareReferenceTrust {
+        if let raw = referenceTrust, let parsed = FirmwareReferenceTrust(rawValue: raw) {
+            return parsed
+        }
+        if referenceProvenanceVerified == true {
+            return .manufacturerVerified
+        }
+        return .unknown
+    }
+
+    /// GRÜN nur bei Identität + herstellerseitig verifizierter Provenance.
+    var allowsGreenIdentity: Bool {
+        outcome == .identical
+            && referenceProvenanceVerified == true
+            && resolvedReferenceTrust.allowsGreenIdentity
+    }
 }
 
 enum FirmwareForensicVerdict: String, Codable, Sendable {

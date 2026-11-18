@@ -147,6 +147,23 @@ jobs:
       - name: Install gems
         run: bundle install --jobs 4
 
+      # Phase-1 Ampel/Merger/Evidence — fail before TestFlight upload on unit failures.
+      - name: Unit tests (ScooterCheckTests)
+        run: |
+          DEST=$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/{id=$2} END{print id}')
+          if [ -z "$DEST" ]; then
+            echo "::error::No available iPhone simulator"
+            xcrun simctl list devices available || true
+            exit 1
+          fi
+          echo "Using simulator $DEST"
+          xcodebuild test \
+            -project ScooterCheck.xcodeproj \
+            -scheme ScooterCheck \
+            -destination "platform=iOS Simulator,id=$DEST" \
+            -only-testing:ScooterCheckTests \
+            CODE_SIGNING_ALLOWED=NO
+
       - name: Fastlane beta
         run: bundle exec fastlane beta
 

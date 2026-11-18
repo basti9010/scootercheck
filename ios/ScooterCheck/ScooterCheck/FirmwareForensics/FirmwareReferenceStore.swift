@@ -29,6 +29,18 @@ struct FirmwareReferenceRecord: Identifiable, Equatable, Codable, Sendable {
             case .verified: return "Verifiziert"
             }
         }
+
+        /// Strukturiertes Referenzvertrauen für Ampel — keine Textheuristik.
+        var referenceTrust: FirmwareReferenceTrust {
+            switch self {
+            case .verified: return .manufacturerVerified
+            case .catalogUnverified, .userImported: return .communityLibrary
+            }
+        }
+
+        var provenanceVerified: Bool {
+            self == .verified
+        }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -95,7 +107,9 @@ final class FirmwareReferenceStore: ObservableObject {
             createdAt: Date(),
             plaintextBytes: data
         )
-        records.removeAll { $0.sha256 == record.sha256 && $0.model == record.model && $0.controllerType == record.controllerType }
+        records.removeAll {
+            $0.sha256 == record.sha256 && $0.model == record.model && $0.controllerType == record.controllerType
+        }
         records.insert(record, at: 0)
         save()
         return record
@@ -132,7 +146,10 @@ enum FirmwareComparer {
                 differingBytes: nil,
                 firstDiffOffset: nil,
                 segments: [],
-                note: "Vergleich der Image-Bytes wegen Verschlüsselung nicht möglich (nur Metadaten/Prüfsummen des Ciphertexts)."
+                note: "Vergleich der Image-Bytes wegen Verschlüsselung nicht möglich (nur Metadaten/Prüfsummen des Ciphertexts).",
+                referenceTrust: nil,
+                referenceProvenanceVerified: nil,
+                functionalChangeVerified: false
             )
         }
         guard !references.isEmpty else {
@@ -143,21 +160,14 @@ enum FirmwareComparer {
                 differingBytes: nil,
                 firstDiffOffset: nil,
                 segments: [],
-                note: "Keine Referenzfirmware vorhanden — bitte Original-Image importieren."
+                note: "Keine Referenzfirmware vorhanden — bitte Original-Image importieren.",
+                referenceTrust: nil,
+                referenceProvenanceVerified: nil,
+                functionalChangeVerified: false
             )
         }
 
         if let exact = references.first(where: { $0.sha256 == subjectSHA256 }) {
-            let trustNote: String = {
-                switch exact.verificationStatus {
-                case .verified:
-                    return " Referenzvertrauen: hersteller-/intern verifiziert."
-                case .catalogUnverified:
-                    return " Referenzvertrauen: Katalog (nicht unabhängig verifiziert)."
-                case .userImported:
-                    return " Referenzvertrauen: Nutzerimport (unbestätigt)."
-                }
-            }()
             return FirmwareComparisonResult(
                 outcome: .identical,
                 referenceId: exact.id,
@@ -165,7 +175,10 @@ enum FirmwareComparer {
                 differingBytes: 0,
                 firstDiffOffset: nil,
                 segments: [],
-                note: "SHA-256 identisch mit Referenz „\(label(exact))“.\(trustNote)"
+                note: "SHA-256 identisch mit Referenz „\(label(exact))“ (\(exact.verificationStatus.label)).",
+                referenceTrust: exact.verificationStatus.referenceTrust.rawValue,
+                referenceProvenanceVerified: exact.verificationStatus.provenanceVerified,
+                functionalChangeVerified: false
             )
         }
 
@@ -178,7 +191,10 @@ enum FirmwareComparer {
                 differingBytes: nil,
                 firstDiffOffset: nil,
                 segments: [],
-                note: "Keine passende Referenz ausgewählt."
+                note: "Keine passende Referenz ausgewählt.",
+                referenceTrust: nil,
+                referenceProvenanceVerified: nil,
+                functionalChangeVerified: false
             )
         }
 
@@ -191,11 +207,14 @@ enum FirmwareComparer {
                 differingBytes: diff.differingBytes,
                 firstDiffOffset: diff.firstOffset,
                 segments: diff.segments,
-                note: "Byte-Vergleich gegen „\(label(ref))“: \(diff.differingBytes) abweichende Bytes."
+                note: "Byte-Vergleich gegen „\(label(ref))“: \(diff.differingBytes) abweichende Bytes.",
+                referenceTrust: ref.verificationStatus.referenceTrust.rawValue,
+                referenceProvenanceVerified: ref.verificationStatus.provenanceVerified,
+                // Byte-Diff allein ist kein funktionaler Nachweis.
+                functionalChangeVerified: false
             )
         }
 
-        // Known alternate if same model/controller but different hash in store
         if references.contains(where: { $0.model.caseInsensitiveCompare(ref.model) == .orderedSame }) {
             return FirmwareComparisonResult(
                 outcome: .knownAlternate,
@@ -204,7 +223,10 @@ enum FirmwareComparer {
                 differingBytes: nil,
                 firstDiffOffset: nil,
                 segments: [],
-                note: "SHA-256 weicht von Referenz ab; Byte-Vergleich ohne Klartext-Referenzdaten nicht möglich."
+                note: "SHA-256 weicht von Referenz ab; Byte-Vergleich ohne Klartext-Referenzdaten nicht möglich.",
+                referenceTrust: ref.verificationStatus.referenceTrust.rawValue,
+                referenceProvenanceVerified: ref.verificationStatus.provenanceVerified,
+                functionalChangeVerified: false
             )
         }
 
@@ -215,7 +237,10 @@ enum FirmwareComparer {
             differingBytes: nil,
             firstDiffOffset: nil,
             segments: [],
-            note: "Firmware-Hash unbekannt in der Referenzdatenbank."
+            note: "Firmware-Hash unbekannt in der Referenzdatenbank.",
+            referenceTrust: ref.verificationStatus.referenceTrust.rawValue,
+            referenceProvenanceVerified: ref.verificationStatus.provenanceVerified,
+            functionalChangeVerified: false
         )
     }
 

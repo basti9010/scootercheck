@@ -1,6 +1,11 @@
 import Foundation
 
 enum FirmwareForensicScorer {
+    /// Offline-Ampel — nur strukturierte Felder, keine Textsuche in `note`.
+    ///
+    /// - `comparison.outcome` = Vergleichsstatus (comparisonStatus)
+    /// - `comparison.referenceTrust` / `referenceProvenanceVerified` = Referenzvertrauen
+    /// - `comparison.functionalChangeVerified` = funktionaler Manipulationsnachweis
     static func score(
         crypto: FirmwareCryptoAssessment,
         comparison: FirmwareComparisonResult?,
@@ -12,12 +17,7 @@ enum FirmwareForensicScorer {
         }
 
         if let comparison, comparison.outcome == .identical {
-            // Identität ≠ OEM-Authentizität der Referenz.
-            let note = comparison.note.lowercased()
-            let looksVerified = note.contains("hersteller-/intern verifiziert")
-                || note.contains("oem-confirmed")
-                || (note.contains("verifiziert") && !note.contains("nicht") && !note.contains("unbestätigt"))
-            if looksVerified {
+            if comparison.allowsGreenIdentity {
                 return (
                     .green,
                     "SHA-256 stimmt mit einer als authentisch gekennzeichneten OEM-Referenz überein. Keine Byte-Abweichung festgestellt."
@@ -30,14 +30,18 @@ enum FirmwareForensicScorer {
         }
 
         if let comparison, comparison.outcome == .different, (comparison.differingBytes ?? 0) > 0 {
-            // Byte-Diff allein ist kein ROT — Ursache (Update/Patch/Manipulation) offen.
+            if comparison.functionalChangeVerified == true {
+                return (
+                    .red,
+                    "Byte-Abweichung (\(comparison.differingBytes ?? 0) Bytes) plus strukturiert bestätigter funktionaler Manipulationsnachweis. Keine automatische Rechtsaussage."
+                )
+            }
             return (
                 .yellow,
                 "Byte-Vergleich gegen Referenz zeigt Abweichung (\(comparison.differingBytes ?? 0) Bytes). Ohne funktionalen Manipulationsnachweis keine ROT-Einstufung."
             )
         }
 
-        // Encrypted / no reference → gray or yellow
         switch crypto.status {
         case .confirmedByMetadata, .likelyByStructure:
             let nameHint = evidence.contains { $0.category == .filenameHint }
@@ -58,15 +62,26 @@ enum FirmwareForensicScorer {
         }
 
         if comparison?.outcome == .notPossible || comparison == nil {
-            let indicative = evidence.contains { $0.verifiability == .indicative && ($0.category == .modeHint || $0.category == .limitHint) }
-            if indicative {
-                return (.yellow, "Klartext-Image ohne passende Referenz; indikative String-/Parameterhinweise — weitere Prüfung / Referenzimport empfohlen.")
+            let indicative = evidence.contains {
+                $0.verifiability == .indicative && ($0.category == .modeHint || $0.category == .limitHint)
             }
-            return (.yellow, "Klartext-Image ohne passende Referenz — Firmware unbekannt, weitere Prüfung erforderlich.")
+            if indicative {
+                return (
+                    .yellow,
+                    "Klartext-Image ohne passende Referenz; indikative String-/Parameterhinweise — weitere Prüfung / Referenzimport empfohlen."
+                )
+            }
+            return (
+                .yellow,
+                "Klartext-Image ohne passende Referenz — Firmware unbekannt, weitere Prüfung erforderlich."
+            )
         }
 
         if comparison?.outcome == .knownAlternate || comparison?.outcome == .unknown {
-            return (.yellow, "Hash weicht von Referenz ab bzw. ist unbekannt — Auffälligkeit, Wirkung am Fahrzeug nicht aus der Datei allein ableitbar.")
+            return (
+                .yellow,
+                "Hash weicht von Referenz ab bzw. ist unbekannt — Auffälligkeit, Wirkung am Fahrzeug nicht aus der Datei allein ableitbar."
+            )
         }
 
         return (.gray, "Keine ausreichende Datengrundlage für eine abweichende Feststellung.")

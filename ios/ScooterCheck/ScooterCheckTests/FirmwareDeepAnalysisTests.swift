@@ -394,13 +394,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
     }
 
     func testScorerByteDiffIsYellowNotRed() {
-        let crypto = FirmwareCryptoAssessment(
-            status: .plaintext,
-            detectedFormat: "bin",
-            decryptionAvailable: false,
-            decryptionNote: "",
-            evidence: []
-        )
+        let crypto = plaintextCrypto()
         let cmp = FirmwareComparisonResult(
             outcome: .different,
             referenceId: "r",
@@ -408,12 +402,172 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             differingBytes: 4,
             firstDiffOffset: 0,
             segments: [],
-            note: "diff"
+            note: "diff — hersteller-/intern verifiziert oem-confirmed", // text must be ignored
+            referenceTrust: FirmwareReferenceTrust.communityLibrary.rawValue,
+            referenceProvenanceVerified: false,
+            functionalChangeVerified: false
         )
         let (v, _) = FirmwareForensicScorer.score(
             crypto: crypto, comparison: cmp, evidence: [], hasPrimaryPayload: true
         )
         XCTAssertEqual(v, .yellow)
+    }
+
+    func testScorerIgnoresNoteTextForGreen() {
+        let crypto = plaintextCrypto()
+        // Misleading note claiming verified — structured fields say community.
+        let cmp = FirmwareComparisonResult(
+            outcome: .identical,
+            referenceId: "r",
+            referenceLabel: "community",
+            differingBytes: 0,
+            firstDiffOffset: nil,
+            segments: [],
+            note: "SHA identical. Referenzvertrauen: hersteller-/intern verifiziert.",
+            referenceTrust: FirmwareReferenceTrust.communityLibrary.rawValue,
+            referenceProvenanceVerified: false,
+            functionalChangeVerified: false
+        )
+        let (v, _) = FirmwareForensicScorer.score(
+            crypto: crypto, comparison: cmp, evidence: [], hasPrimaryPayload: true
+        )
+        XCTAssertEqual(v, .yellow)
+        XCTAssertTrue(cmp.comparisonStatus == .identical)
+        XCTAssertFalse(cmp.allowsGreenIdentity)
+    }
+
+    func testScorerGreenRequiresStructuredProvenance() {
+        let crypto = plaintextCrypto()
+        let cmp = FirmwareComparisonResult(
+            outcome: .identical,
+            referenceId: "r",
+            referenceLabel: "OEM",
+            differingBytes: 0,
+            firstDiffOffset: nil,
+            segments: [],
+            note: "identical",
+            referenceTrust: FirmwareReferenceTrust.manufacturerVerified.rawValue,
+            referenceProvenanceVerified: true,
+            functionalChangeVerified: false
+        )
+        let (v, _) = FirmwareForensicScorer.score(
+            crypto: crypto, comparison: cmp, evidence: [], hasPrimaryPayload: true
+        )
+        XCTAssertEqual(v, .green)
+    }
+
+    func testScorerRedOnlyWhenFunctionalChangeVerified() {
+        let crypto = plaintextCrypto()
+        var cmp = FirmwareComparisonResult(
+            outcome: .different,
+            referenceId: "r",
+            referenceLabel: "OEM",
+            differingBytes: 40,
+            firstDiffOffset: 0,
+            segments: [],
+            note: "diff",
+            referenceTrust: FirmwareReferenceTrust.manufacturerVerified.rawValue,
+            referenceProvenanceVerified: true,
+            functionalChangeVerified: false
+        )
+        XCTAssertEqual(
+            FirmwareForensicScorer.score(crypto: crypto, comparison: cmp, evidence: [], hasPrimaryPayload: true).0,
+            .yellow
+        )
+        cmp.functionalChangeVerified = true
+        XCTAssertEqual(
+            FirmwareForensicScorer.score(crypto: crypto, comparison: cmp, evidence: [], hasPrimaryPayload: true).0,
+            .red
+        )
+    }
+
+    func testScorerNoPayloadIsGrayNotGreen() {
+        let (v, _) = FirmwareForensicScorer.score(
+            crypto: plaintextCrypto(),
+            comparison: nil,
+            evidence: [],
+            hasPrimaryPayload: false
+        )
+        XCTAssertEqual(v, .gray)
+    }
+
+    func testComparerSetsStructuredTrustFields() {
+        let firm = Data("REF_BYTES_STRUCTURED_TRUST_01".utf8)
+        let verified = FirmwareReferenceRecord(
+            id: "v",
+            manufacturer: "Ninebot",
+            model: "g3",
+            controllerType: "VCU",
+            hardwareVersion: "AT32",
+            firmwareVersion: "1.0",
+            sha256: FirmwareDigest.sha256Hex(firm),
+            md5: FirmwareDigest.md5Hex(firm),
+            byteCount: firm.count,
+            origin: "lab",
+            verificationStatus: .verified,
+            createdAt: Date(),
+            plaintextBytes: firm
+        )
+        let identical = FirmwareComparer.compare(
+            subjectSHA256: verified.sha256,
+            subjectData: firm,
+            encrypted: false,
+            references: [verified],
+            preferredId: nil
+        )
+        XCTAssertEqual(identical.outcome, .identical)
+        XCTAssertEqual(identical.referenceTrust, FirmwareReferenceTrust.manufacturerVerified.rawValue)
+        XCTAssertEqual(identical.referenceProvenanceVerified, true)
+        XCTAssertEqual(identical.functionalChangeVerified, false)
+        XCTAssertTrue(identical.allowsGreenIdentity)
+
+        let community = FirmwareReferenceRecord(
+            id: "c",
+            manufacturer: "Ninebot",
+            model: "g3",
+            controllerType: "VCU",
+            hardwareVersion: "AT32",
+            firmwareVersion: "1.0",
+            sha256: FirmwareDigest.sha256Hex(firm),
+            md5: FirmwareDigest.md5Hex(firm),
+            byteCount: firm.count,
+            origin: "community",
+            verificationStatus: .userImported,
+            createdAt: Date(),
+            plaintextBytes: firm
+        )
+        let sameHash = FirmwareComparer.compare(
+            subjectSHA256: community.sha256,
+            subjectData: firm,
+            encrypted: false,
+            references: [community],
+            preferredId: nil
+        )
+        XCTAssertEqual(sameHash.referenceTrust, FirmwareReferenceTrust.communityLibrary.rawValue)
+        XCTAssertEqual(sameHash.referenceProvenanceVerified, false)
+        XCTAssertFalse(sameHash.allowsGreenIdentity)
+
+        var tweaked = firm
+        tweaked[0] ^= 0xFF
+        let diff = FirmwareComparer.compare(
+            subjectSHA256: FirmwareDigest.sha256Hex(tweaked),
+            subjectData: tweaked,
+            encrypted: false,
+            references: [verified],
+            preferredId: verified.id
+        )
+        XCTAssertEqual(diff.outcome, .different)
+        XCTAssertEqual(diff.functionalChangeVerified, false)
+    }
+
+    private func plaintextCrypto() -> FirmwareCryptoAssessment {
+        FirmwareCryptoAssessment(
+            status: .plaintext,
+            detectedFormat: "bin",
+            decryptionAvailable: false,
+            decryptionNote: "",
+            evidence: []
+        )
     }
 
     private func makeDeep(
