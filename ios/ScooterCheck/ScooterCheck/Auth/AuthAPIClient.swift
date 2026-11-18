@@ -166,14 +166,27 @@ enum AuthAPIClient {
     }
 
     private static func parseError(_ data: Data) -> String? {
-        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let detail = obj["detail"] as? String { return detail }
+            if let detail = obj["detail"] as? [[String: Any]],
+               let msg = detail.first?["msg"] as? String {
+                return msg
+            }
         }
-        if let detail = obj["detail"] as? String { return detail }
-        if let detail = obj["detail"] as? [[String: Any]],
-           let msg = detail.first?["msg"] as? String {
-            return msg
+        guard let raw = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty else { return nil }
+        let lower = raw.lowercased()
+        if lower.contains("<html") || lower.contains("<!doctype") {
+            if lower.contains("502") || lower.contains("bad gateway") {
+                return "Bad Gateway — Server kurz nicht erreichbar"
+            }
+            if lower.contains("503") {
+                return "Service kurz nicht verfügbar"
+            }
+            return "Unerwartete Antwort vom Server"
         }
-        return nil
+        if raw.count > 200 { return String(raw.prefix(200)) + "…" }
+        return raw
     }
 }

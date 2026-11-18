@@ -18,9 +18,34 @@ enum FirmwareServerAnalysisError: Error, LocalizedError {
         switch self {
         case .notConfigured: return "Kein Analyse-Server konfiguriert."
         case .badURL: return "Ungültige Server-URL."
-        case .httpStatus(let c, let b): return "Server-Fehler \(c): \(b)"
+        case .httpStatus(let c, let b):
+            let hint = Self.humanizeHTTPBody(b)
+            return hint.isEmpty ? "Server-Fehler \(c)" : "Server-Fehler \(c): \(hint)"
         case .decode(let e): return "Antwort nicht lesbar: \(e.localizedDescription)"
         }
+    }
+
+    /// Strip nginx/HTML error pages so the UI shows a short status hint.
+    private static func humanizeHTTPBody(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        let lower = trimmed.lowercased()
+        if lower.contains("<html") || lower.contains("<!doctype") {
+            if lower.contains("502") || lower.contains("bad gateway") {
+                return "Bad Gateway (Server kurz nicht erreichbar — bitte erneut versuchen)"
+            }
+            if lower.contains("503") || lower.contains("service unavailable") {
+                return "Service kurz nicht verfügbar — bitte erneut versuchen"
+            }
+            if lower.contains("504") || lower.contains("gateway timeout") {
+                return "Zeitüberschreitung am Gateway — bitte erneut versuchen"
+            }
+            return "Unerwartete HTML-Antwort vom Proxy"
+        }
+        if trimmed.count > 280 {
+            return String(trimmed.prefix(280)) + "…"
+        }
+        return trimmed
     }
 }
 

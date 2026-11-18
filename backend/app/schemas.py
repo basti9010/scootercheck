@@ -31,7 +31,8 @@ class AdminResetPasswordRequest(BaseModel):
 
 class UserOut(BaseModel):
     id: str
-    email: EmailStr
+    # Plain str: seed accounts may use .local which EmailStr rejects.
+    email: str
     display_name: Optional[str] = None
     role: UserRole
     status: UserStatus
