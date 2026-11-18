@@ -3,7 +3,7 @@ import XCTest
 
 final class FirmwareDeepAnalysisTests: XCTestCase {
 
-    func testKnownCatalogMatchesG3PanicbuttonHash() {
+    func testKnownCatalogMatchesG3PanicbuttonHash() throws {
         let entry = FirmwareKnownCFWCatalog.match(
             md5: "0a567b134861a5f9f7e4683e63d8f4a8",
             sha256: "929a01874b64c1e7dd075648d45d0c12305bff9bb3cc236d58a3fb6e1dba2180"

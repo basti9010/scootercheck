@@ -49,8 +49,8 @@ final class ElevatedLimitVerdictTests: XCTestCase {
     func testStockLimit22IsNotManipulation() {
         let reading = IntegrityReading(
             serialDisplay: "1K1DA2616P1917",
-            speedLimitKmh: 22,
             speedMaxKmh: 22,
+            speedLimitKmh: 22,
             peakSpeedKmh: 18,
             fwMcu: "1.5.2",
             fwBle: "2.1.13",
@@ -69,12 +69,12 @@ final class ElevatedLimitVerdictTests: XCTestCase {
         let stock = IntegrityReading(
             serialDisplay: "1K1DA2616P1917",
             speedLimitKmh: 22,
-            gearMode: 3,
-            gearMax: 3,
             fwMcu: "1.5.2",
             fwBle: "2.1.13",
             fwBms: "4.1.6.8",
-            fwVcu: "1.5.5"
+            fwVcu: "1.5.5",
+            gearMode: 3,
+            gearMax: 3
         )
         let stockAssessment = EvidenceEngine.evaluate(reading: stock, profile: .zt3ProD)
         XCTAssertNil(stockAssessment.results.first { $0.fact.markerID == "gear.max" })
@@ -82,12 +82,12 @@ final class ElevatedLimitVerdictTests: XCTestCase {
         let unlocked = IntegrityReading(
             serialDisplay: "1K1DA2616P1917",
             speedLimitKmh: 22,
-            gearMode: 4,
-            gearMax: 4,
             fwMcu: "1.5.2",
             fwBle: "2.1.13",
             fwBms: "4.1.6.8",
-            fwVcu: "1.5.5"
+            fwVcu: "1.5.5",
+            gearMode: 4,
+            gearMax: 4
         )
         let unlockedAssessment = EvidenceEngine.evaluate(reading: unlocked, profile: .zt3ProD)
         XCTAssertNotNil(unlockedAssessment.results.first { $0.fact.markerID == "gear.max" })
