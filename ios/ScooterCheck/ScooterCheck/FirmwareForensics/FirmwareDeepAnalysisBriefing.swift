@@ -52,6 +52,10 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
             bullets.append("KI hat Combos/Modi ergänzt (schema-geprüft) — kein Beweis am Fahrzeug.")
         }
 
+        if let hyp = deep.boardPinout?.defaultComboHypothesis, !hyp.isEmpty {
+            bullets.append("Board-Heuristik Kombi: \(hyp) — unbestätigt, Live-Vergleichstest nötig.")
+        }
+
         if !actionable.isEmpty {
             bullets.append("Vermutete Bedienung: siehe „Vermutete Tastenfolge“ unten — Live-Test nötig.")
         } else if !humanT.isEmpty {

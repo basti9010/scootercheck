@@ -162,7 +162,12 @@ def select_decompile_snippet(decompiled_text: str | None, *, max_chars: int = MA
     return out or text[:max_chars]
 
 
-def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dict[str, Any]:
+def enrich_result(
+    result: dict[str, Any],
+    *,
+    decompiled_text: str | None,
+    limit_c_text: str | None = None,
+) -> dict[str, Any]:
     status = llm_key_status()
     if status.get("kind") == "anthropic-oauth":
         notes = list(result.get("notes") or [])
@@ -172,7 +177,14 @@ def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dic
     if not llm_configured():
         return result
 
-    snippet = select_decompile_snippet(decompiled_text)
+    # Prefer focused limit-function decompile over full dump when available.
+    focused = (limit_c_text or "").strip()
+    if focused and len(focused) > 80:
+        snippet = focused
+        snippet_kind = "limits.c"
+    else:
+        snippet = select_decompile_snippet(decompiled_text)
+        snippet_kind = "full.c"
     if not snippet and not result.get("speedLimits"):
         notes = list(result.get("notes") or [])
         notes.append("llm=skipped (no decompile snippet / speeds)")
@@ -185,7 +197,7 @@ def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dic
         for s in (result.get("speedLimits") or [])[:20]
         if isinstance(s, dict)
     ]
-    snippet_for_llm = snippet[:8_000]
+    snippet_for_llm = snippet[:10_000]
     payload = {
         "schemaVersion": 1,
         "speedLimits": speeds_compact,
@@ -201,7 +213,12 @@ def enrich_result(result: dict[str, Any], *, decompiled_text: str | None) -> dic
             if isinstance(i, dict)
         ],
         "decompileSnippet": snippet_for_llm,
+        "snippetKind": snippet_kind,
         "snippetChars": len(snippet_for_llm),
+        "boardPinout": result.get("boardPinout"),
+        "limitSliceRoles": result.get("limitSlices") and [
+            r for s in (result.get("limitSlices") or [])[:6] for r in (s.get("pinLabels") or [])
+        ][:12],
     }
     system = (
         "Du bist Firmware-Forensik-Assistent für ScooterCheck (Ninebot/Segway VCU/MCU). "

@@ -38,6 +38,8 @@ from capstone_extract import (
 )
 from cortex_m_ivt import analyze_firmware as ivt_analyze, merge_ivt_into_result
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
+from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
+from limit_slice import analyze as limit_slice_analyze, merge_into_result as merge_limit_slice
 from llm_enrich import (
     _model as llm_model_name,
     enrich_result,
@@ -512,6 +514,7 @@ def process_job(job_id: str) -> None:
     notes.append(f"plaintextSaved={stored}")
 
     decompiled_text: str | None = None
+    limit_c_text: str | None = None
     _update(job, decompileSaved=False, decompilePath=None)
 
     r2_info: dict[str, Any] = {"ok": False, "speeds": [], "notes": [], "stringsSample": []}
@@ -535,19 +538,24 @@ def process_job(job_id: str) -> None:
         job_c = job_dir / "FIRM.dec.c"
         # Serialize Ghidra so parallel uploads don't OOM the VPS.
         speed_json = out_c.with_suffix(".speeds.json")
+        limit_c = out_c.with_suffix(".limits.c")
         with _GHIDRA_LOCK:
-            _update(job, message="Ghidra Headless decompiliert → .c + Speed-Xrefs…")
+            _update(job, message="Ghidra Headless → .c + Speed-Xrefs + Limit-Funktionen…")
             ok_g, msg_g = run_ghidra_decompile(
                 stored,
                 out_c,
                 processor=GHIDRA_PROCESSOR,
                 base_addr=GHIDRA_BASE_ADDR,
                 speed_json=speed_json,
+                limit_c=limit_c,
             )
         notes.append(f"ghidra={msg_g}")
         if ok_g:
             shutil.copy2(out_c, job_c)
             decompiled_text = out_c.read_text(encoding="utf-8", errors="replace")
+            if limit_c.is_file() and limit_c.stat().st_size > 0:
+                limit_c_text = limit_c.read_text(encoding="utf-8", errors="replace")
+                shutil.copy2(limit_c, job_dir / "FIRM.limits.c")
             ghidra_xrefs = load_speed_xrefs(speed_json)
             notes.extend(ghidra_xrefs.get("notes") or [])
             _update(
@@ -640,17 +648,47 @@ def process_job(job_id: str) -> None:
         }
     result = merge_angr_into_result(result, ang_info)
 
-    _update(job, progressPercent=88, message="Stock-Diff gegen Referenzbibliothek…")
+    _update(job, progressPercent=87, message="Limit-Slice / Board-Pinout…")
+    slice_info = limit_slice_analyze(
+        stored,
+        models=models,
+        controller_type=ctype,
+        display_name=display,
+        filename=job.get("originalFileName") or safe_name,
+        decompiled_text=decompiled_text,
+        limit_c_text=limit_c_text,
+    )
+    result = merge_limit_slice(result, slice_info)
+
+    _update(job, progressPercent=88, message="Input-Probe (Unicorn Dual-Hebel)…")
+    probe_info = input_probe_analyze(
+        stored,
+        models=models,
+        controller_type=ctype,
+        display_name=display,
+        filename=job.get("originalFileName") or safe_name,
+    )
+    result = merge_input_probe(result, probe_info)
+
+    _update(job, progressPercent=89, message="Stock-Diff gegen Referenzbibliothek…")
     stock = compare_to_stock(plaintext, models=models, controller_type=ctype)
     result["stockDiff"] = stock
     result.setdefault("notes", []).append(f"stockDiff={stock.get('outcome')}: {stock.get('note')}")
 
     if meta.allowLLM and llm_configured():
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
-        result = enrich_result(result, decompiled_text=decompiled_text)
+        result = enrich_result(
+            result,
+            decompiled_text=decompiled_text,
+            limit_c_text=limit_c_text,
+        )
     elif meta.allowLLM:
         # enrich_result also annotates bad key kinds (e.g. sk-ant-oat OAuth)
-        result = enrich_result(result, decompiled_text=decompiled_text)
+        result = enrich_result(
+            result,
+            decompiled_text=decompiled_text,
+            limit_c_text=limit_c_text,
+        )
         if not any(str(n).startswith("llm=") for n in (result.get("notes") or [])):
             result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")
 

@@ -47,6 +47,7 @@ def run_ghidra_decompile(
     base_addr: str = "0x08000000",
     timeout_sec: int = 600,
     speed_json: Path | None = None,
+    limit_c: Path | None = None,
 ) -> tuple[bool, str]:
     headless = _headless_bin()
     if not headless:
@@ -60,6 +61,9 @@ def run_ghidra_decompile(
     if speed_json is None:
         speed_json = output_c.with_suffix(".speeds.json")
     speed_json.parent.mkdir(parents=True, exist_ok=True)
+    if limit_c is None:
+        limit_c = output_c.with_suffix(".limits.c")
+    limit_c.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="ghidra-proj-") as proj:
         proj_dir = Path(proj)
@@ -86,6 +90,9 @@ def run_ghidra_decompile(
             "-postScript",
             "ExportSpeedXrefs.java",
             str(speed_json),
+            "-postScript",
+            "ExportLimitFunctions.java",
+            str(limit_c),
             "-deleteProject",
         ]
         try:
@@ -106,10 +113,12 @@ def run_ghidra_decompile(
             return False, f"ghidra exit {proc.returncode}: {log_tail}"
         if not output_c.exists() or output_c.stat().st_size == 0:
             return False, f"ghidra produced empty decompile: {log_tail}"
-        xref_note = ""
+        notes = [f"decompiled {output_c.stat().st_size} bytes"]
         if speed_json.exists() and speed_json.stat().st_size > 0:
-            xref_note = f", speedXrefs {speed_json.stat().st_size}B"
-        return True, f"decompiled {output_c.stat().st_size} bytes{xref_note}"
+            notes.append(f"speedXrefs {speed_json.stat().st_size}B")
+        if limit_c.exists() and limit_c.stat().st_size > 0:
+            notes.append(f"limits.c {limit_c.stat().st_size}B")
+        return True, ", ".join(notes)
 
 
 def load_speed_xrefs(speed_json: Path) -> dict[str, Any]:

@@ -34,6 +34,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var yaraMatches: [FirmwareYaraMatch] = []
     /// Cortex-M Vektortabelle (Server-Heuristik).
     var cortexMIvt: FirmwareCortexMIvt? = nil
+    /// Board-/Pinout-Heuristik vom Server (investigativ).
+    var boardPinout: FirmwareBoardPinoutHint? = nil
 
     static let currentSchemaVersion = 1
 
@@ -50,7 +52,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case schemaVersion, producedAt, sources, subjectSHA256, packageDisplayName
         case models, controllerType, speedLimits, maxSpeedKmhInCode, legalCapKmhInCode
         case modeTransitions, inputHints, comboSummaries, notes, caveats, quality
-        case stockDiff, r2StringsSample, yaraMatches, cortexMIvt
+        case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout
     }
 
     init(from decoder: Decoder) throws {
@@ -76,6 +78,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         r2StringsSample = try c.decodeIfPresent([String].self, forKey: .r2StringsSample) ?? []
         yaraMatches = try c.decodeIfPresent([FirmwareYaraMatch].self, forKey: .yaraMatches) ?? []
         cortexMIvt = try c.decodeIfPresent(FirmwareCortexMIvt.self, forKey: .cortexMIvt)
+        boardPinout = try c.decodeIfPresent(FirmwareBoardPinoutHint.self, forKey: .boardPinout)
     }
 
     init(
@@ -98,7 +101,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         stockDiff: FirmwareStockDiffResult? = nil,
         r2StringsSample: [String] = [],
         yaraMatches: [FirmwareYaraMatch] = [],
-        cortexMIvt: FirmwareCortexMIvt? = nil
+        cortexMIvt: FirmwareCortexMIvt? = nil,
+        boardPinout: FirmwareBoardPinoutHint? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -120,6 +124,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.r2StringsSample = r2StringsSample
         self.yaraMatches = yaraMatches
         self.cortexMIvt = cortexMIvt
+        self.boardPinout = boardPinout
     }
 
     func encode(to encoder: Encoder) throws {
@@ -144,6 +149,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encode(r2StringsSample, forKey: .r2StringsSample)
         try c.encode(yaraMatches, forKey: .yaraMatches)
         try c.encodeIfPresent(cortexMIvt, forKey: .cortexMIvt)
+        try c.encodeIfPresent(boardPinout, forKey: .boardPinout)
     }
 }
 
@@ -255,6 +261,12 @@ struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
     var resetHandler: String?
     var resetFileOffset: Int?
     var resetThumb: Bool?
+}
+
+struct FirmwareBoardPinoutHint: Equatable, Codable, Sendable {
+    var id: String?
+    var notes: String?
+    var defaultComboHypothesis: String?
 }
 struct FirmwareStockList: Equatable, Codable, Sendable {
     var stockFwDir: String?

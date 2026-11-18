@@ -72,6 +72,16 @@ apt-get install -y radare2
 
 Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE=0` / `ENABLE_YARA=0`.
 
+## Limit-Slice / Pinout / Input-Probe (Kombi-Forensik)
+
+Nach Speed-Scan:
+
+1. **ExportLimitFunctions.java** — Ghidra decompiliert nur Funktionen mit Speed-Immediates (+ Caller) → `.limits.c` (bessere KI-/Combo-Qualität)
+2. **limit_slice** — Capstone-Rückwärts von Limit-Stores zu cmp/ldr; mappt Adressen über `board_pinouts.py` (ZT3 AT32, G3, F3…)
+3. **input_probe** — kurze Unicorn-Fenster mit Dual-Hebel-Registerpresets; meldet Sensitivität als Hypothese
+
+Alles investigativ — kein Beweis ohne Live-Vergleichstest. Abschaltbar: `ENABLE_LIMIT_SLICE=0`, `ENABLE_INPUT_PROBE=0`.
+
 ## Unicorn + Pfadanalyse (Schritt 7–8)
 
 - **Unicorn**: kurze Emulation um Speed-Immediates (`pip install unicorn`, `ENABLE_UNICORN=0` zum Abschalten)
