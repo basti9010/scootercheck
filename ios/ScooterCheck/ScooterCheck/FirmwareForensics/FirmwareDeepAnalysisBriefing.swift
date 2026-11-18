@@ -105,6 +105,7 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
     }
 
     /// Refresh Ampel after successful server decrypt/analysis (overrides stale GRAU/encrypted).
+    /// Retrigger: TestFlight path filter needs an ios/ change.
     static func refreshedVerdict(
         current: FirmwareForensicVerdict,
         rationale: String,
