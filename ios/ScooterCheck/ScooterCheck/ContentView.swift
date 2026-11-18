@@ -21,7 +21,7 @@ struct ContentView: View {
     @State private var dualSourceRevision = 0
     @ObservedObject private var appSettings = AppSettings.shared
     @EnvironmentObject private var auth: AuthSessionStore
-    @State private var showAdminUsers = false
+    @State private var showAdmin = false
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
@@ -276,9 +276,9 @@ struct ContentView: View {
             }) {
                 FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
             }
-            .sheet(isPresented: $showAdminUsers) {
+            .sheet(isPresented: $showAdmin) {
                 NavigationStack {
-                    AdminUsersView(auth: auth)
+                    AdminHubView(auth: auth)
                 }
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
@@ -2446,12 +2446,12 @@ struct ContentView: View {
                 }
                 if auth.isAdmin {
                     sideNavRow(
-                        title: "Benutzer & Domains",
-                        systemImage: "person.badge.shield.checkmark",
+                        title: "Admin",
+                        systemImage: "lock.shield",
                         selected: false
                     ) {
                         setMenuOpen(false)
-                        showAdminUsers = true
+                        showAdmin = true
                     }
                 }
                 sideNavRow(
