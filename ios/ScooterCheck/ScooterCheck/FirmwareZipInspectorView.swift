@@ -380,12 +380,28 @@ struct FirmwareZipInspectorView: View {
                     }
                 }
                 if !deep.comboSummaries.isEmpty {
-                    Text("Combos")
+                    Text("Kombinationen")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
                         .padding(.top, 4)
                     ForEach(deep.comboSummaries, id: \.self) { c in
                         Text("• \(c)")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                } else {
+                    Text("Kombinationen: noch keine — Server-Analyse oder bekannte CFW-Signatur nötig.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                        .padding(.top, 4)
+                }
+                if !deep.inputHints.isEmpty {
+                    Text("Eingaben")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.inputHints) { hint in
+                        Text("• \(hint.kind.label): \(hint.detail)")
                             .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -719,6 +735,7 @@ struct FirmwareZipInspectorView: View {
                 bits.append("Ghidra: \(path)")
             }
             bits.append("\(validated.speedLimits.count) Speed-Stufen")
+            bits.append("\(validated.comboSummaries.count) Kombi(s)")
             serverStatusText = bits.joined(separator: " · ")
         } catch {
             errorText = error.localizedDescription
@@ -728,8 +745,35 @@ struct FirmwareZipInspectorView: View {
 
     private func mergeServerDeepAnalysis(_ remote: FirmwareDeepAnalysisResult) {
         guard var current = report else { return }
-        let parts = [current.deepAnalysis, remote].compactMap { $0 }
-        current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remote
+        var remoteWithLive = remote
+        if combinesWithReadout,
+           let serial = (current.vehicleContext ?? vehicleContext)?.serial,
+           let stored = SoftUnlockComboStore.load(forSerial: serial) {
+            let liveLine = "Live-Kombination (SN): \(stored.displayCode)"
+            if !remoteWithLive.comboSummaries.contains(liveLine) {
+                remoteWithLive.comboSummaries.insert(liveLine, at: 0)
+            }
+            if !remoteWithLive.sources.contains(.liveVehicleContext) {
+                remoteWithLive.sources.append(.liveVehicleContext)
+            }
+        }
+        let parts = [current.deepAnalysis, remoteWithLive].compactMap { $0 }
+        current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remoteWithLive
+        // Evidence-Zeile für Combos aktualisieren
+        if let deep = current.deepAnalysis, !deep.comboSummaries.isEmpty {
+            let item = FirmwareEvidenceItem(
+                id: "deep-combo",
+                category: .modeHint,
+                title: "Dokumentierte Modus-Combos",
+                detail: deep.comboSummaries.joined(separator: " · "),
+                evidence: deep.notes.first ?? "Server/Katalog/Live",
+                method: deep.sources.map(\.label).joined(separator: " + "),
+                verifiability: .indicative,
+                confirmed: false
+            )
+            current.evidence.removeAll { $0.id == "deep-combo" }
+            current.evidence.append(item)
+        }
         report = current
         if combinesWithReadout {
             DualSourceCaseStore.saveForensic(current)

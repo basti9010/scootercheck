@@ -55,6 +55,38 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         let kmhs = Set(deep.speedLimits.map(\.kmh))
         XCTAssertTrue(kmhs.contains(22))
         XCTAssertTrue(kmhs.contains(32))
+        XCTAssertFalse(deep.comboSummaries.isEmpty, "legalCap+openCap should yield combo hints")
+        XCTAssertFalse(deep.modeTransitions.isEmpty)
+    }
+
+    func testDecompileComboPatternsGasBrakePower() {
+        let snippet = """
+        // throttle adc > 400 and brake lever, mask & 3 both channels, power boot
+        if ((mask & 3) == 3 && throttle > 400 && brake > 400) {
+          speed = 0x6300;
+        } else {
+          speed = 0x1600;
+        }
+        """
+        let meta = FirmwarePackageMeta(
+            schemaVersion: 1,
+            displayName: "combo",
+            models: ["g3"],
+            type: "VCU",
+            compatible: [],
+            declaredMd5: nil,
+            declaredEncrypted: false,
+            rawInfoJSON: nil
+        )
+        let deep = FirmwareSpeedSignatureExtractor.extract(
+            fromBinary: nil,
+            decompiledText: snippet,
+            subjectSHA256: "combo",
+            meta: meta
+        )
+        XCTAssertTrue(deep.comboSummaries.contains { $0.localizedCaseInsensitiveContains("Gas") })
+        XCTAssertTrue(deep.inputHints.contains { $0.kind == .dualAnalog || $0.kind == .throttle })
+        XCTAssertTrue(deep.modeTransitions.contains { $0.title.localizedCaseInsensitiveContains("Einschalt") || $0.title.localizedCaseInsensitiveContains("Limit") })
     }
 
     func testBinaryScanFindsLEPackedU16() {
