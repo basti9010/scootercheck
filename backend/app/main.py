@@ -15,6 +15,7 @@ from .db import get_db, init_db
 from .schemas import (
     AdminResetPasswordOut,
     AdminResetPasswordRequest,
+    AdminUserUpdateRequest,
     AuthResponse,
     ChangePasswordRequest,
     DomainIn,
@@ -349,6 +350,129 @@ def disable_user(
     user = fetch_user_by_id(user_id)
     assert user is not None
     return user
+
+
+@app.post("/admin/users/{user_id}/enable", response_model=UserOut)
+def enable_user(
+    user_id: str,
+    admin: Annotated[UserOut, Depends(require_admin)],
+) -> UserOut:
+    """Unlock / reactivate a disabled or rejected user."""
+    target = fetch_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    now = utc_now()
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET status = 'active', approved_at = COALESCE(approved_at, ?),
+                approved_by = COALESCE(approved_by, ?), updated_at = ?
+            WHERE id = ?
+            """,
+            (now, admin.id, now, user_id),
+        )
+    user = fetch_user_by_id(user_id)
+    assert user is not None
+    return user
+
+
+def _admin_count(conn: Any) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE role = 'admin' AND status = 'active'"
+    ).fetchone()
+    return int(row["c"])
+
+
+@app.patch("/admin/users/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: str,
+    body: AdminUserUpdateRequest,
+    admin: Annotated[UserOut, Depends(require_admin)],
+) -> UserOut:
+    target = fetch_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+
+    new_role = body.role if body.role is not None else target.role
+    new_status = body.status if body.status is not None else target.status
+    new_name = body.display_name if body.display_name is not None else target.display_name
+    if body.display_name is not None:
+        cleaned = body.display_name.strip()
+        new_name = cleaned or None
+    new_email = str(body.email).strip().lower() if body.email is not None else target.email
+
+    if target.id == admin.id and (new_role != "admin" or new_status != "active"):
+        raise HTTPException(
+            status_code=400,
+            detail="Eigenes Admin-Konto kann nicht herabgestuft oder gesperrt werden",
+        )
+
+    if new_email != target.email:
+        if fetch_user_by_email(new_email):
+            raise HTTPException(status_code=409, detail="E-Mail bereits vergeben")
+        assert_email_allowed_for_registration(new_email)
+
+    now = utc_now()
+    with get_db() as conn:
+        if target.role == "admin" and target.status == "active" and (
+            new_role != "admin" or new_status != "active"
+        ):
+            if _admin_count(conn) <= 1:
+                raise HTTPException(status_code=400, detail="Letzter aktiver Admin kann nicht entfernt werden")
+
+        conn.execute(
+            """
+            UPDATE users
+            SET email = ?, display_name = ?, role = ?, status = ?,
+                approved_at = CASE
+                    WHEN ? = 'active' AND status != 'active' THEN ?
+                    WHEN ? != 'active' THEN NULL
+                    ELSE approved_at
+                END,
+                approved_by = CASE
+                    WHEN ? = 'active' AND status != 'active' THEN ?
+                    WHEN ? != 'active' THEN NULL
+                    ELSE approved_by
+                END,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                new_email,
+                new_name,
+                new_role,
+                new_status,
+                new_status,
+                now,
+                new_status,
+                new_status,
+                admin.id,
+                new_status,
+                now,
+                user_id,
+            ),
+        )
+    user = fetch_user_by_id(user_id)
+    assert user is not None
+    return user
+
+
+@app.delete("/admin/users/{user_id}", response_model=MessageOut)
+def delete_user(
+    user_id: str,
+    admin: Annotated[UserOut, Depends(require_admin)],
+) -> MessageOut:
+    target = fetch_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    if target.id == admin.id:
+        raise HTTPException(status_code=400, detail="Eigenes Konto kann nicht gelöscht werden")
+    with get_db() as conn:
+        if target.role == "admin" and target.status == "active" and _admin_count(conn) <= 1:
+            raise HTTPException(status_code=400, detail="Letzter aktiver Admin kann nicht gelöscht werden")
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    return MessageOut(message=f"Benutzer {target.email} gelöscht")
 
 
 @app.post("/admin/users/{user_id}/reset-password", response_model=AdminResetPasswordOut)

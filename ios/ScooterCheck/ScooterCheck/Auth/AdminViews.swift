@@ -108,6 +108,7 @@ struct AdminUsersView: View {
     @State private var busy = false
     @State private var errorText: String?
     @State private var resetAlert: String?
+    @State private var editingUser: AuthUser?
 
     var body: some View {
         List {
@@ -124,6 +125,7 @@ struct AdminUsersView: View {
             Picker("Filter", selection: $filter) {
                 Text("Offen").tag(Optional.some(AuthUserStatus.pending))
                 Text("Aktiv").tag(Optional.some(AuthUserStatus.active))
+                Text("Gesperrt").tag(Optional.some(AuthUserStatus.disabled))
                 Text("Alle").tag(Optional<AuthUserStatus>.none)
             }
             .pickerStyle(.segmented)
@@ -139,23 +141,34 @@ struct AdminUsersView: View {
                     Text(user.email)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(user.role.rawValue) · \(user.status.rawValue)")
+                    Text("\(user.role.rawValue) · \(statusLabel(user.status))")
                         .font(.caption2)
                         .foregroundStyle(Theme.accent)
 
                     HStack {
+                        Button("Bearbeiten") {
+                            editingUser = user
+                        }
+                        .buttonStyle(.borderedProminent)
+
                         if user.status == .pending {
                             Button("Freigeben") {
                                 Task { await act(approve: true, user) }
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.bordered)
                             Button("Ablehnen", role: .destructive) {
                                 Task { await act(approve: false, user) }
                             }
-                        } else if user.status == .active, user.role != .admin {
-                            Button("Deaktivieren", role: .destructive) {
+                        } else if user.status == .active {
+                            Button("Sperren", role: .destructive) {
                                 Task { await disable(user) }
                             }
+                            .disabled(user.id == auth.user?.id)
+                        } else if user.status == .disabled || user.status == .rejected {
+                            Button("Entsperren") {
+                                Task { await enable(user) }
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
                     HStack {
@@ -169,6 +182,10 @@ struct AdminUsersView: View {
                             }
                             .buttonStyle(.bordered)
                         }
+                        Button("Löschen", role: .destructive) {
+                            Task { await deleteUser(user) }
+                        }
+                        .disabled(user.id == auth.user?.id)
                     }
                 }
                 .padding(.vertical, 4)
@@ -186,7 +203,23 @@ struct AdminUsersView: View {
                 .disabled(busy)
             }
         }
+        .sheet(item: $editingUser) { user in
+            NavigationStack {
+                AdminUserEditView(auth: auth, user: user) { _ in
+                    Task { await reload() }
+                }
+            }
+        }
         .task { await reload() }
+    }
+
+    private func statusLabel(_ s: AuthUserStatus) -> String {
+        switch s {
+        case .pending: return "offen"
+        case .active: return "aktiv"
+        case .rejected: return "abgelehnt"
+        case .disabled: return "gesperrt"
+        }
     }
 
     private func reload() async {
@@ -219,6 +252,26 @@ struct AdminUsersView: View {
         guard let token = auth.token else { return }
         do {
             _ = try await AuthAPIClient.disable(userId: user.id, token: token)
+            await reload()
+        } catch {
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func enable(_ user: AuthUser) async {
+        guard let token = auth.token else { return }
+        do {
+            _ = try await AuthAPIClient.enable(userId: user.id, token: token)
+            await reload()
+        } catch {
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func deleteUser(_ user: AuthUser) async {
+        guard let token = auth.token else { return }
+        do {
+            try await AuthAPIClient.deleteUser(userId: user.id, token: token)
             await reload()
         } catch {
             errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription

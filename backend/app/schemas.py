@@ -46,6 +46,13 @@ class AdminResetPasswordOut(BaseModel):
     user: UserOut
 
 
+class AdminUserUpdateRequest(BaseModel):
+    display_name: Optional[str] = Field(default=None, max_length=80)
+    role: Optional[UserRole] = None
+    status: Optional[UserStatus] = None
+    email: Optional[EmailStr] = None
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

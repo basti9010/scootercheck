@@ -20,6 +20,9 @@ Leichtes User-Management für die iOS-App:
 | POST | `/admin/users/{id}/approve` | Admin |
 | POST | `/admin/users/{id}/reject` | Admin |
 | POST | `/admin/users/{id}/disable` | Admin |
+| POST | `/admin/users/{id}/enable` | Admin |
+| PATCH | `/admin/users/{id}` `{ display_name?, role?, status?, email? }` | Admin |
+| DELETE | `/admin/users/{id}` | Admin |
 | POST | `/admin/users/{id}/reset-password` optional `{ "new_password" }` | Admin |
 | POST | `/admin/users/{id}/make-admin` | Admin |
 | GET | `/admin/domains` | Admin |

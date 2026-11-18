@@ -79,6 +79,40 @@ enum AuthAPIClient {
         try await request(path: "/admin/users/\(userId)/disable", method: "POST", token: token)
     }
 
+    static func enable(userId: String, token: String) async throws -> AuthUser {
+        try await request(path: "/admin/users/\(userId)/enable", method: "POST", token: token)
+    }
+
+    static func updateUser(
+        userId: String,
+        token: String,
+        displayName: String? = nil,
+        role: AuthUserRole? = nil,
+        status: AuthUserStatus? = nil,
+        email: String? = nil
+    ) async throws -> AuthUser {
+        var body: [String: Any] = [:]
+        if let displayName { body["display_name"] = displayName }
+        if let role { body["role"] = role.rawValue }
+        if let status { body["status"] = status.rawValue }
+        if let email { body["email"] = email }
+        return try await request(
+            path: "/admin/users/\(userId)",
+            method: "PATCH",
+            body: body,
+            token: token
+        )
+    }
+
+    static func deleteUser(userId: String, token: String) async throws {
+        struct Msg: Decodable { let message: String }
+        let _: Msg = try await request(
+            path: "/admin/users/\(userId)",
+            method: "DELETE",
+            token: token
+        )
+    }
+
     static func listDomains(token: String) async throws -> [AuthDomain] {
         let list: AuthDomainsList = try await request(path: "/admin/domains", method: "GET", token: token)
         return list.domains
