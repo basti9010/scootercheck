@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Set a Claude Console API key into firmware-analysis.env without echoing it.
 # Usage:
-#   setllmkey                 # paste raw key (SSH/local terminal preferred)
-#   setllmkey --b64           # paste base64(key) — safer in Hetzner web console
+#   setllmkey                 # paste raw key (SSH from your PC — best)
+#   setllmkey --hex           # paste hex of the key — safest in Hetzner web console
+#   setllmkey --b64           # paste base64 (fallback)
 set -euo pipefail
 ENV_FILE=/etc/scootercheck/firmware-analysis.env
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -11,44 +12,74 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 MODE=raw
-if [[ "${1:-}" == "--b64" || "${1:-}" == "-b64" ]]; then
-  MODE=b64
-fi
+case "${1:-}" in
+  --hex|-hex) MODE=hex ;;
+  --b64|-b64) MODE=b64 ;;
+esac
 
-if [[ "$MODE" == "b64" ]]; then
-  echo "Paste BASE64 of the Claude key, then Enter."
-  echo "On your PC:  printf %s 'sk-ant-…' | base64"
-  echo "Windows PowerShell:  [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('sk-ant-…'))"
-  echo "Input hidden. No hyphens in base64 → Hetzner console cannot mangle '-'."
-else
-  echo "Paste Claude API key (sk-ant-usr… / sk-ant-api…), then Enter."
-  echo "Input hidden. Prefer SSH from your PC; in Hetzner web console use: setllmkey --b64"
-  echo "Console may turn '-' into 'ß' — we auto-fix that."
-fi
+case "$MODE" in
+  hex)
+    echo "Paste HEX of the Claude key, then Enter."
+    echo "Windows PowerShell (only this line, no prompt):"
+    echo "  ([BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes('sk-ant-…'))).Replace('-','').ToLower()"
+    echo "Input hidden. Hex has only 0-9a-f — console-safe."
+    ;;
+  b64)
+    echo "Paste BASE64 of the Claude key, then Enter."
+    echo "Prefer: setllmkey --hex"
+    echo "Input hidden."
+    ;;
+  *)
+    echo "Paste Claude API key (sk-ant-usr… / sk-ant-api…), then Enter."
+    echo "Prefer SSH from PC. In Hetzner web console use: setllmkey --hex"
+    echo "Input hidden. Console may turn '-' into 'ß' — we auto-fix that."
+    ;;
+esac
 
 read -r -s KEY
 echo
-KEY=$(printf '%s' "$KEY" | tr -d '\r\n' | xargs)
-KEY=${KEY// /}
+KEY=$(printf '%s' "$KEY" | tr -d '\r\n \t')
 
-if [[ "$MODE" == "b64" ]]; then
-  # tolerate URL-safe base64 and missing padding
-  KEY=${KEY//-/+}
-  KEY=${KEY//_//}
-  pad=$(( (4 - ${#KEY} % 4) % 4 ))
-  KEY="${KEY}$(printf '=%.0s' $(seq 1 $pad 2>/dev/null) || true)"
-  if ! KEY=$(printf '%s' "$KEY" | base64 -d 2>/dev/null | tr -d '\r\n'); then
-    echo "ERROR: base64 decode failed — create a new key and re-encode." >&2
+if [[ -z "$KEY" ]]; then
+  echo "Empty input — aborted." >&2
+  exit 1
+fi
+
+if [[ "$MODE" == "hex" ]]; then
+  KEY=$(printf '%s' "$KEY" | tr 'A-F' 'a-f')
+  if [[ ! "$KEY" =~ ^[0-9a-f]+$ ]]; then
+    echo "ERROR: not hex (only 0-9 a-f allowed). len=${#KEY}" >&2
     exit 1
   fi
+  if (( ${#KEY} % 2 == 1 )); then
+    echo "ERROR: hex length must be even (got ${#KEY})." >&2
+    exit 1
+  fi
+  if ! KEY=$(printf '%s' "$KEY" | xxd -r -p 2>/dev/null | tr -d '\r\n'); then
+    echo "ERROR: hex decode failed." >&2
+    exit 1
+  fi
+elif [[ "$MODE" == "b64" ]]; then
+  # strip whitespace; keep standard alphabet; add padding
+  KEY=$(printf '%s' "$KEY" | tr -d '\r\n \t')
+  pad=$(( (4 - ${#KEY} % 4) % 4 ))
+  if (( pad > 0 )); then
+    KEY="${KEY}$(printf '%*s' "$pad" '' | tr ' ' '=')"
+  fi
+  if ! DECODED=$(printf '%s' "$KEY" | base64 -d 2>/tmp/setllmkey-b64.err); then
+    echo "ERROR: base64 decode failed — use setllmkey --hex instead." >&2
+    head -c 120 /tmp/setllmkey-b64.err 2>/dev/null || true
+    echo >&2
+    exit 1
+  fi
+  KEY=$(printf '%s' "$DECODED" | tr -d '\r\n')
 else
-  # Hetzner console DE-layout mangling
   KEY=${KEY//ß/-}
   KEY=${KEY//ÃŸ/-}
 fi
 
 if [[ -z "$KEY" ]]; then
-  echo "Empty key — aborted." >&2
+  echo "Empty key after decode — aborted." >&2
   exit 1
 fi
 
@@ -58,7 +89,7 @@ if [[ "$KEY" == sk-ant-oat* ]]; then
 fi
 
 if [[ "$KEY" != sk-ant-usr* && "$KEY" != sk-ant-api* && "$KEY" != sk-ant-* ]]; then
-  echo "ERROR: Key should start with sk-ant-usr or sk-ant-api (got prefix: ${KEY:0:14}…)" >&2
+  echo "ERROR: Key should start with sk-ant-usr or sk-ant-api (got prefix: ${KEY:0:14}… len=${#KEY})" >&2
   exit 1
 fi
 
@@ -90,7 +121,7 @@ systemctl restart scootercheck-fw
 sleep 1
 
 python3 - <<'PY'
-import json, os, urllib.request, urllib.error
+import json, urllib.request, urllib.error
 from pathlib import Path
 key=""
 for line in Path("/etc/scootercheck/firmware-analysis.env").read_text().splitlines():
@@ -114,10 +145,7 @@ try:
         print("API_PROBE_OK", resp.status)
 except urllib.error.HTTPError as e:
     print("API_PROBE_FAIL", e.code, e.read()[:220].decode(errors="replace"))
-    print("HINT: Key looks stored but Anthropic rejects it.")
-    print("HINT: Create a NEW key in Claude Console, then either:")
-    print("  - paste via SSH from your PC: setllmkey")
-    print("  - or in web console: setllmkey --b64  (paste base64 of the key)")
+    print("HINT: Create a NEW key, encode with --hex on your PC, retry setllmkey --hex")
     raise SystemExit(2)
 PY
 
