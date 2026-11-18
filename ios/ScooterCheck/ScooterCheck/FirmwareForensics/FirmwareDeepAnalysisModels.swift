@@ -38,6 +38,16 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var boardPinout: FirmwareBoardPinoutHint? = nil
     /// Klassifizierte Evidenzfunde (optional, abwärtskompatibel).
     var classifiedFindings: [FirmwareClassifiedFinding]? = nil
+    /// Phase-2: kompakte Funktionsanalyse (Poll-Summary; Vollartefakt separat).
+    var functionAnalysis: FirmwareFunctionAnalysisSummary? = nil
+    /// Phase-2: funktionsbasierter Diff gegen Referenz (kein Manipulationsnachweis).
+    var functionDiff: FirmwareFunctionDiffSummary? = nil
+    /// Phase-2: Callgraph-Summary.
+    var callGraph: FirmwareCallGraphSummary? = nil
+    /// Phase-2: erweiterte Referenz-Metadaten.
+    var referenceMetadata: FirmwareReferenceMetadata? = nil
+    /// Phase-2: technische Einschränkungen der Analyse.
+    var analysisLimitations: [String]? = nil
 
     static let currentSchemaVersion = 1
 
@@ -55,6 +65,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case models, controllerType, speedLimits, maxSpeedKmhInCode, legalCapKmhInCode
         case modeTransitions, inputHints, comboSummaries, notes, caveats, quality
         case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout, classifiedFindings
+        case functionAnalysis, functionDiff, callGraph, referenceMetadata, analysisLimitations
     }
 
     init(from decoder: Decoder) throws {
@@ -82,6 +93,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         cortexMIvt = try c.decodeIfPresent(FirmwareCortexMIvt.self, forKey: .cortexMIvt)
         boardPinout = try c.decodeIfPresent(FirmwareBoardPinoutHint.self, forKey: .boardPinout)
         classifiedFindings = try c.decodeIfPresent([FirmwareClassifiedFinding].self, forKey: .classifiedFindings)
+        functionAnalysis = try c.decodeIfPresent(FirmwareFunctionAnalysisSummary.self, forKey: .functionAnalysis)
+        functionDiff = try c.decodeIfPresent(FirmwareFunctionDiffSummary.self, forKey: .functionDiff)
+        callGraph = try c.decodeIfPresent(FirmwareCallGraphSummary.self, forKey: .callGraph)
+        referenceMetadata = try c.decodeIfPresent(FirmwareReferenceMetadata.self, forKey: .referenceMetadata)
+        analysisLimitations = try c.decodeIfPresent([String].self, forKey: .analysisLimitations)
     }
 
     init(
@@ -106,7 +122,12 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         yaraMatches: [FirmwareYaraMatch] = [],
         cortexMIvt: FirmwareCortexMIvt? = nil,
         boardPinout: FirmwareBoardPinoutHint? = nil,
-        classifiedFindings: [FirmwareClassifiedFinding]? = nil
+        classifiedFindings: [FirmwareClassifiedFinding]? = nil,
+        functionAnalysis: FirmwareFunctionAnalysisSummary? = nil,
+        functionDiff: FirmwareFunctionDiffSummary? = nil,
+        callGraph: FirmwareCallGraphSummary? = nil,
+        referenceMetadata: FirmwareReferenceMetadata? = nil,
+        analysisLimitations: [String]? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -130,6 +151,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.cortexMIvt = cortexMIvt
         self.boardPinout = boardPinout
         self.classifiedFindings = classifiedFindings
+        self.functionAnalysis = functionAnalysis
+        self.functionDiff = functionDiff
+        self.callGraph = callGraph
+        self.referenceMetadata = referenceMetadata
+        self.analysisLimitations = analysisLimitations
     }
 
     func encode(to encoder: Encoder) throws {
@@ -156,6 +182,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encodeIfPresent(cortexMIvt, forKey: .cortexMIvt)
         try c.encodeIfPresent(boardPinout, forKey: .boardPinout)
         try c.encodeIfPresent(classifiedFindings, forKey: .classifiedFindings)
+        try c.encodeIfPresent(functionAnalysis, forKey: .functionAnalysis)
+        try c.encodeIfPresent(functionDiff, forKey: .functionDiff)
+        try c.encodeIfPresent(callGraph, forKey: .callGraph)
+        try c.encodeIfPresent(referenceMetadata, forKey: .referenceMetadata)
+        try c.encodeIfPresent(analysisLimitations, forKey: .analysisLimitations)
     }
 }
 
@@ -268,6 +299,166 @@ struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
     var trusted: Bool? = nil
     var sha256: String
     var byteCount: Int
+    var manufacturer: String? = nil
+    var modelAliases: [String]? = nil
+    var hardwareVersion: String? = nil
+    var firmwareVersion: String? = nil
+    var origin: String? = nil
+    var addedAt: String? = nil
+    var verificationStatus: String? = nil
+    var compatibility: String? = nil
+    var fileSize: Int? = nil
+    var referenceTrust: String? = nil
+    var provenanceVerified: Bool? = nil
+}
+
+// MARK: - Phase 2 function analysis (optional, backward-compatible)
+
+struct FirmwareFunctionAnalysisSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var functionCount: Int?
+    var truncated: Bool?
+    var processor: String?
+    var notes: [String]?
+    var analysisLimitations: [String]?
+    var sampleFunctions: [FirmwareFunctionBrief]?
+}
+
+struct FirmwareFunctionBrief: Equatable, Codable, Sendable, Identifiable {
+    var address: String?
+    var name: String?
+    var size: Int?
+    var basicBlocks: Int?
+    var fingerprint: String?
+    var confidence: String?
+
+    var id: String { (address ?? "") + "|" + (name ?? "") }
+}
+
+enum FirmwareFunctionDiffStatus: String, Equatable, Codable, Sendable {
+    case identical = "IDENTISCH"
+    case structurallyChanged = "STRUKTURELL_VERAENDERT"
+    case added = "HINZUGEFUEGT"
+    case removed = "ENTFERNT"
+    case uncomparable = "NICHT_VERGLEICHBAR"
+
+    var label: String {
+        switch self {
+        case .identical: return "Identisch"
+        case .structurallyChanged: return "Strukturell verändert"
+        case .added: return "Hinzugefügt"
+        case .removed: return "Entfernt"
+        case .uncomparable: return "Nicht vergleichbar"
+        }
+    }
+}
+
+struct FirmwareFunctionDiffCounts: Equatable, Codable, Sendable {
+    var identical: Int?
+    var structurallyChanged: Int?
+    var added: Int?
+    var removed: Int?
+    var uncomparable: Int?
+    var subjectFunctionCount: Int?
+    var referenceFunctionCount: Int?
+    var overall: String?
+}
+
+struct FirmwareFunctionDiffPair: Equatable, Codable, Sendable, Identifiable {
+    var status: FirmwareFunctionDiffStatus?
+    var subject: FirmwareFunctionBrief?
+    var reference: FirmwareFunctionBrief?
+    var matchMethod: String?
+    var evidenceTier: String?
+    var notes: String?
+    /// Freie Strukturunterschiede (Größe/Blöcke/CFG) — keine Tuning-Aussage.
+    var differences: [String: FirmwareJSONValue]? = nil
+
+    var id: String {
+        (subject?.address ?? reference?.address ?? "") + "|" + (status?.rawValue ?? "")
+    }
+}
+
+/// Minimaler JSON-Wert für optionale Diff-Details ohne hartes Schema.
+enum FirmwareJSONValue: Equatable, Codable, Sendable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case object([String: FirmwareJSONValue])
+    case array([FirmwareJSONValue])
+    case null
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null; return }
+        if let v = try? c.decode(Bool.self) { self = .bool(v); return }
+        if let v = try? c.decode(Int.self) { self = .int(v); return }
+        if let v = try? c.decode(Double.self) { self = .double(v); return }
+        if let v = try? c.decode(String.self) { self = .string(v); return }
+        if let v = try? c.decode([String: FirmwareJSONValue].self) { self = .object(v); return }
+        if let v = try? c.decode([FirmwareJSONValue].self) { self = .array(v); return }
+        self = .null
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let v): try c.encode(v)
+        case .int(let v): try c.encode(v)
+        case .double(let v): try c.encode(v)
+        case .bool(let v): try c.encode(v)
+        case .object(let v): try c.encode(v)
+        case .array(let v): try c.encode(v)
+        case .null: try c.encodeNil()
+        }
+    }
+}
+
+struct FirmwareFunctionDiffSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var tool: String?
+    var toolNote: String?
+    var summary: FirmwareFunctionDiffCounts?
+    var samplePairs: [FirmwareFunctionDiffPair]?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareCallGraphSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var edgeCount: Int?
+    var staticEdgeCount: Int?
+    var heuristicCount: Int?
+    var unresolvedCount: Int?
+    var truncated: Bool?
+    var notes: [String]?
+    var analysisLimitations: [String]?
+}
+
+struct FirmwareReferenceMetadata: Equatable, Codable, Sendable {
+    var referenceId: String?
+    var referenceLabel: String?
+    var referenceSHA256: String?
+    var referenceSource: String?
+    var referenceTrust: String?
+    var referenceProvenanceVerified: Bool?
+    var matchedModels: [String]?
+    var outcome: String?
+    var note: String?
+    var manufacturer: String?
+    var model: String?
+    var modelAliases: [String]?
+    var controllerType: String?
+    var hardwareVersion: String?
+    var firmwareVersion: String?
+    var fileSize: Int?
+    var origin: String?
+    var addedAt: String?
+    var verificationStatus: String?
+    var compatibility: String?
+    var candidateRefCount: Int?
+    var totalRefCount: Int?
 }
 struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
     var likely: Bool?

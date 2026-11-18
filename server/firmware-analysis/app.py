@@ -37,6 +37,13 @@ from capstone_extract import (
     merge_capstone_into_result,
 )
 from cortex_m_ivt import analyze_firmware as ivt_analyze, merge_ivt_into_result
+from function_analysis import (
+    load_call_graph,
+    load_function_analysis,
+    summarize_call_graph_for_poll,
+    summarize_for_poll as summarize_functions_for_poll,
+)
+from function_diff import compare_function_analyses, summarize_diff_for_poll
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
 from limit_slice import analyze as limit_slice_analyze, merge_into_result as merge_limit_slice
@@ -47,6 +54,7 @@ from llm_enrich import (
     llm_key_status,
     llm_provider,
 )
+from llm_verify import verify_enrichment
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
 from speed_extract import deep_result
 from stock_diff import (
@@ -317,6 +325,78 @@ def _sanitize_result_for_app(result: Any) -> Any:
     return out
 
 
+def _reference_metadata_from_stock(stock: dict[str, Any] | None) -> dict[str, Any]:
+    stock = stock or {}
+    return {
+        "referenceId": stock.get("referenceId"),
+        "referenceLabel": stock.get("referenceLabel"),
+        "referenceSHA256": stock.get("referenceSHA256"),
+        "referenceSource": stock.get("referenceSource"),
+        "referenceTrust": stock.get("referenceTrust"),
+        "referenceProvenanceVerified": bool(stock.get("referenceProvenanceVerified")),
+        "matchedModels": stock.get("matchedModels"),
+        "outcome": stock.get("outcome"),
+        "note": stock.get("note"),
+        "manufacturer": stock.get("manufacturer"),
+        "model": stock.get("model"),
+        "modelAliases": stock.get("modelAliases") or [],
+        "controllerType": stock.get("controllerType"),
+        "hardwareVersion": stock.get("hardwareVersion"),
+        "firmwareVersion": stock.get("firmwareVersion"),
+        "fileSize": stock.get("fileSize") or stock.get("referenceBytes"),
+        "origin": stock.get("origin") or stock.get("referenceSource"),
+        "addedAt": stock.get("addedAt"),
+        "verificationStatus": stock.get("verificationStatus"),
+        "compatibility": stock.get("compatibility"),
+        "candidateRefCount": stock.get("candidateRefCount"),
+        "totalRefCount": stock.get("totalRefCount"),
+    }
+
+
+def _load_stock_function_analysis(stock: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Load optional sibling functions.json for the matched stock reference."""
+    if not stock or stock.get("outcome") not in {"identical", "different"}:
+        return None
+    ref_id = str(stock.get("referenceId") or "")
+    ref_sha = str(stock.get("referenceSHA256") or "")
+    ensure_stock_dir()
+    candidates: list[Path] = []
+    for ref in list_stock_refs():
+        if ref_id and ref.get("id") == ref_id:
+            pass
+        elif ref_sha and ref.get("sha256") == ref_sha:
+            pass
+        else:
+            continue
+        # Manifest entries may include file name via stock dir scan.
+        break
+    # Filesystem search beside stock bins.
+    root = stock_dir()
+    for pattern in (
+        f"{ref_id}.functions.json",
+        f"{ref_sha[:16]}.functions.json",
+        f"{ref_sha}.functions.json",
+    ):
+        if ref_id or ref_sha:
+            candidates.append(root / pattern)
+    # Also: <binname>.functions.json for any bin matching sha in manifest.
+    try:
+        from stock_diff import _load_refs  # type: ignore
+
+        for r in _load_refs():
+            if ref_sha and r.get("sha256") == ref_sha:
+                p = Path(r.get("path") or "")
+                if p.is_file():
+                    candidates.append(p.with_suffix(p.suffix + ".functions.json"))
+                    candidates.append(Path(str(p) + ".functions.json"))
+    except Exception:
+        pass
+    for c in candidates:
+        if c.is_file():
+            return load_function_analysis(c)
+    return None
+
+
 def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> dict[str, Any]:
     req = _request_meta(job)
     payload = {
@@ -578,8 +658,13 @@ def process_job(job_id: str) -> None:
         # Serialize Ghidra so parallel uploads don't OOM the VPS.
         speed_json = out_c.with_suffix(".speeds.json")
         limit_c = out_c.with_suffix(".limits.c")
+        functions_json = out_c.with_suffix(".functions.json")
+        callgraph_json = out_c.with_suffix(".callgraph.json")
         with _GHIDRA_LOCK:
-            _update(job, message="Ghidra Headless → .c + Speed-Xrefs + Limit-Funktionen…")
+            _update(
+                job,
+                message="Ghidra Headless → .c + Speeds + Limits + Funktionen + Callgraph…",
+            )
             ok_g, msg_g = run_ghidra_decompile(
                 stored,
                 out_c,
@@ -587,6 +672,8 @@ def process_job(job_id: str) -> None:
                 base_addr=GHIDRA_BASE_ADDR,
                 speed_json=speed_json,
                 limit_c=limit_c,
+                functions_json=functions_json,
+                callgraph_json=callgraph_json,
             )
         notes.append(f"ghidra={msg_g}")
         if ok_g:
@@ -597,10 +684,23 @@ def process_job(job_id: str) -> None:
                 shutil.copy2(limit_c, job_dir / "FIRM.limits.c")
             ghidra_xrefs = load_speed_xrefs(speed_json)
             notes.extend(ghidra_xrefs.get("notes") or [])
+            # Phase-2 artifacts (best-effort; never abort job if missing).
+            try:
+                if functions_json.is_file():
+                    shutil.copy2(functions_json, job_dir / "FIRM.functions.json")
+                if callgraph_json.is_file():
+                    shutil.copy2(callgraph_json, job_dir / "FIRM.callgraph.json")
+                    dot = Path(str(callgraph_json).replace(".json", ".dot"))
+                    if dot.is_file():
+                        shutil.copy2(dot, job_dir / "FIRM.callgraph.dot")
+            except OSError as e:
+                notes.append(f"phase2ArtifactCopy={e}")
             _update(
                 job,
                 decompilePath=str(out_c),
                 decompileSaved=True,
+                functionsPath=str(functions_json) if functions_json.is_file() else None,
+                callgraphPath=str(callgraph_json) if callgraph_json.is_file() else None,
                 message=f"Decompile .c gespeichert: {out_c.name}",
             )
         else:
@@ -728,12 +828,52 @@ def process_job(job_id: str) -> None:
     if stock.get("panicRegionAffected"):
         result.setdefault("notes", []).append("stockDiff=panicRegionAffected")
 
+    # Phase-2: structured function analysis + optional functionDiff vs stock export.
+    _update(job, progressPercent=90, message="Funktionsanalyse / Callgraph…")
+    func_path = Path(job.get("functionsPath") or (job_dir / "FIRM.functions.json"))
+    cg_path = Path(job.get("callgraphPath") or (job_dir / "FIRM.callgraph.json"))
+    func_full = load_function_analysis(func_path if func_path.is_file() else None)
+    cg_full = load_call_graph(cg_path if cg_path.is_file() else None)
+    result["functionAnalysis"] = summarize_functions_for_poll(func_full)
+    result["callGraph"] = summarize_call_graph_for_poll(cg_full)
+    notes.extend(func_full.get("notes") or [])
+    notes.extend(cg_full.get("notes") or [])
+
+    ref_func = _load_stock_function_analysis(stock)
+    func_diff_full = compare_function_analyses(func_full, ref_func)
+    result["functionDiff"] = summarize_diff_for_poll(func_diff_full)
+    notes.extend(func_diff_full.get("notes") or [])
+
+    # Reference metadata for UI (never auto-elevate trust).
+    result["referenceMetadata"] = _reference_metadata_from_stock(stock)
+    limitations = []
+    limitations.extend(result.get("functionAnalysis", {}).get("analysisLimitations") or [])
+    limitations.extend(result.get("functionDiff", {}).get("analysisLimitations") or [])
+    limitations.extend(result.get("callGraph", {}).get("analysisLimitations") or [])
+    if stock.get("outcome") == "noReference":
+        limitations.append("Keine eindeutig passende Referenzfirmware für Funktionsvergleich.")
+    result["analysisLimitations"] = limitations
+    for n in notes:
+        if n and n not in (result.get("notes") or []):
+            result.setdefault("notes", []).append(n)
+    # Persist full artifacts path hints on job (not entire arrays in status.json if huge).
+    job["phase2"] = {
+        "functionsPath": str(func_path) if func_path.is_file() else None,
+        "callgraphPath": str(cg_path) if cg_path.is_file() else None,
+        "functionDiffSummary": result["functionDiff"].get("summary"),
+    }
+
     if meta.allowLLM and llm_configured():
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
         result = enrich_result(
             result,
             decompiled_text=decompiled_text,
             limit_c_text=limit_c_text,
+        )
+        result = verify_enrichment(
+            result,
+            function_analysis=func_full,
+            plaintext_size=len(plaintext),
         )
     elif meta.allowLLM:
         # enrich_result also annotates bad key kinds (e.g. sk-ant-oat OAuth)
@@ -1115,6 +1255,57 @@ def download_decompile(
             }
         )
     return FileResponse(path, filename=path.name, media_type="text/x-c")
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/functions")
+def download_functions(job_id: str, _: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    """Full functionAnalysis artifact (not embedded in poll payload)."""
+    job = load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    path = Path(
+        (job.get("phase2") or {}).get("functionsPath")
+        or job.get("functionsPath")
+        or (Path(job["dir"]) / "FIRM.functions.json")
+    )
+    data = load_function_analysis(path if path.is_file() else None)
+    if not data.get("ok"):
+        raise HTTPException(status_code=404, detail="function analysis not available")
+    return JSONResponse(data)
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/callgraph")
+def download_callgraph(job_id: str, _: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    job = load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    path = Path(
+        (job.get("phase2") or {}).get("callgraphPath")
+        or job.get("callgraphPath")
+        or (Path(job["dir"]) / "FIRM.callgraph.json")
+    )
+    data = load_call_graph(path if path.is_file() else None)
+    if not data.get("ok"):
+        raise HTTPException(status_code=404, detail="call graph not available")
+    return JSONResponse(data)
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/function-diff")
+def download_function_diff(job_id: str, _: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    """Recompute or return full functionDiff (pairs may be large)."""
+    job = load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    result = job.get("result") or {}
+    func_path = Path(
+        (job.get("phase2") or {}).get("functionsPath")
+        or (Path(job["dir"]) / "FIRM.functions.json")
+    )
+    func_full = load_function_analysis(func_path if func_path.is_file() else None)
+    stock = result.get("stockDiff") if isinstance(result, dict) else None
+    ref_func = _load_stock_function_analysis(stock if isinstance(stock, dict) else None)
+    full = compare_function_analyses(func_full, ref_func)
+    return JSONResponse(full)
 
 
 @APP.delete("/v1/firmware/admin/jobs/{job_id}")

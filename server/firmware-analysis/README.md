@@ -74,6 +74,21 @@ apt-get install -y radare2
 
 Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE=0` / `ENABLE_YARA=0`.
 
+## Phase 2 — Funktionsanalyse / Callgraph / Function-Diff
+
+Zusätzlich zu Decompile/Xrefs (Phase 1 bleibt unverändert):
+
+- `ExportFunctionAnalysis.java` → `FIRM.functions.json` (Adresse, Größe, CFG, Calls, Konstanten/Strings, Fingerprint)
+- `ExportCallGraph.java` → `FIRM.callgraph.json` (+ optionales `.dot`-Stub ohne Extra-Deps)
+- `function_diff.py` vergleicht Subject vs. optionale Referenz-`*.functions.json`  
+  Status: `IDENTISCH` | `STRUKTURELL_VERAENDERT` | `HINZUGEFUEGT` | `ENTFERNT` | `NICHT_VERGLEICHBAR`  
+  **Kein Diaphora/BinDiff** (Lizenz/RAM/Headless) — strukturelle Änderung ≠ Manipulation
+- Poll-Payload trägt nur Summaries (`functionAnalysis`, `functionDiff`, `callGraph`, `referenceMetadata`, `analysisLimitations`)
+- Vollartefakte (auth):  
+  `GET /v1/firmware/jobs/{id}/functions` · `/callgraph` · `/function-diff`
+- LLM bleibt opt-in (`allowLLM=false`); `llm_verify.py` streicht unbelegte Adress-/FUN_-Claims
+- Limits: `GHIDRA_MAX_FUNCTIONS`, bestehendes `HEAVY_ANALYSIS_LOCK`, best-effort bei Export-Fehlern
+
 ## Limit-Slice / Pinout / Input-Probe (Kombi-Forensik)
 
 Nach Speed-Scan:

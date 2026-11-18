@@ -48,6 +48,8 @@ def run_ghidra_decompile(
     timeout_sec: int = 600,
     speed_json: Path | None = None,
     limit_c: Path | None = None,
+    functions_json: Path | None = None,
+    callgraph_json: Path | None = None,
 ) -> tuple[bool, str]:
     headless = _headless_bin()
     if not headless:
@@ -64,6 +66,12 @@ def run_ghidra_decompile(
     if limit_c is None:
         limit_c = output_c.with_suffix(".limits.c")
     limit_c.parent.mkdir(parents=True, exist_ok=True)
+    if functions_json is None:
+        functions_json = output_c.with_suffix(".functions.json")
+    functions_json.parent.mkdir(parents=True, exist_ok=True)
+    if callgraph_json is None:
+        callgraph_json = output_c.with_suffix(".callgraph.json")
+    callgraph_json.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="ghidra-proj-") as proj:
         proj_dir = Path(proj)
@@ -93,8 +101,16 @@ def run_ghidra_decompile(
             "-postScript",
             "ExportLimitFunctions.java",
             str(limit_c),
+            "-postScript",
+            "ExportFunctionAnalysis.java",
+            str(functions_json),
+            "-postScript",
+            "ExportCallGraph.java",
+            str(callgraph_json),
             "-deleteProject",
         ]
+        # Extra headless timeout buffer for Phase-2 exports (still capped by caller).
+        timeout_sec = max(timeout_sec, int(os.environ.get("GHIDRA_TIMEOUT_SEC", str(timeout_sec)) or timeout_sec))
         try:
             proc = subprocess.run(
                 cmd,
@@ -118,6 +134,15 @@ def run_ghidra_decompile(
             notes.append(f"speedXrefs {speed_json.stat().st_size}B")
         if limit_c.exists() and limit_c.stat().st_size > 0:
             notes.append(f"limits.c {limit_c.stat().st_size}B")
+        # Phase-2 exports are best-effort: missing files must not fail the whole decompile.
+        if functions_json.exists() and functions_json.stat().st_size > 0:
+            notes.append(f"functions.json {functions_json.stat().st_size}B")
+        else:
+            notes.append("functions.json=missing-or-empty")
+        if callgraph_json.exists() and callgraph_json.stat().st_size > 0:
+            notes.append(f"callgraph.json {callgraph_json.stat().st_size}B")
+        else:
+            notes.append("callgraph.json=missing-or-empty")
         return True, ", ".join(notes)
 
 

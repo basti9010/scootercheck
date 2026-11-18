@@ -136,16 +136,34 @@ def compare_to_stock(
     best: dict[str, Any] | None = None
     best_diff: dict[str, Any] | None = None
     best_data: bytes | None = None
+    best_score = -1
+    want_ver = " ".join(model_list).lower()
     for ref in candidates:
         path = Path(ref["path"])
         if not path.is_file():
             continue
         ref_data = path.read_bytes()
         diff = _byte_diff(plaintext, ref_data)
-        if best_diff is None or diff["differingBytes"] < best_diff["differingBytes"]:
+        # Tie-break: fewer differing bytes wins; then version/label overlap.
+        ver = f"{ref.get('firmwareVersion') or ''} {ref.get('version') or ''} {ref.get('label') or ''}".lower()
+        score = 0
+        if ctype and (ref.get("controllerType") or "").lower() == ctype.lower():
+            score += 2
+        if any(m and m.lower() in ver for m in model_list):
+            score += 1
+        if want_ver and any(tok and tok in ver for tok in want_ver.split() if len(tok) > 2):
+            score += 1
+        better = best_diff is None or diff["differingBytes"] < best_diff["differingBytes"]
+        tie = (
+            best_diff is not None
+            and diff["differingBytes"] == best_diff["differingBytes"]
+            and score > best_score
+        )
+        if better or tie:
             best = ref
             best_diff = diff
             best_data = ref_data
+            best_score = score
 
     if best is None or best_diff is None or best_data is None:
         return _result(
@@ -263,18 +281,29 @@ def register_stock_file(
         except json.JSONDecodeError:
             entries = []
 
+    from datetime import datetime, timezone
+
     entry = {
         "id": sha[:16],
         "label": label or f"{model} {controller_type} {version}",
+        "manufacturer": "",
         "model": model,
+        "modelAliases": [],
         "controllerType": controller_type,
+        "hardwareVersion": "",
         "version": version,
+        "firmwareVersion": version,
         "source": src,
+        "origin": src,
         "region": (region or "").strip(),
         "notes": (notes or "").strip(),
+        "compatibility": "",
         "file": name,
         "sha256": sha,
         "byteCount": len(data),
+        "addedAt": datetime.now(timezone.utc).isoformat(),
+        # Never auto-elevate community oem uploads.
+        "provenanceVerified": False,
     }
     entries = [e for e in entries if e.get("sha256") != sha and e.get("file") != name]
     entries.append(entry)
@@ -334,18 +363,30 @@ def _load_refs() -> list[dict[str, Any]]:
                 model_primary = str(e.get("model") or (models_list[0] if models_list else ""))
                 if model_primary and model_primary not in models_list:
                     models_list = [model_primary, *models_list]
+                aliases = [str(x) for x in (e.get("modelAliases") or e.get("aliases") or []) if x]
+                for a in aliases:
+                    if a not in models_list:
+                        models_list.append(a)
                 by_sha[data_sha] = {
                     "id": str(e.get("id") or data_sha[:16]),
                     "label": str(e.get("label") or path.name),
+                    "manufacturer": str(e.get("manufacturer") or ""),
                     "model": model_primary,
                     "models": models_list,
+                    "modelAliases": aliases,
                     "controllerType": str(e.get("controllerType") or e.get("type") or ""),
-                    "version": str(e.get("version") or ""),
+                    "hardwareVersion": str(e.get("hardwareVersion") or e.get("hwVersion") or ""),
+                    "version": str(e.get("version") or e.get("firmwareVersion") or ""),
+                    "firmwareVersion": str(e.get("firmwareVersion") or e.get("version") or ""),
                     "source": _normalize_source(str(e.get("source") or "unknown")),
+                    "origin": str(e.get("origin") or e.get("source") or ""),
                     "region": str(e.get("region") or ""),
                     "notes": str(e.get("notes") or ""),
+                    "compatibility": str(e.get("compatibility") or ""),
                     "sha256": data_sha,
                     "byteCount": int(e.get("byteCount") or path.stat().st_size),
+                    "addedAt": str(e.get("addedAt") or e.get("createdAt") or ""),
+                    "provenanceVerified": bool(e.get("provenanceVerified")),
                     "path": str(path),
                 }
 
@@ -394,15 +435,29 @@ def _filter_refs(
     for r in refs:
         rm = (r.get("model") or "").lower()
         rmodels = {(x or "").lower() for x in (r.get("models") or []) if x}
+        aliases = {(x or "").lower() for x in (r.get("modelAliases") or []) if x}
         rt = (r.get("controllerType") or "").lower()
         label = (r.get("label") or "").lower()
         notes = (r.get("notes") or "").lower()
+        compat = (r.get("compatibility") or "").lower()
         model_ok = (not model_set) or any(
-            m in rm or m in label or m in notes or m in rmodels or rm in m for m in model_set
+            m in rm
+            or m in label
+            or m in notes
+            or m in rmodels
+            or m in aliases
+            or m in compat
+            or rm in m
+            for m in model_set
         )
-        type_ok = (not ctype) or ctype in rt or ctype in label
+        type_ok = (not ctype) or ctype in rt or ctype in label or ctype in compat
         if model_ok and type_ok:
             out.append(r)
+    # Prefer exact controller + version-ish label closeness when many candidates.
+    if ctype and len(out) > 1:
+        exact_type = [r for r in out if (r.get("controllerType") or "").lower() == ctype]
+        if exact_type:
+            out = exact_type
     return out
 
 
@@ -479,19 +534,37 @@ def _slug(s: str) -> str:
 
 def _public_ref(r: dict[str, Any]) -> dict[str, Any]:
     trust = _trust_fields_for_ref(r)
+    models = list(r.get("models") or ([r.get("model")] if r.get("model") else []))
+    aliases = [str(x) for x in (r.get("modelAliases") or r.get("aliases") or []) if x]
+    for a in aliases:
+        if a not in models:
+            models.append(a)
     return {
         "id": r["id"],
         "label": r["label"],
+        "manufacturer": r.get("manufacturer") or "",
         "model": r.get("model") or "",
-        "models": list(r.get("models") or ([r.get("model")] if r.get("model") else [])),
+        "models": models,
+        "modelAliases": aliases,
         "controllerType": r.get("controllerType") or "",
+        "hardwareVersion": r.get("hardwareVersion") or r.get("hwVersion") or "",
         "version": r.get("version") or "",
+        "firmwareVersion": r.get("firmwareVersion") or r.get("version") or "",
         "source": _normalize_source(str(r.get("source") or "unknown")),
+        "origin": r.get("origin") or r.get("source") or "",
         "region": r.get("region") or "",
         "notes": r.get("notes") or "",
+        "compatibility": r.get("compatibility") or "",
         "trusted": _is_trusted(r),
         "sha256": r["sha256"],
         "byteCount": r["byteCount"],
+        "fileSize": r.get("byteCount"),
+        "addedAt": r.get("addedAt") or r.get("createdAt") or "",
+        "verificationStatus": (
+            "verified"
+            if trust["referenceProvenanceVerified"]
+            else ("community" if trust["referenceTrust"] == "communityLibrary" else "unverified")
+        ),
         "referenceTrust": trust["referenceTrust"],
         "provenanceVerified": bool(trust["referenceProvenanceVerified"]),
     }
@@ -746,10 +819,39 @@ def _result(**kwargs: Any) -> dict[str, Any]:
         "regionNotes": [],
         "referenceTrust": "unknown",
         "referenceProvenanceVerified": False,
+        # Extended OEM reference metadata (Phase 2) — never auto-elevates trust.
+        "manufacturer": None,
+        "model": None,
+        "modelAliases": None,
+        "controllerType": None,
+        "hardwareVersion": None,
+        "firmwareVersion": None,
+        "fileSize": None,
+        "origin": None,
+        "addedAt": None,
+        "verificationStatus": None,
+        "compatibility": None,
     }
     # Auto-fill trust from an optional `_ref` helper key, then drop it.
     ref = kwargs.pop("_ref", None)
     if ref is not None and "referenceTrust" not in kwargs:
         base.update(_trust_fields_for_ref(ref))
+    if ref is not None:
+        trust = _trust_fields_for_ref(ref)
+        pub = _public_ref(ref)
+        base["manufacturer"] = pub.get("manufacturer") or None
+        base["model"] = pub.get("model") or None
+        base["modelAliases"] = pub.get("modelAliases") or []
+        base["controllerType"] = pub.get("controllerType") or None
+        base["hardwareVersion"] = pub.get("hardwareVersion") or None
+        base["firmwareVersion"] = pub.get("firmwareVersion") or None
+        base["fileSize"] = pub.get("fileSize") or pub.get("byteCount")
+        base["origin"] = pub.get("origin") or None
+        base["addedAt"] = pub.get("addedAt") or None
+        base["verificationStatus"] = pub.get("verificationStatus")
+        base["compatibility"] = pub.get("compatibility") or None
+        if "referenceTrust" not in kwargs:
+            base["referenceTrust"] = trust["referenceTrust"]
+            base["referenceProvenanceVerified"] = trust["referenceProvenanceVerified"]
     base.update(kwargs)
     return base

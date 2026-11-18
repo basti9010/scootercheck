@@ -837,6 +837,10 @@ struct FirmwareZipInspectorView: View {
                 .foregroundStyle(Theme.accent)
                 .padding(.top, 2)
 
+                if deep.functionAnalysis != nil || deep.functionDiff != nil {
+                    advancedCodeAnalysisSection(deep)
+                }
+
                 if lastServerJobId != nil {
                     Button {
                         Task { await loadDecompilePreview() }
@@ -852,6 +856,104 @@ struct FirmwareZipInspectorView: View {
             }
         }
         // Vor Server-Entschlüsselung: CTA steht in `decryptActionCard` — keine Extra-Karte.
+    }
+
+    @ViewBuilder
+    private func advancedCodeAnalysisSection(_ deep: FirmwareDeepAnalysisResult) -> some View {
+        let fa = deep.functionAnalysis
+        let fd = deep.functionDiff
+        let counts = fd?.summary
+        DisclosureGroup("Erweiterte Codeanalyse") {
+            Text("Strukturelle Funktionsunterschiede sind kein Nachweis für Tuning oder Manipulation.")
+                .font(.caption2)
+                .foregroundStyle(Theme.warn)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let n = fa?.functionCount {
+                metaRow("Funktionen erkannt", "\(n)")
+            }
+            if let identical = counts?.identical {
+                metaRow("Identisch", "\(identical)")
+            }
+            if let changed = counts?.structurallyChanged {
+                metaRow("Verändert", "\(changed)")
+            }
+            if let added = counts?.added {
+                metaRow("Hinzugefügt", "\(added)")
+            }
+            if let removed = counts?.removed {
+                metaRow("Entfernt", "\(removed)")
+            }
+            if let uncomp = counts?.uncomparable {
+                metaRow("Nicht vergleichbar", "\(uncomp)")
+            }
+
+            let refLabel = deep.referenceMetadata?.referenceLabel
+                ?? deep.stockDiff?.referenceLabel
+                ?? "—"
+            metaRow("Referenzfirmware", refLabel)
+            if let trust = deep.referenceMetadata?.referenceTrust ?? deep.stockDiff?.referenceTrust {
+                metaRow("Referenz-Vertrauen", trust)
+            }
+            if let proc = fa?.processor {
+                metaRow("Architektur", proc)
+            }
+            metaRow("Analysequalität", deep.quality.summary)
+
+            let limits = (deep.analysisLimitations ?? [])
+                + (fa?.analysisLimitations ?? [])
+                + (fd?.analysisLimitations ?? [])
+            if !limits.isEmpty {
+                Text("Technische Einschränkungen")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.top, 4)
+                ForEach(Array(Set(limits)).prefix(8), id: \.self) { line in
+                    Text("• \(line)")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if let pairs = fd?.samplePairs, !pairs.isEmpty {
+                Text("Funktionsänderungen (Stichprobe)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.top, 6)
+                ForEach(pairs.prefix(12)) { pair in
+                    VStack(alignment: .leading, spacing: 2) {
+                        let addr = pair.subject?.address ?? pair.reference?.address ?? "—"
+                        let name = pair.subject?.name ?? pair.reference?.name ?? ""
+                        Text("\(addr) \(name)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(pair.status?.label ?? "Unbekannt")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                        if let notes = pair.notes, !notes.isEmpty {
+                            Text(notes)
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let tier = pair.evidenceTier {
+                            Text("Evidenzstufe: \(tier)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        if let diffs = pair.differences, !diffs.isEmpty {
+                            Text("Struktur: \(diffs.keys.sorted().joined(separator: ", "))")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.top, 4)
     }
 
     private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {
