@@ -322,6 +322,7 @@ struct AdminFirmwareUploadsView: View {
     @State private var errorText: String?
     @State private var preview: FirmwareDecompilePreview?
     @State private var showPreview = false
+    @State private var stockRefs: [FirmwareStockRef] = []
 
     var body: some View {
         List {
@@ -338,6 +339,29 @@ struct AdminFirmwareUploadsView: View {
                         Text("KI aus: LLM_API_KEY in /etc/scootercheck/firmware-analysis.env setzen, dann scootercheck-fw neu starten.")
                             .font(.caption2)
                             .foregroundStyle(Theme.warn)
+                    }
+                    if (workerHealth.stockRefCount ?? 0) == 0 {
+                        Text("Stock-Lib leer: Klartext-Stock-BINs nach /var/lib/scootercheck/stock-fw/ legen (oder Admin-API).")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.warn)
+                    }
+                }
+            }
+
+            if !stockRefs.isEmpty {
+                Section("Stock-Referenzen (\(stockRefs.count))") {
+                    ForEach(stockRefs) { ref in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(ref.label)
+                                .font(.subheadline.weight(.semibold))
+                            Text("\(ref.model) · \(ref.controllerType) · \(ref.version) · \(ref.byteCount) B")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Button("Löschen", role: .destructive) {
+                                Task { await deleteStock(ref.id) }
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
                 }
             }
@@ -451,6 +475,7 @@ struct AdminFirmwareUploadsView: View {
             "Decrypt \(h.decryptConfigured == true ? "ok" : "fehlt")",
             "Ghidra \(h.ghidraConfigured == true ? "ok" : "fehlt")",
             "KI \(h.llmConfigured == true ? "ok" : "aus")",
+            "Stock \(h.stockRefCount ?? 0)",
         ]
         return bits.joined(separator: " · ")
     }
@@ -462,9 +487,21 @@ struct AdminFirmwareUploadsView: View {
             let client = FirmwareServerAnalysisClient.fromAppSettings()
             async let statsTask = client.adminStats()
             async let healthTask = client.workerHealth()
+            async let stockTask = client.adminListStock()
             stats = try await statsTask
             workerHealth = try? await healthTask
+            stockRefs = (try? await stockTask)?.refs ?? []
             errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func deleteStock(_ id: String) async {
+        do {
+            let client = FirmwareServerAnalysisClient.fromAppSettings()
+            try await client.adminDeleteStock(refId: id)
+            await reloadStats()
         } catch {
             errorText = error.localizedDescription
         }

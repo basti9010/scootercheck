@@ -18,7 +18,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/scootercheck /opt/scootercheck/firmware-analysis
+ReadWritePaths=/var/lib/scootercheck /opt/scootercheck/firmware-analysis /var/lib/scootercheck/stock-fw
 ReadOnlyPaths=/opt/ghidra /opt/scootercheck/decrypt-firm.sh /etc/scootercheck /usr/lib/jvm
 
 [Install]

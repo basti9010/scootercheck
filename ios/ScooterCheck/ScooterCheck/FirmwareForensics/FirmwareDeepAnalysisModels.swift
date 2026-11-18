@@ -26,6 +26,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var notes: [String]
     var caveats: [String]
     var quality: FirmwareDeepAnalysisQuality
+    /// Server Stock-Diff gegen Referenzbibliothek (nach Decrypt).
+    var stockDiff: FirmwareStockDiffResult? = nil
 
     static let currentSchemaVersion = 1
 
@@ -63,6 +65,58 @@ struct FirmwareDeepAnalysisQuality: Equatable, Codable, Sendable {
     /// true, wenn LLM-Felder nur nach Schema-Validierung übernommen wurden.
     var llmSchemaValidated: Bool
     var summary: String
+}
+
+enum FirmwareStockDiffOutcome: String, Equatable, Codable, Sendable {
+    case identical
+    case different
+    case noReference
+    case skipped
+
+    var label: String {
+        switch self {
+        case .identical: return "Identisch mit Stock"
+        case .different: return "Weicht von Stock ab"
+        case .noReference: return "Keine Stock-Referenz"
+        case .skipped: return "Stock-Diff übersprungen"
+        }
+    }
+}
+
+struct FirmwareStockDiffSegment: Equatable, Codable, Sendable {
+    var offset: Int
+    var length: Int
+    var note: String
+}
+
+struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
+    var outcome: FirmwareStockDiffOutcome
+    var referenceId: String?
+    var referenceLabel: String?
+    var referenceSHA256: String?
+    var differingBytes: Int?
+    var firstDiffOffset: Int?
+    var subjectBytes: Int?
+    var referenceBytes: Int?
+    var percentDifferent: Double?
+    var segments: [FirmwareStockDiffSegment]
+    var note: String
+}
+
+struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
+    var id: String
+    var label: String
+    var model: String
+    var controllerType: String
+    var version: String
+    var sha256: String
+    var byteCount: Int
+}
+
+struct FirmwareStockList: Equatable, Codable, Sendable {
+    var stockFwDir: String?
+    var refs: [FirmwareStockRef]
+    var count: Int
 }
 
 enum FirmwareSpeedLimitRole: String, Codable, Sendable {
@@ -253,4 +307,6 @@ struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var jwtConfigured: Bool?
     var retentionDays: Int?
     var maxStoredJobs: Int?
+    var stockFwDir: String?
+    var stockRefCount: Int?
 }

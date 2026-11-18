@@ -428,6 +428,14 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
+    private func stockDiffColor(_ o: FirmwareStockDiffOutcome) -> Color {
+        switch o {
+        case .identical: return Theme.accent
+        case .different: return Theme.warn
+        case .noReference, .skipped: return Theme.textMuted
+        }
+    }
+
     private func matchColor(_ v: FirmwareReadoutMatchCorrelator.Verdict) -> Color {
         switch v {
         case .likelyMatch: return Theme.accent
@@ -524,6 +532,31 @@ struct FirmwareZipInspectorView: View {
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
                         }
+                    }
+                }
+                if let stock = deep.stockDiff {
+                    Text("Stock-Diff")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    Text(stock.outcome.label)
+                        .font(Theme.caption)
+                        .foregroundStyle(stockDiffColor(stock.outcome))
+                    Text(stock.note)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let d = stock.differingBytes, stock.outcome == .different {
+                        metaRow("Abweichende Bytes", "\(d)")
+                        if let off = stock.firstDiffOffset {
+                            metaRow("Erste Diff", String(format: "0x%X", off))
+                        }
+                        if let pct = stock.percentDifferent {
+                            metaRow("Anteil", String(format: "%.2f %%", pct))
+                        }
+                    }
+                    if let label = stock.referenceLabel {
+                        metaRow("Referenz", label)
                     }
                 }
                 if deep.sources.contains(.serverLLM) {

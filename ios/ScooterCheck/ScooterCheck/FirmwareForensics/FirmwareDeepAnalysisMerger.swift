@@ -20,6 +20,8 @@ enum FirmwareDeepAnalysisMerger {
         let notes = parts.flatMap(\.notes)
         let hasDet = parts.contains { $0.quality.hasDeterministicBasis }
         let llmOk = parts.contains { $0.sources.contains(.serverLLM) && $0.quality.llmSchemaValidated }
+        let stock = parts.compactMap(\.stockDiff).first { $0.outcome == .identical || $0.outcome == .different }
+            ?? parts.compactMap(\.stockDiff).first
 
         return FirmwareDeepAnalysisResult(
             schemaVersion: FirmwareDeepAnalysisResult.currentSchemaVersion,
@@ -43,16 +45,19 @@ enum FirmwareDeepAnalysisMerger {
                 summary: hasDet
                     ? "Zusammengeführt (deterministische Basis\(llmOk ? " + validierte KI" : ""))."
                     : "Zusammengeführt ohne deterministische Basis — vorsichtig werten."
-            )
+            ),
+            stockDiff: stock
         )
     }
 
-    /// Validiert Server-/LLM-JSON: Schema-Version + mindestens ein Speed oder Transition/Combo.
+    /// Validiert Server-/LLM-JSON: Schema-Version + mindestens ein Speed, Transition/Combo oder Stock-Diff.
     static func validateServerResult(_ result: FirmwareDeepAnalysisResult) -> FirmwareDeepAnalysisResult? {
         guard result.schemaVersion == FirmwareDeepAnalysisResult.currentSchemaVersion else { return nil }
+        let stockHit = result.stockDiff?.outcome == .identical || result.stockDiff?.outcome == .different
         let meaningful = !result.speedLimits.isEmpty
             || !result.modeTransitions.isEmpty
             || !result.comboSummaries.isEmpty
+            || stockHit
         guard meaningful else { return nil }
         var copy = result
         if result.sources.contains(.serverLLM) {

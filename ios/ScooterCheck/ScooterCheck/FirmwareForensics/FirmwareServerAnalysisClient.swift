@@ -135,6 +135,31 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return try decode(FirmwareAdminStats.self, from: data)
     }
 
+    func adminListStock() async throws -> FirmwareStockList {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL.appendingPathComponent("v1/firmware/admin/stock")
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 60
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        return try decode(FirmwareStockList.self, from: data)
+    }
+
+    func adminDeleteStock(refId: String) async throws {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL
+            .appendingPathComponent("v1/firmware/admin/stock")
+            .appendingPathComponent(refId)
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "DELETE"
+        req.timeoutInterval = 60
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+    }
+
     func workerHealth() async throws -> FirmwareWorkerHealth {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
         let endpoint = baseURL.appendingPathComponent("health")

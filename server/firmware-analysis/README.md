@@ -27,6 +27,16 @@ LLM_MODEL=gpt-4o-mini
 
 Dann `systemctl restart scootercheck-fw`. `GET /health` → `llmConfigured: true`. Ohne Key läuft die Pipeline unverändert (Note `llm=skipped`).
 
+## Stock-Diff (Schritt 2)
+
+Nach Decrypt vergleicht der Worker den Klartext mit `/var/lib/scootercheck/stock-fw/` (ENV `STOCK_FW_DIR`).
+
+- Dateien: `*.bin` / `*.dec.bin`, optional `manifest.json`
+- Admin: `GET/POST/DELETE /v1/firmware/admin/stock`
+- Ergebnis im Job: `result.stockDiff` (`identical` | `different` | `noReference`)
+
+Ohne Referenzen: `noReference` — Pipeline sonst unverändert.
+
 ## Auth
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API

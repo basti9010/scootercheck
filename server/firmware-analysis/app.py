@@ -28,8 +28,16 @@ from pydantic import BaseModel, Field
 from ghidra_decompile import ghidra_configured, run_ghidra_decompile
 from llm_enrich import enrich_result, llm_configured
 from speed_extract import deep_result
+from stock_diff import (
+    compare_to_stock,
+    delete_stock_ref,
+    ensure_stock_dir,
+    list_stock_refs,
+    register_stock_file,
+    stock_dir,
+)
 
-APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.3.0")
+APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.4.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
@@ -498,6 +506,11 @@ def process_job(job_id: str) -> None:
     if "serverDecompile" not in result["sources"]:
         result["sources"] = list(result["sources"]) + ["serverDecompile"]
 
+    _update(job, progressPercent=88, message="Stock-Diff gegen Referenzbibliothek…")
+    stock = compare_to_stock(plaintext, models=models, controller_type=ctype)
+    result["stockDiff"] = stock
+    result.setdefault("notes", []).append(f"stockDiff={stock.get('outcome')}: {stock.get('note')}")
+
     if meta.allowLLM and llm_configured():
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
         result = enrich_result(result, decompiled_text=decompiled_text)
@@ -507,6 +520,10 @@ def process_job(job_id: str) -> None:
     parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
     if job.get("decompileSaved"):
         parts.append(f"Ghidra .c → {job.get('decompilePath')}")
+    if stock.get("outcome") == "identical":
+        parts.append("Stock identisch")
+    elif stock.get("outcome") == "different":
+        parts.append(f"Stock-Diff {stock.get('differingBytes')} B")
     if "serverLLM" in (result.get("sources") or []):
         parts.append("KI-Hinweise")
     _update(
@@ -533,6 +550,8 @@ def health() -> dict[str, Any]:
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),
         "llmModel": os.environ.get("LLM_MODEL", "gpt-4o-mini").strip() if llm_configured() else None,
+        "stockFwDir": str(stock_dir()),
+        "stockRefCount": len(list_stock_refs()),
         "time": _utc_now().isoformat(),
     }
 
@@ -658,6 +677,45 @@ def admin_stats(_: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
             "users": users,
         }
     )
+
+
+@APP.get("/v1/firmware/admin/stock")
+def admin_list_stock(_: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
+    ensure_stock_dir()
+    refs = list_stock_refs()
+    return JSONResponse({"stockFwDir": str(stock_dir()), "refs": refs, "count": len(refs)})
+
+
+@APP.post("/v1/firmware/admin/stock")
+async def admin_upload_stock(
+    label: str = Form(""),
+    model: str = Form(""),
+    controllerType: str = Form("VCU"),
+    version: str = Form(""),
+    file: UploadFile = File(...),
+    _: dict[str, Any] = Depends(require_admin),
+) -> JSONResponse:
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="empty file")
+    if len(raw) > 16 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="stock file too large (max 16 MiB)")
+    ref = register_stock_file(
+        raw,
+        label=label or (file.filename or "stock"),
+        model=model or "unknown",
+        controller_type=controllerType or "VCU",
+        version=version or "",
+        filename=file.filename,
+    )
+    return JSONResponse({"ok": True, "ref": ref})
+
+
+@APP.delete("/v1/firmware/admin/stock/{ref_id}")
+def admin_delete_stock(ref_id: str, _: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
+    if not delete_stock_ref(ref_id):
+        raise HTTPException(status_code=404, detail="stock ref not found")
+    return JSONResponse({"ok": True, "deleted": ref_id})
 
 
 @APP.get("/v1/firmware/jobs/{job_id}/plaintext")

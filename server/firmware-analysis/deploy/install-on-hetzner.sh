@@ -16,8 +16,10 @@ if [[ ! -d "$APP_DIR" ]]; then
 fi
 
 id scootercheck &>/dev/null || useradd --system --home /var/lib/scootercheck --shell /usr/sbin/nologin scootercheck
-mkdir -p /etc/scootercheck "$JOB_DIR" /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
+STOCK_DIR=/var/lib/scootercheck/stock-fw
+mkdir -p /etc/scootercheck "$JOB_DIR" /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled "$STOCK_DIR"
 chown -R scootercheck:scootercheck /var/lib/scootercheck
+touch "$STOCK_DIR/.gitkeep"
 
 JWT_FROM_AUTH=""
 if [[ -f "$AUTH_ENV" ]]; then
@@ -41,6 +43,7 @@ GHIDRA_PROCESSOR=ARM:LE:32:Cortex
 GHIDRA_BASE_ADDR=0x08000000
 HOST=127.0.0.1
 PORT=8088
+STOCK_FW_DIR=/var/lib/scootercheck/stock-fw
 EOF
   chmod 600 "$ENV_FILE"
   echo "Created $ENV_FILE"
@@ -63,6 +66,10 @@ if ! grep -q '^LLM_API_KEY=' "$ENV_FILE" 2>/dev/null; then
   echo "Appended LLM_* placeholders to $ENV_FILE"
 elif ! grep -q '^LLM_MODEL=' "$ENV_FILE" 2>/dev/null; then
   echo "LLM_MODEL=gpt-4o-mini" >>"$ENV_FILE"
+fi
+
+if ! grep -q '^STOCK_FW_DIR=' "$ENV_FILE" 2>/dev/null; then
+  echo "STOCK_FW_DIR=/var/lib/scootercheck/stock-fw" >>"$ENV_FILE"
 fi
 
 if [[ ! -f /opt/scootercheck/decrypt-firm.sh ]]; then
