@@ -30,12 +30,13 @@ struct FirmwareZipInspectorView: View {
     @State private var refOrigin = ""
     @State private var serverStatusText: String?
     @State private var isServerBusy = false
+    @State private var serverProgress: Double = 0
     @State private var lastServerJobId: String?
     @State private var decompilePreview: FirmwareDecompilePreview?
     @State private var showDecompilePreview = false
+    @State private var showAnalysisSession = false
+    @State private var serverPlaintextData: Data?
     @ObservedObject private var appSettings = AppSettings.shared
-    /// Nach Dateiauswahl automatisch Server-Analyse starten, wenn konfiguriert.
-    private var autoServerAnalyze: Bool { true }
 
     var body: some View {
         NavigationStack {
@@ -45,20 +46,20 @@ struct FirmwareZipInspectorView: View {
                     Button {
                         openSubjectPicker()
                     } label: {
-                        Text(report == nil ? "Datei wählen" : "Andere Datei")
+                        Text("Datei wählen")
                             .font(Theme.buttonSecondary)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .tint(Theme.accent)
                     .disabled(isBusy)
 
                     if isBusy {
-                        ProgressView("Forensische Auswertung…")
+                        ProgressView("Datei wird lokal geprüft…")
                             .font(Theme.caption)
                             .tint(Theme.accent)
                     }
-                    if let errorText {
+                    if let errorText, !showAnalysisSession {
                         Text(errorText)
                             .font(Theme.caption)
                             .foregroundStyle(Theme.danger)
@@ -66,31 +67,10 @@ struct FirmwareZipInspectorView: View {
                     if combinesWithReadout, vehicleContext == nil {
                         missingReadoutBanner
                     }
-
-                    if let report {
-                        verdictBanner(report)
-                        // Klartext-Kurzfassung sofort nach Ampel — vor Paket/ENC-Lärm.
-                        deepAnalysisSection(report)
-                        if combinesWithReadout {
-                            readoutMatchSection(report)
-                            dualSourceSection(report)
-                        }
-                        indicatorsSection(report)
-                        DisclosureGroup("Datei / Verschlüsselung / Technik") {
-                            packageSection(report)
-                            contentSection(report)
-                            cryptoSection(report)
-                            technicalSection(report)
-                            comparisonSection(report)
-                        }
-                        .foregroundStyle(Theme.accent)
-                        .padding(.vertical, 4)
-                        if combinesWithReadout {
-                            vehicleSection(report)
-                        }
-                        exportSection(report)
-                        limitsSection(report)
-                    }
+                    Text("Nach der Auswahl öffnet sich die Auswertung. Die Server-Entschlüsselung startet erst, wenn du sie ausdrücklich startest.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                     AppCopyrightFooter()
                         .frame(maxWidth: .infinity)
                         .padding(.bottom, Theme.Space.xxl)
@@ -114,6 +94,9 @@ struct FirmwareZipInspectorView: View {
                 }
             }
             .preferredColorScheme(.dark)
+            .fullScreenCover(isPresented: $showAnalysisSession) {
+                analysisSessionScreen
+            }
             .sheet(isPresented: $showRefForm) {
                 referenceImportForm
             }
@@ -141,6 +124,159 @@ struct FirmwareZipInspectorView: View {
                 .preferredColorScheme(.dark)
             }
         }
+    }
+
+    private var analysisSessionScreen: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    if let report {
+                        laypersonHeader(report)
+                        decryptActionCard(report)
+                        if isServerBusy || serverProgress > 0 {
+                            serverProgressCard
+                        }
+                        if let errorText {
+                            Text(errorText)
+                                .font(Theme.caption)
+                                .foregroundStyle(Theme.danger)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        deepAnalysisSection(report)
+                        if combinesWithReadout {
+                            readoutMatchSection(report)
+                            dualSourceSection(report)
+                        }
+                        offlineFindingsSection(report)
+                        if combinesWithReadout {
+                            vehicleSection(report)
+                        }
+                        exportSection(report)
+                        limitsSection(report)
+                    } else if isBusy {
+                        ProgressView("Lokale Auswertung…")
+                            .tint(Theme.accent)
+                    }
+                    AppCopyrightFooter()
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, Theme.Space.xxl)
+                }
+                .scootPagePadding()
+                .padding(.top, Theme.Space.sm)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle(lastFileName.isEmpty ? "Auswertung" : lastFileName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schließen") { showAnalysisSession = false }
+                        .foregroundStyle(Theme.accent)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Andere Datei") { openSubjectPicker() }
+                        .foregroundStyle(Theme.accent)
+                        .disabled(isBusy || isServerBusy)
+                }
+            }
+            .preferredColorScheme(.dark)
+        }
+    }
+
+    private func laypersonHeader(_ r: FirmwareForensicReport) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Schritt: \(r.deepAnalysis?.sources.contains(where: {
+                switch $0 {
+                case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
+                    return true
+                default: return false
+                }
+            }) == true ? "Server-Klartext ausgewertet" : "Lokal geprüft — Entschlüsselung optional")")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+            verdictBanner(r)
+        }
+    }
+
+    private func decryptActionCard(_ r: FirmwareForensicReport) -> some View {
+        let serverReady = FirmwareServerAnalysisClient.fromAppSettings().isConfigured
+        let hasServerDeep = r.deepAnalysis?.sources.contains(where: {
+            switch $0 {
+            case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt:
+                return true
+            default: return false
+            }
+        }) == true
+        return sectionCard(hasServerDeep ? "Erneut entschlüsseln" : "Entschlüsseln") {
+            Text(hasServerDeep
+                 ? "Du kannst die Datei erneut auf dem Server entschlüsseln und analysieren lassen."
+                 : "Die Datei wurde lokal geprüft. Für Klartext-Limits und Combos: auf dem Server entschlüsseln.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if serverReady {
+                Button {
+                    Task { await uploadToAnalysisServer() }
+                } label: {
+                    Label(
+                        isServerBusy
+                            ? "Entschlüsselung läuft…"
+                            : (hasServerDeep ? "Erneut auf Server entschlüsseln" : "Auf Server entschlüsseln"),
+                        systemImage: "lock.open"
+                    )
+                    .font(Theme.buttonSecondary)
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .disabled(isServerBusy || lastData == nil)
+            } else {
+                Text("Kein Analyse-Server in den Einstellungen konfiguriert.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.warn)
+            }
+            if let serverStatusText, !isServerBusy {
+                Text(serverStatusText)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+    }
+
+    private var serverProgressCard: some View {
+        sectionCard("Fortschritt") {
+            ProgressView(value: min(max(serverProgress, 0), 100), total: 100)
+                .tint(Theme.accent)
+                .animation(.easeInOut(duration: 0.25), value: serverProgress)
+            HStack {
+                Text(serverStatusText ?? "Entschlüsselung…")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Text("\(Int(serverProgress)) %")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    private func offlineFindingsSection(_ r: FirmwareForensicReport) -> some View {
+        DisclosureGroup("Offline-Befunde (Datei / Verschlüsselung / Technik)") {
+            VStack(alignment: .leading, spacing: Theme.Space.md) {
+                Text("Wichtig: Hash, Format und Offline-Einschätzung bleiben auch nach Server-Analyse erhalten.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                packageSection(r)
+                contentSection(r)
+                cryptoSection(r)
+                indicatorsSection(r)
+                technicalSection(r)
+                comparisonSection(r)
+            }
+            .padding(.top, 8)
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.vertical, 4)
     }
 
     private func openSubjectPicker() {
@@ -472,7 +608,14 @@ struct FirmwareZipInspectorView: View {
     private func deepAnalysisSection(_ r: FirmwareForensicReport) -> some View {
         if let deep = r.deepAnalysis {
             let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
-            sectionCard("Was bedeutet das?") {
+            let hasServer = deep.sources.contains(where: {
+                switch $0 {
+                case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
+                    return true
+                default: return false
+                }
+            })
+            sectionCard(hasServer ? "Ergebnis nach Entschlüsselung" : "Lokale Kurzfassung") {
                 Text(brief.headline)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
@@ -614,27 +757,6 @@ struct FirmwareZipInspectorView: View {
                 .foregroundStyle(Theme.accent)
                 .padding(.top, 2)
 
-                if FirmwareServerAnalysisClient.fromAppSettings().isConfigured {
-                    Button {
-                        Task { await uploadToAnalysisServer() }
-                    } label: {
-                        Label(
-                            isServerBusy ? "Server analysiert…" : "Analyse erneut auf Server",
-                            systemImage: "arrow.clockwise.iphone"
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(Theme.accent)
-                    .disabled(isServerBusy || lastData == nil)
-                    .padding(.top, 8)
-                }
-                if let serverStatusText {
-                    Text(serverStatusText)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.warn)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
                 if lastServerJobId != nil {
                     Button {
                         Task { await loadDecompilePreview() }
@@ -645,30 +767,15 @@ struct FirmwareZipInspectorView: View {
                     .buttonStyle(.bordered)
                     .tint(Theme.accent)
                     .disabled(isServerBusy)
+                    .padding(.top, 8)
                 }
             }
-        } else if FirmwareServerAnalysisClient.fromAppSettings().isConfigured, lastData != nil {
-            sectionCard("Deep Analysis (Server)") {
-                Text("Lokal keine Katalog-/Speed-Treffer. Server kann ENC mit eurem Decrypt-Tool öffnen.")
+        } else {
+            sectionCard("Was bedeutet das?") {
+                Text("Noch keine Server-Klartext-Analyse. Unten bleiben die Offline-Befunde sichtbar. Tippe oben auf „Auf Server entschlüsseln“, um Limits und Combos aus dem Klartext zu holen.")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
-                Button {
-                    Task { await uploadToAnalysisServer() }
-                } label: {
-                    Label(
-                        isServerBusy ? "Server analysiert…" : "Auf Server entschlüsseln / analysieren",
-                        systemImage: "lock.open.iphone"
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .disabled(isServerBusy)
-                if let serverStatusText {
-                    Text(serverStatusText)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.warn)
-                }
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -832,14 +939,16 @@ struct FirmwareZipInspectorView: View {
             lastData = data
             lastServerJobId = nil
             decompilePreview = nil
+            serverPlaintextData = nil
+            serverProgress = 0
+            serverStatusText = nil
             if refModel.isEmpty {
                 let lower = lastFileName.lowercased()
                 if lower.contains("zt3") { refModel = "zt3" }
             }
             reanalyze()
-            if autoServerAnalyze, FirmwareServerAnalysisClient.fromAppSettings().isConfigured {
-                Task { await uploadToAnalysisServer() }
-            }
+            // Neues Fenster: lokale Auswertung zuerst — Server erst auf Knopfdruck.
+            showAnalysisSession = true
         } catch {
             report = nil
             errorText = "Datei konnte nicht gelesen werden: \(error.localizedDescription)"
@@ -879,7 +988,8 @@ struct FirmwareZipInspectorView: View {
             return
         }
         isServerBusy = true
-        serverStatusText = "Lade Datei hoch…"
+        serverProgress = 2
+        serverStatusText = "Datei wird hochgeladen…"
         errorText = nil
         defer { isServerBusy = false }
 
@@ -898,22 +1008,23 @@ struct FirmwareZipInspectorView: View {
         do {
             let status = try await client.submit(req, archiveData: data)
             lastServerJobId = status.jobId.isEmpty ? nil : status.jobId
-            serverStatusText = status.message
+            serverProgress = max(5, Double(status.progressPercent))
+            serverStatusText = status.message.isEmpty ? "Auftrag gestartet…" : status.message
             if status.state == .failed {
                 errorText = status.message
+                serverProgress = 0
                 return
             }
             var final = status
             if status.state != .completed, !status.jobId.isEmpty {
-                serverStatusText = "Warte auf Job \(status.jobId.prefix(8))…"
+                serverStatusText = "Entschlüsselung / Analyse…"
                 // Decrypt + Ghidra (+ optional KI) kann mehrere Minuten dauern.
                 for _ in 0..<240 {
                     try await Task.sleep(nanoseconds: 2_000_000_000)
                     final = try await client.poll(jobId: status.jobId)
-                    let pct = final.progressPercent
-                    serverStatusText = pct > 0
-                        ? "\(final.state.label): \(final.message) (\(pct)%)"
-                        : "\(final.state.label): \(final.message)"
+                    let pct = Double(final.progressPercent)
+                    serverProgress = max(serverProgress, pct > 0 ? pct : min(serverProgress + 1, 95))
+                    serverStatusText = final.message.isEmpty ? final.state.label : final.message
                     if final.state == .completed || final.state == .failed { break }
                 }
             }
@@ -922,9 +1033,42 @@ struct FirmwareZipInspectorView: View {
                     ?? (remote.quality.hasDeterministicBasis ? remote : nil)
             else {
                 errorText = final.message.isEmpty ? "Server lieferte kein verwertbares Ergebnis." : final.message
+                serverProgress = 0
                 return
             }
+            serverProgress = 97
+            serverStatusText = "Klartext wird übernommen…"
             mergeServerDeepAnalysis(validated)
+
+            var artifacts = FirmwareServerArtifacts(
+                jobId: final.jobId.isEmpty ? lastServerJobId : final.jobId,
+                plaintextSaved: final.plaintextSaved,
+                plaintextSHA256: final.plaintextSHA256,
+                plaintextByteCount: nil,
+                decompileSaved: final.decompileSaved,
+                decompileExcerpt: nil
+            )
+            if final.plaintextSaved == true, let jobId = artifacts.jobId {
+                if let plain = try? await client.downloadPlaintext(jobId: jobId) {
+                    serverPlaintextData = plain
+                    artifacts.plaintextByteCount = plain.count
+                    if artifacts.plaintextSHA256 == nil || artifacts.plaintextSHA256?.isEmpty == true {
+                        artifacts.plaintextSHA256 = FirmwareDigest.sha256Hex(plain)
+                    }
+                }
+            }
+            if final.decompileSaved == true {
+                await loadDecompilePreview()
+                if let preview = decompilePreview?.preview {
+                    artifacts.decompileExcerpt = String(preview.prefix(8_000))
+                }
+            }
+            if var current = report {
+                current.serverArtifacts = artifacts
+                report = current
+            }
+
+            serverProgress = 100
             var bits: [String] = []
             if final.plaintextSaved == true { bits.append("Decrypt OK") }
             if final.decompileSaved == true { bits.append("Ghidra .c OK") }
@@ -932,12 +1076,10 @@ struct FirmwareZipInspectorView: View {
             bits.append("\(validated.speedLimits.count) Speed")
             bits.append("\(validated.comboSummaries.count) Kombi(s)")
             serverStatusText = bits.joined(separator: " · ")
-            if final.decompileSaved == true {
-                await loadDecompilePreview()
-            }
         } catch {
             errorText = error.localizedDescription
             serverStatusText = error.localizedDescription
+            serverProgress = 0
         }
     }
 
@@ -1062,9 +1204,17 @@ struct FirmwareZipInspectorView: View {
 
     private func sharePDF(_ r: FirmwareForensicReport) {
         let data = FirmwareForensicPDF.render(r)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ScooterCheck-Firmware-Forensik.pdf")
-        try? data.write(to: url)
-        shareItems = [url]
+        let base = FileManager.default.temporaryDirectory
+        let pdfURL = base.appendingPathComponent("ScooterCheck-Firmware-Forensik.pdf")
+        try? data.write(to: pdfURL)
+        var items: [Any] = [pdfURL]
+        if let plain = serverPlaintextData, !plain.isEmpty {
+            let stem = (lastFileName as NSString).deletingPathExtension
+            let binURL = base.appendingPathComponent("\(stem.isEmpty ? "FIRM" : stem).dec.bin")
+            try? plain.write(to: binURL)
+            items.append(binURL)
+        }
+        shareItems = items
         showShare = true
     }
 

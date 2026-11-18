@@ -270,6 +270,25 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return try decode(FirmwareDecompilePreview.self, from: data)
     }
 
+    /// Download decrypted firmware bytes for forensic export (PDF pack).
+    func downloadPlaintext(jobId: String) async throws -> Data {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL
+            .appendingPathComponent("v1/firmware/jobs")
+            .appendingPathComponent(jobId)
+            .appendingPathComponent("plaintext")
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 120
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        guard !data.isEmpty else {
+            throw FirmwareServerAnalysisError.httpStatus(204, "leerer Klartext")
+        }
+        return data
+    }
+
     // MARK: - Helpers
 
     private func applyAuth(_ req: inout URLRequest) {

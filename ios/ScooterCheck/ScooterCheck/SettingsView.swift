@@ -222,7 +222,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             sectionLabel("Firmware-Analyse-Server")
 
-            Text("ZIP/ENC: ninebottea → r2/Ghidra/Capstone/YARA → Speeds/Combos/Stock-Diff; optional KI (Anthropic oder OpenAI) wenn LLM_API_KEY auf dem Server. Dateiauswahl startet automatisch. Auth: Login (Bearer).")
+            Text("ZIP/ENC: lokal prüfen, dann optional „Auf Server entschlüsseln“ (ninebottea → r2/Ghidra/… → Speeds/Combos/Stock-Diff; optional KI). Auth: Login (Bearer).")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

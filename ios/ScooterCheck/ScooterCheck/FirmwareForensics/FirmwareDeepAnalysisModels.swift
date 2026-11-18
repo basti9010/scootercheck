@@ -111,7 +111,7 @@ struct FirmwareYaraMatch: Equatable, Codable, Sendable, Identifiable {
     var rule: String
     var description: String
     var confidence: String
-    var family: String?
+    var family: String? = nil
     var tags: [String]
     var strings: [String]
 
@@ -123,7 +123,7 @@ struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
     var referenceId: String?
     var referenceLabel: String?
     var referenceSHA256: String?
-    var referenceSource: String?
+    var referenceSource: String? = nil
     var differingBytes: Int?
     var firstDiffOffset: Int?
     var subjectBytes: Int?
@@ -131,8 +131,8 @@ struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
     var percentDifferent: Double?
     var segments: [FirmwareStockDiffSegment]
     var note: String
-    var trustedRefCount: Int?
-    var totalRefCount: Int?
+    var trustedRefCount: Int? = nil
+    var totalRefCount: Int? = nil
 }
 
 struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
@@ -141,14 +141,13 @@ struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
     var model: String
     var controllerType: String
     var version: String
-    var source: String?
-    var region: String?
-    var notes: String?
-    var trusted: Bool?
+    var source: String? = nil
+    var region: String? = nil
+    var notes: String? = nil
+    var trusted: Bool? = nil
     var sha256: String
     var byteCount: Int
 }
-
 struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
     var likely: Bool?
     var flashBase: String?
