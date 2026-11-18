@@ -241,3 +241,16 @@ struct FirmwareAdminStats: Equatable, Codable, Sendable {
     var maxStoredJobs: Int
     var users: [FirmwareAdminUserStats]
 }
+
+/// Antwort von `GET /health` des Firmware-Workers (ohne Secrets).
+struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
+    var ok: Bool
+    var service: String?
+    var decryptConfigured: Bool?
+    var ghidraConfigured: Bool?
+    var ghidraEnabled: Bool?
+    var llmConfigured: Bool?
+    var jwtConfigured: Bool?
+    var retentionDays: Int?
+    var maxStoredJobs: Int?
+}

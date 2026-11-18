@@ -10,9 +10,22 @@ Dieses Repo enthält **kein** ninebottea und **keine** Keys.
 2. Worker speichert unter `WORK_DIR/YYYY/MM/DD/<jobId>/`
 3. Background: extract `.enc` → `DECRYPT_CMD` → Klartext unter `PLAINTEXT_STORE/YYYY/MM/DD/`
 4. Optional Ghidra → `.c` unter `DECOMPILE_STORE/YYYY/MM/DD/`
-5. Speed-Scan → JSON in Job-Status
-6. App pollt `GET /v1/firmware/jobs/{id}` bis `completed` / `failed`
-7. Optional Download: `/plaintext`, `/decompile`
+5. Speed-/Combo-Scan (deterministisch) → JSON
+6. Optional KI (`allowLLM` + `LLM_API_KEY`): schema-gebundene Anreicherung von Combos/Modi/Eingaben aus dem Decompile-Snippet (keine neuen Speeds)
+7. App pollt `GET /v1/firmware/jobs/{id}` bis `completed` / `failed`
+8. Optional Download: `/plaintext`, `/decompile`
+
+## KI (Schritt 1 der Analyse-Erweiterung)
+
+In `/etc/scootercheck/firmware-analysis.env`:
+
+```bash
+LLM_API_KEY=sk-...
+LLM_BASE_URL=https://api.openai.com/v1   # oder kompatibler Proxy
+LLM_MODEL=gpt-4o-mini
+```
+
+Dann `systemctl restart scootercheck-fw`. `GET /health` → `llmConfigured: true`. Ohne Key läuft die Pipeline unverändert (Note `llm=skipped`).
 
 ## Auth
 

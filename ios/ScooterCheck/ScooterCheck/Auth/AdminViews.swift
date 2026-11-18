@@ -315,6 +315,7 @@ struct AdminDomainsView: View {
 struct AdminFirmwareUploadsView: View {
     @ObservedObject var auth: AuthSessionStore
     @State private var stats: FirmwareAdminStats?
+    @State private var workerHealth: FirmwareWorkerHealth?
     @State private var jobs: [FirmwareAnalysisJobStatus] = []
     @State private var filterUser: String?
     @State private var busy = false
@@ -326,6 +327,19 @@ struct AdminFirmwareUploadsView: View {
         List {
             if let errorText {
                 Text(errorText).foregroundStyle(Theme.danger)
+            }
+
+            if let workerHealth {
+                Section("Worker") {
+                    Text(workerStatusLine(workerHealth))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if workerHealth.llmConfigured != true {
+                        Text("KI aus: LLM_API_KEY in /etc/scootercheck/firmware-analysis.env setzen, dann scootercheck-fw neu starten.")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.warn)
+                    }
+                }
             }
 
             if let stats {
@@ -432,12 +446,24 @@ struct AdminFirmwareUploadsView: View {
         await reloadJobs()
     }
 
+    private func workerStatusLine(_ h: FirmwareWorkerHealth) -> String {
+        let bits = [
+            "Decrypt \(h.decryptConfigured == true ? "ok" : "fehlt")",
+            "Ghidra \(h.ghidraConfigured == true ? "ok" : "fehlt")",
+            "KI \(h.llmConfigured == true ? "ok" : "aus")",
+        ]
+        return bits.joined(separator: " · ")
+    }
+
     private func reloadStats() async {
         busy = true
         defer { busy = false }
         do {
             let client = FirmwareServerAnalysisClient.fromAppSettings()
-            stats = try await client.adminStats()
+            async let statsTask = client.adminStats()
+            async let healthTask = client.workerHealth()
+            stats = try await statsTask
+            workerHealth = try? await healthTask
             errorText = nil
         } catch {
             errorText = error.localizedDescription

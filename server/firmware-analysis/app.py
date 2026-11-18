@@ -532,6 +532,7 @@ def health() -> dict[str, Any]:
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),
+        "llmModel": os.environ.get("LLM_MODEL", "gpt-4o-mini").strip() if llm_configured() else None,
         "time": _utc_now().isoformat(),
     }
 

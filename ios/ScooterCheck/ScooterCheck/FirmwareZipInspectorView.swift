@@ -526,7 +526,18 @@ struct FirmwareZipInspectorView: View {
                         }
                     }
                 }
-                Text("Server: ninebottea → Klartext, Ghidra → .c (Decompile, kein Neu-Kompilieren). Ergebnis wird mit lokaler Deep Analysis und dem Fahrzeugkontext aus der Auslese zusammengeführt (Dual-Source).")
+                if deep.sources.contains(.serverLLM) {
+                    Text("KI: schema-gebunden aktiv (Combos/Modi/Eingaben ergänzt — keine neuen Speed-Werte).")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.accent)
+                        .padding(.top, 4)
+                } else if deep.notes.contains(where: { $0.contains("llm=skipped") || $0.contains("LLM_API_KEY") }) {
+                    Text("KI: Server ohne LLM_API_KEY — nur deterministische/Ghidra-Befunde.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
+                        .padding(.top, 4)
+                }
+                Text("Server: ninebottea → Klartext, Ghidra → .c (Decompile, kein Neu-Kompilieren), optional KI. Ergebnis wird mit lokaler Deep Analysis und dem Fahrzeugkontext aus der Auslese zusammengeführt (Dual-Source).")
                     .font(.caption2)
                     .foregroundStyle(Theme.textMuted)
                     .padding(.top, 4)

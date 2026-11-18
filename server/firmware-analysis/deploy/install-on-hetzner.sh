@@ -51,6 +51,20 @@ else
   fi
 fi
 
+# Ensure LLM placeholders exist (do not overwrite an existing key).
+if ! grep -q '^LLM_API_KEY=' "$ENV_FILE" 2>/dev/null; then
+  {
+    echo ""
+    echo "# Optional schema-bound KI (OpenAI-compatible). Leave empty to skip."
+    echo "LLM_API_KEY="
+    echo "LLM_BASE_URL=https://api.openai.com/v1"
+    echo "LLM_MODEL=gpt-4o-mini"
+  } >>"$ENV_FILE"
+  echo "Appended LLM_* placeholders to $ENV_FILE"
+elif ! grep -q '^LLM_MODEL=' "$ENV_FILE" 2>/dev/null; then
+  echo "LLM_MODEL=gpt-4o-mini" >>"$ENV_FILE"
+fi
+
 if [[ ! -f /opt/scootercheck/decrypt-firm.sh ]]; then
   install -m 755 "$APP_DIR/decrypt-firm.example.sh" /opt/scootercheck/decrypt-firm.sh
 fi

@@ -135,6 +135,18 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return try decode(FirmwareAdminStats.self, from: data)
     }
 
+    func workerHealth() async throws -> FirmwareWorkerHealth {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL.appendingPathComponent("health")
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 30
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        return try decode(FirmwareWorkerHealth.self, from: data)
+    }
+
     func adminDeleteJob(jobId: String) async throws {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
         let endpoint = baseURL
