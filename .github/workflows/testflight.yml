@@ -84,6 +84,7 @@ on:
       - cursor/auslesen-stop-stay-b100
       - cursor/backend-auth-b100
       - cursor/forensik-phase1-reliability-b100
+      - feature/firmware-forensics-phase2
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
