@@ -66,6 +66,14 @@ apt-get install -y radare2
 
 Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE=0` / `ENABLE_YARA=0`.
 
+## Unicorn + Pfadanalyse (Schritt 7–8)
+
+- **Unicorn**: kurze Emulation um Speed-Immediates (`pip install unicorn`, `ENABLE_UNICORN=0` zum Abschalten)
+- **angr_lite**: Capstone-Rückwärts-Pfadanalyse; optionales echtes `angr` wenn installiert und Bin ≤ `ANGR_MAX_BYTES` (Default 512 KiB)
+- Stock-Lib befüllen: Admin **→ Stock** auf einem Job mit Klartext, oder Dateien nach `STOCK_FW_DIR`
+
+Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`.
+
 ## Auth
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API

@@ -5,3 +5,6 @@ pydantic==2.10.3
 PyJWT==2.10.1
 capstone==5.0.3
 yara-python==4.5.1
+unicorn==2.1.1
+# Optional / heavy — install manually if needed: pip install angr
+# angr is not pinned here to keep the 4 GB VPS lean; angr_lite falls back to Capstone.

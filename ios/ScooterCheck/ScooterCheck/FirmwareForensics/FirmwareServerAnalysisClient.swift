@@ -147,6 +147,38 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return try decode(FirmwareStockList.self, from: data)
     }
 
+    func adminPromoteJobToStock(
+        jobId: String,
+        label: String = "",
+        model: String = "",
+        controllerType: String = "VCU",
+        version: String = ""
+    ) async throws -> FirmwareStockRef {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        var comps = URLComponents(
+            url: baseURL
+                .appendingPathComponent("v1/firmware/admin/jobs")
+                .appendingPathComponent(jobId)
+                .appendingPathComponent("promote-stock"),
+            resolvingAgainstBaseURL: false
+        )
+        comps?.queryItems = [
+            URLQueryItem(name: "label", value: label),
+            URLQueryItem(name: "model", value: model),
+            URLQueryItem(name: "controllerType", value: controllerType),
+            URLQueryItem(name: "version", value: version),
+        ]
+        guard let endpoint = comps?.url else { throw FirmwareServerAnalysisError.badURL }
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 60
+        applyAuth(&req)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data)
+        struct Wrap: Decodable { var ref: FirmwareStockRef }
+        return try decode(Wrap.self, from: data).ref
+    }
+
     func adminDeleteStock(refId: String) async throws {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
         let endpoint = baseURL

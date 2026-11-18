@@ -21,10 +21,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from angr_lite import (
+    analyze_firmware as angr_analyze,
+    angr_configured,
+    angr_engine_available,
+    merge_angr_into_result,
+)
 from capstone_extract import (
     analyze_firmware as capstone_analyze,
     capstone_configured,
@@ -42,9 +48,14 @@ from stock_diff import (
     register_stock_file,
     stock_dir,
 )
+from unicorn_emulate import (
+    analyze_firmware as unicorn_analyze,
+    merge_unicorn_into_result,
+    unicorn_configured,
+)
 from yara_scan import merge_yara_into_result, scan_firmware as yara_scan, yara_configured
 
-APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.4.0")
+APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.5.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
@@ -561,6 +572,24 @@ def process_job(job_id: str) -> None:
     result = merge_capstone_into_result(result, cs_info)
     result = merge_yara_into_result(result, yr_info)
 
+    _update(job, progressPercent=86, message="Unicorn-Emulation (Speed-Fenster)…")
+    uni_info = unicorn_analyze(stored) if unicorn_configured() else {
+        "ok": False,
+        "speeds": [],
+        "notes": ["unicorn=skipped"],
+        "sites": [],
+    }
+    result = merge_unicorn_into_result(result, uni_info)
+
+    _update(job, progressPercent=87, message="Pfadanalyse (Capstone/angr)…")
+    ang_info = angr_analyze(stored) if angr_configured() else {
+        "ok": False,
+        "notes": ["angr_lite=skipped"],
+        "transitions": [],
+        "pathHints": [],
+    }
+    result = merge_angr_into_result(result, ang_info)
+
     _update(job, progressPercent=88, message="Stock-Diff gegen Referenzbibliothek…")
     stock = compare_to_stock(plaintext, models=models, controller_type=ctype)
     result["stockDiff"] = stock
@@ -579,6 +608,10 @@ def process_job(job_id: str) -> None:
         parts.append(f"capstone {len(cs_info.get('speeds') or [])}")
     if yr_info.get("ok"):
         parts.append(f"yara {len(yr_info.get('matches') or [])}")
+    if uni_info.get("ok"):
+        parts.append(f"unicorn {len(uni_info.get('speeds') or [])}")
+    if ang_info.get("ok"):
+        parts.append(f"paths {len(ang_info.get('pathHints') or [])}")
     if job.get("decompileSaved"):
         parts.append(f"Ghidra .c → {job.get('decompilePath')}")
     if stock.get("outcome") == "identical":
@@ -617,6 +650,9 @@ def health() -> dict[str, Any]:
         "r2Configured": r2_configured(),
         "capstoneConfigured": capstone_configured(),
         "yaraConfigured": yara_configured(),
+        "unicornConfigured": unicorn_configured(),
+        "angrLiteConfigured": angr_configured(),
+        "angrEngineConfigured": angr_engine_available(),
         "time": _utc_now().isoformat(),
     }
 
@@ -781,6 +817,34 @@ def admin_delete_stock(ref_id: str, _: dict[str, Any] = Depends(require_admin)) 
     if not delete_stock_ref(ref_id):
         raise HTTPException(status_code=404, detail="stock ref not found")
     return JSONResponse({"ok": True, "deleted": ref_id})
+
+
+@APP.post("/v1/firmware/admin/jobs/{job_id}/promote-stock")
+def admin_promote_job_stock(
+    job_id: str,
+    label: str = Query(""),
+    model: str = Query(""),
+    controllerType: str = Query("VCU"),
+    version: str = Query(""),
+    _: dict[str, Any] = Depends(require_admin),
+) -> JSONResponse:
+    """Copy a job's decrypted plaintext into the stock library for future BinDiff."""
+    job = load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    path = Path(job.get("plaintextPath") or (Path(job["dir"]) / "FIRM.dec.bin"))
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="plaintext not available")
+    raw = path.read_bytes()
+    ref = register_stock_file(
+        raw,
+        label=label or (job.get("originalFileName") or f"stock-{job_id[:8]}"),
+        model=model or ((job.get("result") or {}).get("models") or ["unknown"])[0],
+        controller_type=controllerType or ((job.get("result") or {}).get("controllerType") or "VCU"),
+        version=version or "",
+        filename=f"{job_id[:8]}.dec.bin",
+    )
+    return JSONResponse({"ok": True, "ref": ref})
 
 
 @APP.get("/v1/firmware/jobs/{job_id}/plaintext")

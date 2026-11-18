@@ -427,6 +427,12 @@ struct AdminFirmwareUploadsView: View {
                                 }
                                 .buttonStyle(.bordered)
                             }
+                            if job.plaintextSaved == true {
+                                Button("→ Stock") {
+                                    Task { await promoteStock(job.jobId) }
+                                }
+                                .buttonStyle(.bordered)
+                            }
                             Button("Löschen", role: .destructive) {
                                 Task { await deleteJob(job.jobId) }
                             }
@@ -482,6 +488,8 @@ struct AdminFirmwareUploadsView: View {
             "r2 \(h.r2Configured == true ? "ok" : "aus")",
             "CS \(h.capstoneConfigured == true ? "ok" : "aus")",
             "YARA \(h.yaraConfigured == true ? "ok" : "aus")",
+            "Uni \(h.unicornConfigured == true ? "ok" : "aus")",
+            "Pfad \(h.angrLiteConfigured == true ? "ok" : "aus")",
             "Stock \(h.stockRefCount ?? 0)",
         ]
         return bits.joined(separator: " · ")
@@ -508,6 +516,16 @@ struct AdminFirmwareUploadsView: View {
         do {
             let client = FirmwareServerAnalysisClient.fromAppSettings()
             try await client.adminDeleteStock(refId: id)
+            await reloadStats()
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func promoteStock(_ jobId: String) async {
+        do {
+            let client = FirmwareServerAnalysisClient.fromAppSettings()
+            _ = try await client.adminPromoteJobToStock(jobId: jobId)
             await reloadStats()
         } catch {
             errorText = error.localizedDescription

@@ -52,6 +52,8 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
     case serverR2
     case serverCapstone
     case serverYara
+    case serverEmulation
+    case serverAngr
     case serverLLM
     case liveVehicleContext
 
@@ -63,6 +65,8 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
         case .serverR2: return "Server-radare2"
         case .serverCapstone: return "Server-Capstone"
         case .serverYara: return "Server-YARA"
+        case .serverEmulation: return "Server-Unicorn"
+        case .serverAngr: return "Server-Pfadanalyse"
         case .serverLLM: return "Server-KI (schema-gebunden)"
         case .liveVehicleContext: return "Live-Fahrzeugkontext"
         }
@@ -334,4 +338,7 @@ struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var r2Configured: Bool?
     var capstoneConfigured: Bool?
     var yaraConfigured: Bool?
+    var unicornConfigured: Bool?
+    var angrLiteConfigured: Bool?
+    var angrEngineConfigured: Bool?
 }
