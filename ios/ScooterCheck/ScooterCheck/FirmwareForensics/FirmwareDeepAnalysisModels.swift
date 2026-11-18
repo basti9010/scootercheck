@@ -44,7 +44,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
             "Code-/Katalogbefunde beweisen nicht, dass dieses Image aktuell im Controller steckt.",
             "ENC ohne Entschlüsselung: nur Meta, Hash und bekannte Signaturen — keine neuen Limit-Konstanten aus dem Ciphertext.",
             "KI-Auswertung (falls Server) darf nur dieses Schema füllen; Freitext ist kein Beweismittel.",
-            "Physische Tastennamen (Gas/Bremse) kommen aus Signatur/Forum/Live-Test, nicht aus garantierten Symbolnamen im Decompile."
+            "Tastenkombinationen nur bei Live-Vergleich oder Prefix Belegt:/Validiert: — keine Heuristik-Rätselraten."
         ]
     }
 
