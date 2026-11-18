@@ -1,8 +1,15 @@
-"""Deterministic combo / mode-transition hints from speed pairs + Ghidra C text."""
+"""Deterministic mode / input hints from speed pairs + Ghidra C text.
+
+Does NOT invent physical unlock button sequences. Dual legal/open caps become
+a mode-transition with an unbelegt trigger; token hits become low/medium
+inputHints only.
+"""
 from __future__ import annotations
 
 import re
 from typing import Any
+
+from combo_policy import sanitize_transition_trigger
 
 
 def xref_notes_for_speeds(decompiled_text: str | None, speeds: list[dict[str, Any]]) -> list[str]:
@@ -36,7 +43,11 @@ def extract_combos(
     speeds: list[dict[str, Any]],
     decompiled_text: str | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
-    """Return (modeTransitions, inputHints, comboSummaries)."""
+    """Return (modeTransitions, inputHints, comboSummaries).
+
+    comboSummaries stays empty here — only Live-/Validiert-/Belegt-lines may
+    populate it elsewhere (see combo_policy).
+    """
     transitions: list[dict[str, Any]] = []
     inputs: list[dict[str, Any]] = []
     combos: list[str] = []
@@ -52,36 +63,25 @@ def extract_combos(
             {
                 "id": "srv-tr-dual-mode",
                 "title": "Zwei Limit-Welten im Code",
-                "trigger": "Einschalt-/Tastenkombi oder Panic (modellabhängig)",
+                "trigger": sanitize_transition_trigger(None),
                 "effect": f"Umschalten zwischen ~{int(legal_kmh)} km/h (legal-nah) und ~{int(open_kmh)} km/h (offen)",
                 "evidence": "Speed-Paar legalCap + openCap im Klartext/Decompile",
                 "source": "serverDecompile",
                 "confidence": "medium",
             }
         )
-        combos.append(
-            f"Vermutete Soft-/Power-Kombi: Umschalten {int(legal_kmh)} ↔ {int(open_kmh)} km/h "
-            "(häufig Gas + Bremse + Power — Live-Test nötig)"
-        )
-        combos.append(
-            f"Panic/Legal-Rückfall: oft Reboot ohne Gas/Bremse oder Extra-Taste → ~{int(legal_kmh)} km/h"
-        )
 
     if legal and region and not open_caps:
-        combos.append(
-            f"Regions-/Modusstufen neben Legal-Kappe "
-            f"({int(min(s['kmh'] for s in legal))} / "
-            f"{', '.join(str(int(s['kmh'])) for s in region)} km/h)"
-        )
+        # Factual note only — not a button recipe
+        pass
 
     text = (decompiled_text or "").lower()
     if not text:
-        return transitions, inputs, _uniq(combos)
+        return transitions, inputs, combos
 
     def has(*needles: str) -> bool:
         return any(n in text for n in needles)
 
-    # Dual-analog / both-channel patterns (Panicbutton-Familie)
     dual = bool(
         re.search(r"\bmask\b.{0,40}\b3\b", text)
         or re.search(r"&\s*3\b", text)
@@ -100,90 +100,67 @@ def extract_combos(
             {
                 "id": "srv-in-dual",
                 "kind": "dualAnalog",
-                "detail": "Decompile: zwei Analog-/Eingangskanäle (Gas/Bremse-Muster)",
+                "detail": "Decompile: zwei Analog-/Eingangskanäle (Token-Muster)",
                 "evidence": "Textmuster dual/mask&3 / throttle+brake",
                 "source": "serverDecompile",
-                "confidence": "medium",
-            }
-        )
-        inputs.append(
-            {
-                "id": "srv-in-throttle",
-                "kind": "throttle",
-                "detail": "Gas-/Throttle-Kanal im Decompile angedeutet",
-                "evidence": "Decompile-Token",
-                "source": "serverDecompile",
                 "confidence": "low",
             }
         )
-        inputs.append(
-            {
-                "id": "srv-in-brake",
-                "kind": "brake",
-                "detail": "Brems-/Hebel-Kanal im Decompile angedeutet",
-                "evidence": "Decompile-Token",
-                "source": "serverDecompile",
-                "confidence": "low",
-            }
-        )
-        combos.append("Decompile: Gas + Bremse als gemeinsame Bedingung wahrscheinlich")
+        if throttleish:
+            inputs.append(
+                {
+                    "id": "srv-in-throttle",
+                    "kind": "throttle",
+                    "detail": "Gas-/Throttle-Token im Decompile",
+                    "evidence": "Decompile-Token",
+                    "source": "serverDecompile",
+                    "confidence": "low",
+                }
+            )
+        if brakeish:
+            inputs.append(
+                {
+                    "id": "srv-in-brake",
+                    "kind": "brake",
+                    "detail": "Brems-/Hebel-Token im Decompile",
+                    "evidence": "Decompile-Token",
+                    "source": "serverDecompile",
+                    "confidence": "low",
+                }
+            )
         if powerish:
             inputs.append(
                 {
                     "id": "srv-in-power",
                     "kind": "power",
-                    "detail": "Power/Boot-Kontext neben Eingangsprüfung",
+                    "detail": "Power/Boot-Token im Decompile",
                     "evidence": "Decompile-Token power/boot/startup",
                     "source": "serverDecompile",
-                    "confidence": "medium",
+                    "confidence": "low",
                 }
             )
-            transitions.append(
-                {
-                    "id": "srv-tr-power-combo",
-                    "title": "Einschalt-Kombi (vermutet)",
-                    "trigger": "Gas + Bremse halten und Power einschalten",
-                    "effect": "Offene Limits aktivieren (wenn openCap im Code)",
-                    "evidence": "Dual-Eingang + Power/Boot im Decompile",
-                    "source": "serverDecompile",
-                    "confidence": "medium",
-                }
-            )
-            combos.append("Aktivierung offen (vermutet): Gas + Bremse + Power ein")
 
     if panicish:
         inputs.append(
             {
                 "id": "srv-in-custom",
                 "kind": "customButton",
-                "detail": "Panic/Custom-Button-Hinweis im Decompile/String",
+                "detail": "Panic/Custom-Token im Decompile/String",
                 "evidence": "Token panic/softunlock/custom",
                 "source": "serverDecompile",
-                "confidence": "medium",
+                "confidence": "low",
             }
         )
         transitions.append(
             {
                 "id": "srv-tr-panic",
-                "title": "Panic / Legal-Rückfall (vermutet)",
-                "trigger": "Extra-Taste oder Reboot ohne Gas/Bremse",
-                "effect": "Sofort oder nach Neustart zurück auf legal-nahe Begrenzung",
+                "title": "Panic-/Legal-Pfad (Token)",
+                "trigger": sanitize_transition_trigger(None),
+                "effect": "Hinweis auf Legal-Rückfall-Pfad — Tastenfolge nicht belegt",
                 "evidence": "Panic/SoftUnlock-Token im Decompile",
                 "source": "serverDecompile",
-                "confidence": "medium",
+                "confidence": "low",
             }
         )
-        combos.append("Panic/Legal: Custom-Button oder Reboot ohne Gas/Bremse (vermutet)")
 
-    return transitions, inputs, _uniq(combos)
-
-
-def _uniq(items: list[str]) -> list[str]:
-    seen: set[str] = set()
-    out: list[str] = []
-    for i in items:
-        if i in seen:
-            continue
-        seen.add(i)
-        out.append(i)
-    return out
+    return transitions, inputs, combos

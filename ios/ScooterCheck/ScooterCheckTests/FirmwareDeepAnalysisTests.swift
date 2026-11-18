@@ -18,9 +18,8 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertTrue(deep.quality.hasDeterministicBasis)
         XCTAssertEqual(deep.maxSpeedKmhInCode, 99)
         XCTAssertEqual(deep.legalCapKmhInCode, 20)
-        XCTAssertFalse(deep.comboSummaries.isEmpty)
-        XCTAssertTrue(deep.inputHints.contains { $0.kind == .throttle })
-        XCTAssertTrue(deep.inputHints.contains { $0.kind == .brake })
+        XCTAssertTrue(deep.comboSummaries.isEmpty, "catalog must not invent unlock button recipes")
+        XCTAssertTrue(deep.inputHints.contains { $0.kind == .customButton || $0.kind == .dualAnalog })
     }
 
     func testDecompileScanFindsPackedSpeeds() {
@@ -55,11 +54,12 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         let kmhs = Set(deep.speedLimits.map(\.kmh))
         XCTAssertTrue(kmhs.contains(22))
         XCTAssertTrue(kmhs.contains(32))
-        XCTAssertFalse(deep.comboSummaries.isEmpty, "legalCap+openCap should yield combo hints")
+        XCTAssertTrue(deep.comboSummaries.isEmpty, "speed pairs must not invent button combos")
         XCTAssertFalse(deep.modeTransitions.isEmpty)
+        XCTAssertEqual(deep.modeTransitions.first?.trigger, FirmwareComboPolicy.unbelegtTrigger)
     }
 
-    func testDecompileComboPatternsGasBrakePower() {
+    func testDecompileInputTokensWithoutInventedCombo() {
         let snippet = """
         // throttle adc > 400 and brake lever, mask & 3 both channels, power boot
         if ((mask & 3) == 3 && throttle > 400 && brake > 400) {
@@ -84,9 +84,10 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             subjectSHA256: "combo",
             meta: meta
         )
-        XCTAssertTrue(deep.comboSummaries.contains { $0.localizedCaseInsensitiveContains("Gas") })
+        XCTAssertTrue(deep.comboSummaries.isEmpty)
         XCTAssertTrue(deep.inputHints.contains { $0.kind == .dualAnalog || $0.kind == .throttle })
-        XCTAssertTrue(deep.modeTransitions.contains { $0.title.localizedCaseInsensitiveContains("Einschalt") || $0.title.localizedCaseInsensitiveContains("Limit") })
+        XCTAssertTrue(deep.modeTransitions.contains { $0.title.localizedCaseInsensitiveContains("Limit") })
+        XCTAssertFalse(deep.modeTransitions.contains { $0.trigger.localizedCaseInsensitiveContains("Gas") })
     }
 
     func testBinaryScanFindsLEPackedU16() {
@@ -182,6 +183,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             ],
             comboSummaries: [
                 "Vermutete Soft-/Power-Kombi: Gas + Bremse + Power — Live-Test nötig",
+                "Live-Kombination (SN): Gas+Bremse+Power",
                 "Bitfeld-Manipulation: puVar1[0] mit 0x2000"
             ],
             notes: ["llm=schema-enriched"],
@@ -203,9 +205,11 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         )
         let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
         XCTAssertTrue(brief.headline.localizedCaseInsensitiveContains("Referenz") || brief.headline.localizedCaseInsensitiveContains("Bibliothek"))
-        XCTAssertTrue(brief.actionableCombos.contains { $0.localizedCaseInsensitiveContains("Gas") })
+        XCTAssertEqual(brief.actionableCombos, ["Live-Kombination (SN): Gas+Bremse+Power"])
         XCTAssertTrue(brief.technicalCombos.contains { $0.localizedCaseInsensitiveContains("Bitfeld") })
+        XCTAssertFalse(brief.actionableCombos.contains { $0.localizedCaseInsensitiveContains("Vermutete") })
         XCTAssertEqual(brief.humanModeTransitions.count, 1)
+        XCTAssertEqual(brief.humanModeTransitions.first?.trigger, FirmwareComboPolicy.unbelegtTrigger)
         XCTAssertEqual(brief.technicalModeTransitions.count, 1)
         let refreshed = FirmwareDeepAnalysisBriefing.refreshedVerdict(
             current: .gray,
@@ -231,6 +235,6 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(deep.maxSpeedKmhInCode, 99)
         XCTAssertEqual(deep.legalCapKmhInCode, 20)
         XCTAssertTrue(deep.sources.contains(.knownCatalog))
-        XCTAssertFalse(deep.comboSummaries.isEmpty)
+        XCTAssertTrue(deep.comboSummaries.isEmpty, "hash catalog must not claim unverified unlock combos")
     }
 }

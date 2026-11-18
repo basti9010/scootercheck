@@ -121,27 +121,20 @@ def analyze(
     if any(t in low for t in ("panic", "softunlock", "custom")):
         role_hits.add("customButton")
 
+    # Never invent button recipes into comboSummaries — only validated lines elsewhere.
     combos: list[str] = []
     inputs: list[dict[str, Any]] = []
     transitions: list[dict[str, Any]] = []
-
-    if board:
-        combos.append(
-            f"Board-Heuristik {board['id']}: {board.get('defaultComboHypothesis')} "
-            f"(investigativ — Live-Test nötig)"
-        )
-        if board.get("panicHypothesis"):
-            combos.append(f"Panic-Heuristik {board['id']}: {board.get('panicHypothesis')}")
 
     if {"throttle", "brake"}.issubset(role_hits):
         inputs.append(
             {
                 "id": "slice-in-dual",
                 "kind": "dualAnalog",
-                "detail": "Back-Slice/Pinout: Gas- und Bremskanal am Limit-Pfad angedeutet",
+                "detail": "Back-Slice/Pinout: Gas-/Brems-Rollen am Limit-Pfad (Token/Addr-Heuristik)",
                 "evidence": f"roles={sorted(role_hits)} cmpNear={cmp_near_speed}",
                 "source": "serverDecompile",
-                "confidence": "medium",
+                "confidence": "low",
             }
         )
         for kind, label in (("throttle", "Gas"), ("brake", "Bremse")):
@@ -149,10 +142,10 @@ def analyze(
                 {
                     "id": f"slice-in-{kind}",
                     "kind": kind,
-                    "detail": f"{label}-Kanal über Slice/Pinout/String am Limit-Kontext",
+                    "detail": f"{label}-Rolle über Slice/Pinout/String am Limit-Kontext",
                     "evidence": "limit_slice",
                     "source": "serverDecompile",
-                    "confidence": "medium",
+                    "confidence": "low",
                 }
             )
         if "power" in role_hits:
@@ -160,66 +153,34 @@ def analyze(
                 {
                     "id": "slice-in-power",
                     "kind": "power",
-                    "detail": "Power/Boot im Limit-Kontext",
+                    "detail": "Power/Boot-Token im Limit-Kontext",
                     "evidence": "limit_slice",
                     "source": "serverDecompile",
-                    "confidence": "medium",
+                    "confidence": "low",
                 }
             )
-            transitions.append(
-                {
-                    "id": "slice-tr-power-combo",
-                    "title": "Einschalt-Kombi (Slice/Pinout)",
-                    "trigger": board.get("defaultComboHypothesis")
-                    if board
-                    else "Gas + Bremse halten und Power einschalten",
-                    "effect": "Offene Limits / Soft-Unlock-Pfad",
-                    "evidence": f"back-slice roles={sorted(role_hits)}",
-                    "source": "serverDecompile",
-                    "confidence": "medium",
-                }
-            )
-            combos.append(
-                "Slice: Aktivierung offen wahrscheinlich über "
-                + (board.get("defaultComboHypothesis") if board else "Gas + Bremse + Power")
-            )
-        else:
-            combos.append("Slice: Gas + Bremse gemeinsam am Limit-Pfad — Power-Kontext unklar")
-    elif role_hits:
-        combos.append(f"Slice: Eingangsrollen am Limit-Pfad: {', '.join(sorted(role_hits))}")
 
     if "customButton" in role_hits:
         inputs.append(
             {
                 "id": "slice-in-custom",
                 "kind": "customButton",
-                "detail": "Panic/Custom am Limit-/Unlock-Pfad",
+                "detail": "Panic/Custom-Token am Limit-/Unlock-Pfad",
                 "evidence": "limit_slice",
                 "source": "serverDecompile",
-                "confidence": "medium",
+                "confidence": "low",
             }
-        )
-        transitions.append(
-            {
-                "id": "slice-tr-panic",
-                "title": "Panic / Legal-Rückfall (Slice)",
-                "trigger": board.get("panicHypothesis") if board else "Panic-Taste oder Reboot",
-                "effect": "Rückfall auf legal-nahe Begrenzung",
-                "evidence": "customButton role on limit path",
-                "source": "serverDecompile",
-                "confidence": "medium",
-            }
-        )
-
-    if cmp_near_speed:
-        combos.append(
-            f"Slice: {cmp_near_speed} Compare/Test in Nähe von Speed-Immediates (Umschalt-Logik)"
         )
 
     notes = [
         f"limit_slice=ok sites={len(slices)} roles={sorted(role_hits)} "
         f"board={(board or {}).get('id') or 'none'} cmpNear={cmp_near_speed}"
     ]
+    if cmp_near_speed:
+        notes.append(
+            f"limit_slice=cmpNear {cmp_near_speed} Compare/Test neben Speed-Immediates "
+            "(Umschalt-Logik — keine Tastenfolge abgeleitet)"
+        )
     if limit_c_text:
         notes.append(f"limit_slice=limit.c {len(limit_c_text)} chars")
 
@@ -229,13 +190,12 @@ def analyze(
         "board": {
             "id": board.get("id"),
             "notes": board.get("notes"),
-            "defaultComboHypothesis": board.get("defaultComboHypothesis"),
         }
         if board
         else None,
         "slices": slices[:40],
         "roleHits": sorted(role_hits),
-        "combos": _uniq(combos),
+        "combos": combos,
         "inputs": inputs,
         "transitions": transitions,
     }

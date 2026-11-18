@@ -141,41 +141,27 @@ def analyze(
             }
         )
 
+    # Probe differences are not a validated physical combo — notes only.
     combos: list[str] = []
     transitions: list[dict[str, Any]] = []
+    notes = [
+        f"input_probe=ok sites={len(probes)} sensitive={sensitive} "
+        f"board={(board or {}).get('id') or 'none'}"
+    ]
     if sensitive > 0:
-        hyp = (
-            board.get("defaultComboHypothesis")
-            if board
-            else "Gas + Bremse (+ Power/Flag) — Live-Test nötig"
-        )
-        combos.append(
-            f"Input-Probe: {sensitive} Speed-Stelle(n) reagieren auf Dual-Hebel-Registerpreset "
-            f"→ Hypothese: {hyp}"
-        )
-        transitions.append(
-            {
-                "id": "probe-tr-dual-input",
-                "title": "Eingangs-Probe (Unicorn)",
-                "trigger": hyp,
-                "effect": "Ausführungsdifferenz idle vs. beide Hebel high an Limit-Fenster",
-                "evidence": f"sensitiveSites={sensitive}/{len(probes)}",
-                "source": "serverEmulation",
-                "confidence": "low",
-            }
+        notes.append(
+            f"input_probe=sensitive {sensitive}/{len(probes)} — Ausführungsdifferenz bei "
+            "Registerpreset, physische Tastenfolge nicht validiert"
         )
     else:
-        combos.append(
-            "Input-Probe: keine klare Dual-Hebel-Sensitivität in Kurzfenstern "
-            "(Kombi nicht aus Emulation ableitbar)"
+        notes.append(
+            "input_probe=keine Dual-Hebel-Sensitivität in Kurzfenstern "
+            "(keine Tastenfolge ableitbar)"
         )
 
     return {
         "ok": True,
-        "notes": [
-            f"input_probe=ok sites={len(probes)} sensitive={sensitive} "
-            f"board={(board or {}).get('id') or 'none'}"
-        ],
+        "notes": notes,
         "probes": probes[:24],
         "combos": combos,
         "transitions": transitions,

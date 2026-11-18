@@ -83,26 +83,6 @@ def merge_yara_into_result(result: dict[str, Any], yr: dict[str, Any]) -> dict[s
         quality["summary"] = ((quality.get("summary") or "").rstrip() + " + YARA.").strip()
         result["quality"] = quality
 
-    # Promote soft combo note when legal+open together / known CFW families
-    combos = list(result.get("comboSummaries") or [])
-    for m in matches:
-        rule = m.get("rule")
-        fam = str(m.get("family") or "")
-        if rule == "Ninebot_Legal_And_Open_Together":
-            line = "YARA: Legal-Kappe und hohe Open-Cap im selben Image (Soft-Unlock-typisch)"
-            if line not in combos:
-                combos.insert(0, line)
-        elif fam == "panicsystem" or rule == "CFW_PanicSystem_Artifact":
-            line = "YARA: PanicSystem-Artefakt im Klartext"
-            if line not in combos:
-                combos.insert(0, line)
-        elif fam == "scooterhacking" or rule == "CFW_ScooterHacking_Artifact":
-            line = "YARA: ScooterHacking-/SHFW-Marker im Klartext"
-            if line not in combos:
-                combos.insert(0, line)
-        elif rule == "CFW_Wide_Open_Caps_Cluster":
-            line = "YARA: Dichte hoher Open-Caps (40/45/50/99) — CFW-typisch"
-            if line not in combos:
-                combos.insert(0, line)
-    result["comboSummaries"] = combos
+    # YARA is image classification — not a validated button combination.
+    # Keep findings in notes / yaraMatches only.
     return result

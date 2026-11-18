@@ -125,8 +125,8 @@ def deep_result(
         "caveats": [
             "Code-/Katalogbefunde beweisen nicht, dass dieses Image aktuell im Controller steckt.",
             "ENC ohne Entschlüsselung: nur Meta, Hash und bekannte Signaturen.",
-            "Combo-Hinweise aus Decompile/Speed-Paaren sind modellabhängig — Live-Vergleichstest empfohlen.",
-            "KI-Auswertung (falls) darf nur dieses Schema füllen.",
+            "Tastenkombinationen nur bei Live-Vergleich oder Prefix Belegt:/Validiert: — keine Heuristik-Rätselraten.",
+            "KI-Auswertung (falls) darf nur dieses Schema füllen und keine Kombis erfinden.",
         ],
         "quality": {
             "hasDeterministicBasis": has_det,

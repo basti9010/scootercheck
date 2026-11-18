@@ -12,11 +12,23 @@ enum FirmwareDeepAnalysisMerger {
         for p in parts.dropFirst() {
             mergeSpeeds(&speeds, p.speedLimits)
         }
-        var transitions = parts.flatMap(\.modeTransitions)
+        var transitions = parts.flatMap(\.modeTransitions).map { t in
+            FirmwareModeTransitionFinding(
+                id: t.id,
+                title: t.title,
+                trigger: FirmwareComboPolicy.sanitizeTrigger(t.trigger),
+                effect: t.effect,
+                evidence: t.evidence,
+                source: t.source,
+                confidence: t.confidence
+            )
+        }
         dedupeTransitions(&transitions)
         var inputs = parts.flatMap(\.inputHints)
         dedupeInputs(&inputs)
-        let combos = Array(Set(parts.flatMap(\.comboSummaries))).sorted()
+        let combos = FirmwareComboPolicy.sanitizeComboSummaries(
+            Array(Set(parts.flatMap(\.comboSummaries))).sorted()
+        )
         let notes = parts.flatMap(\.notes)
         let hasDet = parts.contains { $0.quality.hasDeterministicBasis }
         let llmOk = parts.contains { $0.sources.contains(.serverLLM) && $0.quality.llmSchemaValidated }
@@ -73,6 +85,18 @@ enum FirmwareDeepAnalysisMerger {
             }
         }
         copy.caveats = FirmwareDeepAnalysisResult.standardCaveats
+        copy.comboSummaries = FirmwareComboPolicy.sanitizeComboSummaries(copy.comboSummaries)
+        copy.modeTransitions = copy.modeTransitions.map { t in
+            FirmwareModeTransitionFinding(
+                id: t.id,
+                title: t.title,
+                trigger: FirmwareComboPolicy.sanitizeTrigger(t.trigger),
+                effect: t.effect,
+                evidence: t.evidence,
+                source: t.source,
+                confidence: t.confidence
+            )
+        }
         return copy
     }
 

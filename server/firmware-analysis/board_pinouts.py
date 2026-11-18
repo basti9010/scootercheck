@@ -21,9 +21,9 @@ _BOARDS: list[dict[str, Any]] = [
         "boards": ["zt3_vcu_at32", "at32"],
         "controllerTypes": ["VCU"],
         "mcuFamily": "AT32",
-        "notes": "ZT3 VCU AT32 — Soft-Unlock oft Gas+Bremse beim Einschalten; Panic-Taste modellabhängig.",
-        "defaultComboHypothesis": "Gas + Bremse halten und Power einschalten",
-        "panicHypothesis": "Extra-Taste (Panic) oder Reboot ohne Gas/Bremse",
+        "notes": "ZT3 VCU AT32 — Pin-/Addr-Heuristik für Gas/Bremse/Power/Panic; keine belegte Tastenfolge.",
+        "defaultComboHypothesis": "",
+        "panicHypothesis": "",
         "pins": [
             {
                 "id": "throttle-adc",
@@ -61,9 +61,9 @@ _BOARDS: list[dict[str, Any]] = [
         "boards": ["g3_vcu", "g3"],
         "controllerTypes": ["VCU", "MCU"],
         "mcuFamily": "STM32/AT32",
-        "notes": "G3-Familie — Panicbutton-CFW häufig; Aktivierung oft Gas+Bremse+Power.",
-        "defaultComboHypothesis": "Gas + Bremse halten und Power einschalten",
-        "panicHypothesis": "Custom-/Panic-Button oder Reboot ohne Gas/Bremse",
+        "notes": "G3-Familie — oft Panicbutton-CFW; Pin-/Addr-Heuristik ohne belegte Unlock-Tastenfolge.",
+        "defaultComboHypothesis": "",
+        "panicHypothesis": "",
         "pins": [
             {
                 "id": "throttle-adc",
@@ -101,9 +101,9 @@ _BOARDS: list[dict[str, Any]] = [
         "boards": ["f3_vcu", "f3"],
         "controllerTypes": ["VCU"],
         "mcuFamily": "STM32/AT32",
-        "notes": "F3/F3 Pro — Soft-Unlock-Muster wie G3-Familie, Pinout heuristisch.",
-        "defaultComboHypothesis": "Gas + Bremse halten und Power einschalten",
-        "panicHypothesis": "Panic/Custom oder Reboot ohne Gas/Bremse",
+        "notes": "F3/F3 Pro — Pinout heuristisch; keine belegte Unlock-Tastenfolge aus Board-Wissen.",
+        "defaultComboHypothesis": "",
+        "panicHypothesis": "",
         "pins": [
             {
                 "id": "throttle-adc",

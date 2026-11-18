@@ -84,9 +84,9 @@ class EnrichMergeTests(unittest.TestCase):
             clear=False,
         ):
             # Force re-read via empty keys
-            base = {"comboSummaries": ["a"], "notes": [], "sources": [], "quality": {}}
+            base = {"comboSummaries": ["Belegt: Register-Pfad"], "notes": [], "sources": [], "quality": {}}
             out = llm_enrich.enrich_result(dict(base), decompiled_text=SAMPLE_C)
-            self.assertEqual(out.get("comboSummaries"), ["a"])
+            self.assertEqual(out.get("comboSummaries"), ["Belegt: Register-Pfad"])
 
     def test_merge_validates_and_dedupes(self) -> None:
         result = {
@@ -130,15 +130,20 @@ class EnrichMergeTests(unittest.TestCase):
             "notes": ["nur Heuristik"],
         }
         merged = llm_enrich._merge_validated(result, data)
-        self.assertEqual(merged["comboSummaries"], ["Gas+Bremse", "Power 3s"])
+        # Speculative Gas/Bremse lines (existing + LLM) are dropped without Belegt:/Live- prefix.
+        self.assertEqual(merged["comboSummaries"], [])
         self.assertEqual(len(merged["modeTransitions"]), 1)
         self.assertEqual(merged["modeTransitions"][0]["confidence"], "high")
+        self.assertEqual(
+            merged["modeTransitions"][0]["trigger"],
+            "Aus Code nicht als Tastenfolge belegt",
+        )
         self.assertEqual(merged["inputHints"][0]["kind"], "unknown")
         self.assertTrue(any(n.startswith("llm:") for n in merged["notes"]))
 
     def test_enrich_with_mocked_chat(self) -> None:
         payload = {
-            "comboSummaries": ["Test-Kombi"],
+            "comboSummaries": ["Belegt: Test-Pfad im Snippet"],
             "modeTransitions": [],
             "inputHints": [
                 {
@@ -165,7 +170,7 @@ class EnrichMergeTests(unittest.TestCase):
                 out = llm_enrich.enrich_result(dict(base), decompiled_text=SAMPLE_C)
         self.assertIn("serverLLM", out["sources"])
         self.assertTrue(out["quality"]["llmSchemaValidated"])
-        self.assertEqual(out["comboSummaries"], ["Test-Kombi"])
+        self.assertEqual(out["comboSummaries"], ["Belegt: Test-Pfad im Snippet"])
         self.assertTrue(any("llm=schema-enriched" in n for n in out["notes"]))
 
     def test_extract_repairs_truncated_string(self) -> None:

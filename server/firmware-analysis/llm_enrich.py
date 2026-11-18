@@ -229,7 +229,11 @@ def enrich_result(
         "Limits: ≤4 comboSummaries, ≤4 modeTransitions, ≤4 inputHints, ≤3 notes. "
         "evidence ≤80 Zeichen. kind ∈ throttle|brake|power|customButton|dualAnalog|unknown. "
         "confidence ∈ high|medium|low. "
-        "Keine Speed-km/h-Werte erfinden. Nur Tastenfolgen/Moduswechsel/Eingaben aus Snippet. Deutsch."
+        "Keine Speed-km/h-Werte erfinden. "
+        "comboSummaries: NUR wenn die Tasten-/Protokollfolge im Snippet eindeutig belegt ist — "
+        "dann Zeile mit Prefix 'Belegt: …'. Sonst comboSummaries=[]. "
+        "NIEMALS Gas/Bremse/Power-Kombis raten, vermuten oder aus Board-Wissen erfinden. "
+        "modeTransitions.trigger bei Unsicherheit: 'Aus Code nicht als Tastenfolge belegt'. Deutsch."
     )
     try:
         raw = _chat(system, json.dumps(payload, ensure_ascii=False))
@@ -270,13 +274,16 @@ def _signal_count(result: dict[str, Any]) -> int:
 
 
 def _merge_validated(result: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    from combo_policy import is_validated_combo, sanitize_combo_summaries, sanitize_transition_trigger
+
     combos = list(result.get("comboSummaries") or [])
     for c in data.get("comboSummaries") or []:
         if isinstance(c, str):
             c = c.strip()
-            if c and c not in combos and len(combos) < MAX_COMBOS:
+            # Only accept explicitly validated / belegt lines from the model.
+            if c and is_validated_combo(c) and c not in combos and len(combos) < MAX_COMBOS:
                 combos.append(c)
-    result["comboSummaries"] = combos
+    result["comboSummaries"] = sanitize_combo_summaries(combos)
 
     transitions = list(result.get("modeTransitions") or [])
     seen_tr = {(str(t.get("title")), str(t.get("trigger")), str(t.get("effect"))) for t in transitions if isinstance(t, dict)}
@@ -287,7 +294,7 @@ def _merge_validated(result: dict[str, Any], data: dict[str, Any]) -> dict[str, 
         if conf not in _VALID_CONF:
             conf = "low"
         title = str(t.get("title") or "KI-Hinweis").strip()[:120]
-        trigger = str(t.get("trigger") or "").strip()[:200]
+        trigger = sanitize_transition_trigger(str(t.get("trigger") or "").strip()[:200])
         effect = str(t.get("effect") or "").strip()[:200]
         evidence = str(t.get("evidence") or "LLM schema").strip()[:240]
         if not (title or trigger or effect):

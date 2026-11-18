@@ -1,6 +1,7 @@
 import Foundation
 
-/// Deterministische Combo-/Modus-Hinweise aus Speed-Paaren und optionalem Decompile-Text.
+/// Deterministische Modus-/Eingabe-Hinweise aus Speed-Paaren und optionalem Decompile-Text.
+/// Erfindet keine physischen Unlock-Tastenfolgen — die gehören nur in validierte Live-/Belegt-Zeilen.
 enum FirmwareComboExtractor {
 
     struct Pack: Equatable, Sendable {
@@ -16,36 +17,27 @@ enum FirmwareComboExtractor {
     ) -> Pack {
         var transitions: [FirmwareModeTransitionFinding] = []
         var inputs: [FirmwareInputHintFinding] = []
-        var combos: [String] = []
+        // Absichtlich leer: spekulative Gas/Bremse/Power-Texte sind verboten.
+        let combos: [String] = []
 
         let legal = speeds.filter { $0.role == .legalCap }
         let openCaps = speeds.filter { $0.role == .openCap }
-        let region = speeds.filter { $0.role == .regionOrMode }
 
         if let legalKmh = legal.map(\.kmh).min(), let openKmh = openCaps.map(\.kmh).max() {
             transitions.append(.init(
                 id: "tr-dual-mode",
                 title: "Zwei Limit-Welten im Code",
-                trigger: "Einschalt-/Tastenkombi oder Panic (modellabhängig)",
+                trigger: FirmwareComboPolicy.unbelegtTrigger,
                 effect: "Umschalten zwischen ~\(Int(legalKmh)) km/h (legal-nah) und ~\(Int(openKmh)) km/h (offen)",
                 evidence: "Speed-Paar legalCap + openCap",
                 source: source,
                 confidence: .medium
             ))
-            combos.append(
-                "Vermutete Soft-/Power-Kombi: Umschalten \(Int(legalKmh)) ↔ \(Int(openKmh)) km/h (häufig Gas + Bremse + Power — Live-Test nötig)"
-            )
-            combos.append(
-                "Panic/Legal-Rückfall: oft Reboot ohne Gas/Bremse oder Extra-Taste → ~\(Int(legalKmh)) km/h"
-            )
-        } else if let legalKmh = legal.map(\.kmh).min(), !region.isEmpty {
-            let regionLabel = region.map { "\(Int($0.kmh))" }.joined(separator: "/")
-            combos.append("Regions-/Modusstufen neben Legal-Kappe (\(Int(legalKmh)) / \(regionLabel) km/h)")
         }
 
         let text = (decompiledText ?? "").lowercased()
         guard !text.isEmpty else {
-            return Pack(transitions: transitions, inputs: inputs, comboSummaries: uniq(combos))
+            return Pack(transitions: transitions, inputs: inputs, comboSummaries: combos)
         }
 
         let dual = text.contains("dual")
@@ -64,47 +56,40 @@ enum FirmwareComboExtractor {
             inputs.append(.init(
                 id: "in-dual",
                 kind: .dualAnalog,
-                detail: "Decompile: zwei Analog-/Eingangskanäle (Gas/Bremse-Muster)",
+                detail: "Decompile: zwei Analog-/Eingangskanäle (Token-Muster)",
                 evidence: "Textmuster dual/mask&3 / throttle+brake",
                 source: source,
-                confidence: .medium
-            ))
-            inputs.append(.init(
-                id: "in-throttle",
-                kind: .throttle,
-                detail: "Gas-/Throttle-Kanal im Decompile angedeutet",
-                evidence: "Decompile-Token",
-                source: source,
                 confidence: .low
             ))
-            inputs.append(.init(
-                id: "in-brake",
-                kind: .brake,
-                detail: "Brems-/Hebel-Kanal im Decompile angedeutet",
-                evidence: "Decompile-Token",
-                source: source,
-                confidence: .low
-            ))
-            combos.append("Decompile: Gas + Bremse als gemeinsame Bedingung wahrscheinlich")
+            if throttleish {
+                inputs.append(.init(
+                    id: "in-throttle",
+                    kind: .throttle,
+                    detail: "Gas-/Throttle-Token im Decompile",
+                    evidence: "Decompile-Token",
+                    source: source,
+                    confidence: .low
+                ))
+            }
+            if brakeish {
+                inputs.append(.init(
+                    id: "in-brake",
+                    kind: .brake,
+                    detail: "Brems-/Hebel-Token im Decompile",
+                    evidence: "Decompile-Token",
+                    source: source,
+                    confidence: .low
+                ))
+            }
             if powerish {
                 inputs.append(.init(
                     id: "in-power",
                     kind: .power,
-                    detail: "Power/Boot-Kontext neben Eingangsprüfung",
+                    detail: "Power/Boot-Token im Decompile",
                     evidence: "Decompile-Token power/boot/startup",
                     source: source,
-                    confidence: .medium
+                    confidence: .low
                 ))
-                transitions.append(.init(
-                    id: "tr-power-combo",
-                    title: "Einschalt-Kombi (vermutet)",
-                    trigger: "Gas + Bremse halten und Power einschalten",
-                    effect: "Offene Limits aktivieren (wenn openCap im Code)",
-                    evidence: "Dual-Eingang + Power/Boot im Decompile",
-                    source: source,
-                    confidence: .medium
-                ))
-                combos.append("Aktivierung offen (vermutet): Gas + Bremse + Power ein")
             }
         }
 
@@ -112,28 +97,22 @@ enum FirmwareComboExtractor {
             inputs.append(.init(
                 id: "in-custom",
                 kind: .customButton,
-                detail: "Panic/Custom-Button-Hinweis im Decompile/String",
+                detail: "Panic/Custom-Token im Decompile/String",
                 evidence: "Token panic/softunlock/custom",
                 source: source,
-                confidence: .medium
+                confidence: .low
             ))
             transitions.append(.init(
                 id: "tr-panic",
-                title: "Panic / Legal-Rückfall (vermutet)",
-                trigger: "Extra-Taste oder Reboot ohne Gas/Bremse",
-                effect: "Sofort oder nach Neustart zurück auf legal-nahe Begrenzung",
+                title: "Panic-/Legal-Pfad (Token)",
+                trigger: FirmwareComboPolicy.unbelegtTrigger,
+                effect: "Hinweis auf Legal-Rückfall-Pfad — Tastenfolge nicht belegt",
                 evidence: "Panic/SoftUnlock-Token im Decompile",
                 source: source,
-                confidence: .medium
+                confidence: .low
             ))
-            combos.append("Panic/Legal: Custom-Button oder Reboot ohne Gas/Bremse (vermutet)")
         }
 
-        return Pack(transitions: transitions, inputs: inputs, comboSummaries: uniq(combos))
-    }
-
-    private static func uniq(_ items: [String]) -> [String] {
-        var seen = Set<String>()
-        return items.filter { seen.insert($0).inserted }
+        return Pack(transitions: transitions, inputs: inputs, comboSummaries: combos)
     }
 }

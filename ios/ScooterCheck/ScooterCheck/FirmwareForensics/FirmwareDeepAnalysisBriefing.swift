@@ -14,7 +14,8 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
     var technicalInputHints: [FirmwareInputHintFinding]
 
     static func build(from deep: FirmwareDeepAnalysisResult) -> FirmwareDeepAnalysisBriefing {
-        let (actionable, technical) = splitCombos(deep.comboSummaries)
+        let validated = FirmwareComboPolicy.sanitizeComboSummaries(deep.comboSummaries)
+        let leftover = deep.comboSummaries.filter { !validated.contains($0) }
         let (humanT, techT) = splitTransitions(deep.modeTransitions)
         let (humanI, techI) = splitInputs(deep.inputHints)
 
@@ -49,17 +50,16 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         }
 
         if deep.sources.contains(.serverLLM) {
-            bullets.append("KI hat Combos/Modi ergänzt (schema-geprüft) — kein Beweis am Fahrzeug.")
+            bullets.append("KI darf nur Belegt-/Validiert-Zeilen ergänzen — keine geratenen Tastenfolgen.")
         }
 
-        if let hyp = deep.boardPinout?.defaultComboHypothesis, !hyp.isEmpty {
-            bullets.append("Board-Heuristik Kombi: \(hyp) — unbestätigt, Live-Vergleichstest nötig.")
-        }
-
-        if !actionable.isEmpty {
-            bullets.append("Vermutete Bedienung: siehe „Vermutete Tastenfolge“ unten — Live-Test nötig.")
-        } else if !humanT.isEmpty {
-            bullets.append("Moduswechsel im Code angedeutet — genaue Tastenfolge unbestätigt.")
+        if !validated.isEmpty {
+            bullets.append("Validierte Kombination(en) aus Live-Vergleich oder Belegt-Evidenz — siehe unten.")
+        } else {
+            bullets.append("Keine validierte Tastenkombination aus dem Image ableitbar.")
+            if !humanT.isEmpty {
+                bullets.append("Limit-/Moduswechsel im Code erkennbar — Tastenfolge nicht belegt.")
+            }
         }
 
         if bullets.isEmpty {
@@ -85,8 +85,8 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         return FirmwareDeepAnalysisBriefing(
             headline: headline,
             bullets: Array(bullets.prefix(6)),
-            actionableCombos: Array(actionable.prefix(4)),
-            technicalCombos: technical,
+            actionableCombos: Array(validated.prefix(4)),
+            technicalCombos: leftover.filter { looksTechnical($0) },
             humanModeTransitions: Array(humanT.prefix(4)),
             technicalModeTransitions: techT,
             humanInputHints: Array(humanI.prefix(4)),
@@ -124,7 +124,7 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         if let legal = deep.legalCapKmhInCode, let maxK = deep.maxSpeedKmhInCode, maxK > legal + 5 {
             return (
                 .yellow,
-                "Server-Klartext: Legal-nahe ~\(Int(legal)) km/h und offene Stufe bis ~\(Int(maxK)) km/h im selben Image (Soft-Unlock-typisch). Tastenfolge nur vermutet — Live-Test nötig. Offline-GRAU entfällt."
+                "Server-Klartext: Legal-nahe ~\(Int(legal)) km/h und offene Stufe bis ~\(Int(maxK)) km/h im selben Image. Tastenfolge nicht aus dem Image belegt — Live-Vergleich nötig. Offline-GRAU entfällt."
             )
         }
         if deep.sources.contains(where: {
@@ -156,42 +156,28 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         return false
     }
 
-    private static func looksActionableCombo(_ s: String) -> Bool {
-        let t = s.lowercased()
-        if looksTechnical(s) { return false }
-        return t.contains("gas") || t.contains("bremse") || t.contains("power")
-            || t.contains("kombi") || t.contains("taste") || t.contains("soft")
-            || t.contains("panic") || t.contains("live-") || t.contains("yara")
-    }
-
-    private static func splitCombos(_ lines: [String]) -> (actionable: [String], technical: [String]) {
-        var a: [String] = []
-        var t: [String] = []
-        for line in lines {
-            if looksActionableCombo(line) {
-                a.append(line)
-            } else if looksTechnical(line) {
-                t.append(line)
-            } else {
-                a.append(line)
-            }
-        }
-        return (a, t)
-    }
-
     private static func splitTransitions(
         _ items: [FirmwareModeTransitionFinding]
     ) -> (human: [FirmwareModeTransitionFinding], technical: [FirmwareModeTransitionFinding]) {
         var h: [FirmwareModeTransitionFinding] = []
         var t: [FirmwareModeTransitionFinding] = []
         for item in items {
-            let blob = "\(item.title) \(item.trigger) \(item.effect)"
-            if item.title.localizedCaseInsensitiveContains("Pfad zu")
-                || item.title.localizedCaseInsensitiveContains("angr")
+            let sanitized = FirmwareModeTransitionFinding(
+                id: item.id,
+                title: item.title,
+                trigger: FirmwareComboPolicy.sanitizeTrigger(item.trigger),
+                effect: item.effect,
+                evidence: item.evidence,
+                source: item.source,
+                confidence: item.confidence
+            )
+            let blob = "\(sanitized.title) \(sanitized.trigger) \(sanitized.effect)"
+            if sanitized.title.localizedCaseInsensitiveContains("Pfad zu")
+                || sanitized.title.localizedCaseInsensitiveContains("angr")
                 || looksTechnical(blob) {
-                t.append(item)
+                t.append(sanitized)
             } else {
-                h.append(item)
+                h.append(sanitized)
             }
         }
         return (h, t)

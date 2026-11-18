@@ -38,7 +38,7 @@ enum FirmwareForensicPDF {
                 }
                 if !brief.actionableCombos.isEmpty {
                     y = gap(y)
-                    y = line(ctx, "Vermutete Tastenfolge (nicht bestätigt):", y: y, size: 10, bold: true)
+                    y = line(ctx, "Validierte Tastenfolge:", y: y, size: 10, bold: true)
                     for c in brief.actionableCombos {
                         y = ensure(ctx, y: y, need: 24)
                         y = line(ctx, "• \(c)", y: y, size: 9)

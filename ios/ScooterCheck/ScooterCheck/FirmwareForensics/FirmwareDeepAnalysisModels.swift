@@ -266,7 +266,8 @@ struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
 struct FirmwareBoardPinoutHint: Equatable, Codable, Sendable {
     var id: String?
     var notes: String?
-    var defaultComboHypothesis: String?
+    /// Legacy field from older servers — ignored for UI (no button hallucination).
+    var defaultComboHypothesis: String? = nil
 }
 struct FirmwareStockList: Equatable, Codable, Sendable {
     var stockFwDir: String?

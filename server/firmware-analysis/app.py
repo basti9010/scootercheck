@@ -692,6 +692,14 @@ def process_job(job_id: str) -> None:
         if not any(str(n).startswith("llm=") for n in (result.get("notes") or [])):
             result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")
 
+    from combo_policy import sanitize_result_combos
+
+    result = sanitize_result_combos(result)
+    if not (result.get("comboSummaries") or []):
+        result.setdefault("notes", []).append(
+            "comboPolicy=keine validierte Tastenfolge (nur Live-/Belegt-/Validiert:-Zeilen erlaubt)"
+        )
+
     parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
     if r2_info.get("ok"):
         parts.append(f"r2 {len(r2_info.get('speeds') or [])} Speeds")

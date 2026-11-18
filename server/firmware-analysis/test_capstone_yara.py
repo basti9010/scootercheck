@@ -22,7 +22,7 @@ class YaraScanTests(unittest.TestCase):
         rules = {m["rule"] for m in out["matches"]}
         self.assertIn("Ninebot_Legal_And_Open_Together", rules)
 
-    def test_merge_adds_combo(self) -> None:
+    def test_merge_adds_yara_not_combo(self) -> None:
         result = {"notes": [], "sources": [], "comboSummaries": [], "quality": {"summary": "x"}}
         yr = {
             "ok": True,
@@ -39,7 +39,8 @@ class YaraScanTests(unittest.TestCase):
         }
         out = yara_scan.merge_yara_into_result(result, yr)
         self.assertIn("serverYara", out["sources"])
-        self.assertTrue(any("Legal-Kappe" in c for c in out["comboSummaries"]))
+        self.assertEqual(out["comboSummaries"], [])
+        self.assertTrue(any("yara:Ninebot_Legal_And_Open_Together" in n for n in out["notes"]))
 
 
 class CapstoneMergeTests(unittest.TestCase):

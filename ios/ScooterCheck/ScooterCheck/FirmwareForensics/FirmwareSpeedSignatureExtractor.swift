@@ -62,7 +62,7 @@ enum FirmwareSpeedSignatureExtractor {
         if !comboPack.comboSummaries.isEmpty || !comboPack.transitions.isEmpty {
             sources.insert(.localDeterministic)
             notes.append(
-                "Combo-Scan: \(comboPack.comboSummaries.count) Kombi(s), \(comboPack.transitions.count) Moduswechsel."
+                "Modus-Scan: \(comboPack.transitions.count) Limit-/Moduswechsel; \(comboPack.comboSummaries.count) validierte Kombi(s)."
             )
         }
 

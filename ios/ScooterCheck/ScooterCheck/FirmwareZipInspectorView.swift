@@ -644,7 +644,7 @@ struct FirmwareZipInspectorView: View {
                     .padding(.top, 4)
                 }
                 if !brief.actionableCombos.isEmpty {
-                    Text("Vermutete Tastenfolge")
+                    Text("Validierte Tastenfolge")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
                         .padding(.top, 8)
@@ -1123,12 +1123,12 @@ struct FirmwareZipInspectorView: View {
                 let item = FirmwareEvidenceItem(
                     id: "deep-combo",
                     category: .modeHint,
-                    title: "Vermutete Tastenfolge / Modus-Combos",
+                    title: "Validierte Tastenfolge",
                     detail: brief.actionableCombos.joined(separator: " · "),
-                    evidence: deep.notes.first { !$0.contains("0x") && !$0.contains("puVar") } ?? "Server/Katalog/Live",
+                    evidence: deep.notes.first { !$0.contains("0x") && !$0.contains("puVar") } ?? "Live-Vergleich / Belegt",
                     method: deep.sources.map(\.label).joined(separator: " + "),
                     verifiability: .indicative,
-                    confirmed: false
+                    confirmed: deep.sources.contains(.liveVehicleContext)
                 )
                 current.evidence.removeAll { $0.id == "deep-combo" }
                 current.evidence.append(item)
