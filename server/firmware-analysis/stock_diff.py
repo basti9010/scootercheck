@@ -298,9 +298,13 @@ def _filter_refs(
     out = []
     for r in refs:
         rm = (r.get("model") or "").lower()
+        rmodels = {(x or "").lower() for x in (r.get("models") or []) if x}
         rt = (r.get("controllerType") or "").lower()
         label = (r.get("label") or "").lower()
-        model_ok = (not model_set) or any(m in rm or m in label or rm in m for m in model_set)
+        notes = (r.get("notes") or "").lower()
+        model_ok = (not model_set) or any(
+            m in rm or m in label or m in notes or m in rmodels or rm in m for m in model_set
+        )
         type_ok = (not ctype) or ctype in rt or ctype in label
         if model_ok and type_ok:
             out.append(r)
