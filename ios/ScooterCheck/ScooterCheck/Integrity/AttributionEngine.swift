@@ -402,8 +402,10 @@ enum AttributionEngine {
             }
         }
 
-        // Persistentes Limit nach Cycle → gegen Session, für Config/Licensed
-        if let limitRow, limitRow.changeKind == .unchanged, limitRow.scanA != "—", limitRow.scanA != "0" {
+        // Persistentes *auffälliges* Limit nach Cycle → gegen Session, für Config/Licensed.
+        // Unchanged stock limit with a cleared session peak is normal for session unlock.
+        if let limitRow, limitRow.changeKind == .unchanged, limitRow.scanA != "—", limitRow.scanA != "0",
+           activeIds.contains("speed.limit") {
             if let idx = candidates.firstIndex(where: { $0.pattern.method == .sessionUnlock }) {
                 candidates[idx].score *= 0.6
                 candidates[idx].contra.append("powercycle.limit.unchanged")

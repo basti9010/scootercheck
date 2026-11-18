@@ -32,13 +32,14 @@ final class BLESearchMotionCoreTests: XCTestCase {
     func testUTurnCreatesReversal() {
         let tracker = IndoorMotionTracker()
         tracker.reset()
-        tracker.debugAdvance(steps: 6, headingDegrees: 0)
+        tracker.debugAdvance(steps: 8, headingDegrees: 0)
         let midY = tracker.currentY
-        tracker.debugAdvance(steps: 6, headingDegrees: 180)
+        XCTAssertGreaterThan(midY, 2, "forward walk should move +Y")
+        tracker.debugAdvance(steps: 8, headingDegrees: 180)
         let snap = SearchPathReconstructor.snapshot(from: tracker.path, previousViewport: nil, followSoftly: false)
         XCTAssertGreaterThan(snap.smoothedPolyline.count, 3)
-        // Zurück Richtung Start: y wieder kleiner als Mid-Peak
-        XCTAssertLessThan(tracker.currentY, midY - 1)
+        // Zurück Richtung Start: y again clearly below the mid-peak
+        XCTAssertLessThan(tracker.currentY, midY * 0.5)
     }
 
     func testStandstillDoesNotInventMotion() {

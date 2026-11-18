@@ -165,12 +165,15 @@ enum ProtocolCompatibilityEngine {
 
         let services = Set(input.serviceUUIDs.map { BLEKnownServiceUUID.normalize($0) })
 
-        // Native Ninebot / Xiaomi zuerst
+        // Native Ninebot / Xiaomi zuerst.
+        // Generic Nordic UART is shared with Xiaomi — do not claim Ninebot when the
+        // name already looks like a Xiaomi Mi-Home ID / Xiaomi scooter.
+        let looksXiaomi = hay.contains("XIAOMI") || hay.contains("MISCOOTER")
         if let native = profiles.first(where: { $0.verified && $0.nativeStack == "ninebotEnc2" }) {
-            let uart = services.contains(where: {
-                $0.contains("696E65626F74") || $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E")
-            })
+            let ninebotSpecificUart = services.contains(where: { $0.contains("696E65626F74") })
+            let nordicUart = services.contains(where: { $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E") })
             let nameHit = native.modelPatterns.contains { hay.contains($0.uppercased()) }
+            let uart = ninebotSpecificUart || (nordicUart && !looksXiaomi)
             if uart || nameHit || input.suggestedProfileRaw != nil {
                 if uart { matchedOn.append("Ninebot/Nordic UART") }
                 if nameHit { matchedOn.append("Namensmuster Ninebot") }
