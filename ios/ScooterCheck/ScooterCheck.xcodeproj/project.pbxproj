@@ -174,7 +174,7 @@
 		A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */; };
 		A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E7 /* FirmwareForensicsHubView.swift */; };
 		A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E8 /* FirmwareComboExtractor.swift */; };
-		A100000000000000000000E9 /* FirmwareDeepAnalysisBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E9 /* FirmwareDeepAnalysisBriefing.swift */; };
+		A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */; };
 		A100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */; };
 		A100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */; };
 /* End PBXBuildFile section */
@@ -349,7 +349,7 @@
 		B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareServerAnalysisClient.swift; sourceTree = "<group>"; };
 		B100000000000000000000E7 /* FirmwareForensicsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicsHubView.swift; sourceTree = "<group>"; };
 		B100000000000000000000E8 /* FirmwareComboExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareComboExtractor.swift; sourceTree = "<group>"; };
-		B100000000000000000000E9 /* FirmwareDeepAnalysisBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisBriefing.swift; sourceTree = "<group>"; };
+		B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisBriefing.swift; sourceTree = "<group>"; };
 		B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelator.swift; sourceTree = "<group>"; };
 		B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisTests.swift; sourceTree = "<group>"; };
@@ -503,7 +503,7 @@
 				B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */,
 				B100000000000000000000E7 /* FirmwareForensicsHubView.swift */,
 				B100000000000000000000E8 /* FirmwareComboExtractor.swift */,
-				B100000000000000000000E9 /* FirmwareDeepAnalysisBriefing.swift */,
+				B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */,
 				B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */,
 			);
 			path = FirmwareForensics;
@@ -785,7 +785,7 @@
 				A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */,
 				A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */,
 				A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */,
-				A100000000000000000000E9 /* FirmwareDeepAnalysisBriefing.swift in Sources */,
+				A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */,
 				A100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
