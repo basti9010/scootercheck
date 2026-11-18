@@ -99,11 +99,6 @@ struct AuthGateView: View {
                 .background(Theme.accent.opacity(busy ? 0.5 : 1))
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
                 .disabled(busy || email.isEmpty || password.count < 8)
-
-                Text("Nur freigegebene Behörden-Domains (z. B. @polizei.bayern.de). Danach schaltet ein Admin dein Konto frei.")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textMuted)
-                    .multilineTextAlignment(.center)
             }
             .scootPagePadding()
         }
