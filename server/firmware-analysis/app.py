@@ -670,8 +670,11 @@ def health() -> dict[str, Any]:
         "unicornConfigured": unicorn_configured(),
         "angrLiteConfigured": angr_configured(),
         "angrEngineConfigured": angr_engine_available(),
-        "angrTimeoutSec": int(os.environ.get("ANGR_TIMEOUT_SEC", "90") or "90"),
+        "angrTimeoutSec": int(os.environ.get("ANGR_TIMEOUT_SEC", "150") or "150"),
         "angrMemMb": int(os.environ.get("ANGR_MEM_MB", "1800") or "1800"),
+        "angrCfgDepth": int(os.environ.get("ANGR_CFG_DEPTH", "6") or "6"),
+        "angrSymbolic": os.environ.get("ANGR_SYMBOLIC", "0").strip()
+        in ("1", "true", "True", "yes"),
         "time": _utc_now().isoformat(),
     }
 

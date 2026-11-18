@@ -70,7 +70,7 @@ Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE
 ## Unicorn + Pfadanalyse (Schritt 7–8)
 
 - **Unicorn**: kurze Emulation um Speed-Immediates (`pip install unicorn`, `ENABLE_UNICORN=0` zum Abschalten)
-- **angr_lite**: Capstone-Rückwärts-Pfadanalyse; optionales **angr CFGFast** in Subprozess
+- **angr_lite**: Capstone-Rückwärts-Pfadanalyse; optionales **angr CFGFast-deep** in Subprozess
 - Stock-Lib befüllen: Admin **→ Stock** auf einem Job mit Klartext, oder Dateien nach `STOCK_FW_DIR`
 
 ### angr ohne VPS-Crash
@@ -80,16 +80,19 @@ pip install angr   # im firmware-analysis venv
 # /etc/scootercheck/firmware-analysis.env:
 ENABLE_ANGR=1
 ANGR_MAX_BYTES=262144      # nur kleine VCU-Bins
-ANGR_TIMEOUT_SEC=90        # Parent killt Worker
+ANGR_TIMEOUT_SEC=150       # Parent killt Worker
 ANGR_MEM_MB=1800           # RLIMIT_AS im Worker
+ANGR_CFG_DEPTH=6           # multi-hop CFG-Vorgänger
+ANGR_SYMBOLIC=0            # 1 = kurze Local-Explore je Speed-Site
 ```
 
-- Nur **CFGFast** (kein Symbolic Execution)
+- **CFGFast-deep**: data refs, indirect jumps, XRefs, Caller-Kette, Disasm-Snippet
+- Optional `ANGR_SYMBOLIC=1`: begrenzte Exploration nur um Speed-Sites (nicht Full-Binary SE)
 - Eigener Prozess + RAM-Cap + Timeout
 - Gleiches Lock wie Ghidra (nie parallel)
 - Bei Timeout/OOM: Capstone-Hints bleiben, Job wird `completed` (kein Hard-Fail)
 
-Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angrTimeoutSec`, `angrMemMb`.
+Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angrTimeoutSec`, `angrMemMb`, `angrCfgDepth`, `angrSymbolic`.
 
 ## Auth
 

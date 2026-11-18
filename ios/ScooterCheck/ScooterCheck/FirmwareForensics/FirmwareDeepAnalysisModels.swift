@@ -349,4 +349,8 @@ struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var unicornConfigured: Bool?
     var angrLiteConfigured: Bool?
     var angrEngineConfigured: Bool?
+    var angrTimeoutSec: Int?
+    var angrMemMb: Int?
+    var angrCfgDepth: Int?
+    var angrSymbolic: Bool?
 }

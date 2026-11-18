@@ -24,7 +24,7 @@ class AngrLiteTests(unittest.TestCase):
         self.assertTrue(any("engine not installed" in n or "Capstone" in n for n in out["notes"]))
 
     def test_subprocess_timeout_note(self) -> None:
-        with mock.patch.object(angr_lite, "_run_angr_subprocess", return_value={"ok": False, "error": "timeout>90s"}):
+        with mock.patch.object(angr_lite, "_run_angr_subprocess", return_value={"ok": False, "error": "timeout>150s"}):
             with mock.patch.object(angr_lite, "angr_engine_available", return_value=True):
                 blob = b"\x00" * 80 + b"\x00\x16" + b"\x00" * 80
                 with tempfile.TemporaryDirectory() as td:
