@@ -35,7 +35,8 @@ enum FirmwareComboPolicy {
         if isValidatedCombo(t) || t.lowercased().hasPrefix("belegt:") { return t }
         let low = t.lowercased()
         if low.contains("gas") || low.contains("bremse") || low.contains("vermut")
-            || low.contains("modellabhängig") || low.contains("häufig") {
+            || low.contains("modellabhängig") || low.contains("häufig")
+            || low.contains("tastenkombi") || low == "kombi" {
             return unbelegtTrigger
         }
         return t

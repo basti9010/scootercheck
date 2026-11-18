@@ -728,6 +728,10 @@ enum BLEIdentificationEngine {
         if manufacturer != nil, categoryStrength == .high {
             return .high
         }
+        // Strong category signal without named brand/model (e.g. Ninebot UART UUID alone).
+        if categoryStrength == .high, category != .unknown {
+            return .medium
+        }
         if manufacturer != nil, category != .unknown, categoryStrength == .medium {
             return .medium
         }

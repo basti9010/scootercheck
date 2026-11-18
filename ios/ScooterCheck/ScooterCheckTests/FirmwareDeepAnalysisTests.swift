@@ -204,7 +204,13 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             )
         )
         let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
-        XCTAssertTrue(brief.headline.localizedCaseInsensitiveContains("Referenz") || brief.headline.localizedCaseInsensitiveContains("Bibliothek"))
+        // Yellow headline is Ampel-neutral; library/reference wording lives in bullets/rationale.
+        XCTAssertTrue(
+            brief.bullets.contains {
+                $0.localizedCaseInsensitiveContains("Bibliothek") || $0.localizedCaseInsensitiveContains("Referenz")
+            },
+            "expected library/reference bullet, got: \(brief.bullets)"
+        )
         XCTAssertEqual(brief.actionableCombos, ["Live-Kombination (SN): Gas+Bremse+Power"])
         XCTAssertTrue(brief.technicalCombos.contains { $0.localizedCaseInsensitiveContains("Bitfeld") })
         XCTAssertFalse(brief.actionableCombos.contains { $0.localizedCaseInsensitiveContains("Vermutete") })

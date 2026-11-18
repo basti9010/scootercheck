@@ -271,9 +271,10 @@ final class BleModelHintTests: XCTestCase {
     }
 
     func testF3ProGear3NotFlaggedAsUnlock() {
+        // DE serials on DE profile — Global 1EFH/1EFC would correctly raise region/fw.unknown.
         let reading = IntegrityReading(
-            serialDisplay: "1EFHE2515C0440",
-            serialVcu: "1EFCE2515C0440",
+            serialDisplay: "1EFJE2515C0440",
+            serialVcu: "1EFDE2515C0440",
             speedMaxKmh: 20,
             speedLimitKmh: 20,
             peakSpeedKmh: 19,

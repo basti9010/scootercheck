@@ -131,6 +131,7 @@ enum FirmwareForensicOrchestrator {
 
         let (binary, binEvidence) = FirmwareBinaryStaticAnalyzer.analyze(
             path: primaryPath,
+            archiveFileName: fileName,
             data: primaryData,
             crypto: crypto,
             meta: loaded.meta,
