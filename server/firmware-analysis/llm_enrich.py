@@ -85,11 +85,13 @@ def llm_provider() -> str:
 
 
 def _api_key() -> str:
-    return (
+    raw = (
         os.environ.get("LLM_API_KEY", "").strip()
         or os.environ.get("ANTHROPIC_API_KEY", "").strip()
         or os.environ.get("OPENAI_API_KEY", "").strip()
     )
+    # Hetzner console DE keyboard often turns '-' into 'ß' when pasting.
+    return raw.replace("ß", "-").replace(" ", "")
 
 
 def _base_url() -> str:
