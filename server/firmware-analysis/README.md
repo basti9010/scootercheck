@@ -48,6 +48,14 @@ apt-get install -y radare2
 
 `GET /health` → `r2Configured: true`. Quelle in der App: „Server-radare2“.
 
+## Ghidra Speed-Xrefs / Capstone / YARA (Schritt 4–6)
+
+- Ghidra `ExportSpeedXrefs.java` schreibt `.speeds.json` (Listing-Immediates → Function/Addr)
+- Capstone: ARM/Thumb-Disasm auf packed Speeds (`pip install capstone`)
+- YARA: `yara_rules/scooter_cfw.yar` (`pip install yara-python`)
+
+Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE=0` / `ENABLE_YARA=0`.
+
 ## Auth
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API

@@ -23,6 +23,9 @@ enum FirmwareDeepAnalysisMerger {
         let stock = parts.compactMap(\.stockDiff).first { $0.outcome == .identical || $0.outcome == .different }
             ?? parts.compactMap(\.stockDiff).first
         let r2Strings = Array(Set(parts.flatMap(\.r2StringsSample))).sorted()
+        var yara = parts.flatMap(\.yaraMatches)
+        var seenYara = Set<String>()
+        yara = yara.filter { seenYara.insert($0.rule).inserted }
 
         return FirmwareDeepAnalysisResult(
             schemaVersion: FirmwareDeepAnalysisResult.currentSchemaVersion,
@@ -48,7 +51,8 @@ enum FirmwareDeepAnalysisMerger {
                     : "Zusammengeführt ohne deterministische Basis — vorsichtig werten."
             ),
             stockDiff: stock,
-            r2StringsSample: r2Strings
+            r2StringsSample: r2Strings,
+            yaraMatches: yara
         )
     }
 

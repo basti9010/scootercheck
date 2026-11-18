@@ -99,6 +99,8 @@ rm -rf .venv
 python3.12 -m venv .venv
 .venv/bin/pip install -U pip
 .venv/bin/pip install -r requirements.txt
+# Capstone + YARA are in requirements.txt; ensure rules dir is readable
+chmod -R a+rX "$APP_DIR/yara_rules" 2>/dev/null || true
 
 # Install already-present ninebottea into the service venv (ProtectHome blocks /root).
 NINEBOT_SRC="${NINEBOTTEA_SRC:-/root/ninebottea/.venv/lib/python3.14/site-packages/ninebottea}"

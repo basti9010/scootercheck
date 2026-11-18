@@ -476,6 +476,8 @@ struct AdminFirmwareUploadsView: View {
             "Ghidra \(h.ghidraConfigured == true ? "ok" : "fehlt")",
             "KI \(h.llmConfigured == true ? "ok" : "aus")",
             "r2 \(h.r2Configured == true ? "ok" : "aus")",
+            "CS \(h.capstoneConfigured == true ? "ok" : "aus")",
+            "YARA \(h.yaraConfigured == true ? "ok" : "aus")",
             "Stock \(h.stockRefCount ?? 0)",
         ]
         return bits.joined(separator: " · ")

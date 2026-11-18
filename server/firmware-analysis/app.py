@@ -25,10 +25,15 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, Header, HTTPE
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from ghidra_decompile import ghidra_configured, run_ghidra_decompile
+from capstone_extract import (
+    analyze_firmware as capstone_analyze,
+    capstone_configured,
+    merge_capstone_into_result,
+)
+from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from llm_enrich import enrich_result, llm_configured
-from speed_extract import deep_result
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
+from speed_extract import deep_result
 from stock_diff import (
     compare_to_stock,
     delete_stock_ref,
@@ -37,6 +42,7 @@ from stock_diff import (
     register_stock_file,
     stock_dir,
 )
+from yara_scan import merge_yara_into_result, scan_firmware as yara_scan, yara_configured
 
 APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.4.0")
 
@@ -464,6 +470,7 @@ def process_job(job_id: str) -> None:
     else:
         notes.append("r2=skipped (radare2 not installed or ENABLE_R2=0)")
 
+    ghidra_xrefs: dict[str, Any] = {"ok": False, "speeds": [], "notes": []}
     if ENABLE_GHIDRA and ghidra_configured():
         _update(
             job,
@@ -475,18 +482,22 @@ def process_job(job_id: str) -> None:
         out_c.parent.mkdir(parents=True, exist_ok=True)
         job_c = job_dir / "FIRM.dec.c"
         # Serialize Ghidra so parallel uploads don't OOM the VPS.
+        speed_json = out_c.with_suffix(".speeds.json")
         with _GHIDRA_LOCK:
-            _update(job, message="Ghidra Headless decompiliert → .c …")
+            _update(job, message="Ghidra Headless decompiliert → .c + Speed-Xrefs…")
             ok_g, msg_g = run_ghidra_decompile(
                 stored,
                 out_c,
                 processor=GHIDRA_PROCESSOR,
                 base_addr=GHIDRA_BASE_ADDR,
+                speed_json=speed_json,
             )
         notes.append(f"ghidra={msg_g}")
         if ok_g:
             shutil.copy2(out_c, job_c)
             decompiled_text = out_c.read_text(encoding="utf-8", errors="replace")
+            ghidra_xrefs = load_speed_xrefs(speed_json)
+            notes.extend(ghidra_xrefs.get("notes") or [])
             _update(
                 job,
                 decompilePath=str(out_c),
@@ -499,6 +510,22 @@ def process_job(job_id: str) -> None:
         notes.append("ghidra=skipped (GHIDRA_HOME / GHIDRA_HEADLESS not set)")
     else:
         notes.append("ghidra=disabled (ENABLE_GHIDRA=0)")
+
+    _update(job, progressPercent=78, message="Capstone Disasm-Scan…")
+    cs_info = capstone_analyze(stored) if capstone_configured() else {
+        "ok": False,
+        "speeds": [],
+        "notes": ["capstone=skipped"],
+    }
+    notes.extend(cs_info.get("notes") or [])
+
+    _update(job, progressPercent=82, message="YARA-Signaturen…")
+    yr_info = yara_scan(stored) if yara_configured() else {
+        "ok": False,
+        "matches": [],
+        "notes": ["yara=skipped"],
+    }
+    notes.extend(yr_info.get("notes") or [])
 
     _update(job, state="extracting", progressPercent=85, message="Speed-Signaturen aus Klartext/Decompile…")
 
@@ -515,6 +542,24 @@ def process_job(job_id: str) -> None:
     if "serverDecompile" not in result["sources"]:
         result["sources"] = list(result["sources"]) + ["serverDecompile"]
     result = merge_r2_into_result(result, r2_info)
+    # Merge Ghidra listing xrefs (same source tag serverDecompile)
+    if ghidra_xrefs.get("ok"):
+        by_packed = {
+            s.get("packedU16"): s
+            for s in (result.get("speedLimits") or [])
+            if s.get("packedU16") is not None
+        }
+        for s in ghidra_xrefs.get("speeds") or []:
+            p = s.get("packedU16")
+            if p not in by_packed:
+                by_packed[p] = s
+            elif "Ghidra xref" not in str(by_packed[p].get("evidence") or ""):
+                by_packed[p]["evidence"] = (
+                    str(by_packed[p].get("evidence") or "") + " · " + str(s.get("evidence") or "")
+                ).strip(" ·")
+        result["speedLimits"] = sorted(by_packed.values(), key=lambda x: x["kmh"])
+    result = merge_capstone_into_result(result, cs_info)
+    result = merge_yara_into_result(result, yr_info)
 
     _update(job, progressPercent=88, message="Stock-Diff gegen Referenzbibliothek…")
     stock = compare_to_stock(plaintext, models=models, controller_type=ctype)
@@ -530,6 +575,10 @@ def process_job(job_id: str) -> None:
     parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
     if r2_info.get("ok"):
         parts.append(f"r2 {len(r2_info.get('speeds') or [])} Speeds")
+    if cs_info.get("ok"):
+        parts.append(f"capstone {len(cs_info.get('speeds') or [])}")
+    if yr_info.get("ok"):
+        parts.append(f"yara {len(yr_info.get('matches') or [])}")
     if job.get("decompileSaved"):
         parts.append(f"Ghidra .c → {job.get('decompilePath')}")
     if stock.get("outcome") == "identical":
@@ -565,6 +614,8 @@ def health() -> dict[str, Any]:
         "stockFwDir": str(stock_dir()),
         "stockRefCount": len(list_stock_refs()),
         "r2Configured": r2_configured(),
+        "capstoneConfigured": capstone_configured(),
+        "yaraConfigured": yara_configured(),
         "time": _utc_now().isoformat(),
     }
 

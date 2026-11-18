@@ -30,6 +30,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var stockDiff: FirmwareStockDiffResult? = nil
     /// Stichprobe interessanter Strings aus radare2 (`izz`).
     var r2StringsSample: [String] = []
+    /// YARA-Treffer vom Server (investigativ).
+    var yaraMatches: [FirmwareYaraMatch] = []
 
     static let currentSchemaVersion = 1
 
@@ -48,6 +50,8 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
     case knownCatalog
     case serverDecompile
     case serverR2
+    case serverCapstone
+    case serverYara
     case serverLLM
     case liveVehicleContext
 
@@ -57,6 +61,8 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
         case .knownCatalog: return "Bekannte CFW-Signatur"
         case .serverDecompile: return "Server-Decompile"
         case .serverR2: return "Server-radare2"
+        case .serverCapstone: return "Server-Capstone"
+        case .serverYara: return "Server-YARA"
         case .serverLLM: return "Server-KI (schema-gebunden)"
         case .liveVehicleContext: return "Live-Fahrzeugkontext"
         }
@@ -91,6 +97,16 @@ struct FirmwareStockDiffSegment: Equatable, Codable, Sendable {
     var offset: Int
     var length: Int
     var note: String
+}
+
+struct FirmwareYaraMatch: Equatable, Codable, Sendable, Identifiable {
+    var rule: String
+    var description: String
+    var confidence: String
+    var tags: [String]
+    var strings: [String]
+
+    var id: String { rule + "|" + description }
 }
 
 struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
@@ -314,4 +330,6 @@ struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
     var stockFwDir: String?
     var stockRefCount: Int?
     var r2Configured: Bool?
+    var capstoneConfigured: Bool?
+    var yaraConfigured: Bool?
 }

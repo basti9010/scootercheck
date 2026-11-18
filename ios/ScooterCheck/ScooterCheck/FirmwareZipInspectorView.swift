@@ -534,6 +534,17 @@ struct FirmwareZipInspectorView: View {
                         }
                     }
                 }
+                if !deep.yaraMatches.isEmpty {
+                    Text("YARA")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 4)
+                    ForEach(deep.yaraMatches) { m in
+                        Text("• \(m.rule): \(m.description) (\(m.confidence))")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
                 if !deep.r2StringsSample.isEmpty {
                     DisclosureGroup("radare2 Strings (\(deep.r2StringsSample.count))") {
                         ForEach(deep.r2StringsSample.prefix(20), id: \.self) { s in
