@@ -174,6 +174,8 @@
 		A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */; };
 		A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E7 /* FirmwareForensicsHubView.swift */; };
 		A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E8 /* FirmwareComboExtractor.swift */; };
+		A100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */; };
+		A100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -346,6 +348,8 @@
 		B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareServerAnalysisClient.swift; sourceTree = "<group>"; };
 		B100000000000000000000E7 /* FirmwareForensicsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicsHubView.swift; sourceTree = "<group>"; };
 		B100000000000000000000E8 /* FirmwareComboExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareComboExtractor.swift; sourceTree = "<group>"; };
+		B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelator.swift; sourceTree = "<group>"; };
+		B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -497,6 +501,7 @@
 				B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */,
 				B100000000000000000000E7 /* FirmwareForensicsHubView.swift */,
 				B100000000000000000000E8 /* FirmwareComboExtractor.swift */,
+				B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */,
 			);
 			path = FirmwareForensics;
 			sourceTree = "<group>";
@@ -542,6 +547,7 @@
 				B100000000000000000000C1 /* VcuFirmwareVersionTests.swift */,
 				B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */,
 				B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */,
+				B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
 				B10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift */,
@@ -776,6 +782,7 @@
 				A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */,
 				A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */,
 				A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */,
+				A100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,
@@ -839,6 +846,7 @@
 				A100000000000000000000C1 /* VcuFirmwareVersionTests.swift in Sources */,
 				A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */,
 				A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */,
+				A100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
 				A10000000000000000000022 /* StockFirmwareCatalogRemoteTests.swift in Sources */,

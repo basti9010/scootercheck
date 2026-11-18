@@ -70,6 +70,7 @@ struct FirmwareZipInspectorView: View {
                     if let report {
                         verdictBanner(report)
                         if combinesWithReadout {
+                            readoutMatchSection(report)
                             dualSourceSection(report)
                         }
                         deepAnalysisSection(report)
@@ -377,6 +378,81 @@ struct FirmwareZipInspectorView: View {
             storedCombo: SoftUnlockComboStore.load(forSerial: (r.vehicleContext ?? vehicleContext)?.serial)
         )
         return DualSourcePanicCard(assessment: assessment)
+    }
+
+    @ViewBuilder
+    private func readoutMatchSection(_ r: FirmwareForensicReport) -> some View {
+        let assessment = FirmwareReadoutMatchCorrelator.assess(
+            report: r,
+            vehicleContext: r.vehicleContext ?? vehicleContext
+        )
+        sectionCard("Datei ↔ Scooter-Auslese") {
+            HStack {
+                Text(assessment.verdict.shortLabel)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(matchColor(assessment.verdict))
+                Spacer()
+                Text(assessment.verdict.title)
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.trailing)
+            }
+            Text(assessment.summary)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(assessment.checks) { check in
+                HStack(alignment: .top, spacing: 8) {
+                    Text(matchCheckGlyph(check.status))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(matchCheckColor(check.status))
+                        .frame(width: 16)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(check.title)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(check.detail)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
+            ForEach(assessment.caveats, id: \.self) { c in
+                Text("• \(c)")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+    }
+
+    private func matchColor(_ v: FirmwareReadoutMatchCorrelator.Verdict) -> Color {
+        switch v {
+        case .likelyMatch: return Theme.accent
+        case .partial: return Theme.warn
+        case .mismatch: return Theme.danger
+        case .inconclusive: return Theme.textMuted
+        }
+    }
+
+    private func matchCheckColor(_ s: FirmwareReadoutMatchCorrelator.CheckStatus) -> Color {
+        switch s {
+        case .match: return Theme.accent
+        case .mismatch: return Theme.danger
+        case .unclear: return Theme.warn
+        case .missing: return Theme.textMuted
+        }
+    }
+
+    private func matchCheckGlyph(_ s: FirmwareReadoutMatchCorrelator.CheckStatus) -> String {
+        switch s {
+        case .match: return "✓"
+        case .mismatch: return "≠"
+        case .unclear: return "?"
+        case .missing: return "–"
+        }
     }
 
     @ViewBuilder
