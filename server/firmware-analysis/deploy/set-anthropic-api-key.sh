@@ -2,7 +2,7 @@
 # Set a Claude Console API key into firmware-analysis.env without echoing it.
 # Usage:
 #   setllmkey                 # paste raw key (SSH from your PC — best)
-#   setllmkey --hex           # paste hex of the key — safest in Hetzner web console
+#   setllmkey --hex           # paste hex (may be multiple lines; empty line ends)
 #   setllmkey --b64           # paste base64 (fallback)
 set -euo pipefail
 ENV_FILE=/etc/scootercheck/firmware-analysis.env
@@ -17,27 +17,48 @@ case "${1:-}" in
   --b64|-b64) MODE=b64 ;;
 esac
 
+read_hidden_blob() {
+  # Read one or more lines until empty line. Hidden (no echo).
+  local line acc=""
+  while IFS= read -r -s line; do
+    # strip CR
+    line=${line%$'\r'}
+    if [[ -z "$line" ]]; then
+      break
+    fi
+    acc+="$line"
+  done
+  printf '%s' "$acc"
+}
+
 case "$MODE" in
   hex)
-    echo "Paste HEX of the Claude key, then Enter."
-    echo "Windows PowerShell (only this line, no prompt):"
-    echo "  ([BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes('sk-ant-…'))).Replace('-','').ToLower()"
-    echo "Input hidden. Hex has only 0-9a-f — console-safe."
+    echo "Paste HEX of the Claude key."
+    echo "PowerShell (only the command, no prompt) — then check Length ~212:"
+    echo "  \$h=([BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes('sk-ant-…'))).Replace('-','').ToLower(); \$h.Length; \$h"
+    echo "If the hex wraps, paste ALL of it here (several lines OK)."
+    echo "When finished: press Enter on an EMPTY line."
+    echo "Input hidden."
+    KEY=$(read_hidden_blob)
+    echo
     ;;
   b64)
-    echo "Paste BASE64 of the Claude key, then Enter."
+    echo "Paste BASE64 of the Claude key, then empty line."
     echo "Prefer: setllmkey --hex"
     echo "Input hidden."
+    KEY=$(read_hidden_blob)
+    echo
     ;;
   *)
     echo "Paste Claude API key (sk-ant-usr… / sk-ant-api…), then Enter."
     echo "Prefer SSH from PC. In Hetzner web console use: setllmkey --hex"
-    echo "Input hidden. Console may turn '-' into 'ß' — we auto-fix that."
+    echo "Input hidden."
+    read -r -s KEY
+    echo
+    KEY=${KEY%$'\r'}
     ;;
 esac
 
-read -r -s KEY
-echo
 KEY=$(printf '%s' "$KEY" | tr -d '\r\n \t')
 
 if [[ -z "$KEY" ]]; then
@@ -47,12 +68,18 @@ fi
 
 if [[ "$MODE" == "hex" ]]; then
   KEY=$(printf '%s' "$KEY" | tr 'A-F' 'a-f')
+  echo "hex_len=${#KEY} (expect ~212 for a full key)"
   if [[ ! "$KEY" =~ ^[0-9a-f]+$ ]]; then
     echo "ERROR: not hex (only 0-9 a-f allowed). len=${#KEY}" >&2
     exit 1
   fi
   if (( ${#KEY} % 2 == 1 )); then
-    echo "ERROR: hex length must be even (got ${#KEY})." >&2
+    echo "ERROR: hex length must be even (got ${#KEY}). Incomplete paste?" >&2
+    exit 1
+  fi
+  if (( ${#KEY} < 190 )); then
+    echo "ERROR: hex too short (${#KEY}). Full Claude keys need ~212 hex chars." >&2
+    echo "In PowerShell print \$h.Length — must be ~212, then paste ALL hex lines here." >&2
     exit 1
   fi
   if ! KEY=$(printf '%s' "$KEY" | xxd -r -p 2>/dev/null | tr -d '\r\n'); then
@@ -60,16 +87,12 @@ if [[ "$MODE" == "hex" ]]; then
     exit 1
   fi
 elif [[ "$MODE" == "b64" ]]; then
-  # strip whitespace; keep standard alphabet; add padding
-  KEY=$(printf '%s' "$KEY" | tr -d '\r\n \t')
   pad=$(( (4 - ${#KEY} % 4) % 4 ))
   if (( pad > 0 )); then
     KEY="${KEY}$(printf '%*s' "$pad" '' | tr ' ' '=')"
   fi
   if ! DECODED=$(printf '%s' "$KEY" | base64 -d 2>/tmp/setllmkey-b64.err); then
     echo "ERROR: base64 decode failed — use setllmkey --hex instead." >&2
-    head -c 120 /tmp/setllmkey-b64.err 2>/dev/null || true
-    echo >&2
     exit 1
   fi
   KEY=$(printf '%s' "$DECODED" | tr -d '\r\n')
@@ -91,6 +114,15 @@ fi
 if [[ "$KEY" != sk-ant-usr* && "$KEY" != sk-ant-api* && "$KEY" != sk-ant-* ]]; then
   echo "ERROR: Key should start with sk-ant-usr or sk-ant-api (got prefix: ${KEY:0:14}… len=${#KEY})" >&2
   exit 1
+fi
+
+if (( ${#KEY} < 100 )); then
+  echo "ERROR: decoded key too short (len=${#KEY}). Incomplete paste — need full key (~106)." >&2
+  exit 1
+fi
+
+if [[ "$KEY" != *AA ]]; then
+  echo "WARN: key does not end with AA (typical Anthropic ending) — may be truncated."
 fi
 
 echo "Accepted prefix ${KEY:0:12}… len=${#KEY}"
