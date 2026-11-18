@@ -389,7 +389,7 @@ struct FirmwareZipInspectorView: View {
                     .tint(Theme.accent)
                     .disabled(isServerBusy || lastData == nil)
                 } else {
-                    Text("Server-URL unter Einstellungen setzen, dann erscheint hier der Upload.")
+                    Text("Server nicht erreichbar konfiguriert — URL unter Einstellungen prüfen.")
                         .font(.caption2)
                         .foregroundStyle(Theme.textMuted)
                 }
@@ -651,10 +651,14 @@ struct FirmwareZipInspectorView: View {
             var final = status
             if status.state != .completed, !status.jobId.isEmpty {
                 serverStatusText = "Warte auf Job \(status.jobId.prefix(8))…"
-                for _ in 0..<30 {
-                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                // Decrypt + Ghidra kann mehrere Minuten dauern.
+                for _ in 0..<240 {
+                    try await Task.sleep(nanoseconds: 2_000_000_000)
                     final = try await client.poll(jobId: status.jobId)
-                    serverStatusText = final.message
+                    let pct = final.progressPercent
+                    serverStatusText = pct > 0
+                        ? "\(final.message) (\(pct)%)"
+                        : final.message
                     if final.state == .completed || final.state == .failed { break }
                 }
             }

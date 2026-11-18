@@ -28,10 +28,16 @@ fi
 
 mkdir -p "$(dirname "$OUT")"
 
-# --- Adjust this ONE line to match YOUR installed CLI ---
-# Common pattern: binary + subcommand + in + out (change if your tool differs).
-# Keys must already be available to the tool via decrypt.env / its own config.
-"$BIN" decrypt "$IN" "$OUT"
+ARGS=(decrypt "$IN" "$OUT")
+# Optional KEY / VARIANT from /etc/scootercheck/decrypt.env
+if [[ -n "${KEY:-}" ]]; then
+  ARGS+=(--key "$KEY")
+fi
+if [[ -n "${VARIANT:-}" ]]; then
+  ARGS+=(--variant "$VARIANT")
+fi
+
+"$BIN" "${ARGS[@]}"
 
 if [[ ! -s "$OUT" ]]; then
   echo "decrypt produced empty output: $OUT" >&2

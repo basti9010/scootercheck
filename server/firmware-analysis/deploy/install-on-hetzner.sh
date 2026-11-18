@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Run ON the Hetzner VPS as root (after code is copied to /opt/scootercheck).
-# Does not install ninebottea — only the worker + systemd. Wire DECRYPT_CMD yourself.
+# Run ON the Hetzner VPS as root (after code is copied to /opt/scootercheck/firmware-analysis).
+# Does not install ninebottea from the internet — copies host install or uses NINEBOTTEA_SRC.
 set -euo pipefail
 
 APP_DIR=/opt/scootercheck/firmware-analysis
 ENV_FILE=/etc/scootercheck/firmware-analysis.env
 JOB_DIR=/var/lib/scootercheck/firmware-jobs
 SERVICE_SRC="$APP_DIR/deploy/scootercheck-fw.service"
+NGINX_SNIPPET_SRC="$APP_DIR/deploy/nginx-scootercheck-fw.conf"
+AUTH_ENV=/opt/scootercheck/.env
 
 if [[ ! -d "$APP_DIR" ]]; then
   echo "Missing $APP_DIR — copy server/firmware-analysis there first." >&2
@@ -14,13 +16,21 @@ if [[ ! -d "$APP_DIR" ]]; then
 fi
 
 id scootercheck &>/dev/null || useradd --system --home /var/lib/scootercheck --shell /usr/sbin/nologin scootercheck
-mkdir -p /etc/scootercheck "$JOB_DIR"
+mkdir -p /etc/scootercheck "$JOB_DIR" /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
 chown -R scootercheck:scootercheck /var/lib/scootercheck
+
+JWT_FROM_AUTH=""
+if [[ -f "$AUTH_ENV" ]]; then
+  JWT_FROM_AUTH=$(grep -E '^JWT_SECRET=' "$AUTH_ENV" | head -1 | cut -d= -f2- || true)
+fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   umask 077
-  cat >"$ENV_FILE" <<'EOF'
-API_TOKEN=change-me-long-random
+  TOKEN=$(openssl rand -hex 24)
+  cat >"$ENV_FILE" <<EOF
+API_TOKEN=${TOKEN}
+JWT_SECRET=${JWT_FROM_AUTH}
+JWT_ALGORITHM=HS256
 DECRYPT_CMD=/opt/scootercheck/decrypt-firm.sh
 WORK_DIR=/var/lib/scootercheck/firmware-jobs
 PLAINTEXT_STORE=/var/lib/scootercheck/decrypted
@@ -33,46 +43,85 @@ HOST=127.0.0.1
 PORT=8088
 EOF
   chmod 600 "$ENV_FILE"
-  echo "Created $ENV_FILE — set API_TOKEN, DECRYPT_CMD, GHIDRA_HOME."
+  echo "Created $ENV_FILE"
+else
+  # Keep JWT in sync with auth service when possible.
+  if [[ -n "$JWT_FROM_AUTH" ]] && ! grep -q '^JWT_SECRET=.\+' "$ENV_FILE"; then
+    echo "JWT_SECRET=${JWT_FROM_AUTH}" >>"$ENV_FILE"
+  fi
 fi
 
-mkdir -p /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
-chown -R scootercheck:scootercheck /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
-
-# Install decrypt wrapper if missing (edit NINEBOTTEA_BIN / CLI on the host).
 if [[ ! -f /opt/scootercheck/decrypt-firm.sh ]]; then
   install -m 755 "$APP_DIR/decrypt-firm.example.sh" /opt/scootercheck/decrypt-firm.sh
-  echo "Installed /opt/scootercheck/decrypt-firm.sh — point NINEBOTTEA_BIN at your installed ninebottea."
 fi
 
 if [[ ! -f /etc/scootercheck/decrypt.env ]]; then
   umask 077
   cat >/etc/scootercheck/decrypt.env <<'EOF'
-# Path to already-installed ninebottea (or equivalent).
-NINEBOTTEA_BIN=ninebottea
-# Add KEY=... only on the server — never commit.
+# Path to ninebottea inside the firmware-analysis venv (preferred) or absolute binary.
+NINEBOTTEA_BIN=/opt/scootercheck/firmware-analysis/.venv/bin/ninebottea
+# Optional: KEY=fe80... only on the server — never commit.
 EOF
-  chmod 600 /etc/scootercheck/decrypt.env
+  chmod 640 /etc/scootercheck/decrypt.env
+  chown root:scootercheck /etc/scootercheck/decrypt.env
 fi
+# Wrapper runs as scootercheck — must be able to source decrypt.env
+chown root:scootercheck /etc/scootercheck/decrypt.env 2>/dev/null || true
+chmod 640 /etc/scootercheck/decrypt.env 2>/dev/null || true
 
 apt-get update -y
-apt-get install -y python3 python3-venv python3-pip
+apt-get install -y python3.12 python3.12-venv python3-pip
 
 cd "$APP_DIR"
-python3 -m venv .venv
+# Python 3.14 lacks wheels for pinned pydantic-core — use 3.12 like the auth service.
+rm -rf .venv
+python3.12 -m venv .venv
 .venv/bin/pip install -U pip
 .venv/bin/pip install -r requirements.txt
-chown -R scootercheck:scootercheck "$APP_DIR"
+
+# Install already-present ninebottea into the service venv (ProtectHome blocks /root).
+NINEBOT_SRC="${NINEBOTTEA_SRC:-/root/ninebottea/.venv/lib/python3.14/site-packages/ninebottea}"
+NINEBOT_META="${NINEBOTTEA_META:-/root/ninebottea/.venv/lib/python3.14/site-packages/ninebottea-0.2.0.dist-info}"
+if [[ -d "$NINEBOT_SRC" ]]; then
+  SITE=$(.venv/bin/python -c 'import site; print(site.getsitepackages()[0])')
+  rm -rf "$SITE/ninebottea" "$SITE"/ninebottea-*.dist-info
+  cp -a "$NINEBOT_SRC" "$SITE/ninebottea"
+  if [[ -d "$NINEBOT_META" ]]; then
+    cp -a "$NINEBOT_META" "$SITE/$(basename "$NINEBOT_META")"
+  fi
+  cat >"$SITE/ninebottea_cli.py" <<'PY'
+from ninebottea.__main__ import main
+if __name__ == "__main__":
+    raise SystemExit(main())
+PY
+  # Prefer package console script if present; else wrapper.
+  if [[ ! -x .venv/bin/ninebottea ]]; then
+    cat >.venv/bin/ninebottea <<EOF
+#!/usr/bin/env bash
+exec "$(pwd)/.venv/bin/python" -m ninebottea "\$@"
+EOF
+    chmod 755 .venv/bin/ninebottea
+  fi
+  .venv/bin/ninebottea --help >/dev/null
+  echo "ninebottea installed into firmware-analysis venv"
+else
+  echo "WARNING: ninebottea sources not found at $NINEBOT_SRC — set NINEBOTTEA_BIN in decrypt.env" >&2
+fi
+
+chown -R scootercheck:scootercheck "$APP_DIR" /var/lib/scootercheck
 
 install -m 644 "$SERVICE_SRC" /etc/systemd/system/scootercheck-fw.service
+if [[ -f "$NGINX_SNIPPET_SRC" ]]; then
+  install -m 644 "$NGINX_SNIPPET_SRC" /etc/nginx/snippets/scootercheck-fw.conf
+fi
+
 systemctl daemon-reload
 systemctl enable --now scootercheck-fw.service
 systemctl --no-pager status scootercheck-fw.service || true
 
 echo
 echo "Next:"
-echo "  1) Edit $ENV_FILE (API_TOKEN, DECRYPT_CMD → your installed decrypt wrapper)"
-echo "  2) Put decrypt wrapper at /opt/scootercheck/decrypt-firm.sh (input.enc output.bin)"
-echo "  3) Optional: nginx + TLS (deploy/nginx-fw.conf.example)"
-echo "  4) App Settings → https://YOUR-HETZNER-HOST + same API_TOKEN"
-echo "  5) curl -H \"X-ScooterCheck-Token: …\" https://YOUR-HETZNER-HOST/health"
+echo "  1) Ensure /etc/nginx/... includes snippets/scootercheck-fw.conf and reload nginx"
+echo "  2) App default URL: https://api.tuningscanner.de/scootercheck-fw"
+echo "  3) Auth: Bearer JWT (active user) or X-ScooterCheck-Token from $ENV_FILE"
+echo "  4) curl -sS https://api.tuningscanner.de/scootercheck-fw/health"

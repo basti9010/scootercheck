@@ -222,7 +222,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             sectionLabel("Firmware-Analyse-Server")
 
-            Text("Optional: ZIP/ENC an euren Server senden. Dort läuft euer bereits installiertes Decrypt-Tool (DECRYPT_CMD); Keys bleiben auf dem Server.")
+            Text("ZIP/ENC wird hochgeladen, auf dem Server mit ninebottea entschlüsselt und optional mit Ghidra decompiliert. Auth: dein Login (Bearer). Optionaler API-Token als Zusatz.")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -231,7 +231,7 @@ struct SettingsView: View {
                 Text("Basis-URL")
                     .font(Theme.secondary)
                     .foregroundStyle(Theme.textPrimary)
-                TextField("https://fw.example.internal:8088", text: $settings.firmwareAnalysisServerURLString)
+                TextField(FirmwareServerAnalysisClient.defaultBaseURLString, text: $settings.firmwareAnalysisServerURLString)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)

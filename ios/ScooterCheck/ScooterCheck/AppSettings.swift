@@ -112,7 +112,10 @@ final class AppSettings: ObservableObject {
         auslesenHideNameless = loadedHideNameless
         findProximityAudioDefault = loadedAudio
         findProximityHapticsDefault = loadedHaptics
-        firmwareAnalysisServerURLString = defaults.string(forKey: Self.firmwareServerURLKey) ?? ""
+        let storedFWURL = defaults.string(forKey: Self.firmwareServerURLKey) ?? ""
+        firmwareAnalysisServerURLString = storedFWURL.isEmpty
+            ? FirmwareServerAnalysisClient.defaultBaseURLString
+            : storedFWURL
         firmwareAnalysisAPIToken = defaults.string(forKey: Self.firmwareServerTokenKey) ?? ""
 
         Theme.textScale = loadedTextSize.scale

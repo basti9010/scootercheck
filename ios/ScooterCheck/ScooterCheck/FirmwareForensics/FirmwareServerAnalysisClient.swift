@@ -26,25 +26,33 @@ enum FirmwareServerAnalysisError: Error, LocalizedError {
 
 /// HTTP-Client gegen `server/firmware-analysis` (Upload → DECRYPT_CMD auf dem Server → JSON).
 struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
+    /// Production default on api.tuningscanner.de (nginx → scootercheck-fw).
+    static let defaultBaseURLString = "https://api.tuningscanner.de/scootercheck-fw"
+
     var baseURL: URL?
     var apiToken: String?
+    /// ScooterCheck-Login JWT — Server akzeptiert `Authorization: Bearer` für active Users.
+    var bearerToken: String?
 
-    init(baseURL: URL? = nil, apiToken: String? = nil) {
+    init(baseURL: URL? = nil, apiToken: String? = nil, bearerToken: String? = nil) {
         self.baseURL = baseURL
         self.apiToken = apiToken
+        self.bearerToken = bearerToken
     }
 
-    /// Liest URL/Token aus AppSettings (MainActor-Snapshot als Strings).
+    /// Liest URL/Token aus AppSettings + Auth-Session (MainActor-Snapshot).
     @MainActor
     static func fromAppSettings() -> FirmwareServerAnalysisClient {
         let s = AppSettings.shared
-        let url = s.firmwareAnalysisServerURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let configured = s.firmwareAnalysisServerURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let urlString = configured.isEmpty ? Self.defaultBaseURLString : configured
         return FirmwareServerAnalysisClient(
-            baseURL: URL(string: url),
+            baseURL: URL(string: urlString),
             apiToken: {
                 let t = s.firmwareAnalysisAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
                 return t.isEmpty ? nil : t
-            }()
+            }(),
+            bearerToken: AuthSessionStore.shared.token
         )
     }
 
@@ -58,7 +66,8 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         let endpoint = baseURL.appendingPathComponent("v1/firmware/jobs")
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
-        req.timeoutInterval = 180
+        // Job läuft asynchron auf dem Server; POST speichert nur den Upload.
+        req.timeoutInterval = 120
         applyAuth(&req)
 
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -99,6 +108,9 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
     // MARK: - Helpers
 
     private func applyAuth(_ req: inout URLRequest) {
+        if let bearerToken, !bearerToken.isEmpty {
+            req.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        }
         if let apiToken, !apiToken.isEmpty {
             req.setValue(apiToken, forHTTPHeaderField: "X-ScooterCheck-Token")
         }

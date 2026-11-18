@@ -18,11 +18,24 @@ def _headless_bin() -> str | None:
         return direct
     home = os.environ.get("GHIDRA_HOME", "").strip()
     if home:
-        cand = Path(home) / "support" / "analyzeHeadless"
+        home_path = Path(home)
+        cand = home_path / "support" / "analyzeHeadless"
         if cand.exists():
             return str(cand)
+        # Allow GHIDRA_HOME=/opt/ghidra when install lives in ghidra_*_PUBLIC/
+        if home_path.is_dir():
+            for child in sorted(home_path.glob("ghidra_*")):
+                nested = child / "support" / "analyzeHeadless"
+                if nested.exists():
+                    return str(nested)
     which = shutil.which("analyzeHeadless")
-    return which
+    if which:
+        return which
+    # Common Hetzner layout
+    for nested in sorted(Path("/opt/ghidra").glob("ghidra_*/support/analyzeHeadless")):
+        if nested.exists():
+            return str(nested)
+    return None
 
 
 def run_ghidra_decompile(
