@@ -135,10 +135,8 @@ def merge_ivt_into_result(result: dict[str, Any], ivt: dict[str, Any]) -> dict[s
         "vectors": ivt.get("vectors") or [],
     }
     if ivt.get("likely"):
-        sources = list(result.get("sources") or [])
-        if "serverIvt" not in sources:
-            sources.append("serverIvt")
-            result["sources"] = sources
+        # Do not append a new sources[] enum value — older app builds fail JSON
+        # decode on unknown FirmwareDeepAnalysisSource cases. cortexMIvt field is enough.
         quality = dict(result.get("quality") or {})
         quality["summary"] = ((quality.get("summary") or "").rstrip() + " + IVT.").strip()
         result["quality"] = quality

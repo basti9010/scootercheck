@@ -45,6 +45,106 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
             "Physische Tastennamen (Gas/Bremse) kommen aus Signatur/Forum/Live-Test, nicht aus garantierten Symbolnamen im Decompile."
         ]
     }
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion, producedAt, sources, subjectSHA256, packageDisplayName
+        case models, controllerType, speedLimits, maxSpeedKmhInCode, legalCapKmhInCode
+        case modeTransitions, inputHints, comboSummaries, notes, caveats, quality
+        case stockDiff, r2StringsSample, yaraMatches, cortexMIvt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
+        producedAt = try c.decode(Date.self, forKey: .producedAt)
+        let rawSources = try c.decodeIfPresent([String].self, forKey: .sources) ?? []
+        sources = rawSources.compactMap { FirmwareDeepAnalysisSource(rawValue: $0) }
+        subjectSHA256 = try c.decode(String.self, forKey: .subjectSHA256)
+        packageDisplayName = try c.decodeIfPresent(String.self, forKey: .packageDisplayName)
+        models = try c.decodeIfPresent([String].self, forKey: .models) ?? []
+        controllerType = try c.decodeIfPresent(String.self, forKey: .controllerType)
+        speedLimits = try c.decodeIfPresent([FirmwareSpeedLimitFinding].self, forKey: .speedLimits) ?? []
+        maxSpeedKmhInCode = try c.decodeIfPresent(Double.self, forKey: .maxSpeedKmhInCode)
+        legalCapKmhInCode = try c.decodeIfPresent(Double.self, forKey: .legalCapKmhInCode)
+        modeTransitions = try c.decodeIfPresent([FirmwareModeTransitionFinding].self, forKey: .modeTransitions) ?? []
+        inputHints = try c.decodeIfPresent([FirmwareInputHintFinding].self, forKey: .inputHints) ?? []
+        comboSummaries = try c.decodeIfPresent([String].self, forKey: .comboSummaries) ?? []
+        notes = try c.decodeIfPresent([String].self, forKey: .notes) ?? []
+        caveats = try c.decodeIfPresent([String].self, forKey: .caveats) ?? []
+        quality = try c.decode(FirmwareDeepAnalysisQuality.self, forKey: .quality)
+        stockDiff = try c.decodeIfPresent(FirmwareStockDiffResult.self, forKey: .stockDiff)
+        r2StringsSample = try c.decodeIfPresent([String].self, forKey: .r2StringsSample) ?? []
+        yaraMatches = try c.decodeIfPresent([FirmwareYaraMatch].self, forKey: .yaraMatches) ?? []
+        cortexMIvt = try c.decodeIfPresent(FirmwareCortexMIvt.self, forKey: .cortexMIvt)
+    }
+
+    init(
+        schemaVersion: Int,
+        producedAt: Date,
+        sources: [FirmwareDeepAnalysisSource],
+        subjectSHA256: String,
+        packageDisplayName: String? = nil,
+        models: [String],
+        controllerType: String? = nil,
+        speedLimits: [FirmwareSpeedLimitFinding],
+        maxSpeedKmhInCode: Double? = nil,
+        legalCapKmhInCode: Double? = nil,
+        modeTransitions: [FirmwareModeTransitionFinding],
+        inputHints: [FirmwareInputHintFinding],
+        comboSummaries: [String],
+        notes: [String],
+        caveats: [String],
+        quality: FirmwareDeepAnalysisQuality,
+        stockDiff: FirmwareStockDiffResult? = nil,
+        r2StringsSample: [String] = [],
+        yaraMatches: [FirmwareYaraMatch] = [],
+        cortexMIvt: FirmwareCortexMIvt? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.producedAt = producedAt
+        self.sources = sources
+        self.subjectSHA256 = subjectSHA256
+        self.packageDisplayName = packageDisplayName
+        self.models = models
+        self.controllerType = controllerType
+        self.speedLimits = speedLimits
+        self.maxSpeedKmhInCode = maxSpeedKmhInCode
+        self.legalCapKmhInCode = legalCapKmhInCode
+        self.modeTransitions = modeTransitions
+        self.inputHints = inputHints
+        self.comboSummaries = comboSummaries
+        self.notes = notes
+        self.caveats = caveats
+        self.quality = quality
+        self.stockDiff = stockDiff
+        self.r2StringsSample = r2StringsSample
+        self.yaraMatches = yaraMatches
+        self.cortexMIvt = cortexMIvt
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion)
+        try c.encode(producedAt, forKey: .producedAt)
+        try c.encode(sources.map(\.rawValue), forKey: .sources)
+        try c.encode(subjectSHA256, forKey: .subjectSHA256)
+        try c.encodeIfPresent(packageDisplayName, forKey: .packageDisplayName)
+        try c.encode(models, forKey: .models)
+        try c.encodeIfPresent(controllerType, forKey: .controllerType)
+        try c.encode(speedLimits, forKey: .speedLimits)
+        try c.encodeIfPresent(maxSpeedKmhInCode, forKey: .maxSpeedKmhInCode)
+        try c.encodeIfPresent(legalCapKmhInCode, forKey: .legalCapKmhInCode)
+        try c.encode(modeTransitions, forKey: .modeTransitions)
+        try c.encode(inputHints, forKey: .inputHints)
+        try c.encode(comboSummaries, forKey: .comboSummaries)
+        try c.encode(notes, forKey: .notes)
+        try c.encode(caveats, forKey: .caveats)
+        try c.encode(quality, forKey: .quality)
+        try c.encodeIfPresent(stockDiff, forKey: .stockDiff)
+        try c.encode(r2StringsSample, forKey: .r2StringsSample)
+        try c.encode(yaraMatches, forKey: .yaraMatches)
+        try c.encodeIfPresent(cortexMIvt, forKey: .cortexMIvt)
+    }
 }
 
 enum FirmwareDeepAnalysisSource: String, Codable, Sendable {

@@ -267,6 +267,37 @@ def _request_meta(job: dict[str, Any]) -> dict[str, Any]:
     return req if isinstance(req, dict) else {}
 
 
+# App FirmwareDeepAnalysisSource raw values — never emit unknown tags (breaks old TF builds).
+_APP_KNOWN_SOURCES = frozenset(
+    {
+        "localDeterministic",
+        "knownCatalog",
+        "serverDecompile",
+        "serverR2",
+        "serverCapstone",
+        "serverYara",
+        "serverEmulation",
+        "serverAngr",
+        "serverIvt",  # new builds only; still filtered for legacy via sanitize flag below
+        "serverLLM",
+        "liveVehicleContext",
+    }
+)
+# Strict set shipped before IVT — keep default responses compatible with TestFlight in the field.
+_APP_LEGACY_SAFE_SOURCES = _APP_KNOWN_SOURCES - {"serverIvt"}
+
+
+def _sanitize_result_for_app(result: Any) -> Any:
+    """Drop unknown/breaking sources[] tags; keep cortexMIvt object (ignored by old clients)."""
+    if not isinstance(result, dict):
+        return result
+    out = dict(result)
+    raw_sources = out.get("sources") or []
+    if isinstance(raw_sources, list):
+        out["sources"] = [s for s in raw_sources if isinstance(s, str) and s in _APP_LEGACY_SAFE_SOURCES]
+    return out
+
+
 def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> dict[str, Any]:
     req = _request_meta(job)
     payload = {
@@ -289,7 +320,7 @@ def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> d
         "decompileSaved": job.get("decompileSaved", False),
     }
     if include_result:
-        payload["result"] = job.get("result")
+        payload["result"] = _sanitize_result_for_app(job.get("result"))
     return payload
 
 

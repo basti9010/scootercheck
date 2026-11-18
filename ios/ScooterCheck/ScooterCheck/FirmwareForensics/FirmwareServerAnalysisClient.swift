@@ -21,7 +21,8 @@ enum FirmwareServerAnalysisError: Error, LocalizedError {
         case .httpStatus(let c, let b):
             let hint = Self.humanizeHTTPBody(b)
             return hint.isEmpty ? "Server-Fehler \(c)" : "Server-Fehler \(c): \(hint)"
-        case .decode(let e): return "Antwort nicht lesbar: \(e.localizedDescription)"
+        case .decode(let e):
+            return "Antwort nicht lesbar (Schema): \(e.localizedDescription)"
         }
     }
 
