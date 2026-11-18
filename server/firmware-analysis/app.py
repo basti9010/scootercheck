@@ -325,6 +325,27 @@ def _sanitize_result_for_app(result: Any) -> Any:
     return out
 
 
+def _job_artifact_path(job: dict[str, Any], *candidates: Any, fallback_name: str) -> Path | None:
+    """Resolve an artifact path that must stay inside the job directory."""
+    job_dir = Path(str(job.get("dir") or ""))
+    if not job_dir.is_dir():
+        return None
+    root = job_dir.resolve()
+    for cand in candidates:
+        if not cand:
+            continue
+        try:
+            p = Path(str(cand)).resolve()
+        except OSError:
+            continue
+        if p.is_file() and (p == root or root in p.parents):
+            return p
+    fallback = (job_dir / fallback_name).resolve()
+    if fallback.is_file() and (fallback == root or root in fallback.parents):
+        return fallback
+    return None
+
+
 def _reference_metadata_from_stock(stock: dict[str, Any] | None) -> dict[str, Any]:
     stock = stock or {}
     return {
@@ -829,39 +850,50 @@ def process_job(job_id: str) -> None:
         result.setdefault("notes", []).append("stockDiff=panicRegionAffected")
 
     # Phase-2: structured function analysis + optional functionDiff vs stock export.
+    # Best-effort: never abort the whole job if function/callgraph/diff fails.
     _update(job, progressPercent=90, message="Funktionsanalyse / Callgraph…")
     func_path = Path(job.get("functionsPath") or (job_dir / "FIRM.functions.json"))
     cg_path = Path(job.get("callgraphPath") or (job_dir / "FIRM.callgraph.json"))
-    func_full = load_function_analysis(func_path if func_path.is_file() else None)
-    cg_full = load_call_graph(cg_path if cg_path.is_file() else None)
-    result["functionAnalysis"] = summarize_functions_for_poll(func_full)
-    result["callGraph"] = summarize_call_graph_for_poll(cg_full)
-    notes.extend(func_full.get("notes") or [])
-    notes.extend(cg_full.get("notes") or [])
+    func_full: dict[str, Any] = {"ok": False, "functions": [], "notes": [], "analysisLimitations": []}
+    try:
+        func_full = load_function_analysis(func_path if func_path.is_file() else None)
+        cg_full = load_call_graph(cg_path if cg_path.is_file() else None)
+        result["functionAnalysis"] = summarize_functions_for_poll(func_full)
+        result["callGraph"] = summarize_call_graph_for_poll(cg_full)
+        notes.extend(func_full.get("notes") or [])
+        notes.extend(cg_full.get("notes") or [])
 
-    ref_func = _load_stock_function_analysis(stock)
-    func_diff_full = compare_function_analyses(func_full, ref_func)
-    result["functionDiff"] = summarize_diff_for_poll(func_diff_full)
-    notes.extend(func_diff_full.get("notes") or [])
+        ref_func = _load_stock_function_analysis(stock)
+        func_diff_full = compare_function_analyses(func_full, ref_func)
+        result["functionDiff"] = summarize_diff_for_poll(func_diff_full)
+        notes.extend(func_diff_full.get("notes") or [])
 
-    # Reference metadata for UI (never auto-elevate trust).
-    result["referenceMetadata"] = _reference_metadata_from_stock(stock)
-    limitations = []
-    limitations.extend(result.get("functionAnalysis", {}).get("analysisLimitations") or [])
-    limitations.extend(result.get("functionDiff", {}).get("analysisLimitations") or [])
-    limitations.extend(result.get("callGraph", {}).get("analysisLimitations") or [])
-    if stock.get("outcome") == "noReference":
-        limitations.append("Keine eindeutig passende Referenzfirmware für Funktionsvergleich.")
-    result["analysisLimitations"] = limitations
+        # Reference metadata for UI (never auto-elevate trust).
+        result["referenceMetadata"] = _reference_metadata_from_stock(stock)
+        limitations = []
+        limitations.extend(result.get("functionAnalysis", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("functionDiff", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("callGraph", {}).get("analysisLimitations") or [])
+        if stock.get("outcome") == "noReference":
+            limitations.append("Keine eindeutig passende Referenzfirmware für Funktionsvergleich.")
+        result["analysisLimitations"] = limitations
+        job["phase2"] = {
+            "functionsPath": str(func_path) if func_path.is_file() else None,
+            "callgraphPath": str(cg_path) if cg_path.is_file() else None,
+            "functionDiffSummary": result["functionDiff"].get("summary"),
+        }
+    except Exception as e:
+        notes.append(f"phase2=error:{type(e).__name__}:{e}")
+        result.setdefault("analysisLimitations", []).append(
+            "Phase-2-Funktionsanalyse fehlgeschlagen — Phase-1-Ergebnis bleibt gültig."
+        )
+        result.setdefault("functionAnalysis", {"ok": False, "functionCount": 0, "notes": [f"phase2={e}"]})
+        result.setdefault("functionDiff", {"ok": False, "summary": {}, "notes": [f"phase2={e}"]})
+        result.setdefault("callGraph", {"ok": False, "edgeCount": 0, "notes": [f"phase2={e}"]})
+        result.setdefault("referenceMetadata", _reference_metadata_from_stock(stock))
     for n in notes:
         if n and n not in (result.get("notes") or []):
             result.setdefault("notes", []).append(n)
-    # Persist full artifacts path hints on job (not entire arrays in status.json if huge).
-    job["phase2"] = {
-        "functionsPath": str(func_path) if func_path.is_file() else None,
-        "callgraphPath": str(cg_path) if cg_path.is_file() else None,
-        "functionDiffSummary": result["functionDiff"].get("summary"),
-    }
 
     if meta.allowLLM and llm_configured():
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
@@ -1263,12 +1295,13 @@ def download_functions(job_id: str, _: dict[str, Any] = Depends(require_auth)) -
     job = load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    path = Path(
-        (job.get("phase2") or {}).get("functionsPath")
-        or job.get("functionsPath")
-        or (Path(job["dir"]) / "FIRM.functions.json")
+    path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("functionsPath"),
+        job.get("functionsPath"),
+        fallback_name="FIRM.functions.json",
     )
-    data = load_function_analysis(path if path.is_file() else None)
+    data = load_function_analysis(path)
     if not data.get("ok"):
         raise HTTPException(status_code=404, detail="function analysis not available")
     return JSONResponse(data)
@@ -1279,12 +1312,13 @@ def download_callgraph(job_id: str, _: dict[str, Any] = Depends(require_auth)) -
     job = load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    path = Path(
-        (job.get("phase2") or {}).get("callgraphPath")
-        or job.get("callgraphPath")
-        or (Path(job["dir"]) / "FIRM.callgraph.json")
+    path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("callgraphPath"),
+        job.get("callgraphPath"),
+        fallback_name="FIRM.callgraph.json",
     )
-    data = load_call_graph(path if path.is_file() else None)
+    data = load_call_graph(path)
     if not data.get("ok"):
         raise HTTPException(status_code=404, detail="call graph not available")
     return JSONResponse(data)
@@ -1297,11 +1331,13 @@ def download_function_diff(job_id: str, _: dict[str, Any] = Depends(require_auth
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     result = job.get("result") or {}
-    func_path = Path(
-        (job.get("phase2") or {}).get("functionsPath")
-        or (Path(job["dir"]) / "FIRM.functions.json")
+    func_path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("functionsPath"),
+        job.get("functionsPath"),
+        fallback_name="FIRM.functions.json",
     )
-    func_full = load_function_analysis(func_path if func_path.is_file() else None)
+    func_full = load_function_analysis(func_path)
     stock = result.get("stockDiff") if isinstance(result, dict) else None
     ref_func = _load_stock_function_analysis(stock if isinstance(stock, dict) else None)
     full = compare_function_analyses(func_full, ref_func)
