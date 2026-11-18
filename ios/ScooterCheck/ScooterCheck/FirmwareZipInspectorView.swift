@@ -67,7 +67,7 @@ struct FirmwareZipInspectorView: View {
                     if combinesWithReadout, vehicleContext == nil {
                         missingReadoutBanner
                     }
-                    Text("Nach der Auswahl öffnet sich die Auswertung. Die Server-Entschlüsselung startet erst, wenn du sie ausdrücklich startest.")
+                    Text("Nach der Auswahl: Server-Entschlüsselung ist der Standardweg für Klartext-Limits, Combos und Ampel. PDF/JSON erscheinen erst danach.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -131,28 +131,45 @@ struct FirmwareZipInspectorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.lg) {
                     if let report {
-                        laypersonHeader(report)
-                        decryptActionCard(report)
-                        if isServerBusy || serverProgress > 0 {
-                            serverProgressCard
+                        let decrypted = reportHasServerDeep(report)
+                        if decrypted {
+                            laypersonHeader(report)
+                            if isServerBusy || serverProgress > 0 {
+                                serverProgressCard
+                            }
+                            if let errorText {
+                                Text(errorText)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.danger)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            deepAnalysisSection(report)
+                            if combinesWithReadout {
+                                readoutMatchSection(report)
+                                dualSourceSection(report)
+                                vehicleSection(report)
+                            }
+                            exportSection(report)
+                            offlineFindingsSection(report)
+                            decryptActionCard(report)
+                            limitsSection(report)
+                        } else {
+                            preDecryptSummary(report)
+                            decryptActionCard(report)
+                            if isServerBusy || serverProgress > 0 {
+                                serverProgressCard
+                            }
+                            if let errorText {
+                                Text(errorText)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.danger)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            offlineFindingsSection(report)
+                            if combinesWithReadout {
+                                vehicleSection(report)
+                            }
                         }
-                        if let errorText {
-                            Text(errorText)
-                                .font(Theme.caption)
-                                .foregroundStyle(Theme.danger)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        deepAnalysisSection(report)
-                        if combinesWithReadout {
-                            readoutMatchSection(report)
-                            dualSourceSection(report)
-                        }
-                        offlineFindingsSection(report)
-                        if combinesWithReadout {
-                            vehicleSection(report)
-                        }
-                        exportSection(report)
-                        limitsSection(report)
                     } else if isBusy {
                         ProgressView("Lokale Auswertung…")
                             .tint(Theme.accent)
@@ -182,38 +199,58 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
-    private func laypersonHeader(_ r: FirmwareForensicReport) -> some View {
-        let hasServerDeep = r.deepAnalysis?.sources.contains(where: {
+    private func reportHasServerDeep(_ r: FirmwareForensicReport) -> Bool {
+        r.deepAnalysis?.sources.contains(where: {
             switch $0 {
             case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
                 return true
             default: return false
             }
         }) == true
-        let status = hasServerDeep
-            ? "Server-Klartext ausgewertet"
-            : "Lokal geprüft — Entschlüsselung optional"
-        return VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            Text("Ergebnis: \(status)")
+    }
+
+    private func laypersonHeader(_ r: FirmwareForensicReport) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Ergebnis: Server-Klartext ausgewertet")
                 .font(Theme.caption.weight(.semibold))
                 .foregroundStyle(Theme.accent)
             verdictBanner(r)
         }
     }
 
+    /// Slim first screen after file pick — server decrypt is the primary path.
+    private func preDecryptSummary(_ r: FirmwareForensicReport) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Datei bereit")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(r.originalFileName)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.textTitle)
+                    .lineLimit(2)
+                Text("Lokal geprüft · \(r.crypto.status.label) · \(formatKind(r.containerKind))")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Text("Für Ampel, Limits und Combos: als Nächstes auf dem Server entschlüsseln. Export erscheint danach.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(Theme.Space.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
     private func decryptActionCard(_ r: FirmwareForensicReport) -> some View {
         let serverReady = FirmwareServerAnalysisClient.fromAppSettings().isConfigured
-        let hasServerDeep = r.deepAnalysis?.sources.contains(where: {
-            switch $0 {
-            case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt:
-                return true
-            default: return false
-            }
-        }) == true
-        return sectionCard(hasServerDeep ? "Erneut entschlüsseln" : "Entschlüsseln") {
+        let hasServerDeep = reportHasServerDeep(r)
+        return sectionCard(hasServerDeep ? "Erneut analysieren" : "Server-Analyse") {
             Text(hasServerDeep
-                 ? "Du kannst die Datei erneut auf dem Server entschlüsseln und analysieren lassen."
-                 : "Die Datei wurde lokal geprüft. Für Klartext-Limits und Combos: auf dem Server entschlüsseln.")
+                 ? "Optional erneut auf dem Server entschlüsseln und analysieren."
+                 : "Standardweg: Datei auf dem Server entschlüsseln — Klartext-Limits, Combos und Ampel.")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -308,8 +345,8 @@ struct FirmwareZipInspectorView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text(combinesWithReadout
-                 ? "Firmware-Datei mit der Scooter-Auslese kombinieren — nur lesend."
-                 : "Firmware-Datei allein auswerten — lokal und optional per Server, ohne Fahrzeugbezug.")
+                 ? "Firmware-Datei mit der Scooter-Auslese kombinieren — lokal prüfen, dann auf dem Server entschlüsseln."
+                 : "Firmware-Datei auswerten — lokal prüfen, dann auf dem Server entschlüsseln (Standardweg).")
                 .font(Theme.body)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -774,14 +811,8 @@ struct FirmwareZipInspectorView: View {
                     .padding(.top, 8)
                 }
             }
-        } else {
-            sectionCard("Was bedeutet das?") {
-                Text("Noch keine Server-Klartext-Analyse. Unten bleiben die Offline-Befunde sichtbar. Tippe oben auf „Auf Server entschlüsseln“, um Limits und Combos aus dem Klartext zu holen.")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
+        // Vor Server-Entschlüsselung: CTA steht in `decryptActionCard` — keine Extra-Karte.
     }
 
     private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {
@@ -818,25 +849,29 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
+    @ViewBuilder
     private func exportSection(_ r: FirmwareForensicReport) -> some View {
-        sectionCard("Forensikbericht") {
-            Button {
-                sharePDF(r)
-            } label: {
-                Label("PDF exportieren", systemImage: "doc.richtext")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Theme.accent)
+        // Export only after successful server decrypt/analysis.
+        if reportHasServerDeep(r) {
+            sectionCard("Forensikbericht") {
+                Button {
+                    sharePDF(r)
+                } label: {
+                    Label("PDF exportieren", systemImage: "doc.richtext")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
 
-            Button {
-                shareJSON(r)
-            } label: {
-                Label("JSON exportieren", systemImage: "curlybraces")
-                    .frame(maxWidth: .infinity)
+                Button {
+                    shareJSON(r)
+                } label: {
+                    Label("JSON exportieren", systemImage: "curlybraces")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.accent)
             }
-            .buttonStyle(.bordered)
-            .tint(Theme.accent)
         }
     }
 
