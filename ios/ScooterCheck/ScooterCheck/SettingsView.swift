@@ -3,10 +3,13 @@ import SwiftUI
 /// Globale App-Einstellungen — erreichbar über das linke Menü.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var auth: AuthSessionStore
     @ObservedObject private var settings = AppSettings.shared
     @State private var pairingPasswordCount = BleClient.storedPairingPasswordCount()
     @State private var showClearPairingConfirm = false
     @State private var clearPairingToast: String?
+    @State private var showChangePassword = false
+    @State private var showPrivacy = false
 
     var body: some View {
         NavigationStack {
@@ -274,7 +277,17 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("Konto & Rechtliches")
+
+            settingsNavButton(title: "Passwort ändern", systemImage: "key.fill") {
+                showChangePassword = true
+            }
+            settingsNavButton(title: "Datenschutz", systemImage: "checkmark.shield") {
+                showPrivacy = true
+            }
+
             sectionLabel("Über die App")
+                .padding(.top, Theme.Space.md)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("ScooterCheck")
@@ -294,6 +307,42 @@ struct SettingsView: View {
                     .stroke(Theme.border, lineWidth: Theme.Control.hairline)
             )
         }
+        .sheet(isPresented: $showChangePassword) {
+            NavigationStack {
+                ChangePasswordView(auth: auth)
+            }
+        }
+        .sheet(isPresented: $showPrivacy) {
+            PrivacyView()
+        }
+    }
+
+    private func settingsNavButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Space.md) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Theme.accent)
+                    .frame(width: 22)
+                Text(title)
+                    .font(Theme.cardTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textMuted)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Rows
