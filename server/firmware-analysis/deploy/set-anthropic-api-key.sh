@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Set a Claude Console API key into firmware-analysis.env without echoing it.
-# Usage: setllmkey
+# Usage:
+#   setllmkey                 # paste raw key (SSH/local terminal preferred)
+#   setllmkey --b64           # paste base64(key) — safer in Hetzner web console
 set -euo pipefail
 ENV_FILE=/etc/scootercheck/firmware-analysis.env
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -8,16 +10,42 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-echo "Paste Claude API key (sk-ant-usr… or sk-ant-api…), then Enter."
-echo "Input hidden. Console may turn '-' into 'ß' — we auto-fix that."
+MODE=raw
+if [[ "${1:-}" == "--b64" || "${1:-}" == "-b64" ]]; then
+  MODE=b64
+fi
+
+if [[ "$MODE" == "b64" ]]; then
+  echo "Paste BASE64 of the Claude key, then Enter."
+  echo "On your PC:  printf %s 'sk-ant-…' | base64"
+  echo "Windows PowerShell:  [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('sk-ant-…'))"
+  echo "Input hidden. No hyphens in base64 → Hetzner console cannot mangle '-'."
+else
+  echo "Paste Claude API key (sk-ant-usr… / sk-ant-api…), then Enter."
+  echo "Input hidden. Prefer SSH from your PC; in Hetzner web console use: setllmkey --b64"
+  echo "Console may turn '-' into 'ß' — we auto-fix that."
+fi
+
 read -r -s KEY
 echo
 KEY=$(printf '%s' "$KEY" | tr -d '\r\n' | xargs)
-
-# Hetzner console DE-layout mangling
-KEY=${KEY//ß/-}
-KEY=${KEY//ÃŸ/-}
 KEY=${KEY// /}
+
+if [[ "$MODE" == "b64" ]]; then
+  # tolerate URL-safe base64 and missing padding
+  KEY=${KEY//-/+}
+  KEY=${KEY//_//}
+  pad=$(( (4 - ${#KEY} % 4) % 4 ))
+  KEY="${KEY}$(printf '=%.0s' $(seq 1 $pad 2>/dev/null) || true)"
+  if ! KEY=$(printf '%s' "$KEY" | base64 -d 2>/dev/null | tr -d '\r\n'); then
+    echo "ERROR: base64 decode failed — create a new key and re-encode." >&2
+    exit 1
+  fi
+else
+  # Hetzner console DE-layout mangling
+  KEY=${KEY//ß/-}
+  KEY=${KEY//ÃŸ/-}
+fi
 
 if [[ -z "$KEY" ]]; then
   echo "Empty key — aborted." >&2
@@ -33,6 +61,8 @@ if [[ "$KEY" != sk-ant-usr* && "$KEY" != sk-ant-api* && "$KEY" != sk-ant-* ]]; t
   echo "ERROR: Key should start with sk-ant-usr or sk-ant-api (got prefix: ${KEY:0:14}…)" >&2
   exit 1
 fi
+
+echo "Accepted prefix ${KEY:0:12}… len=${#KEY}"
 
 umask 077
 tmp=$(mktemp)
@@ -59,7 +89,6 @@ rm -f "$tmp" "${tmp}.2"
 systemctl restart scootercheck-fw
 sleep 1
 
-# Quick live auth probe (does not print the key)
 python3 - <<'PY'
 import json, os, urllib.request, urllib.error
 from pathlib import Path
@@ -84,7 +113,12 @@ try:
     with urllib.request.urlopen(req, timeout=30) as resp:
         print("API_PROBE_OK", resp.status)
 except urllib.error.HTTPError as e:
-    print("API_PROBE_FAIL", e.code, e.read()[:160].decode(errors="replace"))
+    print("API_PROBE_FAIL", e.code, e.read()[:220].decode(errors="replace"))
+    print("HINT: Key looks stored but Anthropic rejects it.")
+    print("HINT: Create a NEW key in Claude Console, then either:")
+    print("  - paste via SSH from your PC: setllmkey")
+    print("  - or in web console: setllmkey --b64  (paste base64 of the key)")
+    raise SystemExit(2)
 PY
 
 curl -sS http://127.0.0.1:8088/health | python3 -c 'import sys,json;d=json.load(sys.stdin);print("llmConfigured=",d.get("llmConfigured"));print("llmKeyStatus=",d.get("llmKeyStatus"));print("llmProvider=",d.get("llmProvider"))'
