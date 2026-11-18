@@ -4,11 +4,13 @@ import UserNotifications
 @main
 struct ScooterCheckApp: App {
     @UIApplicationDelegateAdaptor(ScooterCheckAppDelegate.self) private var appDelegate
+    @StateObject private var auth = AuthSessionStore.shared
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AuthGateView(auth: auth)
                 .environmentObject(AppSettings.shared)
+                .environmentObject(auth)
                 .task {
                     // Offline-Kern bleibt; Online nur ergänzen wenn erreichbar.
                     StockFirmwareCatalogRemote.refreshInBackground()

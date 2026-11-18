@@ -20,6 +20,8 @@ struct ContentView: View {
     /// Erhöht nach Forensik-Import, damit Dual-Source neu bewertet wird.
     @State private var dualSourceRevision = 0
     @ObservedObject private var appSettings = AppSettings.shared
+    @EnvironmentObject private var auth: AuthSessionStore
+    @State private var showAdminUsers = false
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
@@ -273,6 +275,11 @@ struct ContentView: View {
                 dualSourceRevision += 1
             }) {
                 FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
+            }
+            .sheet(isPresented: $showAdminUsers) {
+                NavigationStack {
+                    AdminUsersView(auth: auth)
+                }
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
@@ -2437,6 +2444,24 @@ struct ContentView: View {
                 ) {
                     openSettingsFromMenu()
                 }
+                if auth.isAdmin {
+                    sideNavRow(
+                        title: "Benutzer freischalten",
+                        systemImage: "person.badge.shield.checkmark",
+                        selected: false
+                    ) {
+                        setMenuOpen(false)
+                        showAdminUsers = true
+                    }
+                }
+                sideNavRow(
+                    title: "Abmelden",
+                    systemImage: "rectangle.portrait.and.arrow.right",
+                    selected: false
+                ) {
+                    setMenuOpen(false)
+                    auth.logout()
+                }
             }
             .padding(.horizontal, 12)
 
@@ -3456,4 +3481,6 @@ struct ScoreRing: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AppSettings.shared)
+        .environmentObject(AuthSessionStore.shared)
 }

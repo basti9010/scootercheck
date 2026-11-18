@@ -160,6 +160,10 @@
 		A10000000000000000000A2B /* RescanDiffAndConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2B /* RescanDiffAndConfigTests.swift */; };
 		A10000000000000000000A2C /* ConfigFlagDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2C /* ConfigFlagDecoder.swift */; };
 		A10000000000000000000A2D /* ConfigFlagDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2D /* ConfigFlagDecoderTests.swift */; };
+		A10000000000000000000A2E /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2E /* AuthModels.swift */; };
+		A10000000000000000000A2F /* AuthAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B2F /* AuthAPIClient.swift */; };
+		A10000000000000000000A30 /* AuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B30 /* AuthSessionStore.swift */; };
+		A10000000000000000000A31 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B31 /* AuthGateView.swift */; };
 		A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */; };
 		A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */; };
 		A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */; };
@@ -326,6 +330,10 @@
 		B10000000000000000000B2B /* RescanDiffAndConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RescanDiffAndConfigTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000B2C /* ConfigFlagDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigFlagDecoder.swift; sourceTree = "<group>"; };
 		B10000000000000000000B2D /* ConfigFlagDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigFlagDecoderTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B2E /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000B2F /* AuthAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAPIClient.swift; sourceTree = "<group>"; };
+		B10000000000000000000B30 /* AuthSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000B31 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 		B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareSpeedSignatureExtractor.swift; sourceTree = "<group>"; };
@@ -371,11 +379,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		E10000000000000000000A40 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000B2E /* AuthModels.swift */,
+				B10000000000000000000B2F /* AuthAPIClient.swift */,
+				B10000000000000000000B30 /* AuthSessionStore.swift */,
+				B10000000000000000000B31 /* AuthGateView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
 		E10000000000000000000002 /* ScooterCheck */ = {
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000001 /* ScooterCheckApp.swift */,
 				B10000000000000000000002 /* ContentView.swift */,
+				E10000000000000000000A40 /* Auth */,
 				B10000000000000000000B28 /* HardwareForensicsCard.swift */,
 				B10000000000000000000B29 /* RescanDiffCard.swift */,
 				B10000000000000000000B2A /* ConfigRegistersCard.swift */,
@@ -762,6 +782,10 @@
 				A10000000000000000000004 /* Models.swift in Sources */,
 				A10000000000000000000005 /* Analyzer.swift in Sources */,
 				A10000000000000000000A2C /* ConfigFlagDecoder.swift in Sources */,
+				A10000000000000000000A2E /* AuthModels.swift in Sources */,
+				A10000000000000000000A2F /* AuthAPIClient.swift in Sources */,
+				A10000000000000000000A30 /* AuthSessionStore.swift in Sources */,
+				A10000000000000000000A31 /* AuthGateView.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
 				A10000000000000000000007 /* ProtocolPDF.swift in Sources */,
 				A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */,

@@ -1,0 +1,15 @@
+[Unit]
+Description=ScooterCheck Auth API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/scootercheck
+EnvironmentFile=/opt/scootercheck/.env
+ExecStart=/opt/scootercheck/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8002
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
