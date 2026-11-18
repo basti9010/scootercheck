@@ -118,8 +118,13 @@ enum Theme {
     // MARK: - Motion
 
     enum Motion {
-        static let drawer = Animation.easeInOut(duration: 0.30)
+        /// Drawer öffnen/schließen — leichtes Spring, nicht träge.
+        static let drawer = Animation.spring(response: 0.34, dampingFraction: 0.88)
         static let standard = Animation.easeInOut(duration: 0.22)
+        /// Accent-Balken im Side-Menü.
+        static let menuAccent = Animation.spring(response: 0.30, dampingFraction: 0.84)
+        /// Kurzer Tap-Scale.
+        static let menuPress = Animation.easeOut(duration: 0.12)
         /// Native-ähnlicher Seitenpush.
         static let page = Animation.easeInOut(duration: 0.28)
         /// Sanfter Wurzel-/Tab-Wechsel.

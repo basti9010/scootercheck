@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @StateObject private var ble = BleClient()
@@ -17,9 +18,17 @@ struct ContentView: View {
     @State private var showPrivacy = false
     @State private var showSettings = false
     @State private var showFirmwareZipInspector = false
+    /// `nil` = Hub; sonst direkter Einstieg (z. B. nach Auslese → Kombination).
+    @State private var firmwareForensicsInitialMode: FirmwareForensicsMode? = nil
     /// Erhöht nach Forensik-Import, damit Dual-Source neu bewertet wird.
     @State private var dualSourceRevision = 0
     @ObservedObject private var appSettings = AppSettings.shared
+    @EnvironmentObject private var auth: AuthSessionStore
+    @State private var showAdmin = false
+    @State private var showChangePassword = false
+    /// Matched-Geometry-Ziel für den mint Accent-Balken im Side-Menü.
+    @State private var menuAccentId: String = "home"
+    @Namespace private var menuAccentNS
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
@@ -271,8 +280,23 @@ struct ContentView: View {
             }
             .fullScreenCover(isPresented: $showFirmwareZipInspector, onDismiss: {
                 dualSourceRevision += 1
+                firmwareForensicsInitialMode = nil
             }) {
-                FirmwareZipInspectorView(vehicleContext: firmwareVehicleContext)
+                FirmwareForensicsHubView(
+                    vehicleContext: firmwareVehicleContext,
+                    initialMode: firmwareForensicsInitialMode,
+                    onClose: { showFirmwareZipInspector = false }
+                )
+            }
+            .sheet(isPresented: $showAdmin) {
+                NavigationStack {
+                    AdminHubView(auth: auth)
+                }
+            }
+            .sheet(isPresented: $showChangePassword) {
+                NavigationStack {
+                    ChangePasswordView(auth: auth)
+                }
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
@@ -824,7 +848,7 @@ struct ContentView: View {
             if dualSourceAssessment.pattern != .insufficient {
                 DualSourcePanicCard(
                     assessment: dualSourceAssessment,
-                    onOpenForensics: { showFirmwareZipInspector = true },
+                    onOpenForensics: { openFirmwareForensics(mode: .withReadout) },
                     onStartComparison: {
                         if unlockRescanPhase == .idle, powerCyclePhase == .idle {
                             startComparisonTest()
@@ -963,13 +987,13 @@ struct ContentView: View {
                     .foregroundStyle(Theme.accent)
                     .frame(maxWidth: .infinity)
 
-                Text("Möchtest du eine forensische Firmware-Datei vom Handy mit dieser Auslese kombinieren?")
+                Text("Datei mit dieser Scooter-Auslese kombinieren?")
                     .font(Theme.body)
                     .foregroundStyle(Theme.textPrimary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
 
-                Text("Optional. ZIP/BIN/ENC vom Sicherstellungsgerät werden lokal ausgewertet und mit dem Prüfbericht verknüpft — ohne zu flashen.")
+                Text("Optionaler Kombinations-Modus: ZIP/BIN/ENC auswerten und dem Fahrzeugkontext zuordnen (Dual-Source). Alleinige Datei-Auswertung geht jederzeit über Firmware-Forensik im Menü.")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1098,11 +1122,17 @@ struct ContentView: View {
         let shouldRescan = pendingUnlockRescanAfterSubject
         pendingUnlockRescanAfterSubject = false
         if openInspector {
-            showFirmwareZipInspector = true
+            openFirmwareForensics(mode: .withReadout)
         }
         if shouldRescan, let analyzed = result {
             maybeStartUnlockRescanAfterTuning(analyzed)
         }
+    }
+
+    /// `mode == nil` → Hub (Datei allein / Mit Auslese); sonst direkter Einstieg.
+    private func openFirmwareForensics(mode: FirmwareForensicsMode?) {
+        firmwareForensicsInitialMode = mode
+        showFirmwareZipInspector = true
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -2347,6 +2377,7 @@ struct ContentView: View {
                 Color.clear.frame(width: 44, height: 44)
                 Spacer(minLength: 0)
                 Button {
+                    menuHaptic()
                     setMenuOpen(false)
                 } label: {
                     Image(systemName: "xmark")
@@ -2358,115 +2389,152 @@ struct ContentView: View {
             }
             .frame(height: Theme.Chrome.headerHeight)
             .padding(.horizontal, Theme.Space.lg)
-            .padding(.bottom, Theme.Space.md)
-
-            Text("Navigation")
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-                .padding(.horizontal, Theme.Space.xl)
-                .padding(.bottom, Theme.Space.sm)
-
-            VStack(spacing: 4) {
-                sideNavRow(
-                    title: "E-Scooter auslesen",
-                    systemImage: "antenna.radiowaves.left.and.right",
-                    selected: screen == .home
-                ) {
-                    navigateFromMenu(to: .home)
-                }
-                sideNavRow(
-                    title: "Firmware-Forensik",
-                    systemImage: "doc.badge.gearshape",
-                    selected: false
-                ) {
-                    setMenuOpen(false)
-                    showFirmwareZipInspector = true
-                }
-                if AppFeatureFlags.pedelecAuslesenVisible {
-                    sideNavRow(
-                        title: "Pedelec auslesen",
-                        systemImage: "bicycle",
-                        selected: screen == .pedelec
-                    ) {
-                        navigateFromMenu(to: .pedelec)
-                    }
-                }
-                sideNavRow(
-                    title: history.activeCount == 0
-                        ? "Prüfungen"
-                        : "Prüfungen (\(history.activeCount))",
-                    systemImage: "list.clipboard",
-                    selected: screen == .overview
-                ) {
-                    navigateFromMenu(to: .overview)
-                }
-                if result != nil {
-                    sideNavRow(
-                        title: "Aktueller Prüfbericht",
-                        systemImage: "doc.text",
-                        selected: screen == .result
-                    ) {
-                        navigateFromMenu(to: .result)
-                    }
-                }
-                sideNavRow(
-                    title: "E-Scooter finden",
-                    systemImage: "magnifyingglass",
-                    selected: screen == .find
-                ) {
-                    navigateFromMenu(to: .find)
-                }
-                sideNavRow(
-                    title: "FAQ & Wissensbasis",
-                    systemImage: "questionmark.circle",
-                    selected: false
-                ) {
-                    openFAQFromMenu()
-                }
-                sideNavRow(
-                    title: "Datenschutz",
-                    systemImage: "checkmark.shield",
-                    selected: false
-                ) {
-                    openPrivacyFromMenu()
-                }
-                sideNavRow(
-                    title: "Einstellungen",
-                    systemImage: "gearshape",
-                    selected: false
-                ) {
-                    openSettingsFromMenu()
-                }
-            }
-            .padding(.horizontal, 12)
-
-            Divider().overlay(Theme.line).padding(.vertical, 14)
+            .padding(.bottom, Theme.Space.sm)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    if ble.isConnectedToScooter {
-                        Button(role: .destructive) {
-                            ble.disconnect()
-                            result = nil
-                            session = nil
-                            navigateFromMenu(to: .home)
-                        } label: {
-                            Label("Trennen", systemImage: "xmark.circle")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 0) {
+                    menuSectionLabel("Prüfen")
+                    VStack(alignment: .leading, spacing: 2) {
+                        sideNavRow(
+                            id: "home",
+                            title: "E-Scooter auslesen",
+                            systemImage: "antenna.radiowaves.left.and.right",
+                            selected: menuAccentId == "home"
+                        ) {
+                            selectMenuItem(id: "home") { navigateFromMenu(to: .home) }
                         }
-                        .foregroundStyle(Theme.danger)
+                        sideNavRow(
+                            id: "forensics",
+                            title: "Firmware-Forensik",
+                            systemImage: "doc.badge.gearshape",
+                            selected: menuAccentId == "forensics"
+                        ) {
+                            selectMenuItem(id: "forensics") {
+                                setMenuOpen(false)
+                                openFirmwareForensics(mode: nil)
+                            }
+                        }
+                        if AppFeatureFlags.pedelecAuslesenVisible {
+                            sideNavRow(
+                                id: "pedelec",
+                                title: "Pedelec auslesen",
+                                systemImage: "bicycle",
+                                selected: menuAccentId == "pedelec"
+                            ) {
+                                selectMenuItem(id: "pedelec") { navigateFromMenu(to: .pedelec) }
+                            }
+                        }
+                        sideNavRow(
+                            id: "overview",
+                            title: history.activeCount == 0
+                                ? "Prüfungen"
+                                : "Prüfungen (\(history.activeCount))",
+                            systemImage: "list.clipboard",
+                            selected: menuAccentId == "overview"
+                        ) {
+                            selectMenuItem(id: "overview") { navigateFromMenu(to: .overview) }
+                        }
+                        if result != nil {
+                            sideNavRow(
+                                id: "result",
+                                title: "Aktueller Prüfbericht",
+                                systemImage: "doc.text",
+                                selected: menuAccentId == "result"
+                            ) {
+                                selectMenuItem(id: "result") { navigateFromMenu(to: .result) }
+                            }
+                        }
+                        sideNavRow(
+                            id: "find",
+                            title: "E-Scooter finden",
+                            systemImage: "magnifyingglass",
+                            selected: menuAccentId == "find"
+                        ) {
+                            selectMenuItem(id: "find") { navigateFromMenu(to: .find) }
+                        }
                     }
+
+                    Rectangle()
+                        .fill(Theme.line)
+                        .frame(height: Theme.Control.hairline)
+                        .padding(.vertical, Theme.Space.lg)
+                        .padding(.horizontal, Theme.Space.xl)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        sideNavSecondaryLink(title: "FAQ & Wissensbasis") {
+                            menuHaptic()
+                            openFAQFromMenu()
+                        }
+                        sideNavSecondaryLink(title: "Einstellungen") {
+                            menuHaptic()
+                            openSettingsFromMenu()
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.xl)
+
+                    Spacer(minLength: Theme.Space.xxl)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        if ble.isConnectedToScooter {
+                            Button(role: .destructive) {
+                                menuHaptic()
+                                ble.disconnect()
+                                result = nil
+                                session = nil
+                                selectMenuItem(id: "home") { navigateFromMenu(to: .home) }
+                            } label: {
+                                Text("Trennen")
+                                    .font(Theme.caption.weight(.semibold))
+                                    .foregroundStyle(Theme.danger)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 8)
+                            }
+                            .buttonStyle(MenuPressButtonStyle(reduceMotion: reduceMotion))
+                        }
+                        if auth.isAdmin {
+                            sideNavQuietRow(
+                                title: "Admin",
+                                systemImage: "lock.shield"
+                            ) {
+                                menuHaptic()
+                                setMenuOpen(false)
+                                showAdmin = true
+                            }
+                        }
+                        sideNavQuietRow(
+                            title: "Abmelden",
+                            systemImage: "rectangle.portrait.and.arrow.right"
+                        ) {
+                            menuHaptic()
+                            setMenuOpen(false)
+                            auth.logout()
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.lg)
+                    .padding(.top, Theme.Space.md)
 
                     AppCopyrightFooter()
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 8)
-                        .padding(.bottom, 24)
+                        .padding(.top, Theme.Space.lg)
+                        .padding(.bottom, 28)
                 }
-                .padding(.horizontal, Theme.Space.page)
+                .padding(.top, Theme.Space.xs)
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear { syncMenuAccentFromScreen() }
+        .onChange(of: screen) { _ in syncMenuAccentFromScreen() }
+        .onChange(of: menuProgress) { progress in
+            if progress > 0.85 { syncMenuAccentFromScreen() }
+        }
+    }
+
+    private func menuSectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(Theme.caption.weight(.semibold))
+            .foregroundStyle(Theme.textMuted)
+            .padding(.horizontal, Theme.Space.xl)
+            .padding(.bottom, Theme.Space.sm)
     }
 
     private func openFAQFromMenu() {
@@ -2474,17 +2542,46 @@ struct ContentView: View {
         showFAQ = true
     }
 
-    private func openPrivacyFromMenu() {
-        setMenuOpen(false)
-        showPrivacy = true
-    }
-
     private func openSettingsFromMenu() {
         setMenuOpen(false)
         showSettings = true
     }
 
+    private func syncMenuAccentFromScreen() {
+        let id: String
+        switch screen {
+        case .home: id = "home"
+        case .overview: id = "overview"
+        case .result: id = "result"
+        case .find: id = "find"
+        case .pedelec: id = "pedelec"
+        }
+        if menuAccentId != id {
+            menuAccentId = id
+        }
+    }
+
+    private func menuHaptic() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.7)
+    }
+
+    private func selectMenuItem(id: String, navigate: @escaping () -> Void) {
+        menuHaptic()
+        let accentAnim = reduceMotion ? Theme.Motion.reduced : Theme.Motion.menuAccent
+        withAnimation(accentAnim) {
+            menuAccentId = id
+        }
+        let delayNs: UInt64 = reduceMotion ? 0 : 120_000_000
+        Task { @MainActor in
+            if delayNs > 0 {
+                try? await Task.sleep(nanoseconds: delayNs)
+            }
+            navigate()
+        }
+    }
+
     private func sideNavRow(
+        id: String,
         title: String,
         systemImage: String,
         selected: Bool,
@@ -2492,24 +2589,63 @@ struct ContentView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: Theme.Space.md) {
+                ZStack(alignment: .leading) {
+                    Color.clear.frame(width: 3, height: 22)
+                    if selected {
+                        Capsule()
+                            .fill(Theme.accent)
+                            .frame(width: 3, height: 22)
+                            .matchedGeometryEffect(id: "sideMenuAccent", in: menuAccentNS)
+                    }
+                }
                 Image(systemName: systemImage)
                     .font(.body.weight(.medium))
                     .frame(width: 22)
                 Text(verbatim: title)
-                    .font(selected ? Theme.buttonSecondary : Theme.cardTitle)
-                Spacer()
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.caption.weight(.semibold))
-                }
+                    .font(selected ? Theme.cardTitle.weight(.semibold) : Theme.cardTitle)
+                Spacer(minLength: 0)
             }
-            .foregroundStyle(selected ? Theme.ink : Theme.textTitle)
-            .padding(.horizontal, 14)
-            .padding(.vertical, Theme.Space.md)
-            .background(selected ? Theme.accent : Theme.surfaceSecondary)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+            .foregroundStyle(selected ? Theme.accent : Theme.textTitle)
+            .padding(.horizontal, Theme.Space.lg)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MenuPressButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func sideNavSecondaryLink(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(verbatim: title)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(MenuPressButtonStyle(reduceMotion: reduceMotion))
+    }
+
+    private func sideNavQuietRow(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Space.sm) {
+                Image(systemName: systemImage)
+                    .font(.footnote.weight(.medium))
+                    .frame(width: 18)
+                Text(verbatim: title)
+                    .font(Theme.caption)
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.textMuted)
+            .padding(.vertical, 8)
+            .padding(.horizontal, Theme.Space.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(MenuPressButtonStyle(reduceMotion: reduceMotion))
     }
 
     private func navigateFromMenu(to target: AppScreen) {
@@ -3430,6 +3566,17 @@ struct FactRow: View {
     }
 }
 
+private struct MenuPressButtonStyle: ButtonStyle {
+    var reduceMotion: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.menuPress, value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.88 : 1)
+    }
+}
+
 struct ScoreRing: View {
     let score: Int
     let color: Color
@@ -3456,4 +3603,6 @@ struct ScoreRing: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AppSettings.shared)
+        .environmentObject(AuthSessionStore.shared)
 }

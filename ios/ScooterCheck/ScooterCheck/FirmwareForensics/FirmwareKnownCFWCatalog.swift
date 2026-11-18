@@ -49,33 +49,22 @@ enum FirmwareKnownCFWCatalog {
         ],
         transitions: [
             .init(
-                title: "Power-Modus (offen)",
-                trigger: "Gas + Bremse halten und Power einschalten",
-                effect: "Offene Limits (Code: u. a. 0x6300 ≈ 99 km/h)"
+                title: "Zwei Limit-Welten (Katalog-Hash)",
+                trigger: "Aus Code nicht als Tastenfolge belegt",
+                effect: "Legal-nahe und offene Caps im Image (u. a. ~22 / ~99 km/h)"
             ),
             .init(
-                title: "StVZO-/Legal-Modus",
-                trigger: "Normal einschalten oder Reboot ohne Gas/Bremse; bzw. Panic-Button",
-                effect: "Begrenzt auf legal-nahe Stufe (Code: u. a. 0x1600 ≈ 22 km/h)"
-            ),
-            .init(
-                title: "Fliegender Panic",
-                trigger: "Zugewiesener Custom-Button am Lenker während der Fahrt",
-                effect: "Sofort zurück auf legal-nahe Begrenzung ohne sichtbaren Neustart"
+                title: "Panic-/Legal-Clamp (Katalog-Hash)",
+                trigger: "Aus Code nicht als Tastenfolge belegt",
+                effect: "Panic-Pfad schreibt legal-nahe Stufe (u. a. 0x1600 ≈ 22 km/h) — Tastenfolge separat live prüfen"
             )
         ],
         inputs: [
-            .init(kind: .throttle, detail: "Forum + Dual-Analog-Muster im Decompile (Schwelle ~400)"),
-            .init(kind: .brake, detail: "Forum + Dual-Analog-Muster im Decompile (Schwelle ~400)"),
-            .init(kind: .power, detail: "Einschalt-Kombi mit Gas+Bremse"),
-            .init(kind: .customButton, detail: "Forum: Panicbutton-ZIP — physischer Index im Code nicht beschriftet"),
-            .init(kind: .dualAnalog, detail: "FUN_000020ac: zwei Kanäle, Maske 3 = beide")
+            .init(kind: .customButton, detail: "Panicbutton-Familie: Event-Flag im Code, physische Taste nicht aus Hash belegt"),
+            .init(kind: .dualAnalog, detail: "Dual-Analog-Token möglich — keine validierte Unlock-Kombi")
         ],
-        comboSummaries: [
-            "Aktivierung offen: Gas + Bremse + Power ein",
-            "Panic / legal: Custom-Button oder Reboot ohne Gas/Bremse"
-        ],
-        provenance: "RollerPlausch G3 Panicbutton 2026 + lokale Decompile-Auswertung FIRM2.dec.bin.c"
+        comboSummaries: [],
+        provenance: "Hash-Katalog G3 Panicbutton 2026 — Speeds belegt, Soft-Unlock-Tastenfolge bewusst nicht geraten"
     )
 
     static let all: [Entry] = [g3PanicbuttonStarkeTech]

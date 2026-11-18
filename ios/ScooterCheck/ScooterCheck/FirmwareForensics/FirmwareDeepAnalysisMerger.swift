@@ -12,14 +12,32 @@ enum FirmwareDeepAnalysisMerger {
         for p in parts.dropFirst() {
             mergeSpeeds(&speeds, p.speedLimits)
         }
-        var transitions = parts.flatMap(\.modeTransitions)
+        var transitions = parts.flatMap(\.modeTransitions).map { t in
+            FirmwareModeTransitionFinding(
+                id: t.id,
+                title: t.title,
+                trigger: FirmwareComboPolicy.sanitizeTrigger(t.trigger),
+                effect: t.effect,
+                evidence: t.evidence,
+                source: t.source,
+                confidence: t.confidence
+            )
+        }
         dedupeTransitions(&transitions)
         var inputs = parts.flatMap(\.inputHints)
         dedupeInputs(&inputs)
-        let combos = Array(Set(parts.flatMap(\.comboSummaries))).sorted()
+        let combos = FirmwareComboPolicy.sanitizeComboSummaries(
+            Array(Set(parts.flatMap(\.comboSummaries))).sorted()
+        )
         let notes = parts.flatMap(\.notes)
         let hasDet = parts.contains { $0.quality.hasDeterministicBasis }
         let llmOk = parts.contains { $0.sources.contains(.serverLLM) && $0.quality.llmSchemaValidated }
+        let stock = parts.compactMap(\.stockDiff).first { $0.outcome == .identical || $0.outcome == .different }
+            ?? parts.compactMap(\.stockDiff).first
+        let r2Strings = Array(Set(parts.flatMap(\.r2StringsSample))).sorted()
+        var yara = parts.flatMap(\.yaraMatches)
+        var seenYara = Set<String>()
+        yara = yara.filter { seenYara.insert($0.rule).inserted }
 
         return FirmwareDeepAnalysisResult(
             schemaVersion: FirmwareDeepAnalysisResult.currentSchemaVersion,
@@ -43,16 +61,21 @@ enum FirmwareDeepAnalysisMerger {
                 summary: hasDet
                     ? "Zusammengeführt (deterministische Basis\(llmOk ? " + validierte KI" : ""))."
                     : "Zusammengeführt ohne deterministische Basis — vorsichtig werten."
-            )
+            ),
+            stockDiff: stock,
+            r2StringsSample: r2Strings,
+            yaraMatches: yara
         )
     }
 
-    /// Validiert Server-/LLM-JSON: Schema-Version + mindestens ein Speed oder Transition/Combo.
+    /// Validiert Server-/LLM-JSON: Schema-Version + mindestens ein Speed, Transition/Combo oder Stock-Diff.
     static func validateServerResult(_ result: FirmwareDeepAnalysisResult) -> FirmwareDeepAnalysisResult? {
         guard result.schemaVersion == FirmwareDeepAnalysisResult.currentSchemaVersion else { return nil }
+        let stockHit = result.stockDiff?.outcome == .identical || result.stockDiff?.outcome == .different
         let meaningful = !result.speedLimits.isEmpty
             || !result.modeTransitions.isEmpty
             || !result.comboSummaries.isEmpty
+            || stockHit
         guard meaningful else { return nil }
         var copy = result
         if result.sources.contains(.serverLLM) {
@@ -62,6 +85,18 @@ enum FirmwareDeepAnalysisMerger {
             }
         }
         copy.caveats = FirmwareDeepAnalysisResult.standardCaveats
+        copy.comboSummaries = FirmwareComboPolicy.sanitizeComboSummaries(copy.comboSummaries)
+        copy.modeTransitions = copy.modeTransitions.map { t in
+            FirmwareModeTransitionFinding(
+                id: t.id,
+                title: t.title,
+                trigger: FirmwareComboPolicy.sanitizeTrigger(t.trigger),
+                effect: t.effect,
+                evidence: t.evidence,
+                source: t.source,
+                confidence: t.confidence
+            )
+        }
         return copy
     }
 

@@ -54,6 +54,18 @@ enum FirmwareSpeedSignatureExtractor {
         let legalCandidates = findings.filter { $0.role == .legalCap }.map(\.kmh)
         let legalK = legalCandidates.min()
 
+        let comboPack = FirmwareComboExtractor.extract(
+            speeds: findings,
+            decompiledText: decompiledText,
+            source: .localDeterministic
+        )
+        if !comboPack.comboSummaries.isEmpty || !comboPack.transitions.isEmpty {
+            sources.insert(.localDeterministic)
+            notes.append(
+                "Modus-Scan: \(comboPack.transitions.count) Limit-/Moduswechsel; \(comboPack.comboSummaries.count) validierte Kombi(s)."
+            )
+        }
+
         let hasDet = sources.contains(.localDeterministic)
         return FirmwareDeepAnalysisResult(
             schemaVersion: FirmwareDeepAnalysisResult.currentSchemaVersion,
@@ -66,17 +78,19 @@ enum FirmwareSpeedSignatureExtractor {
             speedLimits: findings.sorted { $0.kmh < $1.kmh },
             maxSpeedKmhInCode: maxK,
             legalCapKmhInCode: legalK,
-            modeTransitions: [],
-            inputHints: [],
-            comboSummaries: [],
+            modeTransitions: comboPack.transitions,
+            inputHints: comboPack.inputs,
+            comboSummaries: comboPack.comboSummaries,
             notes: notes,
             caveats: FirmwareDeepAnalysisResult.standardCaveats,
             quality: FirmwareDeepAnalysisQuality(
                 hasDeterministicBasis: hasDet,
                 llmSchemaValidated: false,
                 summary: hasDet
-                    ? "Deterministische Speed-Signaturen gefunden."
-                    : "Keine deterministischen Speed-Treffer — Katalog oder Server-Decompile nötig."
+                    ? (comboPack.comboSummaries.isEmpty
+                        ? "Deterministische Speed-Signaturen gefunden."
+                        : "Deterministische Speed- und Combo-Hinweise gefunden.")
+                    : "Keine deterministischen Speed-/Combo-Treffer — Katalog oder Server-Decompile nötig."
             )
         )
     }

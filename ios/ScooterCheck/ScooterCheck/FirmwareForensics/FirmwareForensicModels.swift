@@ -218,6 +218,17 @@ struct FirmwareBinaryAnalysis: Equatable, Codable, Sendable {
     var codeDataNotes: [String]
 }
 
+/// Artifacts from optional server decrypt / Ghidra — for UI + PDF export.
+struct FirmwareServerArtifacts: Equatable, Codable, Sendable {
+    var jobId: String?
+    var plaintextSaved: Bool?
+    var plaintextSHA256: String?
+    var plaintextByteCount: Int?
+    var decompileSaved: Bool?
+    /// Short decompile excerpt for the forensic PDF (not full .c).
+    var decompileExcerpt: String?
+}
+
 struct FirmwareForensicReport: Identifiable, Equatable, Codable, Sendable {
     var id: String
     var analyzedAt: Date
@@ -240,4 +251,6 @@ struct FirmwareForensicReport: Identifiable, Equatable, Codable, Sendable {
     var summary: String
     /// Limits/Combos aus Katalog, Binär-/Decompile-Scan oder Server (einheitliches Schema).
     var deepAnalysis: FirmwareDeepAnalysisResult?
+    /// Server decrypt / decompile metadata for export (optional).
+    var serverArtifacts: FirmwareServerArtifacts? = nil
 }

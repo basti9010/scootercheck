@@ -26,6 +26,16 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var notes: [String]
     var caveats: [String]
     var quality: FirmwareDeepAnalysisQuality
+    /// Server Stock-Diff gegen Referenzbibliothek (nach Decrypt).
+    var stockDiff: FirmwareStockDiffResult? = nil
+    /// Stichprobe interessanter Strings aus radare2 (`izz`).
+    var r2StringsSample: [String] = []
+    /// YARA-Treffer vom Server (investigativ).
+    var yaraMatches: [FirmwareYaraMatch] = []
+    /// Cortex-M Vektortabelle (Server-Heuristik).
+    var cortexMIvt: FirmwareCortexMIvt? = nil
+    /// Board-/Pinout-Heuristik vom Server (investigativ).
+    var boardPinout: FirmwareBoardPinoutHint? = nil
 
     static let currentSchemaVersion = 1
 
@@ -34,8 +44,112 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
             "Code-/Katalogbefunde beweisen nicht, dass dieses Image aktuell im Controller steckt.",
             "ENC ohne Entschlüsselung: nur Meta, Hash und bekannte Signaturen — keine neuen Limit-Konstanten aus dem Ciphertext.",
             "KI-Auswertung (falls Server) darf nur dieses Schema füllen; Freitext ist kein Beweismittel.",
-            "Physische Tastennamen (Gas/Bremse) kommen aus Signatur/Forum/Live-Test, nicht aus garantierten Symbolnamen im Decompile."
+            "Tastenkombinationen nur bei Live-Vergleich oder Prefix Belegt:/Validiert: — keine Heuristik-Rätselraten."
         ]
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion, producedAt, sources, subjectSHA256, packageDisplayName
+        case models, controllerType, speedLimits, maxSpeedKmhInCode, legalCapKmhInCode
+        case modeTransitions, inputHints, comboSummaries, notes, caveats, quality
+        case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try c.decode(Int.self, forKey: .schemaVersion)
+        producedAt = try c.decode(Date.self, forKey: .producedAt)
+        let rawSources = try c.decodeIfPresent([String].self, forKey: .sources) ?? []
+        sources = rawSources.compactMap { FirmwareDeepAnalysisSource(rawValue: $0) }
+        subjectSHA256 = try c.decode(String.self, forKey: .subjectSHA256)
+        packageDisplayName = try c.decodeIfPresent(String.self, forKey: .packageDisplayName)
+        models = try c.decodeIfPresent([String].self, forKey: .models) ?? []
+        controllerType = try c.decodeIfPresent(String.self, forKey: .controllerType)
+        speedLimits = try c.decodeIfPresent([FirmwareSpeedLimitFinding].self, forKey: .speedLimits) ?? []
+        maxSpeedKmhInCode = try c.decodeIfPresent(Double.self, forKey: .maxSpeedKmhInCode)
+        legalCapKmhInCode = try c.decodeIfPresent(Double.self, forKey: .legalCapKmhInCode)
+        modeTransitions = try c.decodeIfPresent([FirmwareModeTransitionFinding].self, forKey: .modeTransitions) ?? []
+        inputHints = try c.decodeIfPresent([FirmwareInputHintFinding].self, forKey: .inputHints) ?? []
+        comboSummaries = try c.decodeIfPresent([String].self, forKey: .comboSummaries) ?? []
+        notes = try c.decodeIfPresent([String].self, forKey: .notes) ?? []
+        caveats = try c.decodeIfPresent([String].self, forKey: .caveats) ?? []
+        quality = try c.decode(FirmwareDeepAnalysisQuality.self, forKey: .quality)
+        stockDiff = try c.decodeIfPresent(FirmwareStockDiffResult.self, forKey: .stockDiff)
+        r2StringsSample = try c.decodeIfPresent([String].self, forKey: .r2StringsSample) ?? []
+        yaraMatches = try c.decodeIfPresent([FirmwareYaraMatch].self, forKey: .yaraMatches) ?? []
+        cortexMIvt = try c.decodeIfPresent(FirmwareCortexMIvt.self, forKey: .cortexMIvt)
+        boardPinout = try c.decodeIfPresent(FirmwareBoardPinoutHint.self, forKey: .boardPinout)
+    }
+
+    init(
+        schemaVersion: Int,
+        producedAt: Date,
+        sources: [FirmwareDeepAnalysisSource],
+        subjectSHA256: String,
+        packageDisplayName: String? = nil,
+        models: [String],
+        controllerType: String? = nil,
+        speedLimits: [FirmwareSpeedLimitFinding],
+        maxSpeedKmhInCode: Double? = nil,
+        legalCapKmhInCode: Double? = nil,
+        modeTransitions: [FirmwareModeTransitionFinding],
+        inputHints: [FirmwareInputHintFinding],
+        comboSummaries: [String],
+        notes: [String],
+        caveats: [String],
+        quality: FirmwareDeepAnalysisQuality,
+        stockDiff: FirmwareStockDiffResult? = nil,
+        r2StringsSample: [String] = [],
+        yaraMatches: [FirmwareYaraMatch] = [],
+        cortexMIvt: FirmwareCortexMIvt? = nil,
+        boardPinout: FirmwareBoardPinoutHint? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.producedAt = producedAt
+        self.sources = sources
+        self.subjectSHA256 = subjectSHA256
+        self.packageDisplayName = packageDisplayName
+        self.models = models
+        self.controllerType = controllerType
+        self.speedLimits = speedLimits
+        self.maxSpeedKmhInCode = maxSpeedKmhInCode
+        self.legalCapKmhInCode = legalCapKmhInCode
+        self.modeTransitions = modeTransitions
+        self.inputHints = inputHints
+        self.comboSummaries = comboSummaries
+        self.notes = notes
+        self.caveats = caveats
+        self.quality = quality
+        self.stockDiff = stockDiff
+        self.r2StringsSample = r2StringsSample
+        self.yaraMatches = yaraMatches
+        self.cortexMIvt = cortexMIvt
+        self.boardPinout = boardPinout
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(schemaVersion, forKey: .schemaVersion)
+        try c.encode(producedAt, forKey: .producedAt)
+        try c.encode(sources.map(\.rawValue), forKey: .sources)
+        try c.encode(subjectSHA256, forKey: .subjectSHA256)
+        try c.encodeIfPresent(packageDisplayName, forKey: .packageDisplayName)
+        try c.encode(models, forKey: .models)
+        try c.encodeIfPresent(controllerType, forKey: .controllerType)
+        try c.encode(speedLimits, forKey: .speedLimits)
+        try c.encodeIfPresent(maxSpeedKmhInCode, forKey: .maxSpeedKmhInCode)
+        try c.encodeIfPresent(legalCapKmhInCode, forKey: .legalCapKmhInCode)
+        try c.encode(modeTransitions, forKey: .modeTransitions)
+        try c.encode(inputHints, forKey: .inputHints)
+        try c.encode(comboSummaries, forKey: .comboSummaries)
+        try c.encode(notes, forKey: .notes)
+        try c.encode(caveats, forKey: .caveats)
+        try c.encode(quality, forKey: .quality)
+        try c.encodeIfPresent(stockDiff, forKey: .stockDiff)
+        try c.encode(r2StringsSample, forKey: .r2StringsSample)
+        try c.encode(yaraMatches, forKey: .yaraMatches)
+        try c.encodeIfPresent(cortexMIvt, forKey: .cortexMIvt)
+        try c.encodeIfPresent(boardPinout, forKey: .boardPinout)
     }
 }
 
@@ -43,6 +157,12 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
     case localDeterministic
     case knownCatalog
     case serverDecompile
+    case serverR2
+    case serverCapstone
+    case serverYara
+    case serverEmulation
+    case serverAngr
+    case serverIvt
     case serverLLM
     case liveVehicleContext
 
@@ -51,6 +171,12 @@ enum FirmwareDeepAnalysisSource: String, Codable, Sendable {
         case .localDeterministic: return "Lokal deterministisch"
         case .knownCatalog: return "Bekannte CFW-Signatur"
         case .serverDecompile: return "Server-Decompile"
+        case .serverR2: return "Server-radare2"
+        case .serverCapstone: return "Server-Capstone"
+        case .serverYara: return "Server-YARA"
+        case .serverEmulation: return "Server-Unicorn"
+        case .serverAngr: return "Server-Pfadanalyse"
+        case .serverIvt: return "Server-IVT"
         case .serverLLM: return "Server-KI (schema-gebunden)"
         case .liveVehicleContext: return "Live-Fahrzeugkontext"
         }
@@ -63,6 +189,95 @@ struct FirmwareDeepAnalysisQuality: Equatable, Codable, Sendable {
     /// true, wenn LLM-Felder nur nach Schema-Validierung übernommen wurden.
     var llmSchemaValidated: Bool
     var summary: String
+}
+
+enum FirmwareStockDiffOutcome: String, Equatable, Codable, Sendable {
+    case identical
+    case different
+    case noReference
+    case skipped
+
+    var label: String {
+        switch self {
+        case .identical: return "Identisch mit Stock"
+        case .different: return "Weicht von Stock ab"
+        case .noReference: return "Keine Stock-Referenz"
+        case .skipped: return "Stock-Diff übersprungen"
+        }
+    }
+}
+
+struct FirmwareStockDiffSegment: Equatable, Codable, Sendable {
+    var offset: Int
+    var length: Int
+    var note: String
+}
+
+struct FirmwareYaraMatch: Equatable, Codable, Sendable, Identifiable {
+    var rule: String
+    var description: String
+    var confidence: String
+    var family: String? = nil
+    var tags: [String]
+    var strings: [String]
+
+    var id: String { rule + "|" + description }
+}
+
+struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
+    var outcome: FirmwareStockDiffOutcome
+    var referenceId: String?
+    var referenceLabel: String?
+    var referenceSHA256: String?
+    var referenceSource: String? = nil
+    var differingBytes: Int?
+    var firstDiffOffset: Int?
+    var subjectBytes: Int?
+    var referenceBytes: Int?
+    var percentDifferent: Double?
+    var segments: [FirmwareStockDiffSegment]
+    var note: String
+    var trustedRefCount: Int? = nil
+    var totalRefCount: Int? = nil
+    var candidateRefCount: Int? = nil
+    var matchedModels: [String]? = nil
+    var limitRegionAffected: Bool? = nil
+    var panicRegionAffected: Bool? = nil
+    var regionNotes: [String]? = nil
+}
+
+struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
+    var id: String
+    var label: String
+    var model: String
+    var controllerType: String
+    var version: String
+    var source: String? = nil
+    var region: String? = nil
+    var notes: String? = nil
+    var trusted: Bool? = nil
+    var sha256: String
+    var byteCount: Int
+}
+struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
+    var likely: Bool?
+    var flashBase: String?
+    var initialSP: String?
+    var resetHandler: String?
+    var resetFileOffset: Int?
+    var resetThumb: Bool?
+}
+
+struct FirmwareBoardPinoutHint: Equatable, Codable, Sendable {
+    var id: String?
+    var notes: String?
+    /// Legacy field from older servers — ignored for UI (no button hallucination).
+    var defaultComboHypothesis: String? = nil
+}
+struct FirmwareStockList: Equatable, Codable, Sendable {
+    var stockFwDir: String?
+    var refs: [FirmwareStockRef]
+    var count: Int
 }
 
 enum FirmwareSpeedLimitRole: String, Codable, Sendable {
@@ -158,6 +373,27 @@ enum FirmwareAnalysisJobState: String, Codable, Sendable {
     case completed
     case failed
     case notConfigured
+
+    var label: String {
+        switch self {
+        case .queued: return "Warteschlange"
+        case .decrypting: return "Decrypt"
+        case .decompiling: return "Ghidra"
+        case .extracting: return "Auswertung"
+        case .llmEnrichment: return "KI"
+        case .completed: return "Fertig"
+        case .failed: return "Fehler"
+        case .notConfigured: return "Nicht konfiguriert"
+        }
+    }
+}
+
+struct FirmwareDecompilePreview: Equatable, Codable, Sendable {
+    var jobId: String
+    var path: String?
+    var totalChars: Int
+    var preview: String
+    var truncated: Bool
 }
 
 struct FirmwareAnalysisJobRequest: Equatable, Codable, Sendable {
@@ -181,6 +417,12 @@ struct FirmwareAnalysisJobStatus: Equatable, Codable, Sendable {
     var message: String
     var result: FirmwareDeepAnalysisResult?
     var errorCode: String?
+    var createdBy: String? = nil
+    var createdByUserId: String? = nil
+    var createdAt: Date? = nil
+    var updatedAt: Date? = nil
+    var originalFileName: String? = nil
+    var archiveSHA256: String? = nil
     /// Server path of saved decrypted BIN (Hetzner store), if decrypt succeeded.
     var plaintextPath: String? = nil
     var plaintextSHA256: String? = nil
@@ -188,4 +430,64 @@ struct FirmwareAnalysisJobStatus: Equatable, Codable, Sendable {
     /// Server path of Ghidra-exported decompiled C, if headless succeeded.
     var decompilePath: String? = nil
     var decompileSaved: Bool? = nil
+}
+
+struct FirmwareAdminJobsList: Equatable, Codable, Sendable {
+    var jobs: [FirmwareAnalysisJobStatus]
+    var total: Int
+    var returned: Int
+}
+
+struct FirmwareAdminUserStats: Equatable, Codable, Sendable, Identifiable {
+    var createdBy: String
+    var createdByUserId: String?
+    var jobs: Int
+    var completed: Int
+    var failed: Int
+    var queuedOrRunning: Int
+    var withDecompile: Int
+
+    var id: String { createdBy }
+}
+
+struct FirmwareAdminStats: Equatable, Codable, Sendable {
+    var totalJobs: Int
+    var retentionDays: Int
+    var maxStoredJobs: Int
+    var users: [FirmwareAdminUserStats]
+}
+
+struct FirmwareLlmKeyStatus: Equatable, Codable, Sendable {
+    var present: Bool?
+    var usable: Bool?
+    var kind: String?
+    var hint: String?
+}
+
+/// Antwort von `GET /health` des Firmware-Workers (ohne Secrets).
+struct FirmwareWorkerHealth: Equatable, Codable, Sendable {
+    var ok: Bool
+    var service: String?
+    var decryptConfigured: Bool?
+    var ghidraConfigured: Bool?
+    var ghidraEnabled: Bool?
+    var llmConfigured: Bool?
+    var llmKeyStatus: FirmwareLlmKeyStatus?
+    var llmProvider: String?
+    var llmModel: String?
+    var jwtConfigured: Bool?
+    var retentionDays: Int?
+    var maxStoredJobs: Int?
+    var stockFwDir: String?
+    var stockRefCount: Int?
+    var r2Configured: Bool?
+    var capstoneConfigured: Bool?
+    var yaraConfigured: Bool?
+    var unicornConfigured: Bool?
+    var angrLiteConfigured: Bool?
+    var angrEngineConfigured: Bool?
+    var angrTimeoutSec: Int?
+    var angrMemMb: Int?
+    var angrCfgDepth: Int?
+    var angrSymbolic: Bool?
 }

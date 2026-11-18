@@ -2,10 +2,14 @@ import SwiftUI
 
 /// Firmware-Forensik 2.0 — Read-Only, Dark UI (#12161C / #6BDBC2).
 struct FirmwareZipInspectorView: View {
+    var mode: FirmwareForensicsMode = .fileOnly
     var vehicleContext: FirmwareVehicleContext? = nil
+    var onBackToHub: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var references = FirmwareReferenceStore.shared
+
+    private var combinesWithReadout: Bool { mode == .withReadout }
 
     @State private var report: FirmwareForensicReport?
     @State private var errorText: String?
@@ -26,6 +30,12 @@ struct FirmwareZipInspectorView: View {
     @State private var refOrigin = ""
     @State private var serverStatusText: String?
     @State private var isServerBusy = false
+    @State private var serverProgress: Double = 0
+    @State private var lastServerJobId: String?
+    @State private var decompilePreview: FirmwareDecompilePreview?
+    @State private var showDecompilePreview = false
+    @State private var showAnalysisSession = false
+    @State private var serverPlaintextData: Data?
     @ObservedObject private var appSettings = AppSettings.shared
 
     var body: some View {
@@ -36,39 +46,133 @@ struct FirmwareZipInspectorView: View {
                     Button {
                         openSubjectPicker()
                     } label: {
-                        Text(report == nil ? "Datei wählen" : "Andere Datei")
+                        Text("Datei wählen")
                             .font(Theme.buttonSecondary)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                     .tint(Theme.accent)
                     .disabled(isBusy)
 
                     if isBusy {
-                        ProgressView("Forensische Auswertung…")
+                        ProgressView("Datei wird lokal geprüft…")
                             .font(Theme.caption)
                             .tint(Theme.accent)
                     }
-                    if let errorText {
+                    if let errorText, !showAnalysisSession {
                         Text(errorText)
                             .font(Theme.caption)
                             .foregroundStyle(Theme.danger)
                     }
-                    if let report {
-                        verdictBanner(report)
-                        dualSourceSection(report)
-                        deepAnalysisSection(report)
-                        packageSection(report)
-                        contentSection(report)
-                        cryptoSection(report)
-                        technicalSection(report)
-                        comparisonSection(report)
-                        indicatorsSection(report)
-                        if vehicleContext != nil {
-                            vehicleSection(report)
+                    if combinesWithReadout, vehicleContext == nil {
+                        missingReadoutBanner
+                    }
+                    Text("Nach der Auswahl: Server-Entschlüsselung ist der Standardweg für Klartext-Limits, Combos und Ampel. PDF/JSON erscheinen erst danach.")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    AppCopyrightFooter()
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, Theme.Space.xxl)
+                }
+                .scootPagePadding()
+                .padding(.top, Theme.Space.sm)
+            }
+            .background(Theme.bg.ignoresSafeArea())
+            .navigationTitle(combinesWithReadout ? "Mit Auslese" : "Datei allein")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(onBackToHub == nil ? "Schließen" : "Zurück") {
+                        if let onBackToHub {
+                            onBackToHub()
+                        } else {
+                            dismiss()
                         }
-                        exportSection(report)
-                        limitsSection(report)
+                    }
+                    .foregroundStyle(Theme.accent)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .fullScreenCover(isPresented: $showAnalysisSession) {
+                analysisSessionScreen
+            }
+            .sheet(isPresented: $showRefForm) {
+                referenceImportForm
+            }
+            .sheet(isPresented: $showShare) {
+                FirmwareShareSheet(items: shareItems)
+            }
+            .sheet(isPresented: $showDecompilePreview) {
+                NavigationStack {
+                    ScrollView {
+                        Text(decompilePreview?.preview ?? "")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .background(Theme.bg.ignoresSafeArea())
+                    .navigationTitle("Ghidra .c (Vorschau)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Schließen") { showDecompilePreview = false }
+                        }
+                    }
+                }
+                .preferredColorScheme(.dark)
+            }
+        }
+    }
+
+    private var analysisSessionScreen: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.lg) {
+                    if let report {
+                        let decrypted = reportHasServerDeep(report)
+                        if decrypted {
+                            laypersonHeader(report)
+                            if isServerBusy || serverProgress > 0 {
+                                serverProgressCard
+                            }
+                            if let errorText {
+                                Text(errorText)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.danger)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            deepAnalysisSection(report)
+                            if combinesWithReadout {
+                                readoutMatchSection(report)
+                                dualSourceSection(report)
+                                vehicleSection(report)
+                            }
+                            exportSection(report)
+                            offlineFindingsSection(report)
+                            decryptActionCard(report)
+                            limitsSection(report)
+                        } else {
+                            preDecryptSummary(report)
+                            decryptActionCard(report)
+                            if isServerBusy || serverProgress > 0 {
+                                serverProgressCard
+                            }
+                            if let errorText {
+                                Text(errorText)
+                                    .font(Theme.caption)
+                                    .foregroundStyle(Theme.danger)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            offlineFindingsSection(report)
+                            if combinesWithReadout {
+                                vehicleSection(report)
+                            }
+                        }
+                    } else if isBusy {
+                        ProgressView("Lokale Auswertung…")
+                            .tint(Theme.accent)
                     }
                     AppCopyrightFooter()
                         .frame(maxWidth: .infinity)
@@ -78,22 +182,142 @@ struct FirmwareZipInspectorView: View {
                 .padding(.top, Theme.Space.sm)
             }
             .background(Theme.bg.ignoresSafeArea())
-            .navigationTitle("Firmware-Forensik")
+            .navigationTitle(lastFileName.isEmpty ? "Auswertung" : lastFileName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
+                    Button("Schließen") { showAnalysisSession = false }
                         .foregroundStyle(Theme.accent)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Andere Datei") { openSubjectPicker() }
+                        .foregroundStyle(Theme.accent)
+                        .disabled(isBusy || isServerBusy)
                 }
             }
             .preferredColorScheme(.dark)
-            .sheet(isPresented: $showRefForm) {
-                referenceImportForm
+        }
+    }
+
+    private func reportHasServerDeep(_ r: FirmwareForensicReport) -> Bool {
+        r.deepAnalysis?.sources.contains(where: {
+            switch $0 {
+            case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
+                return true
+            default: return false
             }
-            .sheet(isPresented: $showShare) {
-                FirmwareShareSheet(items: shareItems)
+        }) == true
+    }
+
+    private func laypersonHeader(_ r: FirmwareForensicReport) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Ergebnis: Server-Klartext ausgewertet")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+            verdictBanner(r)
+        }
+    }
+
+    /// Slim first screen after file pick — server decrypt is the primary path.
+    private func preDecryptSummary(_ r: FirmwareForensicReport) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text("Datei bereit")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(r.originalFileName)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.textTitle)
+                    .lineLimit(2)
+                Text("Lokal geprüft · \(r.crypto.status.label) · \(formatKind(r.containerKind))")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                Text("Für Ampel, Limits und Combos: als Nächstes auf dem Server entschlüsseln. Export erscheint danach.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(Theme.Space.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private func decryptActionCard(_ r: FirmwareForensicReport) -> some View {
+        let serverReady = FirmwareServerAnalysisClient.fromAppSettings().isConfigured
+        let hasServerDeep = reportHasServerDeep(r)
+        return sectionCard(hasServerDeep ? "Erneut analysieren" : "Server-Analyse") {
+            Text(hasServerDeep
+                 ? "Optional erneut auf dem Server entschlüsseln und analysieren."
+                 : "Standardweg: Datei auf dem Server entschlüsseln — Klartext-Limits, Combos und Ampel.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if serverReady {
+                Button {
+                    Task { await uploadToAnalysisServer() }
+                } label: {
+                    Label(
+                        isServerBusy
+                            ? "Entschlüsselung läuft…"
+                            : (hasServerDeep ? "Erneut auf Server entschlüsseln" : "Auf Server entschlüsseln"),
+                        systemImage: "lock.open"
+                    )
+                    .font(Theme.buttonSecondary)
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .disabled(isServerBusy || lastData == nil)
+            } else {
+                Text("Kein Analyse-Server in den Einstellungen konfiguriert.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.warn)
+            }
+            if let serverStatusText, !isServerBusy {
+                Text(serverStatusText)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
             }
         }
+    }
+
+    private var serverProgressCard: some View {
+        sectionCard("Fortschritt") {
+            ProgressView(value: min(max(serverProgress, 0), 100), total: 100)
+                .tint(Theme.accent)
+                .animation(.easeInOut(duration: 0.25), value: serverProgress)
+            HStack {
+                Text(serverStatusText ?? "Entschlüsselung…")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Text("\(Int(serverProgress)) %")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
+            }
+        }
+    }
+
+    private func offlineFindingsSection(_ r: FirmwareForensicReport) -> some View {
+        DisclosureGroup("Offline-Befunde (Datei / Verschlüsselung / Technik)") {
+            VStack(alignment: .leading, spacing: Theme.Space.md) {
+                Text("Wichtig: Hash, Format und Offline-Einschätzung bleiben auch nach Server-Analyse erhalten.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                packageSection(r)
+                contentSection(r)
+                cryptoSection(r)
+                indicatorsSection(r)
+                technicalSection(r)
+                comparisonSection(r)
+            }
+            .padding(.top, 8)
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.vertical, 4)
     }
 
     private func openSubjectPicker() {
@@ -119,10 +343,33 @@ struct FirmwareZipInspectorView: View {
     }
 
     private var intro: some View {
-        Text("Lokale Firmwaredatei auswerten — nur lesend.")
-            .font(Theme.body)
-            .foregroundStyle(Theme.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            Text(combinesWithReadout
+                 ? "Firmware-Datei mit der Scooter-Auslese kombinieren — lokal prüfen, dann auf dem Server entschlüsseln."
+                 : "Firmware-Datei auswerten — lokal prüfen, dann auf dem Server entschlüsseln (Standardweg).")
+                .font(Theme.body)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(combinesWithReadout ? "Modus: Kombination" : "Modus: Datei allein")
+                .font(Theme.caption.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+        }
+    }
+
+    private var missingReadoutBanner: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Keine Auslese vorhanden")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.warn)
+            Text("Lies zuerst einen E-Scooter aus. Du kannst die Datei trotzdem wählen — der Fahrzeugkontext fehlt dann.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(Theme.Space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     // MARK: - Sections
@@ -316,114 +563,256 @@ struct FirmwareZipInspectorView: View {
     }
 
     @ViewBuilder
-    private func deepAnalysisSection(_ r: FirmwareForensicReport) -> some View {
-        if let deep = r.deepAnalysis {
-            sectionCard("Deep Analysis (Limits / Combos)") {
-                Text(deep.quality.summary)
+    private func readoutMatchSection(_ r: FirmwareForensicReport) -> some View {
+        let assessment = FirmwareReadoutMatchCorrelator.assess(
+            report: r,
+            vehicleContext: r.vehicleContext ?? vehicleContext
+        )
+        sectionCard("Datei ↔ Scooter-Auslese") {
+            HStack {
+                Text(assessment.verdict.shortLabel)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(matchColor(assessment.verdict))
+                Spacer()
+                Text(assessment.verdict.title)
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
-                metaRow("Quellen", deep.sources.map(\.label).joined(separator: ", "))
-                if let maxK = deep.maxSpeedKmhInCode {
-                    metaRow("Max im Code/Katalog", "\(Int(maxK)) km/h")
-                }
-                if let legal = deep.legalCapKmhInCode {
-                    metaRow("Legal-Kappe", "\(Int(legal)) km/h")
-                }
-                if !deep.speedLimits.isEmpty {
-                    Text("Speed-Stufen")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.speedLimits) { s in
-                        Text("• \(Int(s.kmh)) km/h — \(s.role.label) (\(s.confidence.label))")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.trailing)
+            }
+            Text(assessment.summary)
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(assessment.checks) { check in
+                HStack(alignment: .top, spacing: 8) {
+                    Text(matchCheckGlyph(check.status))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(matchCheckColor(check.status))
+                        .frame(width: 16)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(check.title)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(check.detail)
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                if !deep.comboSummaries.isEmpty {
-                    Text("Combos")
+            }
+
+            ForEach(assessment.caveats, id: \.self) { c in
+                Text("• \(c)")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+    }
+
+    private func stockDiffColor(_ o: FirmwareStockDiffOutcome) -> Color {
+        switch o {
+        case .identical: return Theme.accent
+        case .different: return Theme.warn
+        case .noReference, .skipped: return Theme.textMuted
+        }
+    }
+
+    private func matchColor(_ v: FirmwareReadoutMatchCorrelator.Verdict) -> Color {
+        switch v {
+        case .likelyMatch: return Theme.accent
+        case .partial: return Theme.warn
+        case .mismatch: return Theme.danger
+        case .inconclusive: return Theme.textMuted
+        }
+    }
+
+    private func matchCheckColor(_ s: FirmwareReadoutMatchCorrelator.CheckStatus) -> Color {
+        switch s {
+        case .match: return Theme.accent
+        case .mismatch: return Theme.danger
+        case .unclear: return Theme.warn
+        case .missing: return Theme.textMuted
+        }
+    }
+
+    private func matchCheckGlyph(_ s: FirmwareReadoutMatchCorrelator.CheckStatus) -> String {
+        switch s {
+        case .match: return "✓"
+        case .mismatch: return "≠"
+        case .unclear: return "?"
+        case .missing: return "–"
+        }
+    }
+
+    @ViewBuilder
+    private func deepAnalysisSection(_ r: FirmwareForensicReport) -> some View {
+        if let deep = r.deepAnalysis {
+            let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
+            let hasServer = deep.sources.contains(where: {
+                switch $0 {
+                case .serverDecompile, .serverR2, .serverCapstone, .serverYara, .serverEmulation, .serverAngr, .serverIvt, .serverLLM:
+                    return true
+                default: return false
+                }
+            })
+            sectionCard(hasServer ? "Ergebnis nach Entschlüsselung" : "Lokale Kurzfassung") {
+                Text(brief.headline)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(brief.bullets, id: \.self) { b in
+                    Text("• \(b)")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let legal = deep.legalCapKmhInCode, let maxK = deep.maxSpeedKmhInCode {
+                    HStack(spacing: 12) {
+                        Text("Legal ~\(Int(legal))")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                        Text("→")
+                            .foregroundStyle(Theme.textMuted)
+                        Text("Offen ~\(Int(maxK)) km/h")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.warn)
+                    }
+                    .padding(.top, 4)
+                }
+                if !brief.actionableCombos.isEmpty {
+                    Text("Validierte Tastenfolge")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.comboSummaries, id: \.self) { c in
+                        .padding(.top, 8)
+                    ForEach(brief.actionableCombos, id: \.self) { c in
                         Text("• \(c)")
                             .font(Theme.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    Text("Nicht bestätigt — nur Hinweis aus Code/Heuristik. Am Fahrzeug gegenprüfen.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
+                } else {
+                    Text("Keine klare Tastenfolge im Klartext — oft nur Modus-Register, keine lesbare Kombi.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                        .padding(.top, 4)
                 }
-                if !deep.modeTransitions.isEmpty {
-                    Text("Moduswechsel")
+                if !brief.humanModeTransitions.isEmpty {
+                    Text("Moduswechsel (verständlich)")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.modeTransitions) { t in
+                        .padding(.top, 8)
+                    ForEach(brief.humanModeTransitions) { t in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(t.title)
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(Theme.textPrimary)
-                            Text("Auslöser: \(t.trigger)")
+                            Text("\(t.trigger) → \(t.effect)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
-                            Text("Wirkung: \(t.effect)")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                if !brief.humanInputHints.isEmpty {
+                    Text("Eingaben")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 6)
+                    ForEach(brief.humanInputHints) { hint in
+                        Text("• \(hint.kind.label): \(hint.detail)")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+
+                DisclosureGroup("Speed-Stufen (\(deep.speedLimits.count))") {
+                    ForEach(deep.speedLimits) { s in
+                        Text("• \(Int(s.kmh)) km/h — \(s.role.label)")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 6)
+
+                if !brief.technicalCombos.isEmpty || !brief.technicalModeTransitions.isEmpty || !brief.technicalInputHints.isEmpty {
+                    DisclosureGroup("Technik-Details (Hex / Pfade / Decompile)") {
+                        ForEach(brief.technicalCombos, id: \.self) { c in
+                            Text("• \(c)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        ForEach(brief.technicalModeTransitions) { t in
+                            Text("• \(t.title): \(t.trigger)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        ForEach(brief.technicalInputHints) { h in
+                            Text("• \(h.kind.label): \(h.detail)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
                         }
                     }
-                }
-                Text("Server-Decrypt: gleiches Schema — lokal Katalog/Deterministik, optional Upload.")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.textMuted)
+                    .foregroundStyle(Theme.accent)
                     .padding(.top, 4)
+                }
 
-                if FirmwareServerAnalysisClient.fromAppSettings().isConfigured {
-                    Button {
-                        Task { await uploadToAnalysisServer() }
-                    } label: {
-                        Label(
-                            isServerBusy ? "Server analysiert…" : "Auf Server entschlüsseln / analysieren",
-                            systemImage: "lock.open.iphone"
-                        )
-                        .frame(maxWidth: .infinity)
+                if !deep.yaraMatches.isEmpty {
+                    DisclosureGroup("YARA (\(deep.yaraMatches.count))") {
+                        ForEach(deep.yaraMatches) { m in
+                            Text("• \(m.rule): \(m.description)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
-                    .disabled(isServerBusy || lastData == nil)
-                } else {
-                    Text("Server-URL unter Einstellungen setzen, dann erscheint hier der Upload.")
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 2)
+                }
+                if !deep.r2StringsSample.isEmpty {
+                    DisclosureGroup("radare2 Strings (\(deep.r2StringsSample.count))") {
+                        ForEach(deep.r2StringsSample.prefix(20), id: \.self) { s in
+                            Text(s)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 2)
+                }
+
+                DisclosureGroup("Quellen & Pipeline") {
+                    Text(deep.sources.map(\.label).joined(separator: ", "))
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                    Text(deep.quality.summary)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textMuted)
+                    Text("Offline sieht nur die ENC — der Server entschlüsselt und liefert Klartext-Befunde. GRAU oben galt vor der Server-Analyse.")
                         .font(.caption2)
                         .foregroundStyle(Theme.textMuted)
                 }
-                if let serverStatusText {
-                    Text(serverStatusText)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.warn)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        } else if FirmwareServerAnalysisClient.fromAppSettings().isConfigured, lastData != nil {
-            sectionCard("Deep Analysis (Server)") {
-                Text("Lokal keine Katalog-/Speed-Treffer. Server kann ENC mit eurem Decrypt-Tool öffnen.")
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                Button {
-                    Task { await uploadToAnalysisServer() }
-                } label: {
-                    Label(
-                        isServerBusy ? "Server analysiert…" : "Auf Server entschlüsseln / analysieren",
-                        systemImage: "lock.open.iphone"
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.accent)
-                .disabled(isServerBusy)
-                if let serverStatusText {
-                    Text(serverStatusText)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.warn)
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 2)
+
+                if lastServerJobId != nil {
+                    Button {
+                        Task { await loadDecompilePreview() }
+                    } label: {
+                        Label("Ghidra-.c Vorschau", systemImage: "doc.text")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.accent)
+                    .disabled(isServerBusy)
+                    .padding(.top, 8)
                 }
             }
         }
+        // Vor Server-Entschlüsselung: CTA steht in `decryptActionCard` — keine Extra-Karte.
     }
 
     private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {
@@ -460,25 +849,29 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
+    @ViewBuilder
     private func exportSection(_ r: FirmwareForensicReport) -> some View {
-        sectionCard("Forensikbericht") {
-            Button {
-                sharePDF(r)
-            } label: {
-                Label("PDF exportieren", systemImage: "doc.richtext")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Theme.accent)
+        // Export only after successful server decrypt/analysis.
+        if reportHasServerDeep(r) {
+            sectionCard("Forensikbericht") {
+                Button {
+                    sharePDF(r)
+                } label: {
+                    Label("PDF exportieren", systemImage: "doc.richtext")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
 
-            Button {
-                shareJSON(r)
-            } label: {
-                Label("JSON exportieren", systemImage: "curlybraces")
-                    .frame(maxWidth: .infinity)
+                Button {
+                    shareJSON(r)
+                } label: {
+                    Label("JSON exportieren", systemImage: "curlybraces")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.accent)
             }
-            .buttonStyle(.bordered)
-            .tint(Theme.accent)
         }
     }
 
@@ -583,11 +976,18 @@ struct FirmwareZipInspectorView: View {
             }
             lastFileName = url.lastPathComponent
             lastData = data
+            lastServerJobId = nil
+            decompilePreview = nil
+            serverPlaintextData = nil
+            serverProgress = 0
+            serverStatusText = nil
             if refModel.isEmpty {
                 let lower = lastFileName.lowercased()
                 if lower.contains("zt3") { refModel = "zt3" }
             }
             reanalyze()
+            // Neues Fenster: lokale Auswertung zuerst — Server erst auf Knopfdruck.
+            showAnalysisSession = true
         } catch {
             report = nil
             errorText = "Datei konnte nicht gelesen werden: \(error.localizedDescription)"
@@ -603,10 +1003,12 @@ struct FirmwareZipInspectorView: View {
             data: data,
             references: references.records,
             preferredReferenceId: preferredReferenceId,
-            vehicleContext: vehicleContext
+            vehicleContext: combinesWithReadout ? vehicleContext : nil
         )
         report = analyzed
-        DualSourceCaseStore.saveForensic(analyzed)
+        if combinesWithReadout {
+            DualSourceCaseStore.saveForensic(analyzed)
+        }
         if refModel.isEmpty, let first = analyzed.meta.models.first {
             refModel = first
         }
@@ -625,7 +1027,8 @@ struct FirmwareZipInspectorView: View {
             return
         }
         isServerBusy = true
-        serverStatusText = "Lade Datei hoch…"
+        serverProgress = 2
+        serverStatusText = "Datei wird hochgeladen…"
         errorText = nil
         defer { isServerBusy = false }
 
@@ -639,22 +1042,28 @@ struct FirmwareZipInspectorView: View {
             models: local?.meta.models ?? [],
             controllerType: local?.meta.type,
             allowDecrypt: true,
-            allowLLM: false
+            allowLLM: true
         )
         do {
             let status = try await client.submit(req, archiveData: data)
-            serverStatusText = status.message
+            lastServerJobId = status.jobId.isEmpty ? nil : status.jobId
+            serverProgress = max(5, Double(status.progressPercent))
+            serverStatusText = status.message.isEmpty ? "Auftrag gestartet…" : status.message
             if status.state == .failed {
                 errorText = status.message
+                serverProgress = 0
                 return
             }
             var final = status
             if status.state != .completed, !status.jobId.isEmpty {
-                serverStatusText = "Warte auf Job \(status.jobId.prefix(8))…"
-                for _ in 0..<30 {
-                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                serverStatusText = "Entschlüsselung / Analyse…"
+                // Decrypt + Ghidra (+ optional KI) kann mehrere Minuten dauern.
+                for _ in 0..<240 {
+                    try await Task.sleep(nanoseconds: 2_000_000_000)
                     final = try await client.poll(jobId: status.jobId)
-                    serverStatusText = final.message
+                    let pct = Double(final.progressPercent)
+                    serverProgress = max(serverProgress, pct > 0 ? pct : min(serverProgress + 1, 95))
+                    serverStatusText = final.message.isEmpty ? final.state.label : final.message
                     if final.state == .completed || final.state == .failed { break }
                 }
             }
@@ -663,30 +1072,119 @@ struct FirmwareZipInspectorView: View {
                     ?? (remote.quality.hasDeterministicBasis ? remote : nil)
             else {
                 errorText = final.message.isEmpty ? "Server lieferte kein verwertbares Ergebnis." : final.message
+                serverProgress = 0
                 return
             }
+            serverProgress = 97
+            serverStatusText = "Klartext wird übernommen…"
             mergeServerDeepAnalysis(validated)
+
+            var artifacts = FirmwareServerArtifacts(
+                jobId: final.jobId.isEmpty ? lastServerJobId : final.jobId,
+                plaintextSaved: final.plaintextSaved,
+                plaintextSHA256: final.plaintextSHA256,
+                plaintextByteCount: nil,
+                decompileSaved: final.decompileSaved,
+                decompileExcerpt: nil
+            )
+            if final.plaintextSaved == true, let jobId = artifacts.jobId {
+                if let plain = try? await client.downloadPlaintext(jobId: jobId) {
+                    serverPlaintextData = plain
+                    artifacts.plaintextByteCount = plain.count
+                    if artifacts.plaintextSHA256 == nil || artifacts.plaintextSHA256?.isEmpty == true {
+                        artifacts.plaintextSHA256 = FirmwareDigest.sha256Hex(plain)
+                    }
+                }
+            }
+            if final.decompileSaved == true {
+                await loadDecompilePreview()
+                if let preview = decompilePreview?.preview {
+                    artifacts.decompileExcerpt = String(preview.prefix(8_000))
+                }
+            }
+            if var current = report {
+                current.serverArtifacts = artifacts
+                report = current
+            }
+
+            serverProgress = 100
             var bits: [String] = []
-            if final.plaintextSaved == true, let path = final.plaintextPath {
-                bits.append("Decrypt: \(path)")
-            }
-            if final.decompileSaved == true, let path = final.decompilePath {
-                bits.append("Ghidra: \(path)")
-            }
-            bits.append("\(validated.speedLimits.count) Speed-Stufen")
+            if final.plaintextSaved == true { bits.append("Decrypt OK") }
+            if final.decompileSaved == true { bits.append("Ghidra .c OK") }
+            if validated.sources.contains(.serverLLM) { bits.append("KI") }
+            bits.append("\(validated.speedLimits.count) Speed")
+            bits.append("\(validated.comboSummaries.count) Kombi(s)")
             serverStatusText = bits.joined(separator: " · ")
         } catch {
             errorText = error.localizedDescription
             serverStatusText = error.localizedDescription
+            serverProgress = 0
+        }
+    }
+
+    @MainActor
+    private func loadDecompilePreview() async {
+        guard let jobId = lastServerJobId else { return }
+        let client = FirmwareServerAnalysisClient.fromAppSettings()
+        do {
+            decompilePreview = try await client.decompilePreview(jobId: jobId)
+            showDecompilePreview = true
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 
     private func mergeServerDeepAnalysis(_ remote: FirmwareDeepAnalysisResult) {
         guard var current = report else { return }
-        let parts = [current.deepAnalysis, remote].compactMap { $0 }
-        current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remote
+        var remoteWithLive = remote
+        if combinesWithReadout,
+           let serial = (current.vehicleContext ?? vehicleContext)?.serial,
+           let stored = SoftUnlockComboStore.load(forSerial: serial) {
+            let liveLine = "Live-Kombination (SN): \(stored.displayCode)"
+            if !remoteWithLive.comboSummaries.contains(liveLine) {
+                remoteWithLive.comboSummaries.insert(liveLine, at: 0)
+            }
+            if !remoteWithLive.sources.contains(.liveVehicleContext) {
+                remoteWithLive.sources.append(.liveVehicleContext)
+            }
+        }
+        let parts = [current.deepAnalysis, remoteWithLive].compactMap { $0 }
+        current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remoteWithLive
+        // Evidence-Zeile für Combos aktualisieren (nur verständliche Zeilen)
+        if let deep = current.deepAnalysis {
+            let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
+            if !brief.actionableCombos.isEmpty {
+                let item = FirmwareEvidenceItem(
+                    id: "deep-combo",
+                    category: .modeHint,
+                    title: "Validierte Tastenfolge",
+                    detail: brief.actionableCombos.joined(separator: " · "),
+                    evidence: deep.notes.first { !$0.contains("0x") && !$0.contains("puVar") } ?? "Live-Vergleich / Belegt",
+                    method: deep.sources.map(\.label).joined(separator: " + "),
+                    verifiability: .indicative,
+                    confirmed: deep.sources.contains(.liveVehicleContext)
+                )
+                current.evidence.removeAll { $0.id == "deep-combo" }
+                current.evidence.append(item)
+            }
+            let refreshed = FirmwareDeepAnalysisBriefing.refreshedVerdict(
+                current: current.verdict,
+                rationale: current.verdictRationale,
+                deep: deep
+            )
+            current.verdict = refreshed.0
+            current.verdictRationale = refreshed.1
+            if deep.stockDiff?.outcome == .identical {
+                current.summary = "\(current.summary) · Stock identisch (Server)"
+            } else if deep.maxSpeedKmhInCode != nil {
+                current.summary = "\(current.summary) · Server-Klartext OK"
+            }
+        }
         report = current
-        DualSourceCaseStore.saveForensic(current)
+        if combinesWithReadout {
+            DualSourceCaseStore.saveForensic(current)
+        }
     }
 
     private func prepareReferenceImport(url: URL) {
@@ -745,9 +1243,17 @@ struct FirmwareZipInspectorView: View {
 
     private func sharePDF(_ r: FirmwareForensicReport) {
         let data = FirmwareForensicPDF.render(r)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ScooterCheck-Firmware-Forensik.pdf")
-        try? data.write(to: url)
-        shareItems = [url]
+        let base = FileManager.default.temporaryDirectory
+        let pdfURL = base.appendingPathComponent("ScooterCheck-Firmware-Forensik.pdf")
+        try? data.write(to: pdfURL)
+        var items: [Any] = [pdfURL]
+        if let plain = serverPlaintextData, !plain.isEmpty {
+            let stem = (lastFileName as NSString).deletingPathExtension
+            let binURL = base.appendingPathComponent("\(stem.isEmpty ? "FIRM" : stem).dec.bin")
+            try? plain.write(to: binURL)
+            items.append(binURL)
+        }
+        shareItems = items
         showShare = true
     }
 

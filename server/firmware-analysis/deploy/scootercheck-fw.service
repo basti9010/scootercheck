@@ -8,6 +8,9 @@ User=scootercheck
 Group=scootercheck
 WorkingDirectory=/opt/scootercheck/firmware-analysis
 EnvironmentFile=/etc/scootercheck/firmware-analysis.env
+Environment=HOME=/var/lib/scootercheck
+Environment=JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
+Environment=JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
 ExecStart=/opt/scootercheck/firmware-analysis/.venv/bin/uvicorn app:APP --host 127.0.0.1 --port 8088
 Restart=on-failure
 RestartSec=3
@@ -15,7 +18,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/scootercheck/firmware-jobs /var/lib/scootercheck/decrypted /var/lib/scootercheck/decompiled
+ReadWritePaths=/var/lib/scootercheck /opt/scootercheck/firmware-analysis /var/lib/scootercheck/stock-fw
+ReadOnlyPaths=/opt/ghidra /opt/scootercheck/decrypt-firm.sh /etc/scootercheck /usr/lib/jvm
 
 [Install]
 WantedBy=multi-user.target

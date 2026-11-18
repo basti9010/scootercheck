@@ -88,13 +88,25 @@ def deep_result(
                 by_packed[p] = s
         speeds = sorted(by_packed.values(), key=lambda x: x["kmh"])
 
+    from combo_extract import extract_combos, xref_notes_for_speeds
+
+    transitions, inputs, combos = extract_combos(
+        speeds=speeds,
+        decompiled_text=decompiled_text,
+    )
+    xref = xref_notes_for_speeds(decompiled_text, speeds)
+
     max_k = max((s["kmh"] for s in speeds), default=None)
     legal = min((s["kmh"] for s in speeds if s["role"] == "legalCap"), default=None)
     sources = ["serverDecompile"] if decrypt_ok or decompiled_text else []
-    has_det = bool(speeds)
-    summary = "Server-Decrypt + deterministischer Speed-Scan."
+    has_det = bool(speeds) or bool(combos) or bool(transitions)
+    summary = "Server-Decrypt + deterministischer Speed-/Combo-Scan."
     if decompiled_text:
-        summary = "Server-Decrypt + Ghidra-Decompile + Speed-Scan."
+        summary = "Server-Decrypt + Ghidra-Decompile + Speed-/Combo-Scan."
+    notes = list(notes)
+    if combos:
+        notes.append(f"comboHints={len(combos)}")
+    notes.extend(xref)
     return {
         "schemaVersion": 1,
         "producedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -106,14 +118,15 @@ def deep_result(
         "speedLimits": speeds,
         "maxSpeedKmhInCode": max_k,
         "legalCapKmhInCode": legal,
-        "modeTransitions": [],
-        "inputHints": [],
-        "comboSummaries": [],
+        "modeTransitions": transitions,
+        "inputHints": inputs,
+        "comboSummaries": combos,
         "notes": notes,
         "caveats": [
             "Code-/Katalogbefunde beweisen nicht, dass dieses Image aktuell im Controller steckt.",
             "ENC ohne Entschlüsselung: nur Meta, Hash und bekannte Signaturen.",
-            "KI-Auswertung (falls) darf nur dieses Schema füllen.",
+            "Tastenkombinationen nur bei Live-Vergleich oder Prefix Belegt:/Validiert: — keine Heuristik-Rätselraten.",
+            "KI-Auswertung (falls) darf nur dieses Schema füllen und keine Kombis erfinden.",
         ],
         "quality": {
             "hasDeterministicBasis": has_det,
@@ -121,7 +134,7 @@ def deep_result(
             "summary": (
                 summary
                 if has_det
-                else "Decrypt/Decompile ohne Speed-Treffer — Katalog in der App prüfen."
+                else "Decrypt/Decompile ohne Speed-/Combo-Treffer — Katalog in der App prüfen."
             ),
         },
     }

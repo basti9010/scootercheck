@@ -18,12 +18,98 @@ enum FirmwareForensicPDF {
             y = line(ctx, "MD5 (Archiv): \(report.archiveDigest.md5)", y: y)
             y = gap(y)
 
-            y = heading(ctx, "Paketmetadaten", y: y)
+            // --- Layperson first ---
+            y = heading(ctx, "Kurzfassung (verständlich)", y: y)
+            y = line(ctx, report.verdict.label, y: y, bold: true)
+            y = line(ctx, report.verdictRationale, y: y, size: 9)
+            y = line(ctx, report.summary, y: y, size: 9)
+            y = gap(y)
+
+            if let deep = report.deepAnalysis {
+                let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
+                y = heading(ctx, "Server-Entschlüsselung / Deep Analysis", y: y)
+                y = line(ctx, brief.headline, y: y, bold: true)
+                for b in brief.bullets {
+                    y = ensure(ctx, y: y, need: 28)
+                    y = line(ctx, "• \(b)", y: y, size: 9)
+                }
+                if let legal = deep.legalCapKmhInCode, let maxK = deep.maxSpeedKmhInCode {
+                    y = line(ctx, "Legal-nah ~\(Int(legal)) km/h → offen bis ~\(Int(maxK)) km/h", y: y, size: 10, bold: true)
+                }
+                if !brief.actionableCombos.isEmpty {
+                    y = gap(y)
+                    y = line(ctx, "Validierte Tastenfolge:", y: y, size: 10, bold: true)
+                    for c in brief.actionableCombos {
+                        y = ensure(ctx, y: y, need: 24)
+                        y = line(ctx, "• \(c)", y: y, size: 9)
+                    }
+                }
+                if !deep.speedLimits.isEmpty {
+                    y = gap(y)
+                    y = line(ctx, "Speed-Stufen im Klartext:", y: y, size: 10, bold: true)
+                    for s in deep.speedLimits.prefix(16) {
+                        y = ensure(ctx, y: y, need: 20)
+                        y = line(ctx, "• \(Int(s.kmh)) km/h — \(s.role.label)", y: y, size: 9)
+                    }
+                }
+                if let stock = deep.stockDiff {
+                    y = gap(y)
+                    y = line(ctx, "Stock-Diff: \(stock.outcome.label)", y: y, size: 10, bold: true)
+                    y = line(ctx, stock.note, y: y, size: 9)
+                }
+                if !deep.yaraMatches.isEmpty {
+                    y = gap(y)
+                    y = line(ctx, "YARA-Hinweise:", y: y, size: 10, bold: true)
+                    for m in deep.yaraMatches.prefix(12) {
+                        y = ensure(ctx, y: y, need: 22)
+                        y = line(ctx, "• \(m.rule): \(m.description)", y: y, size: 8)
+                    }
+                }
+                y = gap(y)
+            }
+
+            if let art = report.serverArtifacts {
+                y = heading(ctx, "Entschlüsselte Server-Daten", y: y)
+                if let job = art.jobId, !job.isEmpty {
+                    y = line(ctx, "Job-ID: \(job)", y: y, size: 9)
+                }
+                if art.plaintextSaved == true {
+                    y = line(ctx, "Klartext: ja (vom Server entschlüsselt)", y: y, size: 9)
+                    if let n = art.plaintextByteCount {
+                        y = line(ctx, "Klartext-Größe: \(n) Byte", y: y, size: 9)
+                    }
+                    if let sha = art.plaintextSHA256, !sha.isEmpty {
+                        y = line(ctx, "SHA-256 (Klartext): \(sha)", y: y, size: 8)
+                    }
+                    y = line(
+                        ctx,
+                        "Der entschlüsselte Klartext liegt diesem Export als .dec.bin bei (sofern mitgeteilt).",
+                        y: y,
+                        size: 8
+                    )
+                } else {
+                    y = line(ctx, "Kein Klartext vom Server gespeichert.", y: y, size: 9)
+                }
+                if art.decompileSaved == true {
+                    y = line(ctx, "Ghidra-Decompile: vorhanden", y: y, size: 9)
+                }
+                if let excerpt = art.decompileExcerpt, !excerpt.isEmpty {
+                    y = gap(y)
+                    y = line(ctx, "Decompile-Auszug:", y: y, size: 10, bold: true)
+                    let trimmed = String(excerpt.prefix(3500))
+                    for chunk in trimmed.split(separator: "\n", omittingEmptySubsequences: false).prefix(80) {
+                        y = ensure(ctx, y: y, need: 14)
+                        y = line(ctx, String(chunk), y: y, size: 7)
+                    }
+                }
+                y = gap(y)
+            }
+
+            y = heading(ctx, "Paketmetadaten (Offline)", y: y)
             y = line(ctx, "Format: \(formatKind(report.containerKind))", y: y)
             y = line(ctx, "Name: \(report.meta.displayName ?? "—")", y: y)
             y = line(ctx, "Modelle: \(report.meta.models.joined(separator: ", ").nilIfEmpty ?? "—")", y: y)
             y = line(ctx, "Steuergerät: \(report.meta.type ?? "—")", y: y)
-            y = line(ctx, "Boards: \(report.meta.compatible.joined(separator: ", ").nilIfEmpty ?? "—")", y: y)
             y = gap(y)
 
             y = heading(ctx, "Archivinhalt", y: y)
@@ -34,14 +120,14 @@ enum FirmwareForensicPDF {
             }
             y = gap(y)
 
-            y = heading(ctx, "Verschlüsselung", y: y)
+            y = heading(ctx, "Verschlüsselung (Offline-Einschätzung)", y: y)
             y = line(ctx, report.crypto.status.label, y: y)
             y = line(ctx, "Format: \(report.crypto.detectedFormat)", y: y)
-            y = line(ctx, "Entschlüsselung: \(report.crypto.decryptionAvailable ? "verfügbar" : "nicht verfügbar")", y: y)
+            y = line(ctx, "Entschlüsselung: \(report.crypto.decryptionAvailable ? "lokal verfügbar" : "nur per Server / nicht lokal")", y: y)
             y = line(ctx, report.crypto.decryptionNote, y: y, size: 9)
             y = gap(y)
 
-            y = heading(ctx, "Technische Befunde", y: y)
+            y = heading(ctx, "Technische Befunde (Offline)", y: y)
             for item in report.evidence {
                 y = ensure(ctx, y: y, need: 52)
                 y = line(ctx, "[\(item.verifiability.label)] \(item.title)", y: y)
@@ -51,16 +137,11 @@ enum FirmwareForensicPDF {
             y = gap(y)
 
             if let cmp = report.comparison {
-                y = heading(ctx, "Referenzvergleich", y: y)
+                y = heading(ctx, "Referenzvergleich (lokal)", y: y)
                 y = line(ctx, cmp.outcome.label, y: y)
                 y = line(ctx, cmp.note, y: y, size: 9)
                 y = gap(y)
             }
-
-            y = heading(ctx, "Forensische Bewertung", y: y)
-            y = line(ctx, report.verdict.label, y: y)
-            y = line(ctx, report.verdictRationale, y: y, size: 9)
-            y = gap(y)
 
             y = heading(ctx, "Grenzen der Untersuchung", y: y)
             for lim in report.limits {
@@ -68,7 +149,12 @@ enum FirmwareForensicPDF {
                 y = line(ctx, "• \(lim)", y: y, size: 9)
             }
             y = gap(y)
-            y = line(ctx, "ScooterCheck Firmware-Forensik — nur lesend. Keine Aussage über Rechtmäßigkeit ohne weiteren Kontext.", y: y, size: 8)
+            y = line(
+                ctx,
+                "ScooterCheck Firmware-Forensik — nur lesend. Codebefunde beweisen nicht die Installation am Fahrzeug.",
+                y: y,
+                size: 8
+            )
             _ = y
         }
     }
@@ -122,7 +208,12 @@ enum FirmwareForensicPDF {
         ]
         let rect = CGRect(x: margin, y: y, width: contentWidth, height: 200)
         let ns = text as NSString
-        let bounds = ns.boundingRect(with: CGSize(width: contentWidth, height: 200), options: [.usesLineFragmentOrigin], attributes: attrs, context: nil)
+        let bounds = ns.boundingRect(
+            with: CGSize(width: contentWidth, height: 200),
+            options: [.usesLineFragmentOrigin],
+            attributes: attrs,
+            context: nil
+        )
         ns.draw(in: rect, withAttributes: attrs)
         return y + ceil(bounds.height) + 3
     }

@@ -128,11 +128,18 @@ enum DualSourcePanicCorrelator {
         let modeHints = forensic.evidence.filter {
             $0.category == .modeHint || $0.category == .limitHint || $0.category == .inputHint
         }
-        let comboHints = modeHints.map(\.title) + forensic.evidence
+        var comboHints: [String] = []
+        if let deep = forensic.deepAnalysis {
+            comboHints.append(contentsOf: deep.comboSummaries)
+            comboHints.append(contentsOf: deep.modeTransitions.map { "\($0.title): \($0.trigger)" })
+        }
+        comboHints.append(contentsOf: modeHints.map(\.title))
+        comboHints.append(contentsOf: forensic.evidence
             .filter { $0.category == .filenameHint }
-            .map { "Dateiname: \($0.detail)" }
+            .map { "Dateiname: \($0.detail)" })
 
         let suspicious = redYellow || filenamePanic || encrypted || !modeHints.isEmpty
+            || !(forensic.deepAnalysis?.comboSummaries.isEmpty ?? true)
 
         var parts: [String] = [
             "Datei „\(forensic.originalFileName)“ → Forensik \(forensic.verdict.shortLabel)"
@@ -142,11 +149,18 @@ enum DualSourcePanicCorrelator {
         if !forensic.meta.models.isEmpty {
             parts.append("Metadaten-Modelle: \(forensic.meta.models.joined(separator: ", "))")
         }
+        if let n = forensic.deepAnalysis?.comboSummaries.count, n > 0 {
+            parts.append("\(n) Combo-Hinweis(e) aus Datei/Server")
+        }
+
+        // Unique, stable order
+        var seen = Set<String>()
+        let uniqueHints = comboHints.filter { seen.insert($0).inserted }
 
         return PhoneSignals(
             suspicious: suspicious,
             summary: parts.joined(separator: ". ") + ".",
-            comboHints: Array(comboHints.prefix(5)),
+            comboHints: Array(uniqueHints.prefix(8)),
             filenamePanicHint: filenamePanic,
             encryptedPayload: encrypted,
             verdict: forensic.verdict

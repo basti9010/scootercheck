@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 
 def ghidra_configured() -> bool:
@@ -18,11 +19,24 @@ def _headless_bin() -> str | None:
         return direct
     home = os.environ.get("GHIDRA_HOME", "").strip()
     if home:
-        cand = Path(home) / "support" / "analyzeHeadless"
+        home_path = Path(home)
+        cand = home_path / "support" / "analyzeHeadless"
         if cand.exists():
             return str(cand)
+        # Allow GHIDRA_HOME=/opt/ghidra when install lives in ghidra_*_PUBLIC/
+        if home_path.is_dir():
+            for child in sorted(home_path.glob("ghidra_*")):
+                nested = child / "support" / "analyzeHeadless"
+                if nested.exists():
+                    return str(nested)
     which = shutil.which("analyzeHeadless")
-    return which
+    if which:
+        return which
+    # Common Hetzner layout
+    for nested in sorted(Path("/opt/ghidra").glob("ghidra_*/support/analyzeHeadless")):
+        if nested.exists():
+            return str(nested)
+    return None
 
 
 def run_ghidra_decompile(
@@ -32,6 +46,8 @@ def run_ghidra_decompile(
     processor: str = "ARM:LE:32:Cortex",
     base_addr: str = "0x08000000",
     timeout_sec: int = 600,
+    speed_json: Path | None = None,
+    limit_c: Path | None = None,
 ) -> tuple[bool, str]:
     headless = _headless_bin()
     if not headless:
@@ -42,6 +58,13 @@ def run_ghidra_decompile(
         return False, f"missing ExportAllDecompiled.java in {script_dir}"
 
     output_c.parent.mkdir(parents=True, exist_ok=True)
+    if speed_json is None:
+        speed_json = output_c.with_suffix(".speeds.json")
+    speed_json.parent.mkdir(parents=True, exist_ok=True)
+    if limit_c is None:
+        limit_c = output_c.with_suffix(".limits.c")
+    limit_c.parent.mkdir(parents=True, exist_ok=True)
+
     with tempfile.TemporaryDirectory(prefix="ghidra-proj-") as proj:
         proj_dir = Path(proj)
         # analyzeHeadless <project_location> <project_name> [options]
@@ -64,6 +87,12 @@ def run_ghidra_decompile(
             "-postScript",
             "ExportAllDecompiled.java",
             str(output_c),
+            "-postScript",
+            "ExportSpeedXrefs.java",
+            str(speed_json),
+            "-postScript",
+            "ExportLimitFunctions.java",
+            str(limit_c),
             "-deleteProject",
         ]
         try:
@@ -84,4 +113,60 @@ def run_ghidra_decompile(
             return False, f"ghidra exit {proc.returncode}: {log_tail}"
         if not output_c.exists() or output_c.stat().st_size == 0:
             return False, f"ghidra produced empty decompile: {log_tail}"
-        return True, f"decompiled {output_c.stat().st_size} bytes"
+        notes = [f"decompiled {output_c.stat().st_size} bytes"]
+        if speed_json.exists() and speed_json.stat().st_size > 0:
+            notes.append(f"speedXrefs {speed_json.stat().st_size}B")
+        if limit_c.exists() and limit_c.stat().st_size > 0:
+            notes.append(f"limits.c {limit_c.stat().st_size}B")
+        return True, ", ".join(notes)
+
+
+def load_speed_xrefs(speed_json: Path) -> dict[str, Any]:
+    """Parse ExportSpeedXrefs JSON into deep-analysis speed findings."""
+    import json
+
+    from speed_extract import KNOWN_MAP
+
+    if not speed_json.is_file():
+        return {"ok": False, "speeds": [], "notes": ["ghidraXrefs=missing"]}
+    try:
+        data = json.loads(speed_json.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"ok": False, "speeds": [], "notes": [f"ghidraXrefs=badjson:{e}"]}
+
+    packed = data.get("packed") or {}
+    speeds: list[dict[str, Any]] = []
+    for key, hits in packed.items():
+        try:
+            val = int(str(key).replace("0x", "").replace("0X", ""), 16)
+        except ValueError:
+            continue
+        if val not in KNOWN_MAP:
+            continue
+        kmh, role = KNOWN_MAP[val]
+        hit0 = hits[0] if isinstance(hits, list) and hits else {}
+        addr = hit0.get("addr") if isinstance(hit0, dict) else None
+        fn = hit0.get("fn") if isinstance(hit0, dict) else None
+        evidence = f"Ghidra xref 0x{val:04X}"
+        if fn:
+            evidence += f" in {fn}"
+        if addr:
+            evidence += f" @ {addr}"
+        if isinstance(hits, list) and len(hits) > 1:
+            evidence += f" (+{len(hits) - 1} more)"
+        speeds.append(
+            {
+                "id": f"ghidra-xref-{val:04x}",
+                "kmh": kmh,
+                "packedU16": val,
+                "role": role,
+                "evidence": evidence,
+                "source": "serverDecompile",
+                "confidence": "high",
+            }
+        )
+    return {
+        "ok": True,
+        "speeds": sorted(speeds, key=lambda x: x["kmh"]),
+        "notes": [f"ghidraXrefs=ok packed={len(speeds)} hits={data.get('hits')}"],
+    }

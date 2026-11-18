@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Wrapper called by the ScooterCheck worker after an app upload:
-#   decrypt-firm.sh <input.enc> <output.bin>
-#
-# Assumes ninebottea (or equivalent) is ALREADY installed on this host.
-# Put keys only in /etc/scootercheck/decrypt.env (chmod 600) — never in git.
+# Wrapper: decrypt-firm.sh <input.enc> <output.bin>
+# Tries tea then xtea unless VARIANT is fixed in decrypt.env.
 set -euo pipefail
 
 IN="${1:?usage: decrypt-firm.sh input.enc output.bin}"
@@ -14,7 +11,6 @@ if [[ ! -f "$IN" ]]; then
   exit 2
 fi
 
-# Optional vault/env with KEY / NINEBOTTEA_BIN — create on the Hetzner host.
 if [[ -f /etc/scootercheck/decrypt.env ]]; then
   # shellcheck disable=SC1091
   source /etc/scootercheck/decrypt.env
@@ -28,14 +24,38 @@ fi
 
 mkdir -p "$(dirname "$OUT")"
 
-# --- Adjust this ONE line to match YOUR installed CLI ---
-# Common pattern: binary + subcommand + in + out (change if your tool differs).
-# Keys must already be available to the tool via decrypt.env / its own config.
-"$BIN" decrypt "$IN" "$OUT"
+run_one() {
+  local variant="$1"
+  local tmp="${OUT}.trying"
+  local args=(decrypt "$IN" "$tmp")
+  if [[ -n "${KEY:-}" ]]; then
+    args+=(--key "$KEY")
+  fi
+  args+=(--variant "$variant")
+  if "$BIN" "${args[@]}" 2>"${OUT}.err"; then
+    if [[ -s "$tmp" ]]; then
+      mv -f "$tmp" "$OUT"
+      echo "decrypted $(wc -c < "$OUT") bytes via ${variant} -> $OUT"
+      rm -f "${OUT}.err"
+      return 0
+    fi
+  fi
+  rm -f "$tmp"
+  return 1
+}
 
-if [[ ! -s "$OUT" ]]; then
-  echo "decrypt produced empty output: $OUT" >&2
+if [[ -n "${VARIANT:-}" ]]; then
+  if run_one "$VARIANT"; then
+    exit 0
+  fi
+  echo "decrypt failed (VARIANT=$VARIANT): $(cat "${OUT}.err" 2>/dev/null || true)" >&2
   exit 4
 fi
 
-echo "decrypted $(wc -c < "$OUT") bytes -> $OUT"
+# Auto: classic TEA first, then XTEA (newer firmware).
+if run_one tea || run_one xtea; then
+  exit 0
+fi
+
+echo "decrypt failed for tea and xtea: $(cat "${OUT}.err" 2>/dev/null || true)" >&2
+exit 4
