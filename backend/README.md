@@ -15,10 +15,13 @@ Leichtes User-Management für die iOS-App:
 | POST | `/auth/register` | — |
 | POST | `/auth/login` | — |
 | GET | `/auth/me` | Bearer |
+| POST | `/auth/change-password` `{ "current_password", "new_password" }` | Bearer |
 | GET | `/admin/users?status_filter=pending` | Admin |
 | POST | `/admin/users/{id}/approve` | Admin |
 | POST | `/admin/users/{id}/reject` | Admin |
 | POST | `/admin/users/{id}/disable` | Admin |
+| POST | `/admin/users/{id}/reset-password` optional `{ "new_password" }` | Admin |
+| POST | `/admin/users/{id}/make-admin` | Admin |
 | GET | `/admin/domains` | Admin |
 | POST | `/admin/domains` `{ "domain": "polizei.bayern.de" }` | Admin |
 | DELETE | `/admin/domains/{domain}` | Admin |

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+import string
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any, Optional
@@ -11,7 +13,10 @@ from jwt import InvalidTokenError
 
 from .db import get_db, init_db
 from .schemas import (
+    AdminResetPasswordOut,
+    AdminResetPasswordRequest,
     AuthResponse,
+    ChangePasswordRequest,
     DomainIn,
     DomainOut,
     DomainsListOut,
@@ -236,6 +241,31 @@ def me(user: Annotated[UserOut, Depends(current_user)]) -> UserOut:
     return user
 
 
+@app.post("/auth/change-password", response_model=MessageOut)
+def change_password(
+    body: ChangePasswordRequest,
+    user: Annotated[UserOut, Depends(current_user)],
+) -> MessageOut:
+    row = fetch_user_by_email(user.email)
+    if row is None or not verify_password(body.current_password, row["password_hash"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Aktuelles Passwort falsch")
+    if body.current_password == body.new_password:
+        raise HTTPException(status_code=400, detail="Neues Passwort muss sich unterscheiden")
+    now = utc_now()
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+            (hash_password(body.new_password), now, user.id),
+        )
+    return MessageOut(message="Passwort geändert")
+
+
+def _temp_password(n: int = 16) -> str:
+    alphabet = string.ascii_letters + string.digits
+    alphabet = alphabet.replace("O", "").replace("0", "").replace("l", "").replace("I", "")
+    return "".join(secrets.choice(alphabet) for _ in range(n))
+
+
 @app.get("/admin/users", response_model=UsersListOut)
 def list_users(
     _: Annotated[UserOut, Depends(require_admin)],
@@ -315,6 +345,58 @@ def disable_user(
         conn.execute(
             "UPDATE users SET status = 'disabled', updated_at = ? WHERE id = ?",
             (now, user_id),
+        )
+    user = fetch_user_by_id(user_id)
+    assert user is not None
+    return user
+
+
+@app.post("/admin/users/{user_id}/reset-password", response_model=AdminResetPasswordOut)
+def reset_password(
+    user_id: str,
+    admin: Annotated[UserOut, Depends(require_admin)],
+    body: AdminResetPasswordRequest = AdminResetPasswordRequest(),
+) -> AdminResetPasswordOut:
+    target = fetch_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    requested = (body.new_password or None)
+    temp = requested or _temp_password()
+    now = utc_now()
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+            (hash_password(temp), now, user_id),
+        )
+    user = fetch_user_by_id(user_id)
+    assert user is not None
+    return AdminResetPasswordOut(
+        message=f"Passwort für {user.email} zurückgesetzt (durch {admin.email})",
+        temporary_password=None if requested else temp,
+        user=user,
+    )
+
+
+@app.post("/admin/users/{user_id}/make-admin", response_model=UserOut)
+def make_admin(
+    user_id: str,
+    admin: Annotated[UserOut, Depends(require_admin)],
+) -> UserOut:
+    target = fetch_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    now = utc_now()
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET role = 'admin', status = 'active',
+                approved_at = COALESCE(approved_at, ?),
+                approved_by = COALESCE(approved_by, ?),
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (now, admin.id, now, user_id),
         )
     user = fetch_user_by_id(user_id)
     assert user is not None

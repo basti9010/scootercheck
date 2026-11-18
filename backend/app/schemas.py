@@ -19,6 +19,16 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class AdminResetPasswordRequest(BaseModel):
+    """If new_password is omitted, a temporary password is generated."""
+    new_password: Optional[str] = Field(default=None, min_length=8, max_length=128)
+
+
 class UserOut(BaseModel):
     id: str
     email: EmailStr
@@ -28,6 +38,12 @@ class UserOut(BaseModel):
     created_at: str
     updated_at: str
     approved_at: Optional[str] = None
+
+
+class AdminResetPasswordOut(BaseModel):
+    message: str
+    temporary_password: Optional[str] = None
+    user: UserOut
 
 
 class AuthResponse(BaseModel):

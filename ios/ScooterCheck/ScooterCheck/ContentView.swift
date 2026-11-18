@@ -24,6 +24,7 @@ struct ContentView: View {
     @ObservedObject private var appSettings = AppSettings.shared
     @EnvironmentObject private var auth: AuthSessionStore
     @State private var showAdmin = false
+    @State private var showChangePassword = false
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
@@ -286,6 +287,11 @@ struct ContentView: View {
             .sheet(isPresented: $showAdmin) {
                 NavigationStack {
                     AdminHubView(auth: auth)
+                }
+            }
+            .sheet(isPresented: $showChangePassword) {
+                NavigationStack {
+                    ChangePasswordView(auth: auth)
                 }
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
@@ -2456,6 +2462,14 @@ struct ContentView: View {
                     selected: false
                 ) {
                     openSettingsFromMenu()
+                }
+                sideNavRow(
+                    title: "Passwort ändern",
+                    systemImage: "key.fill",
+                    selected: false
+                ) {
+                    setMenuOpen(false)
+                    showChangePassword = true
                 }
                 if auth.isAdmin {
                     sideNavRow(

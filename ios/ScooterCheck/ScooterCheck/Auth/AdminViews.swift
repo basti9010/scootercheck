@@ -107,11 +107,18 @@ struct AdminUsersView: View {
     @State private var filter: AuthUserStatus? = .pending
     @State private var busy = false
     @State private var errorText: String?
+    @State private var resetAlert: String?
 
     var body: some View {
         List {
             if let errorText {
                 Text(errorText).foregroundStyle(Theme.danger)
+            }
+            if let resetAlert {
+                Text(resetAlert)
+                    .font(.caption)
+                    .foregroundStyle(Theme.accent)
+                    .textSelection(.enabled)
             }
 
             Picker("Filter", selection: $filter) {
@@ -149,6 +156,18 @@ struct AdminUsersView: View {
                             Button("Deaktivieren", role: .destructive) {
                                 Task { await disable(user) }
                             }
+                        }
+                    }
+                    HStack {
+                        Button("Passwort reset") {
+                            Task { await resetPassword(user) }
+                        }
+                        .buttonStyle(.bordered)
+                        if user.role != .admin {
+                            Button("Admin machen") {
+                                Task { await promoteAdmin(user) }
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
                 }
@@ -200,6 +219,32 @@ struct AdminUsersView: View {
         guard let token = auth.token else { return }
         do {
             _ = try await AuthAPIClient.disable(userId: user.id, token: token)
+            await reload()
+        } catch {
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func resetPassword(_ user: AuthUser) async {
+        guard let token = auth.token else { return }
+        do {
+            let result = try await AuthAPIClient.resetPassword(userId: user.id, token: token)
+            if let temp = result.temporaryPassword {
+                resetAlert = "Temp-Passwort für \(user.email):\n\(temp)\n(nur einmal anzeigen — dem Nutzer mitteilen)"
+            } else {
+                resetAlert = result.message
+            }
+            errorText = nil
+        } catch {
+            resetAlert = nil
+            errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+
+    private func promoteAdmin(_ user: AuthUser) async {
+        guard let token = auth.token else { return }
+        do {
+            _ = try await AuthAPIClient.makeAdmin(userId: user.id, token: token)
             await reload()
         } catch {
             errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription

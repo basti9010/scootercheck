@@ -28,6 +28,36 @@ enum AuthAPIClient {
         try await request(path: "/auth/me", method: "GET", token: token)
     }
 
+    static func changePassword(current: String, new: String, token: String) async throws {
+        struct Msg: Decodable { let message: String }
+        let _: Msg = try await request(
+            path: "/auth/change-password",
+            method: "POST",
+            body: [
+                "current_password": current,
+                "new_password": new,
+            ],
+            token: token
+        )
+    }
+
+    static func resetPassword(userId: String, token: String, newPassword: String? = nil) async throws -> AuthPasswordResetResult {
+        var body: [String: Any] = [:]
+        if let newPassword {
+            body["new_password"] = newPassword
+        }
+        return try await request(
+            path: "/admin/users/\(userId)/reset-password",
+            method: "POST",
+            body: body.isEmpty ? [:] : body,
+            token: token
+        )
+    }
+
+    static func makeAdmin(userId: String, token: String) async throws -> AuthUser {
+        try await request(path: "/admin/users/\(userId)/make-admin", method: "POST", token: token)
+    }
+
     static func listUsers(token: String, status: AuthUserStatus? = nil) async throws -> [AuthUser] {
         var path = "/admin/users"
         if let status {

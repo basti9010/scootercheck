@@ -70,6 +70,14 @@ final class AuthSessionStore: ObservableObject {
         }
     }
 
+    func changePassword(current: String, new: String) async throws {
+        guard let token else {
+            throw AuthAPIError(message: "Nicht angemeldet")
+        }
+        try await AuthAPIClient.changePassword(current: current, new: new, token: token)
+        lastError = nil
+    }
+
     func logout() {
         clearSession()
     }

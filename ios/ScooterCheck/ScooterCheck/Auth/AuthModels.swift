@@ -67,6 +67,17 @@ struct AuthDomainsList: Codable, Sendable {
     let domains: [AuthDomain]
 }
 
+struct AuthPasswordResetResult: Codable, Sendable {
+    let message: String
+    let temporaryPassword: String?
+    let user: AuthUser
+
+    enum CodingKeys: String, CodingKey {
+        case message, user
+        case temporaryPassword = "temporary_password"
+    }
+}
+
 struct AuthAPIError: LocalizedError {
     let message: String
     var errorDescription: String? { message }
