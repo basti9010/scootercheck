@@ -69,17 +69,22 @@ struct FirmwareZipInspectorView: View {
 
                     if let report {
                         verdictBanner(report)
+                        // Klartext-Kurzfassung sofort nach Ampel — vor Paket/ENC-Lärm.
+                        deepAnalysisSection(report)
                         if combinesWithReadout {
                             readoutMatchSection(report)
                             dualSourceSection(report)
                         }
-                        deepAnalysisSection(report)
-                        packageSection(report)
-                        contentSection(report)
-                        cryptoSection(report)
-                        technicalSection(report)
-                        comparisonSection(report)
                         indicatorsSection(report)
+                        DisclosureGroup("Datei / Verschlüsselung / Technik") {
+                            packageSection(report)
+                            contentSection(report)
+                            cryptoSection(report)
+                            technicalSection(report)
+                            comparisonSection(report)
+                        }
+                        .foregroundStyle(Theme.accent)
+                        .padding(.vertical, 4)
                         if combinesWithReadout {
                             vehicleSection(report)
                         }
@@ -466,84 +471,122 @@ struct FirmwareZipInspectorView: View {
     @ViewBuilder
     private func deepAnalysisSection(_ r: FirmwareForensicReport) -> some View {
         if let deep = r.deepAnalysis {
-            sectionCard("Deep Analysis (Limits / Combos)") {
-                Text(deep.quality.summary)
-                    .font(Theme.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                metaRow("Quellen", deep.sources.map(\.label).joined(separator: ", "))
-                if let maxK = deep.maxSpeedKmhInCode {
-                    metaRow("Max im Code/Katalog", "\(Int(maxK)) km/h")
+            let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
+            sectionCard("Was bedeutet das?") {
+                Text(brief.headline)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(brief.bullets, id: \.self) { b in
+                    Text("• \(b)")
+                        .font(Theme.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                if let legal = deep.legalCapKmhInCode {
-                    metaRow("Legal-Kappe", "\(Int(legal)) km/h")
-                }
-                if !deep.speedLimits.isEmpty {
-                    Text("Speed-Stufen")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.speedLimits) { s in
-                        Text("• \(Int(s.kmh)) km/h — \(s.role.label) (\(s.confidence.label))")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                if let legal = deep.legalCapKmhInCode, let maxK = deep.maxSpeedKmhInCode {
+                    HStack(spacing: 12) {
+                        Text("Legal ~\(Int(legal))")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.accent)
+                        Text("→")
+                            .foregroundStyle(Theme.textMuted)
+                        Text("Offen ~\(Int(maxK)) km/h")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.warn)
                     }
+                    .padding(.top, 4)
                 }
-                if !deep.comboSummaries.isEmpty {
-                    Text("Kombinationen")
+                if !brief.actionableCombos.isEmpty {
+                    Text("Vermutete Tastenfolge")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.comboSummaries, id: \.self) { c in
+                        .padding(.top, 8)
+                    ForEach(brief.actionableCombos, id: \.self) { c in
                         Text("• \(c)")
                             .font(Theme.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                            .foregroundStyle(Theme.accent)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    Text("Nicht bestätigt — nur Hinweis aus Code/Heuristik. Am Fahrzeug gegenprüfen.")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
                 } else {
-                    Text("Kombinationen: noch keine — Server-Analyse oder bekannte CFW-Signatur nötig.")
+                    Text("Keine klare Tastenfolge im Klartext — oft nur Modus-Register, keine lesbare Kombi.")
                         .font(.caption2)
                         .foregroundStyle(Theme.textMuted)
                         .padding(.top, 4)
                 }
-                if !deep.inputHints.isEmpty {
+                if !brief.humanModeTransitions.isEmpty {
+                    Text("Moduswechsel (verständlich)")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .padding(.top, 8)
+                    ForEach(brief.humanModeTransitions) { t in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t.title)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text("\(t.trigger) → \(t.effect)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                if !brief.humanInputHints.isEmpty {
                     Text("Eingaben")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.inputHints) { hint in
+                        .padding(.top, 6)
+                    ForEach(brief.humanInputHints) { hint in
                         Text("• \(hint.kind.label): \(hint.detail)")
                             .font(Theme.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
                 }
-                if !deep.modeTransitions.isEmpty {
-                    Text("Moduswechsel")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.modeTransitions) { t in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(t.title)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Theme.textPrimary)
-                            Text("Auslöser: \(t.trigger)")
+
+                DisclosureGroup("Speed-Stufen (\(deep.speedLimits.count))") {
+                    ForEach(deep.speedLimits) { s in
+                        Text("• \(Int(s.kmh)) km/h — \(s.role.label)")
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 6)
+
+                if !brief.technicalCombos.isEmpty || !brief.technicalModeTransitions.isEmpty || !brief.technicalInputHints.isEmpty {
+                    DisclosureGroup("Technik-Details (Hex / Pfade / Decompile)") {
+                        ForEach(brief.technicalCombos, id: \.self) { c in
+                            Text("• \(c)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
-                            Text("Wirkung: \(t.effect)")
+                        }
+                        ForEach(brief.technicalModeTransitions) { t in
+                            Text("• \(t.title): \(t.trigger)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                        ForEach(brief.technicalInputHints) { h in
+                            Text("• \(h.kind.label): \(h.detail)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
                         }
                     }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 4)
                 }
+
                 if !deep.yaraMatches.isEmpty {
-                    Text("YARA")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    ForEach(deep.yaraMatches) { m in
-                        Text("• \(m.rule): \(m.description) (\(m.confidence))")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textSecondary)
+                    DisclosureGroup("YARA (\(deep.yaraMatches.count))") {
+                        ForEach(deep.yaraMatches) { m in
+                            Text("• \(m.rule): \(m.description)")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
                     }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 2)
                 }
                 if !deep.r2StringsSample.isEmpty {
                     DisclosureGroup("radare2 Strings (\(deep.r2StringsSample.count))") {
@@ -554,66 +597,37 @@ struct FirmwareZipInspectorView: View {
                         }
                     }
                     .foregroundStyle(Theme.accent)
-                    .padding(.top, 4)
+                    .padding(.top, 2)
                 }
-                if let stock = deep.stockDiff {
-                    Text("Stock-Diff")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .padding(.top, 4)
-                    Text(stock.outcome.label)
-                        .font(Theme.caption)
-                        .foregroundStyle(stockDiffColor(stock.outcome))
-                    Text(stock.note)
+
+                DisclosureGroup("Quellen & Pipeline") {
+                    Text(deep.sources.map(\.label).joined(separator: ", "))
                         .font(.caption2)
                         .foregroundStyle(Theme.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let d = stock.differingBytes, stock.outcome == .different {
-                        metaRow("Abweichende Bytes", "\(d)")
-                        if let off = stock.firstDiffOffset {
-                            metaRow("Erste Diff", String(format: "0x%X", off))
-                        }
-                        if let pct = stock.percentDifferent {
-                            metaRow("Anteil", String(format: "%.2f %%", pct))
-                        }
-                    }
-                    if let label = stock.referenceLabel {
-                        metaRow("Referenz", label)
-                    }
-                }
-                if deep.sources.contains(.serverLLM) {
-                    Text("KI: schema-gebunden aktiv (Combos/Modi/Eingaben ergänzt — keine neuen Speed-Werte).")
+                    Text(deep.quality.summary)
                         .font(.caption2)
-                        .foregroundStyle(Theme.accent)
-                        .padding(.top, 4)
-                } else if deep.notes.contains(where: { $0.contains("llm=skipped") || $0.contains("LLM_API_KEY") }) {
-                    Text("KI: Server ohne LLM_API_KEY — nur deterministische/Ghidra-Befunde.")
+                        .foregroundStyle(Theme.textMuted)
+                    Text("Offline sieht nur die ENC — der Server entschlüsselt und liefert Klartext-Befunde. GRAU oben galt vor der Server-Analyse.")
                         .font(.caption2)
-                        .foregroundStyle(Theme.warn)
-                        .padding(.top, 4)
+                        .foregroundStyle(Theme.textMuted)
                 }
-                Text("Server: ninebottea → Klartext, Ghidra → .c (Decompile, kein Neu-Kompilieren), optional KI. Ergebnis wird mit lokaler Deep Analysis und dem Fahrzeugkontext aus der Auslese zusammengeführt (Dual-Source).")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.textMuted)
-                    .padding(.top, 4)
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 2)
 
                 if FirmwareServerAnalysisClient.fromAppSettings().isConfigured {
                     Button {
                         Task { await uploadToAnalysisServer() }
                     } label: {
                         Label(
-                            isServerBusy ? "Server analysiert…" : "Auf Server entschlüsseln / analysieren",
-                            systemImage: "lock.open.iphone"
+                            isServerBusy ? "Server analysiert…" : "Analyse erneut auf Server",
+                            systemImage: "arrow.clockwise.iphone"
                         )
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                     .tint(Theme.accent)
                     .disabled(isServerBusy || lastData == nil)
-                } else {
-                    Text("Server nicht erreichbar konfiguriert — URL unter Einstellungen prüfen.")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textMuted)
+                    .padding(.top, 8)
                 }
                 if let serverStatusText {
                     Text(serverStatusText)
@@ -625,7 +639,7 @@ struct FirmwareZipInspectorView: View {
                     Button {
                         Task { await loadDecompilePreview() }
                     } label: {
-                        Label("Ghidra-.c Vorschau laden", systemImage: "doc.text")
+                        Label("Ghidra-.c Vorschau", systemImage: "doc.text")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
@@ -956,20 +970,35 @@ struct FirmwareZipInspectorView: View {
         }
         let parts = [current.deepAnalysis, remoteWithLive].compactMap { $0 }
         current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remoteWithLive
-        // Evidence-Zeile für Combos aktualisieren
-        if let deep = current.deepAnalysis, !deep.comboSummaries.isEmpty {
-            let item = FirmwareEvidenceItem(
-                id: "deep-combo",
-                category: .modeHint,
-                title: "Dokumentierte Modus-Combos",
-                detail: deep.comboSummaries.joined(separator: " · "),
-                evidence: deep.notes.first ?? "Server/Katalog/Live",
-                method: deep.sources.map(\.label).joined(separator: " + "),
-                verifiability: .indicative,
-                confirmed: false
+        // Evidence-Zeile für Combos aktualisieren (nur verständliche Zeilen)
+        if let deep = current.deepAnalysis {
+            let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
+            if !brief.actionableCombos.isEmpty {
+                let item = FirmwareEvidenceItem(
+                    id: "deep-combo",
+                    category: .modeHint,
+                    title: "Vermutete Tastenfolge / Modus-Combos",
+                    detail: brief.actionableCombos.joined(separator: " · "),
+                    evidence: deep.notes.first { !$0.contains("0x") && !$0.contains("puVar") } ?? "Server/Katalog/Live",
+                    method: deep.sources.map(\.label).joined(separator: " + "),
+                    verifiability: .indicative,
+                    confirmed: false
+                )
+                current.evidence.removeAll { $0.id == "deep-combo" }
+                current.evidence.append(item)
+            }
+            let refreshed = FirmwareDeepAnalysisBriefing.refreshedVerdict(
+                current: current.verdict,
+                rationale: current.verdictRationale,
+                deep: deep
             )
-            current.evidence.removeAll { $0.id == "deep-combo" }
-            current.evidence.append(item)
+            current.verdict = refreshed.0
+            current.verdictRationale = refreshed.1
+            if deep.stockDiff?.outcome == .identical {
+                current.summary = "\(current.summary) · Stock identisch (Server)"
+            } else if deep.maxSpeedKmhInCode != nil {
+                current.summary = "\(current.summary) · Server-Klartext OK"
+            }
         }
         report = current
         if combinesWithReadout {

@@ -139,6 +139,83 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(merged?.maxSpeedKmhInCode, 99)
     }
 
+    func testBriefingPrefersHumanCombosAndRefreshesGrayVerdict() {
+        let deep = FirmwareDeepAnalysisResult(
+            schemaVersion: 1,
+            producedAt: Date(),
+            sources: [.serverDecompile, .serverLLM],
+            subjectSHA256: "abc",
+            packageDisplayName: "ZT3",
+            models: ["zt3"],
+            controllerType: "VCU",
+            speedLimits: [
+                FirmwareSpeedLimitFinding(
+                    id: "a", kmh: 20, packedU16: 0x1400, role: .legalCap,
+                    evidence: "x", source: .serverDecompile, confidence: .high
+                ),
+                FirmwareSpeedLimitFinding(
+                    id: "b", kmh: 99, packedU16: 0x6300, role: .openCap,
+                    evidence: "y", source: .serverDecompile, confidence: .high
+                )
+            ],
+            maxSpeedKmhInCode: 99,
+            legalCapKmhInCode: 20,
+            modeTransitions: [
+                FirmwareModeTransitionFinding(
+                    id: "t1", title: "Zwei Limit-Welten im Code", trigger: "Tastenkombi",
+                    effect: "20↔99", evidence: "e", source: .serverDecompile, confidence: .medium
+                ),
+                FirmwareModeTransitionFinding(
+                    id: "t2", title: "Pfad zu 35 km/h (0x2300)", trigger: "Capstone-Rückwärts",
+                    effect: "Immediate", evidence: "e", source: .serverCapstone, confidence: .low
+                )
+            ],
+            inputHints: [
+                FirmwareInputHintFinding(
+                    id: "i1", kind: .throttle, detail: "Gas-Kanal",
+                    evidence: "e", source: .serverDecompile, confidence: .medium
+                ),
+                FirmwareInputHintFinding(
+                    id: "i2", kind: .customButton, detail: "puVar5[3]==0x02",
+                    evidence: "e", source: .serverLLM, confidence: .low
+                )
+            ],
+            comboSummaries: [
+                "Vermutete Soft-/Power-Kombi: Gas + Bremse + Power — Live-Test nötig",
+                "Bitfeld-Manipulation: puVar1[0] mit 0x2000"
+            ],
+            notes: ["llm=schema-enriched"],
+            caveats: [],
+            quality: .init(hasDeterministicBasis: true, llmSchemaValidated: true, summary: "ok"),
+            stockDiff: FirmwareStockDiffResult(
+                outcome: .identical,
+                referenceId: "r1",
+                referenceLabel: "ZT3 VCU 48KMH sim",
+                referenceSHA256: "x",
+                differingBytes: nil,
+                firstDiffOffset: nil,
+                subjectBytes: nil,
+                referenceBytes: nil,
+                percentDifferent: nil,
+                segments: [],
+                note: "SHA-256 identisch"
+            )
+        )
+        let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
+        XCTAssertTrue(brief.headline.localizedCaseInsensitiveContains("Stock"))
+        XCTAssertTrue(brief.actionableCombos.contains { $0.localizedCaseInsensitiveContains("Gas") })
+        XCTAssertTrue(brief.technicalCombos.contains { $0.localizedCaseInsensitiveContains("Bitfeld") })
+        XCTAssertEqual(brief.humanModeTransitions.count, 1)
+        XCTAssertEqual(brief.technicalModeTransitions.count, 1)
+        let refreshed = FirmwareDeepAnalysisBriefing.refreshedVerdict(
+            current: .gray,
+            rationale: "encrypted",
+            deep: deep
+        )
+        XCTAssertEqual(refreshed.0, .green)
+        XCTAssertTrue(refreshed.1.localizedCaseInsensitiveContains("Stock"))
+    }
+
     func testOrchestratorAttachesCatalogDeepAnalysisForMatchingENC() throws {
         let fixtures = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
