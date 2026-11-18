@@ -82,7 +82,9 @@ DECOMPILE_STORE.mkdir(parents=True, exist_ok=True)
 # Hot cache; disk status.json is source of truth across restarts.
 JOBS: dict[str, dict[str, Any]] = {}
 # Ghidra is RAM-heavy — only one headless run at a time. Decrypt may still overlap.
-_GHIDRA_LOCK = threading.Lock()
+# Serialize Ghidra + angr so the 4 GB VPS does not OOM.
+_HEAVY_ANALYSIS_LOCK = threading.Lock()
+_GHIDRA_LOCK = _HEAVY_ANALYSIS_LOCK  # alias for existing call sites
 
 
 class JobRequestMeta(BaseModel):
@@ -581,13 +583,18 @@ def process_job(job_id: str) -> None:
     }
     result = merge_unicorn_into_result(result, uni_info)
 
-    _update(job, progressPercent=87, message="Pfadanalyse (Capstone/angr)…")
-    ang_info = angr_analyze(stored) if angr_configured() else {
-        "ok": False,
-        "notes": ["angr_lite=skipped"],
-        "transitions": [],
-        "pathHints": [],
-    }
+    _update(job, progressPercent=87, message="Pfadanalyse (Capstone/angr-CFGFast)…")
+    if angr_configured():
+        # Never overlap with Ghidra/Unicorn-heavy work on this box.
+        with _HEAVY_ANALYSIS_LOCK:
+            ang_info = angr_analyze(stored)
+    else:
+        ang_info = {
+            "ok": False,
+            "notes": ["angr_lite=skipped"],
+            "transitions": [],
+            "pathHints": [],
+        }
     result = merge_angr_into_result(result, ang_info)
 
     _update(job, progressPercent=88, message="Stock-Diff gegen Referenzbibliothek…")
@@ -653,6 +660,8 @@ def health() -> dict[str, Any]:
         "unicornConfigured": unicorn_configured(),
         "angrLiteConfigured": angr_configured(),
         "angrEngineConfigured": angr_engine_available(),
+        "angrTimeoutSec": int(os.environ.get("ANGR_TIMEOUT_SEC", "90") or "90"),
+        "angrMemMb": int(os.environ.get("ANGR_MEM_MB", "1800") or "1800"),
         "time": _utc_now().isoformat(),
     }
 

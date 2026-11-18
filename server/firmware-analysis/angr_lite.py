@@ -1,15 +1,18 @@
-"""Lightweight path / predecessor analysis around speed immediates.
+"""Path analysis around speed immediates — Capstone always, angr CFGFast optionally.
 
-Full angr is heavy for a 4 GB VPS. This module:
-1. Tries optional `angr` CFGFast on a size-capped slice (ENABLE_ANGR=1).
-2. Always falls back to Capstone backward-walk for branch predecessors.
-
-Adds notes + optional modeTransitions when a compare to packed speed is
-reached via conditional branches (investigative, not proof).
+angr runs in an isolated subprocess with:
+  - RLIMIT_AS (ANGR_MEM_MB, default 1800)
+  - wall-clock timeout (ANGR_TIMEOUT_SEC, default 90)
+  - no symbolic execution (CFGFast only)
+  - caller should hold the shared heavy-analysis lock (not parallel to Ghidra)
 """
 from __future__ import annotations
 
+import json
 import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -17,13 +20,15 @@ from speed_extract import KNOWN_MAP
 
 ENABLE_ANGR = os.environ.get("ENABLE_ANGR", "1").strip() not in ("0", "false", "False")
 BASE = int(os.environ.get("GHIDRA_BASE_ADDR", "0x08000000"), 0)
-ANGR_MAX_BYTES = int(os.environ.get("ANGR_MAX_BYTES", str(512 * 1024)) or str(512 * 1024))
+ANGR_MAX_BYTES = int(os.environ.get("ANGR_MAX_BYTES", str(256 * 1024)) or str(256 * 1024))
+ANGR_TIMEOUT_SEC = int(os.environ.get("ANGR_TIMEOUT_SEC", "90") or "90")
+ANGR_MEM_MB = int(os.environ.get("ANGR_MEM_MB", "1800") or "1800")
 MAX_PACKED = 8
 BACKWALK_DEPTH = 12
+WORKER = Path(__file__).resolve().parent / "angr_cfg_worker.py"
 
 
 def angr_configured() -> bool:
-    """True if either Capstone fallback or real angr is available."""
     try:
         import capstone  # noqa: F401
 
@@ -69,7 +74,6 @@ def analyze_firmware(bin_path: Path) -> dict[str, Any]:
     transitions: list[dict[str, Any]] = []
     notes: list[str] = []
 
-    # Capstone backward walk (always)
     for packed, offsets in list(packed_offsets.items())[:MAX_PACKED]:
         kmh, role = KNOWN_MAP[packed]
         for off in offsets[:2]:
@@ -97,14 +101,30 @@ def analyze_firmware(bin_path: Path) -> dict[str, Any]:
                     }
                 )
 
-    # Optional real angr on truncated image
     if angr_engine_available() and len(data) <= ANGR_MAX_BYTES:
-        try:
-            angr_hints = _angr_cfg_hints(data, packed_offsets)
-            hints.extend(angr_hints)
-            notes.append(f"angr=CFGFast hints={len(angr_hints)}")
-        except Exception as e:
-            notes.append(f"angr=failed:{e}")
+        ang = _run_angr_subprocess(bin_path)
+        if ang.get("ok"):
+            ang_hints = ang.get("hints") or []
+            hints.extend(ang_hints)
+            notes.append(
+                f"angr=CFGFast subprocess hints={len(ang_hints)} "
+                f"nodes={ang.get('nodes')} timeout={ANGR_TIMEOUT_SEC}s mem={ANGR_MEM_MB}MB"
+            )
+            for h in ang_hints:
+                if h.get("predecessors") or h.get("function"):
+                    transitions.append(
+                        {
+                            "id": f"angr-{h.get('packed', 0):04x}-{h.get('offset', 0)}",
+                            "title": f"angr-CFG: {int(h.get('kmh') or 0)} km/h",
+                            "trigger": f"Function {h.get('function') or '—'}",
+                            "effect": f"Vorgänger: {', '.join(h.get('predecessors') or []) or 'keine'}",
+                            "evidence": str(h.get("addr") or ""),
+                            "source": "serverAngr",
+                            "confidence": "medium",
+                        }
+                    )
+        else:
+            notes.append(f"angr=failed:{ang.get('error') or ang.get('notes')}")
     elif angr_engine_available():
         notes.append(f"angr=skipped (bin {len(data)} > ANGR_MAX_BYTES={ANGR_MAX_BYTES})")
     else:
@@ -151,6 +171,41 @@ def merge_angr_into_result(result: dict[str, Any], ang: dict[str, Any]) -> dict[
     return result
 
 
+def _run_angr_subprocess(bin_path: Path) -> dict[str, Any]:
+    if not WORKER.is_file():
+        return {"ok": False, "error": "worker missing"}
+
+    with tempfile.TemporaryDirectory(prefix="angr-cfg-") as td:
+        out = Path(td) / "out.json"
+        env = os.environ.copy()
+        env["ANGR_MEM_MB"] = str(ANGR_MEM_MB)
+        env["OMP_NUM_THREADS"] = "1"
+        env["OPENBLAS_NUM_THREADS"] = "1"
+        env["MKL_NUM_THREADS"] = "1"
+        env["GHIDRA_BASE_ADDR"] = hex(BASE)
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(WORKER), str(bin_path), str(out)],
+                capture_output=True,
+                text=True,
+                timeout=ANGR_TIMEOUT_SEC,
+                env=env,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": f"timeout>{ANGR_TIMEOUT_SEC}s"}
+        except Exception as e:
+            return {"ok": False, "error": f"spawn:{e}"}
+
+        if out.is_file():
+            try:
+                return json.loads(out.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                return {"ok": False, "error": f"badjson:{e}"}
+        err = (proc.stderr or proc.stdout or "")[-400:]
+        return {"ok": False, "error": f"exit={proc.returncode} {err}"}
+
+
 def _packed_offsets(data: bytes) -> dict[int, list[int]]:
     out: dict[int, list[int]] = {}
     for i in range(0, len(data) - 1):
@@ -177,37 +232,3 @@ def _capstone_predecessors(data: bytes, offset: int) -> list[str]:
         if mnem.startswith("b") or mnem in {"cmp", "cmn", "tst", "teq", "cbz", "cbnz", "it"}:
             preds.append(f"{insn.address:#x}: {insn.mnemonic} {insn.op_str}")
     return preds
-
-
-def _angr_cfg_hints(data: bytes, packed_offsets: dict[int, list[int]]) -> list[dict[str, Any]]:
-    import angr
-
-    # Load as blob at BASE
-    p = angr.Project(
-        data,
-        main_opts={"backend": "blob", "arch": "ARMEL", "base_addr": BASE, "entry_point": BASE},
-        auto_load_libs=False,
-    )
-    cfg = p.analyses.CFGFast(data_references=True, normalize=True)
-    hints: list[dict[str, Any]] = []
-    for packed, offsets in list(packed_offsets.items())[:MAX_PACKED]:
-        kmh, role = KNOWN_MAP[packed]
-        for off in offsets[:1]:
-            addr = BASE + off
-            node = cfg.model.get_any_node(addr, anyaddr=True)
-            preds = []
-            if node is not None:
-                for pred in cfg.model.get_predecessors(node)[:6]:
-                    preds.append(f"{pred.addr:#x}")
-            hints.append(
-                {
-                    "packed": packed,
-                    "kmh": kmh,
-                    "role": role,
-                    "offset": off,
-                    "addr": f"{addr:#x}",
-                    "predecessors": preds,
-                    "engine": "angr",
-                }
-            )
-    return hints

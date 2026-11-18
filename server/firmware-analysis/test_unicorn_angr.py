@@ -17,9 +17,21 @@ class AngrLiteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "t.bin"
             p.write_bytes(blob)
-            out = angr_lite.analyze_firmware(p)
+            with mock.patch.object(angr_lite, "angr_engine_available", return_value=False):
+                out = angr_lite.analyze_firmware(p)
         self.assertTrue(out["ok"])
         self.assertTrue(any("angr_lite=ok" in n for n in out["notes"]))
+        self.assertTrue(any("engine not installed" in n or "Capstone" in n for n in out["notes"]))
+
+    def test_subprocess_timeout_note(self) -> None:
+        with mock.patch.object(angr_lite, "_run_angr_subprocess", return_value={"ok": False, "error": "timeout>90s"}):
+            with mock.patch.object(angr_lite, "angr_engine_available", return_value=True):
+                blob = b"\x00" * 80 + b"\x00\x16" + b"\x00" * 80
+                with tempfile.TemporaryDirectory() as td:
+                    p = Path(td) / "t.bin"
+                    p.write_bytes(blob)
+                    out = angr_lite.analyze_firmware(p)
+        self.assertTrue(any("angr=failed:timeout" in n for n in out["notes"]))
 
     def test_merge_adds_source(self) -> None:
         result = {"notes": [], "sources": [], "modeTransitions": [], "quality": {"summary": "x"}}

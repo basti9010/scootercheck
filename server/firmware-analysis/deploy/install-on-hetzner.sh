@@ -72,6 +72,12 @@ if ! grep -q '^STOCK_FW_DIR=' "$ENV_FILE" 2>/dev/null; then
   echo "STOCK_FW_DIR=/var/lib/scootercheck/stock-fw" >>"$ENV_FILE"
 fi
 
+# angr CFGFast guards (safe defaults for 4 GB VPS)
+grep -q '^ENABLE_ANGR=' "$ENV_FILE" 2>/dev/null || echo "ENABLE_ANGR=1" >>"$ENV_FILE"
+grep -q '^ANGR_MAX_BYTES=' "$ENV_FILE" 2>/dev/null || echo "ANGR_MAX_BYTES=262144" >>"$ENV_FILE"
+grep -q '^ANGR_TIMEOUT_SEC=' "$ENV_FILE" 2>/dev/null || echo "ANGR_TIMEOUT_SEC=90" >>"$ENV_FILE"
+grep -q '^ANGR_MEM_MB=' "$ENV_FILE" 2>/dev/null || echo "ANGR_MEM_MB=1800" >>"$ENV_FILE"
+
 if [[ ! -f /opt/scootercheck/decrypt-firm.sh ]]; then
   install -m 755 "$APP_DIR/decrypt-firm.example.sh" /opt/scootercheck/decrypt-firm.sh
 fi
