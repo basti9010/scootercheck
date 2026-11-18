@@ -1,0 +1,47 @@
+{
+  "method": "hand-assembled Thumb (Python emitter, literal-pool BLX calls)",
+  "compiler": "none (raw Thumb opcodes)",
+  "processor": "ARM:LE:32:Cortex",
+  "baseAddr": "0x08000000",
+  "expectedDiff": {
+    "identical_likely": [
+      "mul_values"
+    ],
+    "structurally_changed": [
+      "add_values",
+      "compare_and_branch",
+      "process_input",
+      "reset_handler"
+    ],
+    "added": [
+      "xor_values"
+    ],
+    "removed": [
+      "loop_accumulate"
+    ]
+  },
+  "version_a": {
+    "sha256": "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "bytes": 256,
+    "functions": {
+      "add_values": "0x8000008",
+      "mul_values": "0x800000c",
+      "loop_accumulate": "0x8000010",
+      "compare_and_branch": "0x8000020",
+      "process_input": "0x8000048",
+      "reset_handler": "0x8000068"
+    }
+  },
+  "version_b": {
+    "sha256": "0585f489d87738e11ae716babaca23943da67d543016fa0d3532223325304c75",
+    "bytes": 256,
+    "functions": {
+      "add_values": "0x8000008",
+      "mul_values": "0x8000010",
+      "xor_values": "0x8000014",
+      "compare_and_branch": "0x8000018",
+      "process_input": "0x8000050",
+      "reset_handler": "0x8000074"
+    }
+  }
+}

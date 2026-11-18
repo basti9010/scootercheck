@@ -38,6 +38,7 @@ DEPLOY_PY_FILES=(
   test_job_auth.py
   test_reference_catalog.py
   test_ghidra_integration.py
+  test_ghidra_export_fixtures.py
   README.md
 )
 
@@ -48,6 +49,7 @@ DEPLOY_GHIDRA_SCRIPTS=(
   ghidra_scripts/ExportLimitFunctions.java
   ghidra_scripts/ExportFunctionAnalysis.java
   ghidra_scripts/ExportCallGraph.java
+  ghidra_scripts/CreateKnownThumbFunctions.java
 )
 
 SSH=(ssh -i "$SSH_IDENTITY" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new)

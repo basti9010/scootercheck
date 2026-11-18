@@ -91,6 +91,8 @@ class FunctionDiffTests(unittest.TestCase):
         poll = fd.summarize_diff_for_poll(diff)
         for key in ("ok", "summary", "analysisLimitations", "notes"):
             self.assertIn(key, poll)
+        self.assertIn("overall", poll["summary"])
+        self.assertEqual(poll["summary"]["overall"], fd.STATUS_IDENTICAL)
 
 
 class LlmVerifyTests(unittest.TestCase):

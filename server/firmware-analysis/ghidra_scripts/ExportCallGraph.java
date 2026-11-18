@@ -9,7 +9,6 @@ import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.symbol.FlowType;
 import ghidra.program.model.symbol.Reference;
-import ghidra.program.model.symbol.ReferenceIterator;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.util.task.ConsoleTaskMonitor;
 
@@ -97,21 +96,26 @@ public class ExportCallGraph extends GhidraScript {
                     }
                     FlowType ft = instr.getFlowType();
                     if (ft != null && (ft.isCall() || ft.isJump())) {
-                        ReferenceIterator refs = rm.getReferencesFrom(instr.getAddress());
+                        // Ghidra 12.x: getReferencesFrom returns Reference[] (not ReferenceIterator).
+                        Reference[] refs = rm.getReferencesFrom(instr.getAddress());
                         boolean any = false;
-                        while (refs.hasNext()) {
-                            Reference ref = refs.next();
-                            any = true;
-                            Function tgt = getFunctionAt(ref.getToAddress());
-                            if (tgt == null) {
-                                if (!first) {
-                                    sb.append(",\n");
+                        if (refs != null) {
+                            for (Reference ref : refs) {
+                                if (ref == null) {
+                                    continue;
                                 }
-                                first = false;
-                                appendEdge(sb, fromAddr, fromName, ref.getToAddress().toString(),
-                                    null, ft.isCall() ? "call" : "jump", "unresolved");
-                                edgeCount++;
-                                unresolved++;
+                                any = true;
+                                Function tgt = getFunctionAt(ref.getToAddress());
+                                if (tgt == null) {
+                                    if (!first) {
+                                        sb.append(",\n");
+                                    }
+                                    first = false;
+                                    appendEdge(sb, fromAddr, fromName, ref.getToAddress().toString(),
+                                        null, ft.isCall() ? "call" : "jump", "unresolved");
+                                    edgeCount++;
+                                    unresolved++;
+                                }
                             }
                         }
                         if (!any && ft.isComputed()) {

@@ -26,7 +26,7 @@ from stock_diff import (
 
 CATALOG_SCHEMA = 1
 ANALYZER_ID = "ghidra-export-function-analysis"
-ANALYZER_COMPAT = "1"  # bump when fingerprint/CFG semantics change incompatibly
+ANALYZER_COMPAT = "2"  # bump when fingerprint/CFG semantics change incompatibly (v2: mnemonic-seq FP)
 
 
 def catalogs_root() -> Path:

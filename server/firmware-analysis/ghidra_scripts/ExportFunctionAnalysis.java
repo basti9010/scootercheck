@@ -18,7 +18,6 @@ import ghidra.program.model.listing.Listing;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
-import ghidra.program.model.symbol.ReferenceIterator;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.util.task.ConsoleTaskMonitor;
 
@@ -144,13 +143,14 @@ public class ExportFunctionAnalysis extends GhidraScript {
                 List<String> constants = new ArrayList<>();
                 List<String> strings = new ArrayList<>();
                 collectRefs(fn, listing, constants, strings);
+                List<String> mnemonics = collectMnemonics(fn, listing);
 
                 Collections.sort(calls);
                 Collections.sort(calledBy);
                 Collections.sort(constants);
                 Collections.sort(strings);
 
-                String fingerprint = fingerprint(fn.getName(false), size, blocks, edges, calls, constants);
+                String fingerprint = fingerprint(size, blocks, edges, calls, constants, mnemonics);
                 String confidence = (blocks > 0 && size > 0) ? "medium" : "low";
 
                 if (!first) {
@@ -167,6 +167,7 @@ public class ExportFunctionAnalysis extends GhidraScript {
                 sb.append("      \"calledBy\": ").append(jsonStringArray(calledBy)).append(",\n");
                 sb.append("      \"constants\": ").append(jsonStringArray(constants)).append(",\n");
                 sb.append("      \"strings\": ").append(jsonStringArray(strings)).append(",\n");
+                sb.append("      \"mnemonics\": ").append(jsonStringArray(mnemonics)).append(",\n");
                 sb.append("      \"fingerprint\": ").append(jsonString(fingerprint)).append(",\n");
                 sb.append("      \"confidence\": ").append(jsonString(confidence)).append(",\n");
                 sb.append("      \"processor\": ").append(jsonString(processor)).append(",\n");
@@ -228,19 +229,21 @@ public class ExportFunctionAnalysis extends GhidraScript {
                     idx = imm.toLowerCase(Locale.ROOT).indexOf("0x", end);
                 }
                 // String data referenced from this instruction.
-                ReferenceIterator refs = currentProgram.getReferenceManager().getReferencesFrom(instr.getAddress());
-                while (refs.hasNext()) {
-                    Reference ref = refs.next();
-                    if (!ref.getReferenceType().isData()) {
-                        continue;
-                    }
-                    Data data = listing.getDataAt(ref.getToAddress());
-                    if (data != null && data.hasStringValue()) {
-                        Object v = data.getValue();
-                        if (v != null) {
-                            String s = String.valueOf(v);
-                            if (s.length() >= 3 && s.length() <= 80 && sset.add(s) && strings.size() < MAX_STRINGS) {
-                                strings.add(s);
+                // Ghidra 12.x: getReferencesFrom returns Reference[] (not ReferenceIterator).
+                Reference[] refs = currentProgram.getReferenceManager().getReferencesFrom(instr.getAddress());
+                if (refs != null) {
+                    for (Reference ref : refs) {
+                        if (ref == null || !ref.getReferenceType().isData()) {
+                            continue;
+                        }
+                        Data data = listing.getDataAt(ref.getToAddress());
+                        if (data != null && data.hasStringValue()) {
+                            Object v = data.getValue();
+                            if (v != null) {
+                                String s = String.valueOf(v);
+                                if (s.length() >= 3 && s.length() <= 80 && sset.add(s) && strings.size() < MAX_STRINGS) {
+                                    strings.add(s);
+                                }
                             }
                         }
                     }
@@ -252,18 +255,57 @@ public class ExportFunctionAnalysis extends GhidraScript {
         }
     }
 
+    private List<String> collectMnemonics(Function fn, Listing listing) {
+        List<String> out = new ArrayList<>();
+        try {
+            Instruction instr = listing.getInstructionAt(fn.getEntryPoint());
+            int scanned = 0;
+            while (instr != null && scanned < 256) {
+                if (fn.getBody() != null && !fn.getBody().contains(instr.getAddress())) {
+                    break;
+                }
+                String m = instr.getMnemonicString();
+                if (m != null && !m.isEmpty()) {
+                    out.add(m.toLowerCase(Locale.ROOT));
+                }
+                instr = instr.getNext();
+                scanned++;
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
     private static String fingerprint(
-        String name,
         long size,
         int blocks,
         int edges,
         List<String> calls,
-        List<String> constants
+        List<String> constants,
+        List<String> mnemonics
     ) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            String payload = name + "|" + size + "|" + blocks + "|" + edges + "|"
-                + String.join(",", calls) + "|" + String.join(",", constants);
+            // Structural fingerprint: CFG + call names + mnemonic sequence.
+            // Exclude auto-names and absolute code addresses so identical logic at
+            // different offsets can still match; mnemonics avoid leaf collisions.
+            List<String> structuralConstants = new ArrayList<>();
+            for (String c : constants) {
+                if (c == null) {
+                    continue;
+                }
+                String low = c.toLowerCase(Locale.ROOT);
+                if (looksLikeCodeAddress(low)) {
+                    continue;
+                }
+                structuralConstants.add(low);
+            }
+            Collections.sort(structuralConstants);
+            List<String> sortedCalls = new ArrayList<>(calls);
+            Collections.sort(sortedCalls);
+            String payload = size + "|" + blocks + "|" + edges + "|"
+                + String.join(",", sortedCalls) + "|" + String.join(",", structuralConstants)
+                + "|" + String.join(",", mnemonics);
             byte[] dig = md.digest(payload.getBytes(StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder(16);
             for (int i = 0; i < 8; i++) {
@@ -273,6 +315,19 @@ public class ExportFunctionAnalysis extends GhidraScript {
         } catch (Exception e) {
             return "unknown";
         }
+    }
+
+    /** Filter PC-relative literal pool targets / image addresses from fingerprints. */
+    private static boolean looksLikeCodeAddress(String hexImm) {
+        if (hexImm == null) {
+            return false;
+        }
+        String h = hexImm.startsWith("0x") ? hexImm.substring(2) : hexImm;
+        if (h.length() < 6 || h.length() > 16) {
+            return false;
+        }
+        // Cortex-M flash / SRAM style immediates commonly appear in LDR literals.
+        return h.startsWith("08") || h.startsWith("20") || h.startsWith("080") || h.startsWith("200");
     }
 
     private static String jsonString(String s) {

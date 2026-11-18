@@ -121,6 +121,15 @@ def compare_function_analyses(
             "uncomparable": uncomparable,
             "subjectFunctionCount": len(sub_fns),
             "referenceFunctionCount": len(ref_fns),
+            "overall": (
+                STATUS_UNCOMPARABLE
+                if uncomparable and not (identical or changed or added or removed)
+                else STATUS_CHANGED
+                if changed or added or removed
+                else STATUS_IDENTICAL
+                if identical
+                else STATUS_UNCOMPARABLE
+            ),
         },
         "pairs": pairs,
         "analysisLimitations": limitations,
