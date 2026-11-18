@@ -370,7 +370,7 @@ struct FirmwareZipInspectorView: View {
                         }
                     }
                 }
-                Text("Server-Decrypt: gleiches Schema — lokal Katalog/Deterministik, optional Upload.")
+                Text("Server: ninebottea → Klartext, Ghidra → .c (Decompile, kein Neu-Kompilieren). Ergebnis wird mit lokaler Deep Analysis und dem Fahrzeugkontext aus der Auslese zusammengeführt (Dual-Source).")
                     .font(.caption2)
                     .foregroundStyle(Theme.textMuted)
                     .padding(.top, 4)

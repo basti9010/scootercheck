@@ -8,16 +8,16 @@ Does NOT ship ninebottea or keys.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import tempfile
+import threading
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from ghidra_decompile import ghidra_configured, run_ghidra_decompile
 from speed_extract import deep_result
 
-APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.1.0")
+APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.2.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
@@ -37,6 +37,10 @@ DECRYPT_CMD = os.environ.get("DECRYPT_CMD", "").strip()
 ENABLE_GHIDRA = os.environ.get("ENABLE_GHIDRA", "1").strip() not in ("0", "false", "False")
 GHIDRA_PROCESSOR = os.environ.get("GHIDRA_PROCESSOR", "ARM:LE:32:Cortex").strip()
 GHIDRA_BASE_ADDR = os.environ.get("GHIDRA_BASE_ADDR", "0x08000000").strip()
+# Keep artifacts this many days (upload + plaintext + .c). 0 = keep forever.
+JOB_RETENTION_DAYS = int(os.environ.get("JOB_RETENTION_DAYS", "30") or "30")
+# Soft cap: when exceeded, oldest completed jobs are pruned first.
+MAX_STORED_JOBS = int(os.environ.get("MAX_STORED_JOBS", "500") or "500")
 WORK_DIR = Path(os.environ.get("WORK_DIR", tempfile.gettempdir() + "/scootercheck-fw-jobs"))
 PLAINTEXT_STORE = Path(
     os.environ.get("PLAINTEXT_STORE", str(Path(tempfile.gettempdir()) / "scootercheck-decrypted"))
@@ -50,7 +54,8 @@ DECOMPILE_STORE.mkdir(parents=True, exist_ok=True)
 
 # Hot cache; disk status.json is source of truth across restarts.
 JOBS: dict[str, dict[str, Any]] = {}
-_JOB_LOCK = asyncio.Lock()
+# Ghidra is RAM-heavy — only one headless run at a time. Decrypt may still overlap.
+_GHIDRA_LOCK = threading.Lock()
 
 
 class JobRequestMeta(BaseModel):
@@ -143,6 +148,14 @@ def require_auth(
     raise HTTPException(status_code=401, detail="missing or invalid credentials")
 
 
+def require_admin(auth: dict[str, Any] = Depends(require_auth)) -> dict[str, Any]:
+    if auth.get("auth") == "api_token":
+        return auth
+    if auth.get("role") == "admin":
+        return auth
+    raise HTTPException(status_code=403, detail="admin only")
+
+
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -212,14 +225,25 @@ def run_decrypt(enc_path: Path, out_bin: Path) -> tuple[bool, str]:
     return True, "ok"
 
 
-def job_status_payload(job: dict[str, Any]) -> dict[str, Any]:
-    return {
+def _request_meta(job: dict[str, Any]) -> dict[str, Any]:
+    req = job.get("request")
+    return req if isinstance(req, dict) else {}
+
+
+def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> dict[str, Any]:
+    req = _request_meta(job)
+    payload = {
         "jobId": job["jobId"],
         "state": job["state"],
         "progressPercent": job["progressPercent"],
         "message": job["message"],
-        "result": job.get("result"),
         "errorCode": job.get("errorCode"),
+        "createdBy": job.get("createdBy"),
+        "createdByUserId": job.get("createdByUserId"),
+        "createdAt": job.get("createdAt"),
+        "updatedAt": job.get("updatedAt"),
+        "originalFileName": req.get("originalFileName") or job.get("originalFileName"),
+        "archiveSHA256": job.get("archiveSHA256"),
         "plaintextSHA256": job.get("plaintextSHA256"),
         "encSHA256": job.get("encSHA256"),
         "plaintextPath": job.get("plaintextPath"),
@@ -227,6 +251,103 @@ def job_status_payload(job: dict[str, Any]) -> dict[str, Any]:
         "decompilePath": job.get("decompilePath"),
         "decompileSaved": job.get("decompileSaved", False),
     }
+    if include_result:
+        payload["result"] = job.get("result")
+    return payload
+
+
+def iter_status_files() -> list[Path]:
+    files = list(WORK_DIR.glob("*/*/*/*/status.json"))
+    files += list(WORK_DIR.glob("*/status.json"))  # legacy flat
+    # unique by resolved path
+    seen: set[str] = set()
+    out: list[Path] = []
+    for p in files:
+        key = str(p.resolve())
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
+
+
+def list_jobs_from_disk() -> list[dict[str, Any]]:
+    jobs: list[dict[str, Any]] = []
+    for status in iter_status_files():
+        try:
+            data = json.loads(status.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        data["dir"] = str(status.parent)
+        jid = data.get("jobId")
+        if isinstance(jid, str):
+            JOBS[jid] = data
+        jobs.append(data)
+    jobs.sort(key=lambda j: str(j.get("createdAt") or ""), reverse=True)
+    return jobs
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def delete_job_artifacts(job: dict[str, Any]) -> None:
+    for key in ("plaintextPath", "decompilePath", "archivePath"):
+        p = job.get(key)
+        if isinstance(p, str) and p:
+            path = Path(p)
+            if path.exists():
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+    job_dir = job.get("dir")
+    if isinstance(job_dir, str) and job_dir:
+        try:
+            shutil.rmtree(job_dir, ignore_errors=True)
+        except OSError:
+            pass
+    jid = job.get("jobId")
+    if isinstance(jid, str):
+        JOBS.pop(jid, None)
+
+
+def cleanup_old_jobs() -> dict[str, int]:
+    """Age-based + soft count cap. Safe to call on submit / admin list."""
+    removed_age = 0
+    removed_cap = 0
+    jobs = list_jobs_from_disk()
+    if JOB_RETENTION_DAYS > 0:
+        cutoff = _utc_now() - timedelta(days=JOB_RETENTION_DAYS)
+        keep: list[dict[str, Any]] = []
+        for job in jobs:
+            created = _parse_iso(job.get("createdAt") or job.get("updatedAt"))
+            if created is not None and created < cutoff and job.get("state") in (
+                "completed",
+                "failed",
+            ):
+                delete_job_artifacts(job)
+                removed_age += 1
+            else:
+                keep.append(job)
+        jobs = keep
+    if MAX_STORED_JOBS > 0 and len(jobs) > MAX_STORED_JOBS:
+        # oldest first among finished jobs
+        finished = [
+            j
+            for j in sorted(jobs, key=lambda x: str(x.get("createdAt") or ""))
+            if x.get("state") in ("completed", "failed")
+        ]
+        overflow = len(jobs) - MAX_STORED_JOBS
+        for job in finished[:overflow]:
+            delete_job_artifacts(job)
+            removed_cap += 1
+    return {"removedByAge": removed_age, "removedByCap": removed_cap}
 
 
 def _update(job: dict[str, Any], **fields: Any) -> None:
@@ -326,16 +447,24 @@ def process_job(job_id: str) -> None:
     _update(job, decompileSaved=False, decompilePath=None)
 
     if ENABLE_GHIDRA and ghidra_configured():
-        _update(job, state="decompiling", progressPercent=60, message="Ghidra Headless decompiliert…")
+        _update(
+            job,
+            state="decompiling",
+            progressPercent=60,
+            message="Ghidra wartet / decompiliert zu .c …",
+        )
         out_c = DECOMPILE_STORE / day / f"{job_id}_{plain_sha[:12]}_{safe_name}.dec.c"
         out_c.parent.mkdir(parents=True, exist_ok=True)
         job_c = job_dir / "FIRM.dec.c"
-        ok_g, msg_g = run_ghidra_decompile(
-            stored,
-            out_c,
-            processor=GHIDRA_PROCESSOR,
-            base_addr=GHIDRA_BASE_ADDR,
-        )
+        # Serialize Ghidra so parallel uploads don't OOM the VPS.
+        with _GHIDRA_LOCK:
+            _update(job, message="Ghidra Headless decompiliert → .c …")
+            ok_g, msg_g = run_ghidra_decompile(
+                stored,
+                out_c,
+                processor=GHIDRA_PROCESSOR,
+                base_addr=GHIDRA_BASE_ADDR,
+            )
         notes.append(f"ghidra={msg_g}")
         if ok_g:
             shutil.copy2(out_c, job_c)
@@ -344,7 +473,7 @@ def process_job(job_id: str) -> None:
                 job,
                 decompilePath=str(out_c),
                 decompileSaved=True,
-                message=f"Decompile gespeichert: {out_c.name}",
+                message=f"Decompile .c gespeichert: {out_c.name}",
             )
         else:
             _update(job, message=f"Decrypt OK, Ghidra fehlgeschlagen: {msg_g}")
@@ -391,6 +520,8 @@ def health() -> dict[str, Any]:
         "ghidraEnabled": ENABLE_GHIDRA,
         "jwtConfigured": bool(JWT_SECRET),
         "apiTokenConfigured": bool(API_TOKEN),
+        "retentionDays": JOB_RETENTION_DAYS,
+        "maxStoredJobs": MAX_STORED_JOBS,
         "time": _utc_now().isoformat(),
     }
 
@@ -406,6 +537,8 @@ async def submit_job(
         meta = JobRequestMeta.model_validate_json(meta_json)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"invalid meta_json: {e}") from e
+
+    cleanup_old_jobs()
 
     job_id = str(uuid.uuid4())
     job_dir = _job_day_dir() / job_id
@@ -435,8 +568,10 @@ async def submit_job(
         "dir": str(job_dir),
         "archivePath": str(archive_path),
         "archiveSHA256": archive_sha,
+        "originalFileName": safe_upload_name,
         "request": meta.model_dump(),
         "createdBy": auth.get("email") or auth.get("userId") or auth.get("auth"),
+        "createdByUserId": auth.get("userId"),
         "createdAt": _utc_now().isoformat(),
         "encSHA256": None,
         "plaintextSHA256": None,
@@ -458,6 +593,62 @@ def get_job(job_id: str, _: dict[str, Any] = Depends(require_auth)) -> JSONRespo
     return JSONResponse(job_status_payload(job))
 
 
+@APP.get("/v1/firmware/admin/jobs")
+def admin_list_jobs(
+    created_by: str | None = None,
+    limit: int = 100,
+    _: dict[str, Any] = Depends(require_admin),
+) -> JSONResponse:
+    cleanup_old_jobs()
+    jobs = list_jobs_from_disk()
+    if created_by:
+        needle = created_by.strip().lower()
+        jobs = [j for j in jobs if str(j.get("createdBy") or "").lower() == needle]
+    limit = max(1, min(limit, 500))
+    items = [job_status_payload(j, include_result=False) for j in jobs[:limit]]
+    return JSONResponse({"jobs": items, "total": len(jobs), "returned": len(items)})
+
+
+@APP.get("/v1/firmware/admin/stats")
+def admin_stats(_: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
+    cleanup_old_jobs()
+    jobs = list_jobs_from_disk()
+    by_user: dict[str, dict[str, Any]] = {}
+    for job in jobs:
+        key = str(job.get("createdBy") or "unknown")
+        entry = by_user.setdefault(
+            key,
+            {
+                "createdBy": key,
+                "createdByUserId": job.get("createdByUserId"),
+                "jobs": 0,
+                "completed": 0,
+                "failed": 0,
+                "queuedOrRunning": 0,
+                "withDecompile": 0,
+            },
+        )
+        entry["jobs"] += 1
+        state = job.get("state")
+        if state == "completed":
+            entry["completed"] += 1
+        elif state == "failed":
+            entry["failed"] += 1
+        else:
+            entry["queuedOrRunning"] += 1
+        if job.get("decompileSaved"):
+            entry["withDecompile"] += 1
+    users = sorted(by_user.values(), key=lambda u: u["jobs"], reverse=True)
+    return JSONResponse(
+        {
+            "totalJobs": len(jobs),
+            "retentionDays": JOB_RETENTION_DAYS,
+            "maxStoredJobs": MAX_STORED_JOBS,
+            "users": users,
+        }
+    )
+
+
 @APP.get("/v1/firmware/jobs/{job_id}/plaintext")
 def download_plaintext(job_id: str, _: dict[str, Any] = Depends(require_auth)):
     job = load_job(job_id)
@@ -477,4 +668,4 @@ def download_decompile(job_id: str, _: dict[str, Any] = Depends(require_auth)):
     path = Path(job.get("decompilePath") or (Path(job["dir"]) / "FIRM.dec.c"))
     if not path.exists():
         raise HTTPException(status_code=404, detail="decompile not available")
-    return FileResponse(path, filename=path.name, media_type="text/plain")
+    return FileResponse(path, filename=path.name, media_type="text/x-c")

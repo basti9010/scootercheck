@@ -181,6 +181,12 @@ struct FirmwareAnalysisJobStatus: Equatable, Codable, Sendable {
     var message: String
     var result: FirmwareDeepAnalysisResult?
     var errorCode: String?
+    var createdBy: String? = nil
+    var createdByUserId: String? = nil
+    var createdAt: Date? = nil
+    var updatedAt: Date? = nil
+    var originalFileName: String? = nil
+    var archiveSHA256: String? = nil
     /// Server path of saved decrypted BIN (Hetzner store), if decrypt succeeded.
     var plaintextPath: String? = nil
     var plaintextSHA256: String? = nil
@@ -188,4 +194,29 @@ struct FirmwareAnalysisJobStatus: Equatable, Codable, Sendable {
     /// Server path of Ghidra-exported decompiled C, if headless succeeded.
     var decompilePath: String? = nil
     var decompileSaved: Bool? = nil
+}
+
+struct FirmwareAdminJobsList: Equatable, Codable, Sendable {
+    var jobs: [FirmwareAnalysisJobStatus]
+    var total: Int
+    var returned: Int
+}
+
+struct FirmwareAdminUserStats: Equatable, Codable, Sendable, Identifiable {
+    var createdBy: String
+    var createdByUserId: String?
+    var jobs: Int
+    var completed: Int
+    var failed: Int
+    var queuedOrRunning: Int
+    var withDecompile: Int
+
+    var id: String { createdBy }
+}
+
+struct FirmwareAdminStats: Equatable, Codable, Sendable {
+    var totalJobs: Int
+    var retentionDays: Int
+    var maxStoredJobs: Int
+    var users: [FirmwareAdminUserStats]
 }

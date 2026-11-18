@@ -38,6 +38,17 @@ struct AdminHubView: View {
                         )
                     }
                     .buttonStyle(.plain)
+
+                    NavigationLink {
+                        AdminFirmwareUploadsView(auth: auth)
+                    } label: {
+                        adminLinkRow(
+                            title: "Firmware-Uploads",
+                            subtitle: "Wer hat welche Dateien hochgeladen — inkl. Decrypt/Ghidra-Status.",
+                            systemImage: "icloud.and.arrow.up"
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .scootPagePadding()
@@ -297,6 +308,121 @@ struct AdminDomainsView: View {
             await reload()
         } catch {
             errorText = (error as? AuthAPIError)?.message ?? error.localizedDescription
+        }
+    }
+}
+
+struct AdminFirmwareUploadsView: View {
+    @ObservedObject var auth: AuthSessionStore
+    @State private var stats: FirmwareAdminStats?
+    @State private var jobs: [FirmwareAnalysisJobStatus] = []
+    @State private var filterUser: String?
+    @State private var busy = false
+    @State private var errorText: String?
+
+    var body: some View {
+        List {
+            if let errorText {
+                Text(errorText).foregroundStyle(Theme.danger)
+            }
+
+            if let stats {
+                Section("Übersicht") {
+                    Text("Gesamt: \(stats.totalJobs) Jobs · Aufbewahrung \(stats.retentionDays) Tage · Cap \(stats.maxStoredJobs)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    ForEach(stats.users) { u in
+                        Button {
+                            filterUser = u.createdBy
+                            Task { await reloadJobs() }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(u.createdBy)
+                                    .font(.headline)
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text("\(u.jobs) Uploads · \(u.completed) ok · \(u.failed) fehlgeschlagen · \(u.withDecompile) mit .c")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    if filterUser != nil {
+                        Button("Filter zurücksetzen") {
+                            filterUser = nil
+                            Task { await reloadJobs() }
+                        }
+                    }
+                }
+            }
+
+            Section(filterUser.map { "Jobs von \($0)" } ?? "Letzte Jobs") {
+                if jobs.isEmpty {
+                    Text("Keine Uploads")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(jobs, id: \.jobId) { job in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(job.originalFileName?.isEmpty == false ? job.originalFileName! : job.jobId)
+                            .font(.headline)
+                        Text(job.createdBy ?? "unbekannt")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("\(job.state.rawValue) · Decrypt \(job.plaintextSaved == true ? "ja" : "nein") · Ghidra .c \(job.decompileSaved == true ? "ja" : "nein")")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.accent)
+                        if !job.message.isEmpty {
+                            Text(job.message)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(3)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .navigationTitle("Firmware-Uploads")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    Task { await reload() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .disabled(busy)
+            }
+        }
+        .task { await reload() }
+    }
+
+    private func reload() async {
+        await reloadStats()
+        await reloadJobs()
+    }
+
+    private func reloadStats() async {
+        busy = true
+        defer { busy = false }
+        do {
+            let client = FirmwareServerAnalysisClient.fromAppSettings()
+            stats = try await client.adminStats()
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func reloadJobs() async {
+        busy = true
+        defer { busy = false }
+        do {
+            let client = FirmwareServerAnalysisClient.fromAppSettings()
+            let list = try await client.adminListJobs(createdBy: filterUser, limit: 100)
+            jobs = list.jobs
+            errorText = nil
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 }
