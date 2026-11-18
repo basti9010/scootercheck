@@ -91,7 +91,7 @@ chown root:scootercheck /etc/scootercheck/decrypt.env 2>/dev/null || true
 chmod 640 /etc/scootercheck/decrypt.env 2>/dev/null || true
 
 apt-get update -y
-apt-get install -y python3.12 python3.12-venv python3-pip
+apt-get install -y python3.12 python3.12-venv python3-pip radare2
 
 cd "$APP_DIR"
 # Python 3.14 lacks wheels for pinned pydantic-core — use 3.12 like the auth service.

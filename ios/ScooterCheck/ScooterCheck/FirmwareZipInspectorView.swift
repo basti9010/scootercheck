@@ -534,6 +534,17 @@ struct FirmwareZipInspectorView: View {
                         }
                     }
                 }
+                if !deep.r2StringsSample.isEmpty {
+                    DisclosureGroup("radare2 Strings (\(deep.r2StringsSample.count))") {
+                        ForEach(deep.r2StringsSample.prefix(20), id: \.self) { s in
+                            Text(s)
+                                .font(.system(.caption2, design: .monospaced))
+                                .foregroundStyle(Theme.textMuted)
+                        }
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 4)
+                }
                 if let stock = deep.stockDiff {
                     Text("Stock-Diff")
                         .font(.footnote.weight(.semibold))

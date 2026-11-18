@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from ghidra_decompile import ghidra_configured, run_ghidra_decompile
 from llm_enrich import enrich_result, llm_configured
 from speed_extract import deep_result
+from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
 from stock_diff import (
     compare_to_stock,
     delete_stock_ref,
@@ -455,6 +456,14 @@ def process_job(job_id: str) -> None:
     decompiled_text: str | None = None
     _update(job, decompileSaved=False, decompilePath=None)
 
+    r2_info: dict[str, Any] = {"ok": False, "speeds": [], "notes": [], "stringsSample": []}
+    if r2_configured():
+        _update(job, progressPercent=58, message="radare2 Speed-/String-Scan…")
+        r2_info = r2_analyze(stored)
+        notes.extend(r2_info.get("notes") or [])
+    else:
+        notes.append("r2=skipped (radare2 not installed or ENABLE_R2=0)")
+
     if ENABLE_GHIDRA and ghidra_configured():
         _update(
             job,
@@ -505,6 +514,7 @@ def process_job(job_id: str) -> None:
     )
     if "serverDecompile" not in result["sources"]:
         result["sources"] = list(result["sources"]) + ["serverDecompile"]
+    result = merge_r2_into_result(result, r2_info)
 
     _update(job, progressPercent=88, message="Stock-Diff gegen Referenzbibliothek…")
     stock = compare_to_stock(plaintext, models=models, controller_type=ctype)
@@ -518,6 +528,8 @@ def process_job(job_id: str) -> None:
         result.setdefault("notes", []).append("llm=skipped (LLM_API_KEY not set)")
 
     parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
+    if r2_info.get("ok"):
+        parts.append(f"r2 {len(r2_info.get('speeds') or [])} Speeds")
     if job.get("decompileSaved"):
         parts.append(f"Ghidra .c → {job.get('decompilePath')}")
     if stock.get("outcome") == "identical":
@@ -552,6 +564,7 @@ def health() -> dict[str, Any]:
         "llmModel": os.environ.get("LLM_MODEL", "gpt-4o-mini").strip() if llm_configured() else None,
         "stockFwDir": str(stock_dir()),
         "stockRefCount": len(list_stock_refs()),
+        "r2Configured": r2_configured(),
         "time": _utc_now().isoformat(),
     }
 

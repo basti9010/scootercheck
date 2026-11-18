@@ -37,6 +37,17 @@ Nach Decrypt vergleicht der Worker den Klartext mit `/var/lib/scootercheck/stock
 
 Ohne Referenzen: `noReference` — Pipeline sonst unverändert.
 
+## radare2 (Schritt 3)
+
+Nach Decrypt, vor Ghidra: `r2` sucht packed Speed-Immediates (`/x`) und interessante Strings (`izz`).
+
+```bash
+apt-get install -y radare2
+# optional: ENABLE_R2=0 zum Abschalten
+```
+
+`GET /health` → `r2Configured: true`. Quelle in der App: „Server-radare2“.
+
 ## Auth
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API
