@@ -425,6 +425,28 @@ def _update(job: dict[str, Any], **fields: Any) -> None:
     persist_job(job)
 
 
+def _stock_region_hints(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Collect offset hints from prior analysis stages for stockDiff region tagging."""
+    hints: list[dict[str, Any]] = []
+    for s in result.get("speedLimits") or []:
+        off = s.get("offset") or s.get("fileOffset")
+        if off is None:
+            continue
+        role = str(s.get("role") or "speed")
+        hints.append({"offset": off, "kind": f"speed:{role}", "label": f"speed {s.get('kmh')} km/h ({role})"})
+    for sl in result.get("limitSlices") or []:
+        off = sl.get("offset") or sl.get("fileOffset") or sl.get("addr")
+        if off is None:
+            continue
+        hints.append({"offset": off, "kind": "limit", "label": str(sl.get("note") or "limitSlice")})
+    for m in result.get("yaraMatches") or []:
+        fam = str(m.get("family") or m.get("rule") or "").lower()
+        kind = "panic" if any(k in fam for k in ("panic", "unlock", "cfw", "soft")) else "yara"
+        # YARA merge does not always expose offsets; keep as kind-only hint via strings scan in stock_diff
+        hints.append({"kind": kind, "label": m.get("rule") or fam})
+    return hints
+
+
 def process_job(job_id: str) -> None:
     job = load_job(job_id)
     if not job:
@@ -671,9 +693,23 @@ def process_job(job_id: str) -> None:
     result = merge_input_probe(result, probe_info)
 
     _update(job, progressPercent=89, message="Stock-Diff gegen Referenzbibliothek…")
-    stock = compare_to_stock(plaintext, models=models, controller_type=ctype)
+    region_hints = _stock_region_hints(result)
+    name_blob = f"{job.get('originalFileName') or ''} {display or ''}".lower()
+    if any(k in name_blob for k in ("panic", "softunlock", "cfw", "unlock")):
+        region_hints.append({"kind": "panic", "label": f"filename:{job.get('originalFileName') or display}"})
+    stock = compare_to_stock(
+        plaintext,
+        models=models,
+        controller_type=ctype,
+        region_hints=region_hints,
+        strict_model_match=True,
+    )
     result["stockDiff"] = stock
     result.setdefault("notes", []).append(f"stockDiff={stock.get('outcome')}: {stock.get('note')}")
+    if stock.get("limitRegionAffected"):
+        result.setdefault("notes", []).append("stockDiff=limitRegionAffected")
+    if stock.get("panicRegionAffected"):
+        result.setdefault("notes", []).append("stockDiff=panicRegionAffected")
 
     if meta.allowLLM and llm_configured():
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")

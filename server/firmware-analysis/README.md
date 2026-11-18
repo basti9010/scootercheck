@@ -41,13 +41,15 @@ API-Key in der Claude Console unter **API-Keys** anlegen (`sk-ant-usr…` oder `
 
 Nach Decrypt vergleicht der Worker den Klartext mit `/var/lib/scootercheck/stock-fw/` (ENV `STOCK_FW_DIR`).
 
-- Dateien: `*.bin` / `*.dec.bin`, `manifest.json` mit `source` (`oem`|`serial`|`unknown`|`case`), optional `region`/`notes`
+- Dateien: `*.bin` / `*.dec.bin`, `manifest.json` mit `source` (`oem`|`serial`|`unknown`|`case`), optional `models[]`/`region`/`notes`
 - Vergleich nutzt **nur** `source=oem|serial` (Fall-Uploads werden ignoriert)
+- Bei gesetztem `models`/`controllerType`: **strict match** — kein Cross-Model-Fallback (z. B. ZT3 → ehrlich `noReference`)
+- Ergebnis: `result.stockDiff` (`identical` | `different` | `noReference`) inkl. `referenceLabel`, `differingBytes`, `limitRegionAffected`, `panicRegionAffected`, `candidateRefCount`
 - Admin: `GET/POST/DELETE /v1/firmware/admin/stock` — Upload braucht `confirmOem=true` für OEM/Serial
 - Promote: `POST .../promote-stock?confirmOem=true` — lehnt hohe CFW-YARA-Treffer ab
-- Ergebnis: `result.stockDiff` (`identical` | `different` | `noReference`) + `referenceSource`
+- Rexzy67-Import: `import_rexzy_stock.py` / `alias_rexzy_stock.py` → OEM-Refs aus `x3-firmware-archive`
 
-Ohne trusted Referenzen: `noReference` — Pipeline sonst unverändert.
+Ohne passende trusted Referenzen: `noReference` — Pipeline sonst unverändert. Keine erfundenen Tastenkombis (`combo_policy`).
 
 ## Cortex-M IVT (Schritt 2b)
 

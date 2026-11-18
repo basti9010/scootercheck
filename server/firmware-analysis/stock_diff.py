@@ -24,6 +24,9 @@ STOCK_FW_DIR = Path(
 )
 MAX_SEGMENTS = 12
 MAX_SEGMENT_SCAN = 2_000_000  # bytes scanned for segment list
+# Beyond this, the "best" OEM candidate is not a useful baseline (e.g. ZT3 48KMH
+# vs unrelated zt3 VCU stock) — report honest noReference instead of different.
+MAX_USEFUL_PERCENT_DIFFERENT = float(os.environ.get("STOCK_MAX_USEFUL_PCT", "25") or "25")
 TRUSTED_SOURCES = frozenset({"oem", "serial"})
 ALLOWED_SOURCES = frozenset({"oem", "serial", "unknown", "case"})
 
@@ -48,6 +51,8 @@ def compare_to_stock(
     models: list[str] | None = None,
     controller_type: str | None = None,
     include_untrusted: bool = False,
+    region_hints: list[dict[str, Any]] | None = None,
+    strict_model_match: bool = True,
 ) -> dict[str, Any]:
     if not plaintext:
         return _result(
@@ -77,8 +82,34 @@ def compare_to_stock(
             totalRefCount=0,
         )
 
+    model_list = [m for m in (models or []) if m]
+    ctype = (controller_type or "").strip() or None
+    filtered = _filter_refs(refs, models=model_list, controller_type=ctype)
+    # When the caller names model and/or controller, never fall back to unrelated OEM
+    # images (e.g. ZT3 must not silently diff against G3 stock).
+    scoped = bool(model_list or ctype)
+    if scoped and strict_model_match:
+        candidates = filtered
+        if not candidates:
+            want = "/".join(model_list) if model_list else "?"
+            want_t = ctype or "?"
+            return _result(
+                outcome="noReference",
+                note=(
+                    f"Keine passende OEM-/Serien-Referenz für Modell={want} Typ={want_t} "
+                    f"({len(refs)} trusted overall). Kein Cross-Model-Fallback."
+                ),
+                subjectBytes=len(plaintext),
+                trustedRefCount=len(refs),
+                totalRefCount=len(refs_all),
+                candidateRefCount=0,
+                matchedModels=model_list,
+            )
+    else:
+        candidates = filtered or refs
+
     subject_sha = hashlib.sha256(plaintext).hexdigest()
-    exact = next((r for r in refs if r.get("sha256") == subject_sha), None)
+    exact = next((r for r in candidates if r.get("sha256") == subject_sha), None)
     if exact:
         return _result(
             outcome="identical",
@@ -94,14 +125,16 @@ def compare_to_stock(
             note=f"SHA-256 identisch mit Stock „{exact['label']}“ (source={exact.get('source') or 'unknown'}).",
             trustedRefCount=len(refs),
             totalRefCount=len(refs_all),
+            candidateRefCount=len(candidates),
+            matchedModels=_ref_models(exact),
+            limitRegionAffected=False,
+            panicRegionAffected=False,
+            regionNotes=[],
         )
-
-    candidates = _filter_refs(refs, models=models or [], controller_type=controller_type)
-    if not candidates:
-        candidates = refs
 
     best: dict[str, Any] | None = None
     best_diff: dict[str, Any] | None = None
+    best_data: bytes | None = None
     for ref in candidates:
         path = Path(ref["path"])
         if not path.is_file():
@@ -111,17 +144,61 @@ def compare_to_stock(
         if best_diff is None or diff["differingBytes"] < best_diff["differingBytes"]:
             best = ref
             best_diff = diff
+            best_data = ref_data
 
-    if best is None or best_diff is None:
+    if best is None or best_diff is None or best_data is None:
         return _result(
             outcome="noReference",
             note="Stock-Einträge ohne lesbare Datei.",
             subjectBytes=len(plaintext),
+            trustedRefCount=len(refs),
+            totalRefCount=len(refs_all),
+            candidateRefCount=len(candidates),
+            matchedModels=model_list,
         )
 
     pct = None
     denom = max(len(plaintext), best["byteCount"], 1)
     pct = round(100.0 * best_diff["differingBytes"] / denom, 3)
+
+    if pct is not None and pct > MAX_USEFUL_PERCENT_DIFFERENT:
+        return _result(
+            outcome="noReference",
+            note=(
+                f"Nächster Treffer „{best['label']}“ weicht zu stark ab "
+                f"({best_diff['differingBytes']} Bytes / {pct}% > {MAX_USEFUL_PERCENT_DIFFERENT}% Schwelle) "
+                "— kein brauchbarer OEM-Baseline-Match."
+            ),
+            subjectBytes=len(plaintext),
+            referenceBytes=best["byteCount"],
+            differingBytes=best_diff["differingBytes"],
+            percentDifferent=pct,
+            firstDiffOffset=best_diff["firstDiffOffset"],
+            referenceId=best["id"],
+            referenceLabel=best["label"],
+            referenceSHA256=best["sha256"],
+            referenceSource=best.get("source") or "unknown",
+            trustedRefCount=len(refs),
+            totalRefCount=len(refs_all),
+            candidateRefCount=len(candidates),
+            matchedModels=_ref_models(best),
+        )
+
+    regions = _region_impact(
+        plaintext,
+        best_data,
+        best_diff.get("segments") or [],
+        best_diff.get("firstDiffOffset"),
+        region_hints=region_hints or [],
+    )
+    segments = _annotate_segments(best_diff.get("segments") or [], regions)
+
+    region_bits = []
+    if regions.get("limitRegionAffected"):
+        region_bits.append("Limit-Region betroffen")
+    if regions.get("panicRegionAffected"):
+        region_bits.append("Panic-/CFW-Region betroffen")
+    region_suffix = f" — {', '.join(region_bits)}." if region_bits else "."
 
     return _result(
         outcome="different",
@@ -133,14 +210,20 @@ def compare_to_stock(
         firstDiffOffset=best_diff["firstDiffOffset"],
         subjectBytes=len(plaintext),
         referenceBytes=best["byteCount"],
-        segments=best_diff["segments"],
+        segments=segments,
         percentDifferent=pct,
         note=(
             f"Byte-Diff gegen Stock „{best['label']}“ (source={best.get('source') or 'unknown'}): "
-            f"{best_diff['differingBytes']} abweichende Bytes ({pct}%)."
+            f"{best_diff['differingBytes']} abweichende Bytes ({pct}%)"
+            f"{region_suffix}"
         ),
         trustedRefCount=len(refs),
         totalRefCount=len(refs_all),
+        candidateRefCount=len(candidates),
+        matchedModels=_ref_models(best),
+        limitRegionAffected=bool(regions.get("limitRegionAffected")),
+        panicRegionAffected=bool(regions.get("panicRegionAffected")),
+        regionNotes=list(regions.get("regionNotes") or []),
     )
 
 
@@ -241,10 +324,18 @@ def _load_refs() -> list[dict[str, Any]]:
                 if not path.is_file():
                     continue
                 data_sha = e.get("sha256") or hashlib.sha256(path.read_bytes()).hexdigest()
+                models_raw = e.get("models")
+                models_list: list[str] = []
+                if isinstance(models_raw, list):
+                    models_list = [str(x) for x in models_raw if x]
+                model_primary = str(e.get("model") or (models_list[0] if models_list else ""))
+                if model_primary and model_primary not in models_list:
+                    models_list = [model_primary, *models_list]
                 by_sha[data_sha] = {
                     "id": str(e.get("id") or data_sha[:16]),
                     "label": str(e.get("label") or path.name),
-                    "model": str(e.get("model") or ""),
+                    "model": model_primary,
+                    "models": models_list,
                     "controllerType": str(e.get("controllerType") or e.get("type") or ""),
                     "version": str(e.get("version") or ""),
                     "source": _normalize_source(str(e.get("source") or "unknown")),
@@ -274,6 +365,7 @@ def _load_refs() -> list[dict[str, Any]]:
             "id": sha[:16],
             "label": path.name,
             "model": model,
+            "models": [model] if model else [],
             "controllerType": ctype,
             "version": version,
             "source": "unknown",
@@ -387,6 +479,7 @@ def _public_ref(r: dict[str, Any]) -> dict[str, Any]:
         "id": r["id"],
         "label": r["label"],
         "model": r.get("model") or "",
+        "models": list(r.get("models") or ([r.get("model")] if r.get("model") else [])),
         "controllerType": r.get("controllerType") or "",
         "version": r.get("version") or "",
         "source": _normalize_source(str(r.get("source") or "unknown")),
@@ -396,6 +489,177 @@ def _public_ref(r: dict[str, Any]) -> dict[str, Any]:
         "sha256": r["sha256"],
         "byteCount": r["byteCount"],
     }
+
+
+def _ref_models(r: dict[str, Any]) -> list[str]:
+    models = [str(x) for x in (r.get("models") or []) if x]
+    primary = str(r.get("model") or "")
+    if primary and primary not in models:
+        models = [primary, *models]
+    return models
+
+
+def _region_impact(
+    subject: bytes,
+    reference: bytes,
+    segments: list[dict[str, Any]],
+    first_diff: int | None,
+    *,
+    region_hints: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Mark whether byte-diff overlaps limit/speed or panic/CFW-ish regions."""
+    panic_needles = (
+        b"panic",
+        b"Panic",
+        b"PANIC",
+        b"softunlock",
+        b"SoftUnlock",
+        b"SOFTUNLOCK",
+        b"panicsystem",
+        b"panicbutton",
+    )
+    limit_needles = (
+        b"speed",
+        b"Speed",
+        b"SPEED",
+        b"limit",
+        b"Limit",
+        b"km/h",
+        b"kmh",
+        b"KMH",
+    )
+
+    def _find_hits(blob: bytes, needles: tuple[bytes, ...]) -> list[int]:
+        hits: list[int] = []
+        for n in needles:
+            start = 0
+            while True:
+                i = blob.find(n, start)
+                if i < 0:
+                    break
+                hits.append(i)
+                start = i + 1
+                if len(hits) >= 32:
+                    return hits
+        return hits
+
+    panic_hits = _find_hits(subject, panic_needles) + _find_hits(reference, panic_needles)
+    limit_hits = _find_hits(subject, limit_needles) + _find_hits(reference, limit_needles)
+
+    # Immediate values often used as km/h caps in VCU images (centi-km/h or raw)
+    for imm in (20, 22, 25, 32, 35, 45, 48, 50, 55, 60, 65, 70, 80, 99):
+        pat = bytes([imm, 0, 0, 0])
+        for blob in (subject, reference):
+            start = 0
+            while True:
+                i = blob.find(pat, start)
+                if i < 0:
+                    break
+                limit_hits.append(i)
+                start = i + 1
+                if len(limit_hits) >= 64:
+                    break
+
+    for h in region_hints:
+        kind = str(h.get("kind") or h.get("role") or "").lower()
+        off = h.get("offset")
+        if off is None:
+            continue
+        try:
+            oi = int(off)
+        except (TypeError, ValueError):
+            continue
+        if any(k in kind for k in ("panic", "cfw", "unlock", "soft")):
+            panic_hits.append(oi)
+        if any(k in kind for k in ("limit", "speed", "legal", "open", "cap")):
+            limit_hits.append(oi)
+
+    window = 512
+    points: list[int] = []
+    if first_diff is not None:
+        points.append(int(first_diff))
+    for seg in segments:
+        try:
+            o = int(seg.get("offset") or 0)
+            ln = int(seg.get("length") or 0)
+        except (TypeError, ValueError):
+            continue
+        points.append(o)
+        if ln > 0:
+            points.append(o + ln // 2)
+            # Sample along the run — short CFW patches often sit inside larger blobs
+            step = max(1, ln // 8)
+            for x in range(o, o + ln, step):
+                points.append(x)
+
+    speed_immediates = {20, 22, 25, 32, 35, 45, 48, 50, 55, 60, 65, 70, 80, 99}
+    # Diff bytes that flip a plausible km/h immediate count as limit-region
+    for seg in segments:
+        try:
+            o = int(seg.get("offset") or 0)
+            ln = int(seg.get("length") or 0)
+        except (TypeError, ValueError):
+            continue
+        for i in range(o, min(o + max(ln, 4), min(len(subject), len(reference)))):
+            if subject[i] != reference[i] and (
+                subject[i] in speed_immediates or reference[i] in speed_immediates
+            ):
+                limit_hits.append(i)
+
+    def _near(hits: list[int]) -> bool:
+        for p in points:
+            for h in hits:
+                if abs(p - h) <= window:
+                    return True
+        return False
+
+    limit_hit = _near(limit_hits)
+    panic_hit = _near(panic_hits)
+
+    # Filename / hint driven: CFW family names imply panic-region relevance when any diff exists
+    hint_blob = " ".join(
+        str(h.get("label") or "") + " " + str(h.get("kind") or "") for h in region_hints
+    ).lower()
+    if segments and any(k in hint_blob for k in ("panic", "softunlock", "cfw")):
+        panic_hit = True
+
+    notes: list[str] = []
+    if limit_hit:
+        notes.append("Diff nahe Speed-/Limit-Marker oder -Immediates")
+    if panic_hit:
+        notes.append("Diff nahe Panic-/SoftUnlock-Marker")
+    for h in region_hints[:6]:
+        label = h.get("label") or h.get("kind") or h.get("role")
+        if label:
+            notes.append(f"Hinweis: {label}")
+
+    return {
+        "limitRegionAffected": limit_hit,
+        "panicRegionAffected": panic_hit,
+        "regionNotes": notes,
+    }
+
+
+def _annotate_segments(
+    segments: list[dict[str, Any]],
+    regions: dict[str, Any],
+) -> list[dict[str, Any]]:
+    tags: list[str] = []
+    if regions.get("limitRegionAffected"):
+        tags.append("limit")
+    if regions.get("panicRegionAffected"):
+        tags.append("panic")
+    if not tags:
+        return segments
+    tag_note = "/".join(tags)
+    out = []
+    for seg in segments:
+        s = dict(seg)
+        note = str(s.get("note") or "")
+        if tag_note not in note:
+            s["note"] = f"{note} [{tag_note}]".strip()
+        out.append(s)
+    return out
 
 
 def _normalize_source(source: str) -> str:
@@ -431,6 +695,11 @@ def _result(**kwargs: Any) -> dict[str, Any]:
         "note": "",
         "trustedRefCount": None,
         "totalRefCount": None,
+        "candidateRefCount": None,
+        "matchedModels": None,
+        "limitRegionAffected": None,
+        "panicRegionAffected": None,
+        "regionNotes": [],
     }
     base.update(kwargs)
     return base

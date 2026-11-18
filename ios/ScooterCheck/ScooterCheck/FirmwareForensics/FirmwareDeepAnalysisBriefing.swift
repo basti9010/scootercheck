@@ -28,9 +28,19 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
                     "Bibliotheks-Vergleich: Byte-identisch mit hinterlegter Referenz\(stock.referenceLabel.map { " („\($0)“)" } ?? "") — nur aussagekräftig, wenn das eine echte OEM-/Serien-Referenz ist (nicht dieselbe Falldatei)."
                 )
             case .different:
-                bullets.append("Bibliotheks-Vergleich: weicht von der hinterlegten Referenz ab\(stock.differingBytes.map { " (\($0) Bytes)" } ?? "").")
+                var diffLine = "Bibliotheks-Vergleich: weicht von der hinterlegten Referenz ab\(stock.differingBytes.map { " (\($0) Bytes)" } ?? "")"
+                if let label = stock.referenceLabel, !label.isEmpty {
+                    diffLine += " — Ref „\(label)“"
+                }
+                var tags: [String] = []
+                if stock.limitRegionAffected == true { tags.append("Limit-Region") }
+                if stock.panicRegionAffected == true { tags.append("Panic-Region") }
+                if !tags.isEmpty {
+                    diffLine += " (\(tags.joined(separator: ", ")))"
+                }
+                bullets.append(diffLine + ".")
             case .noReference:
-                bullets.append("Kein Stock-/OEM-Referenzbild in der Server-Bibliothek — Vergleich entfällt (Hochladen ≠ Referenz).")
+                bullets.append("Kein passendes Stock-/OEM-Referenzbild für dieses Modell/Typ — kein Cross-Model-Fallback (Hochladen ≠ Referenz).")
             case .skipped:
                 break
             }

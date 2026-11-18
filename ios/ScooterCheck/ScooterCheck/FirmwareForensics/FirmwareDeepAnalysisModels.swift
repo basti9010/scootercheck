@@ -239,6 +239,11 @@ struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
     var note: String
     var trustedRefCount: Int? = nil
     var totalRefCount: Int? = nil
+    var candidateRefCount: Int? = nil
+    var matchedModels: [String]? = nil
+    var limitRegionAffected: Bool? = nil
+    var panicRegionAffected: Bool? = nil
+    var regionNotes: [String]? = nil
 }
 
 struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {
