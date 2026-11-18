@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Phase-1 firmware-analysis rollout to Hetzner.
+# ScooterCheck firmware-analysis rollout (Phase 1 + 2 + 2.1) to Hetzner.
 #
 # Default: DRY-RUN (no remote writes, no restart).
 # Real deploy: CONFIRM_PROD_DEPLOY=YES ./deploy/phase1-rollout.sh
 #
-# Never deletes or modifies /var/lib/scootercheck (jobs, decrypted, stock-fw).
+# Never deletes or modifies /var/lib/scootercheck (jobs, decrypted, stock-fw, catalogs).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,12 +21,33 @@ if [[ "$CONFIRM_PROD_DEPLOY" == "YES" ]]; then
   DRY_RUN=0
 fi
 
-PHASE1_FILES=(
+# Phase 1 + 2 + 2.1 Python modules / docs / tests
+DEPLOY_PY_FILES=(
   zip_safe.py
   app.py
   stock_diff.py
+  function_analysis.py
+  function_diff.py
+  llm_verify.py
+  job_auth.py
+  reference_catalog.py
+  ghidra_decompile.py
   test_zip_safe.py
+  test_stock_diff.py
+  test_function_diff.py
+  test_job_auth.py
+  test_reference_catalog.py
+  test_ghidra_integration.py
   README.md
+)
+
+# Ghidra scripts (Phase 1 + 2)
+DEPLOY_GHIDRA_SCRIPTS=(
+  ghidra_scripts/ExportAllDecompiled.java
+  ghidra_scripts/ExportSpeedXrefs.java
+  ghidra_scripts/ExportLimitFunctions.java
+  ghidra_scripts/ExportFunctionAnalysis.java
+  ghidra_scripts/ExportCallGraph.java
 )
 
 SSH=(ssh -i "$SSH_IDENTITY" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new)
@@ -35,8 +56,8 @@ if [[ -f "$SSH_IDENTITY" ]]; then
   RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new")
 fi
 
-log() { printf '[phase1-rollout] %s\n' "$*" >&2; }
-die() { printf '[phase1-rollout] ERROR: %s\n' "$*" >&2; exit 1; }
+log() { printf '[fw-rollout] %s\n' "$*" >&2; }
+die() { printf '[fw-rollout] ERROR: %s\n' "$*" >&2; exit 1; }
 
 remote() {
   # shellcheck disable=SC2029
@@ -45,16 +66,18 @@ remote() {
 
 require_local_files() {
   local f
-  for f in "${PHASE1_FILES[@]}"; do
+  for f in "${DEPLOY_PY_FILES[@]}" "${DEPLOY_GHIDRA_SCRIPTS[@]}"; do
     [[ -f "$APP_SRC/$f" ]] || die "missing local file: $APP_SRC/$f"
   done
-  log "local Phase-1 files present under $APP_SRC"
+  log "local Phase1/2/2.1 files present under $APP_SRC"
 }
 
 preflight_ssh() {
   remote "test -d '$REMOTE_APP'" || die "remote app dir missing: $REMOTE_APP"
   remote "test -x '$REMOTE_APP/.venv/bin/python'" || die "remote venv python missing"
   remote "systemctl cat '$SERVICE_NAME' >/dev/null" || die "systemd unit missing: $SERVICE_NAME"
+  # Data dirs must exist and remain untouched by sync.
+  remote "test -d /var/lib/scootercheck" || die "missing /var/lib/scootercheck"
   log "SSH preflight OK ($REMOTE_HOST)"
 }
 
@@ -70,22 +93,19 @@ run_local_tests() {
 backup_remote() {
   local stamp backup
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-  backup="${REMOTE_APP}.bak-phase1-${stamp}"
+  backup="${REMOTE_APP}.bak-fw-${stamp}"
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "DRY-RUN: would create backup $backup"
     printf '%s\n' "$backup"
     return 0
   fi
   log "creating remote backup → $backup"
-  # Copy tree only; do not touch /var/lib/scootercheck.
   if ! remote "cp -a -- '$REMOTE_APP' '$backup'"; then
     die "backup failed — deployment aborted (no files changed)"
   fi
-  # Verify backup looks complete.
   if ! remote "test -f '$backup/app.py' && test -d '$backup'"; then
     die "backup verification failed — deployment aborted"
   fi
-  # Refuse to continue if backup is empty-ish.
   local count
   count="$(remote "find '$backup' -maxdepth 1 -type f -name '*.py' | wc -l" | tr -d '[:space:]')"
   [[ "${count:-0}" -ge 5 ]] || die "backup too small ($count py files) — aborting"
@@ -97,21 +117,22 @@ sync_files() {
   local f
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "DRY-RUN: would rsync into $REMOTE_APP:"
-    for f in "${PHASE1_FILES[@]}"; do
+    for f in "${DEPLOY_PY_FILES[@]}" "${DEPLOY_GHIDRA_SCRIPTS[@]}"; do
       log "  - $f"
     done
+    log "DRY-RUN: would NOT touch /var/lib/scootercheck (jobs/stock-fw/catalogs)"
     return 0
   fi
-  for f in "${PHASE1_FILES[@]}"; do
+  remote "mkdir -p -- '$REMOTE_APP/ghidra_scripts'"
+  for f in "${DEPLOY_PY_FILES[@]}" "${DEPLOY_GHIDRA_SCRIPTS[@]}"; do
     log "rsync $f → $REMOTE_APP/$f"
-    # Explicit destination file path — avoids --relative path surprises.
     "${RSYNC[@]}" "$APP_SRC/$f" "$REMOTE_HOST:$REMOTE_APP/$f" \
       || die "rsync failed for $f — run rollback manually if partial"
   done
   remote "chown -R scootercheck:scootercheck -- '$REMOTE_APP'" \
     || die "chown failed after sync"
-  # Ensure we never synced into /var/lib
   remote "test ! -e /var/lib/scootercheck/zip_safe.py" || die "unexpected file under /var/lib"
+  remote "test ! -e /var/lib/scootercheck/job_auth.py" || die "unexpected file under /var/lib"
 }
 
 remote_import_and_tests() {
@@ -119,16 +140,16 @@ remote_import_and_tests() {
   cmd=$(cat <<EOF
 set -euo pipefail
 cd '$REMOTE_APP'
-./.venv/bin/python -c 'import zip_safe, stock_diff, app; print("imports_ok")'
-./.venv/bin/python -m unittest test_zip_safe test_stock_diff -q
+./.venv/bin/python -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, app; print("imports_ok")'
+./.venv/bin/python -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff -q
 EOF
 )
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "DRY-RUN: would run remote imports + unit tests"
     (
       cd "$APP_SRC"
-      python3 -c 'import zip_safe, stock_diff; print("local_imports_ok")'
-      python3 -m unittest test_zip_safe test_stock_diff -q
+      python3 -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify; print("local_imports_ok")'
+      python3 -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff -q
     ) || return 1
     return 0
   fi
@@ -153,7 +174,6 @@ restart_and_healthcheck() {
     rollback "$backup"
     die "restart failed; rolled back"
   }
-  # Wait briefly for bind
   sleep 2
   local health
   if ! health="$(remote "curl -fsS --max-time 10 '$HEALTH_URL'")"; then
@@ -179,15 +199,14 @@ rollback() {
     return 0
   fi
   log "ROLLBACK: restoring $backup → $REMOTE_APP"
-  # Replace app tree only. Never touch /var/lib/scootercheck.
   remote "systemctl stop '$SERVICE_NAME' || true"
-  remote "rm -rf -- '${REMOTE_APP}.failed-phase1' && mv -- '$REMOTE_APP' '${REMOTE_APP}.failed-phase1' && cp -a -- '$backup' '$REMOTE_APP'"
+  remote "rm -rf -- '${REMOTE_APP}.failed-fw' && mv -- '$REMOTE_APP' '${REMOTE_APP}.failed-fw' && cp -a -- '$backup' '$REMOTE_APP'"
   remote "chown -R scootercheck:scootercheck -- '$REMOTE_APP'"
   remote "systemctl start '$SERVICE_NAME'"
   sleep 2
   remote "curl -fsS --max-time 10 '$HEALTH_URL' >/dev/null" \
     || die "rollback started service but healthcheck still failing"
-  log "ROLLBACK complete; previous attempt kept at ${REMOTE_APP}.failed-phase1"
+  log "ROLLBACK complete; previous attempt kept at ${REMOTE_APP}.failed-fw"
 }
 
 main() {
@@ -208,7 +227,6 @@ main() {
   backup="$(backup_remote)"
   [[ -n "$backup" ]] || die "empty backup path"
 
-  # Sync before restart; on test failure after sync, rollback.
   sync_files
   if ! remote_import_and_tests; then
     if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -218,6 +236,7 @@ main() {
   fi
   restart_and_healthcheck "$backup"
   log "done. data under /var/lib/scootercheck was not modified."
+  log "note: reference catalogs live under STOCK_FW_DIR/catalogs (or STOCK_CATALOG_DIR); build via admin API after deploy."
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "DRY-RUN finished — no production changes."
   fi

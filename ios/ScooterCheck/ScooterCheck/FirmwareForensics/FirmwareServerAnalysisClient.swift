@@ -59,11 +59,31 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
     var apiToken: String?
     /// ScooterCheck-Login JWT — Server akzeptiert `Authorization: Bearer` für active Users.
     var bearerToken: String?
+    /// Stable client principal for shared API-token jobs (`X-ScooterCheck-Client-Id`).
+    var clientId: String?
 
-    init(baseURL: URL? = nil, apiToken: String? = nil, bearerToken: String? = nil) {
+    init(
+        baseURL: URL? = nil,
+        apiToken: String? = nil,
+        bearerToken: String? = nil,
+        clientId: String? = nil
+    ) {
         self.baseURL = baseURL
         self.apiToken = apiToken
         self.bearerToken = bearerToken
+        self.clientId = clientId
+    }
+
+    /// Persisted installation id for API-token ownership (not the shared secret).
+    static func stableClientId() -> String {
+        let key = "scootercheck.firmwareAnalysis.clientId.v1"
+        if let existing = UserDefaults.standard.string(forKey: key),
+           !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return existing
+        }
+        let generated = "ios-\(UUID().uuidString.lowercased())"
+        UserDefaults.standard.set(generated, forKey: key)
+        return generated
     }
 
     /// Liest URL/Token aus AppSettings + Auth-Session (MainActor-Snapshot).
@@ -78,7 +98,8 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
                 let t = s.firmwareAnalysisAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
                 return t.isEmpty ? nil : t
             }(),
-            bearerToken: AuthSessionStore.shared.token
+            bearerToken: AuthSessionStore.shared.token,
+            clientId: Self.stableClientId()
         )
     }
 
@@ -298,6 +319,9 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         }
         if let apiToken, !apiToken.isEmpty {
             req.setValue(apiToken, forHTTPHeaderField: "X-ScooterCheck-Token")
+        }
+        if let clientId, !clientId.isEmpty {
+            req.setValue(clientId, forHTTPHeaderField: "X-ScooterCheck-Client-Id")
         }
         req.setValue("application/json", forHTTPHeaderField: "Accept")
     }
