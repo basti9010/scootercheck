@@ -23,11 +23,13 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         if let stock = deep.stockDiff {
             switch stock.outcome {
             case .identical:
-                bullets.append("Stock-Vergleich: Byte-identisch mit bekannter Referenz\(stock.referenceLabel.map { " („\($0)“)" } ?? "").")
+                bullets.append(
+                    "Bibliotheks-Vergleich: Byte-identisch mit hinterlegter Referenz\(stock.referenceLabel.map { " („\($0)“)" } ?? "") — nur aussagekräftig, wenn das eine echte OEM-/Serien-Referenz ist (nicht dieselbe Falldatei)."
+                )
             case .different:
-                bullets.append("Stock-Vergleich: weicht von der Referenz ab\(stock.differingBytes.map { " (\($0) Bytes)" } ?? "").")
+                bullets.append("Bibliotheks-Vergleich: weicht von der hinterlegten Referenz ab\(stock.differingBytes.map { " (\($0) Bytes)" } ?? "").")
             case .noReference:
-                bullets.append("Stock-Vergleich: keine passende Referenz in der Bibliothek.")
+                bullets.append("Kein Stock-/OEM-Referenzbild in der Server-Bibliothek — Vergleich entfällt (Hochladen ≠ Referenz).")
             case .skipped:
                 break
             }
@@ -61,8 +63,12 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
         }
 
         let headline: String
-        if deep.stockDiff?.outcome == .identical {
-            headline = "Klartext ausgewertet: Image entspricht Stock-Referenz"
+        if deep.stockDiff?.outcome == .noReference,
+           deep.legalCapKmhInCode != nil, deep.maxSpeedKmhInCode != nil,
+           (deep.maxSpeedKmhInCode ?? 0) > (deep.legalCapKmhInCode ?? 0) + 5 {
+            headline = "Klartext ausgewertet — Limits gefunden, kein OEM-Stock hinterlegt"
+        } else if deep.stockDiff?.outcome == .identical {
+            headline = "Klartext ausgewertet: passt zur hinterlegten Bibliotheks-Referenz"
         } else if deep.legalCapKmhInCode != nil, deep.maxSpeedKmhInCode != nil,
                   (deep.maxSpeedKmhInCode ?? 0) > (deep.legalCapKmhInCode ?? 0) + 5 {
             headline = "Klartext ausgewertet: Legal- und Open-Limits im selben Image"
@@ -94,7 +100,14 @@ struct FirmwareDeepAnalysisBriefing: Equatable, Sendable {
             let ref = deep.stockDiff?.referenceLabel.map { " („\($0)“)" } ?? ""
             return (
                 .green,
-                "Server hat entschlüsselt und mit Stock verglichen: SHA-256 identisch\(ref). Keine Byte-Abweichung zur Referenz. (Offline wirkte die Datei nur verschlüsselt — das ist erledigt.)"
+                "Server-Klartext: SHA-256 identisch mit Bibliotheks-Referenz\(ref). Aussage nur gültig, wenn diese Referenz echte OEM-/Serien-Firmware ist — nicht dieselbe Falldatei als „Stock“."
+            )
+        }
+        if deep.stockDiff?.outcome == .noReference,
+           let legal = deep.legalCapKmhInCode, let maxK = deep.maxSpeedKmhInCode, maxK > legal + 5 {
+            return (
+                .yellow,
+                "Server hat entschlüsselt: Legal ~\(Int(legal)) und offen bis ~\(Int(maxK)) km/h im Image. Kein OEM-Stock in der Bibliothek — deshalb kein GRÜN/ROT aus Stock-Diff. Hochgeladene Falldatei ist keine Referenz."
             )
         }
         if deep.stockDiff?.outcome == .different {

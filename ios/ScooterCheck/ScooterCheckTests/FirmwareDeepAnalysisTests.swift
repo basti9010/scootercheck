@@ -202,7 +202,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             )
         )
         let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
-        XCTAssertTrue(brief.headline.localizedCaseInsensitiveContains("Stock"))
+        XCTAssertTrue(brief.headline.localizedCaseInsensitiveContains("Referenz") || brief.headline.localizedCaseInsensitiveContains("Bibliothek"))
         XCTAssertTrue(brief.actionableCombos.contains { $0.localizedCaseInsensitiveContains("Gas") })
         XCTAssertTrue(brief.technicalCombos.contains { $0.localizedCaseInsensitiveContains("Bitfeld") })
         XCTAssertEqual(brief.humanModeTransitions.count, 1)
@@ -213,7 +213,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             deep: deep
         )
         XCTAssertEqual(refreshed.0, .green)
-        XCTAssertTrue(refreshed.1.localizedCaseInsensitiveContains("Stock"))
+        XCTAssertTrue(refreshed.1.localizedCaseInsensitiveContains("OEM") || refreshed.1.localizedCaseInsensitiveContains("Bibliothek"))
     }
 
     func testOrchestratorAttachesCatalogDeepAnalysisForMatchingENC() throws {

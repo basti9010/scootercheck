@@ -44,6 +44,7 @@ Nach Decrypt vergleicht der Worker den Klartext mit `/var/lib/scootercheck/stock
 - Dateien: `*.bin` / `*.dec.bin`, optional `manifest.json`
 - Admin: `GET/POST/DELETE /v1/firmware/admin/stock`
 - Ergebnis im Job: `result.stockDiff` (`identical` | `different` | `noReference`)
+- **Nur echte OEM-/Serien-Klartexte** als Stock hinterlegen. Fall-Uploads (z. B. dieselbe ZT3-ZIP) nicht als Referenz „promoten“ — sonst wirkt jeder Re-Upload fälschlich „Stock identisch“.
 
 Ohne Referenzen: `noReference` — Pipeline sonst unverändert.
 

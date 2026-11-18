@@ -847,7 +847,11 @@ def admin_promote_job_stock(
     version: str = Query(""),
     _: dict[str, Any] = Depends(require_admin),
 ) -> JSONResponse:
-    """Copy a job's decrypted plaintext into the stock library for future BinDiff."""
+    """Copy a job's decrypted plaintext into the stock library for future BinDiff.
+
+    Only use for known OEM/serial reference images — not for arbitrary case uploads,
+    or every re-upload of the same file will report stockDiff=identical.
+    """
     job = load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")

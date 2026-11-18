@@ -447,7 +447,7 @@ struct AdminFirmwareUploadsView: View {
                             .foregroundStyle(Theme.warn)
                     }
                     if (workerHealth.stockRefCount ?? 0) == 0 {
-                        Text("Stock-Lib leer: Klartext-Stock-BINs nach /var/lib/scootercheck/stock-fw/ legen (oder Admin-API).")
+                        Text("Stock-Lib leer: nur echte OEM-/Serien-Klartext-BINs hinterlegen — keine Fall-Uploads als „Stock“.")
                             .font(.caption2)
                             .foregroundStyle(Theme.warn)
                     }
@@ -530,7 +530,7 @@ struct AdminFirmwareUploadsView: View {
                                 .buttonStyle(.bordered)
                             }
                             if job.plaintextSaved == true {
-                                Button("→ Stock") {
+                                Button("→ OEM-Stock") {
                                     Task { await promoteStock(job.jobId) }
                                 }
                                 .buttonStyle(.bordered)
@@ -627,6 +627,7 @@ struct AdminFirmwareUploadsView: View {
     private func promoteStock(_ jobId: String) async {
         do {
             let client = FirmwareServerAnalysisClient.fromAppSettings()
+            // Only genuine OEM/serial plaintext — never promote a case upload as stock.
             _ = try await client.adminPromoteJobToStock(jobId: jobId)
             await reloadStats()
         } catch {
