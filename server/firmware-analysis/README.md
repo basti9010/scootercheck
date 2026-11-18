@@ -11,7 +11,7 @@ Dieses Repo enthält **kein** ninebottea und **keine** Keys.
 3. Background: extract `.enc` → `DECRYPT_CMD` → Klartext unter `PLAINTEXT_STORE/YYYY/MM/DD/`
 4. Optional Ghidra → `.c` unter `DECOMPILE_STORE/YYYY/MM/DD/`
 5. Speed-/Combo-Scan (deterministisch) → JSON
-6. Optional KI (`allowLLM` + `LLM_API_KEY`): schema-gebundene Anreicherung von Combos/Modi/Eingaben aus dem Decompile-Snippet (keine neuen Speeds)
+6. Optional KI (`allowLLM`, Default **false**, + `LLM_API_KEY`): schema-gebundene Anreicherung von Combos/Modi/Eingaben aus dem Decompile-Snippet (keine neuen Speeds). Ohne KI bleibt die Pipeline vollständig funktionsfähig.
 7. App pollt `GET /v1/firmware/jobs/{id}` bis `completed` / `failed`
 8. Optional Download: `/plaintext`, `/decompile`
 

@@ -143,6 +143,8 @@ enum FirmwareForensicPDF {
                 y = gap(y)
             }
 
+            y = drawTechnicalProvenanceSection(ctx, report: report, y: y)
+
             y = heading(ctx, "Grenzen der Untersuchung", y: y)
             for lim in report.limits {
                 y = ensure(ctx, y: y, need: 28)
@@ -151,12 +153,134 @@ enum FirmwareForensicPDF {
             y = gap(y)
             y = line(
                 ctx,
-                "ScooterCheck Firmware-Forensik — nur lesend. Codebefunde beweisen nicht die Installation am Fahrzeug.",
+                "ScooterCheck Firmware-Forensik — nur lesend. Codebefunde beweisen nicht die Installation am Fahrzeug. Der Bericht trifft keine stärkere Aussage als die zugrunde liegenden technischen Ergebnisse.",
                 y: y,
                 size: 8
             )
             _ = y
         }
+    }
+
+    /// Abschnitt „Technische Analyse und Nachweisführung“.
+    private static func drawTechnicalProvenanceSection(
+        _ ctx: UIGraphicsPDFRendererContext,
+        report: FirmwareForensicReport,
+        y: CGFloat
+    ) -> CGFloat {
+        var y = heading(ctx, "Technische Analyse und Nachweisführung", y: y)
+        y = line(ctx, "SHA-256 Originaldatei: \(report.archiveDigest.sha256)", y: y, size: 8)
+        if let plain = report.serverArtifacts?.plaintextSHA256, !plain.isEmpty {
+            y = line(ctx, "SHA-256 entschlüsselte Firmware: \(plain)", y: y, size: 8)
+        } else {
+            y = line(ctx, "SHA-256 entschlüsselte Firmware: — (nicht vorhanden / nicht entschlüsselt)", y: y, size: 8)
+        }
+        y = line(ctx, "Firmwaretyp: \(report.meta.type ?? "—") · Format: \(formatKind(report.containerKind))", y: y, size: 9)
+        y = line(
+            ctx,
+            "Modellzuordnung: \(report.meta.models.joined(separator: ", ").nilIfEmpty ?? "—")",
+            y: y,
+            size: 9
+        )
+        if let job = report.serverArtifacts?.jobId, !job.isEmpty {
+            y = line(ctx, "Server-Job-ID: \(job)", y: y, size: 9)
+        } else {
+            y = line(ctx, "Server-Job-ID: — (nur Offline oder noch kein Server-Lauf)", y: y, size: 9)
+        }
+        y = line(ctx, "Analysezeitpunkt: \(formatDate(report.analyzedAt))", y: y, size: 9)
+
+        if let deep = report.deepAnalysis {
+            let tools = deep.sources.map(\.label).joined(separator: ", ")
+            y = line(ctx, "Werkzeuge/Quellen: \(tools.isEmpty ? "—" : tools)", y: y, size: 8)
+            if let stock = deep.stockDiff {
+                let trust = FirmwareEvidenceClassifier.referenceTrust(for: stock)
+                y = line(
+                    ctx,
+                    "Referenzfirmware: \(stock.referenceLabel ?? "—") · Outcome \(stock.outcome.label)",
+                    y: y,
+                    size: 8
+                )
+                y = line(
+                    ctx,
+                    "Referenz-Herkunft/Vertrauen: source=\(stock.referenceSource ?? "—") · \(trust.label)"
+                        + (stock.referenceProvenanceVerified == true ? " · Provenance verifiziert" : " · Provenance nicht bestätigt"),
+                    y: y,
+                    size: 8
+                )
+            } else {
+                y = line(ctx, "Referenzfirmware: keine Stock-Diff-Daten", y: y, size: 8)
+            }
+
+            y = gap(y)
+            y = line(ctx, "Status Analyseschritte:", y: y, size: 9, bold: true)
+            let steps: [(String, Bool)] = [
+                ("Stock-Diff", deep.stockDiff != nil),
+                ("YARA", !deep.yaraMatches.isEmpty),
+                ("IVT", deep.cortexMIvt != nil),
+                ("Pinout", deep.boardPinout != nil),
+                ("Speed-Signaturen", !deep.speedLimits.isEmpty),
+                ("Emulation/Angr", deep.sources.contains(.serverEmulation) || deep.sources.contains(.serverAngr)),
+                ("KI", deep.sources.contains(.serverLLM)),
+            ]
+            for (name, ok) in steps {
+                y = ensure(ctx, y: y, need: 16)
+                y = line(ctx, "• \(name): \(ok ? "Daten vorhanden" : "nicht vorhanden / nicht gelaufen")", y: y, size: 8)
+            }
+
+            let findings = deep.classifiedFindings
+                ?? FirmwareEvidenceClassifier.classify(from: deep, fileName: report.originalFileName)
+            if !findings.isEmpty {
+                y = gap(y)
+                y = line(ctx, "Evidenzstufen der wichtigsten Erkenntnisse:", y: y, size: 9, bold: true)
+                let proven = findings.filter { $0.tier == .statisch || $0.tier == .live }
+                let hints = findings.filter { $0.tier == .muster || $0.tier == .emuliert }
+                let guesses = findings.filter { $0.tier == .nichtVerifiziert }
+                y = line(ctx, "1) Technisch nachgewiesene Eigenschaften (STATISCH/LIVE):", y: y, size: 8, bold: true)
+                if proven.isEmpty {
+                    y = line(ctx, "   — keine", y: y, size: 8)
+                } else {
+                    for f in proven.prefix(8) {
+                        y = ensure(ctx, y: y, need: 28)
+                        y = line(ctx, "   [\(f.tier.label)] \(f.detail)", y: y, size: 7)
+                        y = line(ctx, "   Einschränkung: \(f.limitations)", y: y, size: 7)
+                    }
+                }
+                y = line(ctx, "2) Auffälligkeiten und Indizien (MUSTER/EMULIERT):", y: y, size: 8, bold: true)
+                if hints.isEmpty {
+                    y = line(ctx, "   — keine", y: y, size: 8)
+                } else {
+                    for f in hints.prefix(8) {
+                        y = ensure(ctx, y: y, need: 28)
+                        y = line(ctx, "   [\(f.tier.label)] \(f.detail)", y: y, size: 7)
+                        y = line(ctx, "   Einschränkung: \(f.limitations)", y: y, size: 7)
+                    }
+                }
+                y = line(ctx, "3) Nicht bestätigte Vermutungen (NICHT_VERIFIZIERT):", y: y, size: 8, bold: true)
+                if guesses.isEmpty {
+                    y = line(ctx, "   — keine", y: y, size: 8)
+                } else {
+                    for f in guesses.prefix(6) {
+                        y = ensure(ctx, y: y, need: 28)
+                        y = line(ctx, "   [\(f.tier.label)] \(f.detail)", y: y, size: 7)
+                    }
+                }
+            }
+        } else {
+            y = line(ctx, "Keine Deep-Analysis-Daten — nur Offline-Befunde.", y: y, size: 9)
+        }
+
+        y = gap(y)
+        y = line(ctx, "Grenzen der technischen Untersuchung (Nachweisführung):", y: y, size: 9, bold: true)
+        let provenanceLimits = [
+            "Byte-/SHA-Identität belegt keine Installation am Fahrzeug.",
+            "YARA-, Capstone- und kurze Unicorn-Läufe sind keine Live-Fahrzeugbeobachtung.",
+            "Community-Referenzen mit source=oem sind ohne Provenance-Flag nicht herstellerseitig bestätigt.",
+            "Byte-Diff allein begründet keine ROT-Ampel.",
+        ]
+        for lim in provenanceLimits {
+            y = ensure(ctx, y: y, need: 22)
+            y = line(ctx, "• \(lim)", y: y, size: 8)
+        }
+        return gap(y)
     }
 
     static func jsonData(_ report: FirmwareForensicReport) throws -> Data {

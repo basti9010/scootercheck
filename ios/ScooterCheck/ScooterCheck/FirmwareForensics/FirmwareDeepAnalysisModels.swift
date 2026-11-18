@@ -36,6 +36,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var cortexMIvt: FirmwareCortexMIvt? = nil
     /// Board-/Pinout-Heuristik vom Server (investigativ).
     var boardPinout: FirmwareBoardPinoutHint? = nil
+    /// Klassifizierte Evidenzfunde (optional, abwärtskompatibel).
+    var classifiedFindings: [FirmwareClassifiedFinding]? = nil
 
     static let currentSchemaVersion = 1
 
@@ -52,7 +54,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case schemaVersion, producedAt, sources, subjectSHA256, packageDisplayName
         case models, controllerType, speedLimits, maxSpeedKmhInCode, legalCapKmhInCode
         case modeTransitions, inputHints, comboSummaries, notes, caveats, quality
-        case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout
+        case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout, classifiedFindings
     }
 
     init(from decoder: Decoder) throws {
@@ -79,6 +81,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         yaraMatches = try c.decodeIfPresent([FirmwareYaraMatch].self, forKey: .yaraMatches) ?? []
         cortexMIvt = try c.decodeIfPresent(FirmwareCortexMIvt.self, forKey: .cortexMIvt)
         boardPinout = try c.decodeIfPresent(FirmwareBoardPinoutHint.self, forKey: .boardPinout)
+        classifiedFindings = try c.decodeIfPresent([FirmwareClassifiedFinding].self, forKey: .classifiedFindings)
     }
 
     init(
@@ -102,7 +105,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         r2StringsSample: [String] = [],
         yaraMatches: [FirmwareYaraMatch] = [],
         cortexMIvt: FirmwareCortexMIvt? = nil,
-        boardPinout: FirmwareBoardPinoutHint? = nil
+        boardPinout: FirmwareBoardPinoutHint? = nil,
+        classifiedFindings: [FirmwareClassifiedFinding]? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -125,6 +129,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.yaraMatches = yaraMatches
         self.cortexMIvt = cortexMIvt
         self.boardPinout = boardPinout
+        self.classifiedFindings = classifiedFindings
     }
 
     func encode(to encoder: Encoder) throws {
@@ -150,6 +155,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encode(yaraMatches, forKey: .yaraMatches)
         try c.encodeIfPresent(cortexMIvt, forKey: .cortexMIvt)
         try c.encodeIfPresent(boardPinout, forKey: .boardPinout)
+        try c.encodeIfPresent(classifiedFindings, forKey: .classifiedFindings)
     }
 }
 
@@ -244,6 +250,10 @@ struct FirmwareStockDiffResult: Equatable, Codable, Sendable {
     var limitRegionAffected: Bool? = nil
     var panicRegionAffected: Bool? = nil
     var regionNotes: [String]? = nil
+    /// `manufacturerVerified` | `communityLibrary` | `serialProduction` | `unknown`
+    var referenceTrust: String? = nil
+    /// Nur true, wenn Herkunft explizit verifiziert wurde (nicht bloß source=oem).
+    var referenceProvenanceVerified: Bool? = nil
 }
 
 struct FirmwareStockRef: Equatable, Codable, Sendable, Identifiable {

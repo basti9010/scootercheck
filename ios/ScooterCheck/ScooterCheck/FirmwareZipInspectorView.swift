@@ -254,6 +254,17 @@ struct FirmwareZipInspectorView: View {
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if AppSettings.shared.firmwareAnalysisAllowLLM {
+                Text("Hinweis: Externe KI ist in den Einstellungen aktiviert. Decompile-Ausschnitte können an einen externen KI-Dienst übertragen werden.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.warn)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("KI-Anreicherung ist aus (Standard). Die Server-Analyse läuft ohne externe KI.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if serverReady {
                 Button {
                     Task { await uploadToAnalysisServer() }
@@ -762,11 +773,39 @@ struct FirmwareZipInspectorView: View {
                 }
 
                 if !deep.yaraMatches.isEmpty {
-                    DisclosureGroup("YARA (\(deep.yaraMatches.count))") {
+                    DisclosureGroup("YARA (\(deep.yaraMatches.count)) — Evidenzstufe MUSTER") {
                         ForEach(deep.yaraMatches) { m in
                             Text("• \(m.rule): \(m.description)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
+                        }
+                        Text("YARA erkennt Bytefolgen — kein Live-Fahrzeugnachweis.")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.warn)
+                    }
+                    .foregroundStyle(Theme.accent)
+                    .padding(.top, 2)
+                }
+
+                let findings = deep.classifiedFindings
+                    ?? FirmwareEvidenceClassifier.classify(from: deep, fileName: r.originalFileName)
+                if !findings.isEmpty {
+                    DisclosureGroup("Evidenzstufen (\(findings.count))") {
+                        ForEach(findings.prefix(24)) { f in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("[\(f.tier.label)] \(f.category) · \(f.tool)")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(Theme.textPrimary)
+                                Text(f.detail)
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(f.limitations)
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textMuted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.vertical, 2)
                         }
                     }
                     .foregroundStyle(Theme.accent)
@@ -1042,7 +1081,7 @@ struct FirmwareZipInspectorView: View {
             models: local?.meta.models ?? [],
             controllerType: local?.meta.type,
             allowDecrypt: true,
-            allowLLM: true
+            allowLLM: AppSettings.shared.firmwareAnalysisAllowLLM
         )
         do {
             let status = try await client.submit(req, archiveData: data)
@@ -1149,8 +1188,18 @@ struct FirmwareZipInspectorView: View {
                 remoteWithLive.sources.append(.liveVehicleContext)
             }
         }
+        if let existing = current.deepAnalysis {
+            remoteWithLive = FirmwareDeepAnalysisMerger.coalesceOptionals(base: existing, incoming: remoteWithLive)
+        }
         let parts = [current.deepAnalysis, remoteWithLive].compactMap { $0 }
-        current.deepAnalysis = FirmwareDeepAnalysisMerger.merge(parts) ?? remoteWithLive
+        var merged = FirmwareDeepAnalysisMerger.merge(parts) ?? remoteWithLive
+        if merged.classifiedFindings == nil {
+            merged.classifiedFindings = FirmwareEvidenceClassifier.classify(
+                from: merged,
+                fileName: current.originalFileName
+            )
+        }
+        current.deepAnalysis = merged
         // Evidence-Zeile für Combos aktualisieren (nur verständliche Zeilen)
         if let deep = current.deepAnalysis {
             let brief = FirmwareDeepAnalysisBriefing.build(from: deep)

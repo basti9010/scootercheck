@@ -14,7 +14,7 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertEqual(hint?.profile, .maxG3US)
         XCTAssertEqual(hint?.shortBadge, "Max G3 US")
         XCTAssertEqual(hint?.profile.market, .us37)
-        XCTAssertEqual(hint?.profile.ratedMaxKmh, 37, accuracy: 0.1)
+        XCTAssertEqual(hint?.profile.ratedMaxKmh ?? -1, 37, accuracy: 0.1)
     }
 
     func testMaxG3From1CGE() {
@@ -170,7 +170,7 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertNil(StockFirmwareCatalog.entry(for: .gt3D))
     }
 
-    func testZT3ProStockGearAndCatalog() {
+    func testZT3ProStockGearAndCatalog() throws {
         XCTAssertEqual(ScooterProfile.zt3ProD.stockMaxGear, 3)
         XCTAssertEqual(ScooterProfile.zt3ProE.stockMaxGear, 3)
         let entry = try XCTUnwrap(StockFirmwareCatalog.entry(for: .zt3ProD))
@@ -183,7 +183,7 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertEqual(StockFirmwareCatalog.classify("2.1.13", in: entry.ble), .listedStock)
     }
 
-    func testF3ProStockGearAndCatalog() {
+    func testF3ProStockGearAndCatalog() throws {
         XCTAssertEqual(ScooterProfile.ninebotF3D.stockMaxGear, 3)
         XCTAssertEqual(ScooterProfile.maxG3D.stockMaxGear, 1)
         let entry = try XCTUnwrap(StockFirmwareCatalog.entry(for: .ninebotF3D))
@@ -363,7 +363,7 @@ final class BleModelHintTests: XCTestCase {
         XCTAssertEqual(Nb.readU16Len(board: .ble, register: 0x01, length: 2), u16)
     }
 
-    func testG3DiagnosticFieldsPreferBleBeforeVcu() {
+    func testG3DiagnosticFieldsPreferBleBeforeVcu() throws {
         let fields = DiagnosticMap.fields(for: .maxG3US)
         let ids = fields.map(\.id)
         let bleSN = try XCTUnwrap(ids.firstIndex(of: "ble_sn"))

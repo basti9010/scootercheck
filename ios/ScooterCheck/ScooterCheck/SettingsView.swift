@@ -225,10 +225,34 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             sectionLabel("Firmware-Analyse-Server")
 
-            Text("ZIP/ENC: lokal prüfen, dann optional „Auf Server entschlüsseln“ (ninebottea → r2/Ghidra/… → Speeds/Combos/Stock-Diff; optional KI). Auth: Login (Bearer).")
+            Text("ZIP/ENC: lokal prüfen, dann optional „Auf Server entschlüsseln“ (ninebottea → r2/Ghidra/… → Speeds/Combos/Stock-Diff). Auth: Login (Bearer). KI ist standardmäßig aus.")
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Toggle(isOn: $settings.firmwareAnalysisAllowLLM) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Externe KI-Anreicherung")
+                            .font(Theme.secondary)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Nur bewusst aktivieren. Bei Aktivierung können Decompile-Ausschnitte an einen externen KI-Dienst übertragen werden. Die Analyse bleibt ohne KI vollständig funktionsfähig.")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.warn)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .tint(Theme.accent)
+            }
+            .padding(.horizontal, Theme.Space.cardPadding)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.card)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                    .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+            )
 
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text("Basis-URL")

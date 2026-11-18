@@ -174,6 +174,7 @@ struct FirmwareSegmentDiff: Equatable, Codable, Sendable {
 }
 
 struct FirmwareComparisonResult: Equatable, Codable, Sendable {
+    /// Vergleichsstatus (comparisonStatus) — Identität / Diff / nicht möglich.
     var outcome: FirmwareComparisonOutcome
     var referenceId: String?
     var referenceLabel: String?
@@ -181,6 +182,32 @@ struct FirmwareComparisonResult: Equatable, Codable, Sendable {
     var firstDiffOffset: Int?
     var segments: [FirmwareSegmentDiff]
     var note: String
+    /// `FirmwareReferenceTrust.rawValue` — nie aus `note` ableiten.
+    var referenceTrust: String? = nil
+    /// Nur true bei explizit verifizierter Referenzherkunft.
+    var referenceProvenanceVerified: Bool? = nil
+    /// true nur bei belastbarem funktionalem Manipulationsnachweis (nicht Byte-Diff allein).
+    var functionalChangeVerified: Bool? = nil
+
+    /// Alias für Ampel-Dokumentation: Vergleichsstatus.
+    var comparisonStatus: FirmwareComparisonOutcome { outcome }
+
+    var resolvedReferenceTrust: FirmwareReferenceTrust {
+        if let raw = referenceTrust, let parsed = FirmwareReferenceTrust(rawValue: raw) {
+            return parsed
+        }
+        if referenceProvenanceVerified == true {
+            return .manufacturerVerified
+        }
+        return .unknown
+    }
+
+    /// GRÜN nur bei Identität + herstellerseitig verifizierter Provenance.
+    var allowsGreenIdentity: Bool {
+        outcome == .identical
+            && referenceProvenanceVerified == true
+            && resolvedReferenceTrust.allowsGreenIdentity
+    }
 }
 
 enum FirmwareForensicVerdict: String, Codable, Sendable {
@@ -191,10 +218,14 @@ enum FirmwareForensicVerdict: String, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .green: return "GRÜN — Keine technische Abweichung festgestellt"
-        case .yellow: return "GELB — Auffälligkeit oder unbekannte Firmware; weitere Prüfung erforderlich"
-        case .red: return "ROT — Konkrete technische Abweichung gegenüber einer geeigneten Referenz bestätigt"
-        case .gray: return "GRAU — Keine ausreichende Datengrundlage"
+        case .green:
+            return "GRÜN — Identisch mit nachweislich authentischer OEM-Referenz"
+        case .yellow:
+            return "GELB — Technische Abweichung/Auffälligkeit; Ursache noch nicht abschließend geklärt"
+        case .red:
+            return "ROT — Konkret nachgewiesene, funktional bedeutsame Manipulation (nicht nur Byte-Diff)"
+        case .gray:
+            return "GRAU — Unzureichende Datenlage, fehlende Referenz oder Analyse nicht möglich"
         }
     }
 

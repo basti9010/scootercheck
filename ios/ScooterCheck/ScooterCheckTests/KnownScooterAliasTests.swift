@@ -1,6 +1,7 @@
 import XCTest
 @testable import ScooterCheck
 
+@MainActor
 final class KnownScooterAliasTests: XCTestCase {
 
     func testMakeKnownLabelPrefersNameAndPlate() {

@@ -9,7 +9,7 @@ final class ProtocolSubjectTests: XCTestCase {
         XCTAssertNil(subject.sanitized().summaryLine)
     }
 
-    func testSummaryIncludesNamePlateAndBirth() {
+    func testSummaryIncludesNamePlateAndBirth() throws {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "Europe/Berlin")!
         let birth = cal.date(from: DateComponents(year: 1990, month: 5, day: 12))!

@@ -83,6 +83,7 @@ on:
       - cursor/funbool-dual-source-b100
       - cursor/auslesen-stop-stay-b100
       - cursor/backend-auth-b100
+      - cursor/forensik-phase1-reliability-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
@@ -145,6 +146,45 @@ jobs:
 
       - name: Install gems
         run: bundle install --jobs 4
+
+      # Phase-1 Ampel/Merger/Evidence — fail before TestFlight upload on unit failures.
+      - name: Unit tests (ScooterCheckTests)
+        run: |
+          # Prefer UDID from JSON (names like "iPhone SE (3rd generation)" break awk '()' parsing).
+          DEST=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          preferred = ("iPhone 17", "iPhone 16", "iPhone 16e", "iPhone SE")
+          candidates = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime and "iPhone" not in runtime:
+                  continue
+              for d in devices:
+                  if not d.get("isAvailable"):
+                      continue
+                  name = d.get("name") or ""
+                  if "iPhone" not in name:
+                      continue
+                  candidates.append((name, d["udid"], runtime))
+          if not candidates:
+              sys.exit("no iPhone simulator available")
+          for pref in preferred:
+              for name, udid, runtime in candidates:
+                  if name.startswith(pref):
+                      print(udid)
+                      print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
+                      raise SystemExit(0)
+          name, udid, runtime = candidates[-1]
+          print(udid)
+          print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
+          ')
+          echo "Using simulator UDID=$DEST"
+          xcodebuild test \
+            -project ScooterCheck.xcodeproj \
+            -scheme ScooterCheck \
+            -destination "platform=iOS Simulator,id=$DEST" \
+            -only-testing:ScooterCheckTests \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Fastlane beta
         run: bundle exec fastlane beta
