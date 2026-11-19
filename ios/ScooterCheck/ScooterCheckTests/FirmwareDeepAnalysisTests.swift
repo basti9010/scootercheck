@@ -854,8 +854,8 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         )
         deep.referenceMetadata = FirmwareReferenceMetadata(
             referenceLabel: "community test",
-            verificationStatus: "community",
-            referenceTrust: "communityLibrary"
+            referenceTrust: "communityLibrary",
+            verificationStatus: "community"
         )
         deep.analysisCompleteness = "PARTIAL"
         deep.analysisLimitations = ["Statische Analyse — kein Fahrzeugtest."]
