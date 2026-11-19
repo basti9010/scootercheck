@@ -25,6 +25,7 @@ fi
 DEPLOY_PY_FILES=(
   zip_safe.py
   app.py
+  plaintext_detect.py
   stock_diff.py
   function_analysis.py
   function_diff.py
@@ -33,6 +34,7 @@ DEPLOY_PY_FILES=(
   reference_catalog.py
   ghidra_decompile.py
   test_zip_safe.py
+  test_plaintext_detect.py
   test_stock_diff.py
   test_function_diff.py
   test_job_auth.py
