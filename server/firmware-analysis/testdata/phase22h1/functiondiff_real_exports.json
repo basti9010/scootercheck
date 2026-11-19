@@ -1,0 +1,5341 @@
+{
+  "selfDiffF3": {
+    "ok": true,
+    "schemaVersion": 1,
+    "tool": "ghidra-function-export-diff",
+    "toolNote": "Phase-2.2C multi-stage matcher (fingerprint/structural/neighborhood). Diaphora/BinDiff nicht integriert.",
+    "summary": {
+      "identical": 166,
+      "structurallyChanged": 0,
+      "added": 0,
+      "removed": 15,
+      "uncomparable": 15,
+      "subjectFunctionCount": 181,
+      "referenceFunctionCount": 181,
+      "matched": 166,
+      "ambiguous": 15,
+      "matchHigh": 166,
+      "matchMedium": 0,
+      "matchLow": 0,
+      "overall": "STRUKTURELL_VERAENDERT"
+    },
+    "samplePairs": [
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000352",
+          "name": "FUN_08000352",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "75b3b9c4c09a57d7",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000352",
+            "name": "FUN_08000352",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          {
+            "address": "08000358",
+            "name": "FUN_08000358",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000358",
+          "name": "FUN_08000358",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "75b3b9c4c09a57d7",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000352",
+            "name": "FUN_08000352",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          {
+            "address": "08000358",
+            "name": "FUN_08000358",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000410",
+          "name": "FUN_08000410",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a78",
+          "name": "FUN_08000a78",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a84",
+          "name": "FUN_08000a84",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a90",
+          "name": "FUN_08000a90",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a9c",
+          "name": "FUN_08000a9c",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000aa8",
+          "name": "FUN_08000aa8",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000ab4",
+          "name": "FUN_08000ab4",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a78",
+            "name": "FUN_08000a78",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a84",
+            "name": "FUN_08000a84",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a90",
+            "name": "FUN_08000a90",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000a9c",
+            "name": "FUN_08000a9c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000aa8",
+            "name": "FUN_08000aa8",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000ab4",
+            "name": "FUN_08000ab4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800a34c",
+          "name": "FUN_0800a34c",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800a34c",
+            "name": "FUN_0800a34c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800b9cc",
+            "name": "FUN_0800b9cc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800ba64",
+            "name": "FUN_0800ba64",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800b4a0",
+          "name": "FUN_0800b4a0",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b4a0",
+            "name": "FUN_0800b4a0",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d1c0",
+            "name": "FUN_0800d1c0",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d1ca",
+            "name": "FUN_0800d1ca",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800b9cc",
+          "name": "FUN_0800b9cc",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800a34c",
+            "name": "FUN_0800a34c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800b9cc",
+            "name": "FUN_0800b9cc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800ba64",
+            "name": "FUN_0800ba64",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800ba64",
+          "name": "FUN_0800ba64",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800a34c",
+            "name": "FUN_0800a34c",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800b9cc",
+            "name": "FUN_0800b9cc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800ba64",
+            "name": "FUN_0800ba64",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800d1c0",
+          "name": "FUN_0800d1c0",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b4a0",
+            "name": "FUN_0800b4a0",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d1c0",
+            "name": "FUN_0800d1c0",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d1ca",
+            "name": "FUN_0800d1ca",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800d1ca",
+          "name": "FUN_0800d1ca",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b4a0",
+            "name": "FUN_0800b4a0",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d1c0",
+            "name": "FUN_0800d1c0",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d1ca",
+            "name": "FUN_0800d1ca",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000352",
+          "name": "FUN_08000352",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "75b3b9c4c09a57d7",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000358",
+          "name": "FUN_08000358",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "75b3b9c4c09a57d7",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000410",
+          "name": "FUN_08000410",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000a78",
+          "name": "FUN_08000a78",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000a84",
+          "name": "FUN_08000a84",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000a90",
+          "name": "FUN_08000a90",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000a9c",
+          "name": "FUN_08000a9c",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000aa8",
+          "name": "FUN_08000aa8",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "08000ab4",
+          "name": "FUN_08000ab4",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "0800a34c",
+          "name": "FUN_0800a34c",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "0800b4a0",
+          "name": "FUN_0800b4a0",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "0800b9cc",
+          "name": "FUN_0800b9cc",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "0800ba64",
+          "name": "FUN_0800ba64",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "0800d1c0",
+          "name": "FUN_0800d1c0",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      },
+      {
+        "status": "ENTFERNT",
+        "subject": null,
+        "reference": {
+          "address": "0800d1ca",
+          "name": "FUN_0800d1ca",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "matchMethod": null,
+        "matchConfidence": "UNMATCHED",
+        "evidenceTier": "statisch",
+        "notes": "Nur in Referenz vorhanden."
+      }
+    ],
+    "analysisLimitations": [
+      "Funktionsdiff ist kein Manipulationsnachweis.",
+      "Vergleich basiert auf multi-stage Function Matching (kein Diaphora/BinDiff).",
+      "Absolute Adressen und generische FUN_*-Namen sind keine Identit\u00e4tsmerkmale.",
+      "Matching is structural/heuristic \u2014 not a manipulation verdict.",
+      "Identical helper functions with shared fingerprints stay AMBIGUOUS.",
+      "Absolute addresses are not used as identity keys.",
+      "Generic Ghidra FUN_* names are not treated as reliable identity."
+    ],
+    "notes": [
+      "functionMatching=ok matched=166 ambiguous=15 unmatched=15 high=166 medium=0 low=0",
+      "functionDiff=ok identical=166 changed=0 added=0 removed=15 ambiguous=15"
+    ],
+    "functionMatching": {
+      "ok": true,
+      "summary": {
+        "matched": 166,
+        "high": 166,
+        "medium": 0,
+        "low": 0,
+        "ambiguous": 15,
+        "unmatched": 15,
+        "pairCount": 196,
+        "truncated": false,
+        "maxFunctions": 2500
+      },
+      "tool": "intelligent-function-matcher",
+      "toolNote": "Multi-stage match (fingerprint \u2192 structural \u2192 neighborhood). Generic FUN_* names ignored as identity. Addresses never used as identity.",
+      "analysisLimitations": [
+        "Matching is structural/heuristic \u2014 not a manipulation verdict.",
+        "Identical helper functions with shared fingerprints stay AMBIGUOUS.",
+        "Absolute addresses are not used as identity keys.",
+        "Generic Ghidra FUN_* names are not treated as reliable identity."
+      ],
+      "sampleMatches": [
+        {
+          "subject": {
+            "address": "080001ac",
+            "name": "FUN_080001ac",
+            "size": 98,
+            "basicBlocks": 5,
+            "cfgEdges": 9,
+            "fingerprint": "80e606c2a07419f7",
+            "confidence": "medium",
+            "callCount": 2
+          },
+          "reference": {
+            "address": "080001ac",
+            "name": "FUN_080001ac",
+            "size": 98,
+            "basicBlocks": 5,
+            "cfgEdges": 9,
+            "fingerprint": "80e606c2a07419f7",
+            "confidence": "medium",
+            "callCount": 2
+          },
+          "subjectFunctionId": "080001ac|FUN_080001ac|80e606c2a07419f7",
+          "referenceFunctionId": "080001ac|FUN_080001ac|80e606c2a07419f7",
+          "subjectAddress": "080001ac",
+          "referenceAddress": "080001ac",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800020e",
+            "name": "FUN_0800020e",
+            "size": 30,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "12afd7908af4e387",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800020e",
+            "name": "FUN_0800020e",
+            "size": 30,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "12afd7908af4e387",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800020e|FUN_0800020e|12afd7908af4e387",
+          "referenceFunctionId": "0800020e|FUN_0800020e|12afd7908af4e387",
+          "subjectAddress": "0800020e",
+          "referenceAddress": "0800020e",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800022c",
+            "name": "FUN_0800022c",
+            "size": 32,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "6258c0317403ab7c",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800022c",
+            "name": "FUN_0800022c",
+            "size": 32,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "6258c0317403ab7c",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800022c|FUN_0800022c|6258c0317403ab7c",
+          "referenceFunctionId": "0800022c|FUN_0800022c|6258c0317403ab7c",
+          "subjectAddress": "0800022c",
+          "referenceAddress": "0800022c",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800024c",
+            "name": "FUN_0800024c",
+            "size": 36,
+            "basicBlocks": 8,
+            "cfgEdges": 10,
+            "fingerprint": "c1a6b2af57251fb1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800024c",
+            "name": "FUN_0800024c",
+            "size": 36,
+            "basicBlocks": 8,
+            "cfgEdges": 10,
+            "fingerprint": "c1a6b2af57251fb1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800024c|FUN_0800024c|c1a6b2af57251fb1",
+          "referenceFunctionId": "0800024c|FUN_0800024c|c1a6b2af57251fb1",
+          "subjectAddress": "0800024c",
+          "referenceAddress": "0800024c",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000270",
+            "name": "FUN_08000270",
+            "size": 14,
+            "basicBlocks": 4,
+            "cfgEdges": 4,
+            "fingerprint": "cd9d70bd661acd25",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000270",
+            "name": "FUN_08000270",
+            "size": 14,
+            "basicBlocks": 4,
+            "cfgEdges": 4,
+            "fingerprint": "cd9d70bd661acd25",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000270|FUN_08000270|cd9d70bd661acd25",
+          "referenceFunctionId": "08000270|FUN_08000270|cd9d70bd661acd25",
+          "subjectAddress": "08000270",
+          "referenceAddress": "08000270",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800027e",
+            "name": "FUN_0800027e",
+            "size": 4,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "6e96502cdb6f1b1b",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": {
+            "address": "0800027e",
+            "name": "FUN_0800027e",
+            "size": 4,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "6e96502cdb6f1b1b",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "subjectFunctionId": "0800027e|FUN_0800027e|6e96502cdb6f1b1b",
+          "referenceFunctionId": "0800027e|FUN_0800027e|6e96502cdb6f1b1b",
+          "subjectAddress": "0800027e",
+          "referenceAddress": "0800027e",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000282",
+            "name": "FUN_08000282",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "e8f607185126edb4",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": {
+            "address": "08000282",
+            "name": "FUN_08000282",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "e8f607185126edb4",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "subjectFunctionId": "08000282|FUN_08000282|e8f607185126edb4",
+          "referenceFunctionId": "08000282|FUN_08000282|e8f607185126edb4",
+          "subjectAddress": "08000282",
+          "referenceAddress": "08000282",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000294",
+            "name": "FUN_08000294",
+            "size": 26,
+            "basicBlocks": 5,
+            "cfgEdges": 6,
+            "fingerprint": "90bd69ba81c1ceec",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000294",
+            "name": "FUN_08000294",
+            "size": 26,
+            "basicBlocks": 5,
+            "cfgEdges": 6,
+            "fingerprint": "90bd69ba81c1ceec",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000294|FUN_08000294|90bd69ba81c1ceec",
+          "referenceFunctionId": "08000294|FUN_08000294|90bd69ba81c1ceec",
+          "subjectAddress": "08000294",
+          "referenceAddress": "08000294",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080002ae",
+            "name": "FUN_080002ae",
+            "size": 164,
+            "basicBlocks": 15,
+            "cfgEdges": 21,
+            "fingerprint": "c3ce3f99bdb7a9f0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080002ae",
+            "name": "FUN_080002ae",
+            "size": 164,
+            "basicBlocks": 15,
+            "cfgEdges": 21,
+            "fingerprint": "c3ce3f99bdb7a9f0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080002ae|FUN_080002ae|c3ce3f99bdb7a9f0",
+          "referenceFunctionId": "080002ae|FUN_080002ae|c3ce3f99bdb7a9f0",
+          "subjectAddress": "080002ae",
+          "referenceAddress": "080002ae",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000352",
+            "name": "FUN_08000352",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": null,
+          "subjectFunctionId": "08000352|FUN_08000352|75b3b9c4c09a57d7",
+          "referenceFunctionId": null,
+          "subjectAddress": "08000352",
+          "referenceAddress": null,
+          "similarityScore": 1.0,
+          "matchConfidence": "AMBIGUOUS",
+          "matchMethod": "fingerprint_ambiguous",
+          "featuresUsed": [
+            "fingerprint"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [
+            {
+              "address": "08000352",
+              "name": "FUN_08000352",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            },
+            {
+              "address": "08000358",
+              "name": "FUN_08000358",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            }
+          ],
+          "notes": "Ambiguous fingerprint shared by 2 reference functions."
+        },
+        {
+          "subject": {
+            "address": "08000358",
+            "name": "FUN_08000358",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": null,
+          "subjectFunctionId": "08000358|FUN_08000358|75b3b9c4c09a57d7",
+          "referenceFunctionId": null,
+          "subjectAddress": "08000358",
+          "referenceAddress": null,
+          "similarityScore": 1.0,
+          "matchConfidence": "AMBIGUOUS",
+          "matchMethod": "fingerprint_ambiguous",
+          "featuresUsed": [
+            "fingerprint"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [
+            {
+              "address": "08000352",
+              "name": "FUN_08000352",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            },
+            {
+              "address": "08000358",
+              "name": "FUN_08000358",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            }
+          ],
+          "notes": "Ambiguous fingerprint shared by 2 reference functions."
+        },
+        {
+          "subject": {
+            "address": "0800035e",
+            "name": "FUN_0800035e",
+            "size": 100,
+            "basicBlocks": 14,
+            "cfgEdges": 18,
+            "fingerprint": "02c4167e7b2247e0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800035e",
+            "name": "FUN_0800035e",
+            "size": 100,
+            "basicBlocks": 14,
+            "cfgEdges": 18,
+            "fingerprint": "02c4167e7b2247e0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800035e|FUN_0800035e|02c4167e7b2247e0",
+          "referenceFunctionId": "0800035e|FUN_0800035e|02c4167e7b2247e0",
+          "subjectAddress": "0800035e",
+          "referenceAddress": "0800035e",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080003c2",
+            "name": "FUN_080003c2",
+            "size": 24,
+            "basicBlocks": 5,
+            "cfgEdges": 5,
+            "fingerprint": "0e80379bb828d769",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080003c2",
+            "name": "FUN_080003c2",
+            "size": 24,
+            "basicBlocks": 5,
+            "cfgEdges": 5,
+            "fingerprint": "0e80379bb828d769",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080003c2|FUN_080003c2|0e80379bb828d769",
+          "referenceFunctionId": "080003c2|FUN_080003c2|0e80379bb828d769",
+          "subjectAddress": "080003c2",
+          "referenceAddress": "080003c2",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080003da",
+            "name": "FUN_080003da",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "d62a66c1183681d1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080003da",
+            "name": "FUN_080003da",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "d62a66c1183681d1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080003da|FUN_080003da|d62a66c1183681d1",
+          "referenceFunctionId": "080003da|FUN_080003da|d62a66c1183681d1",
+          "subjectAddress": "080003da",
+          "referenceAddress": "080003da",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080003ec",
+            "name": "FUN_080003ec",
+            "size": 102,
+            "basicBlocks": 7,
+            "cfgEdges": 7,
+            "fingerprint": "0819443abac9a0f3",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080003ec",
+            "name": "FUN_080003ec",
+            "size": 102,
+            "basicBlocks": 7,
+            "cfgEdges": 7,
+            "fingerprint": "0819443abac9a0f3",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080003ec|FUN_080003ec|0819443abac9a0f3",
+          "referenceFunctionId": "080003ec|FUN_080003ec|0819443abac9a0f3",
+          "subjectAddress": "080003ec",
+          "referenceAddress": "080003ec",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": null,
+          "subjectFunctionId": "08000410|FUN_08000410|3ad58eba36979e32",
+          "referenceFunctionId": null,
+          "subjectAddress": "08000410",
+          "referenceAddress": null,
+          "similarityScore": 1.0,
+          "matchConfidence": "AMBIGUOUS",
+          "matchMethod": "fingerprint_ambiguous",
+          "featuresUsed": [
+            "fingerprint"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [
+            {
+              "address": "08000410",
+              "name": "FUN_08000410",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000a78",
+              "name": "FUN_08000a78",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000a84",
+              "name": "FUN_08000a84",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000a90",
+              "name": "FUN_08000a90",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000a9c",
+              "name": "FUN_08000a9c",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000aa8",
+              "name": "FUN_08000aa8",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000ab4",
+              "name": "FUN_08000ab4",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            }
+          ],
+          "notes": "Ambiguous fingerprint shared by 7 reference functions."
+        },
+        {
+          "subject": {
+            "address": "08000436",
+            "name": "FUN_08000436",
+            "size": 142,
+            "basicBlocks": 20,
+            "cfgEdges": 27,
+            "fingerprint": "b505cd14bf69dad8",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000436",
+            "name": "FUN_08000436",
+            "size": 142,
+            "basicBlocks": 20,
+            "cfgEdges": 27,
+            "fingerprint": "b505cd14bf69dad8",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000436|FUN_08000436|b505cd14bf69dad8",
+          "referenceFunctionId": "08000436|FUN_08000436|b505cd14bf69dad8",
+          "subjectAddress": "08000436",
+          "referenceAddress": "08000436",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080004b2",
+            "name": "FUN_080004b2",
+            "size": 352,
+            "basicBlocks": 21,
+            "cfgEdges": 31,
+            "fingerprint": "3749f1243781eb51",
+            "confidence": "medium",
+            "callCount": 3
+          },
+          "reference": {
+            "address": "080004b2",
+            "name": "FUN_080004b2",
+            "size": 352,
+            "basicBlocks": 21,
+            "cfgEdges": 31,
+            "fingerprint": "3749f1243781eb51",
+            "confidence": "medium",
+            "callCount": 3
+          },
+          "subjectFunctionId": "080004b2|FUN_080004b2|3749f1243781eb51",
+          "referenceFunctionId": "080004b2|FUN_080004b2|3749f1243781eb51",
+          "subjectAddress": "080004b2",
+          "referenceAddress": "080004b2",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000706",
+            "name": "FUN_08000706",
+            "size": 50,
+            "basicBlocks": 8,
+            "cfgEdges": 9,
+            "fingerprint": "37bd7ea8a74c755e",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000706",
+            "name": "FUN_08000706",
+            "size": 50,
+            "basicBlocks": 8,
+            "cfgEdges": 9,
+            "fingerprint": "37bd7ea8a74c755e",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000706|FUN_08000706|37bd7ea8a74c755e",
+          "referenceFunctionId": "08000706|FUN_08000706|37bd7ea8a74c755e",
+          "subjectAddress": "08000706",
+          "referenceAddress": "08000706",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000738",
+            "name": "FUN_08000738",
+            "size": 40,
+            "basicBlocks": 5,
+            "cfgEdges": 4,
+            "fingerprint": "c2e7565ead183d69",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000738",
+            "name": "FUN_08000738",
+            "size": 40,
+            "basicBlocks": 5,
+            "cfgEdges": 4,
+            "fingerprint": "c2e7565ead183d69",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000738|FUN_08000738|c2e7565ead183d69",
+          "referenceFunctionId": "08000738|FUN_08000738|c2e7565ead183d69",
+          "subjectAddress": "08000738",
+          "referenceAddress": "08000738",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        }
+      ]
+    }
+  },
+  "crossF3vsG3": {
+    "ok": true,
+    "schemaVersion": 1,
+    "tool": "ghidra-function-export-diff",
+    "toolNote": "Phase-2.2C multi-stage matcher (fingerprint/structural/neighborhood). Diaphora/BinDiff nicht integriert.",
+    "summary": {
+      "identical": 68,
+      "structurallyChanged": 72,
+      "added": 3,
+      "removed": 80,
+      "uncomparable": 38,
+      "subjectFunctionCount": 181,
+      "referenceFunctionCount": 220,
+      "matched": 140,
+      "ambiguous": 38,
+      "matchHigh": 68,
+      "matchMedium": 9,
+      "matchLow": 63,
+      "overall": "STRUKTURELL_VERAENDERT"
+    },
+    "samplePairs": [
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000352",
+          "name": "FUN_08000352",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "75b3b9c4c09a57d7",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000352",
+            "name": "FUN_08000352",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          {
+            "address": "08000358",
+            "name": "FUN_08000358",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000358",
+          "name": "FUN_08000358",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "75b3b9c4c09a57d7",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000352",
+            "name": "FUN_08000352",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          {
+            "address": "08000358",
+            "name": "FUN_08000358",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000410",
+          "name": "FUN_08000410",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a78",
+          "name": "FUN_08000a78",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a84",
+          "name": "FUN_08000a84",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a90",
+          "name": "FUN_08000a90",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000a9c",
+          "name": "FUN_08000a9c",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000aa8",
+          "name": "FUN_08000aa8",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "08000ab4",
+          "name": "FUN_08000ab4",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "3ad58eba36979e32",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008e4",
+            "name": "FUN_080008e4",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008f0",
+            "name": "FUN_080008f0",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "080008fc",
+            "name": "FUN_080008fc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000908",
+            "name": "FUN_08000908",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000914",
+            "name": "FUN_08000914",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "08000920",
+            "name": "FUN_08000920",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 7 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800a34c",
+          "name": "FUN_0800a34c",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800bdcc",
+            "name": "FUN_0800bdcc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800be64",
+            "name": "FUN_0800be64",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800b4a0",
+          "name": "FUN_0800b4a0",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b894",
+            "name": "FUN_0800b894",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d51c",
+            "name": "FUN_0800d51c",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d526",
+            "name": "FUN_0800d526",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800b4aa",
+          "name": "FUN_0800b4aa",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "cd15b1205eb2349a",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b89e",
+            "name": "FUN_0800b89e",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "cd15b1205eb2349a",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d058",
+            "name": "FUN_0800d058",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "cd15b1205eb2349a",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800b4b0",
+          "name": "FUN_0800b4b0",
+          "size": 4,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "1c6109b9573346cb",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b8a4",
+            "name": "FUN_0800b8a4",
+            "size": 4,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "1c6109b9573346cb",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d05e",
+            "name": "FUN_0800d05e",
+            "size": 4,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "1c6109b9573346cb",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800b9cc",
+          "name": "FUN_0800b9cc",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800bdcc",
+            "name": "FUN_0800bdcc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800be64",
+            "name": "FUN_0800be64",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800ba64",
+          "name": "FUN_0800ba64",
+          "size": 6,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "fb9015f7bc3aefe4",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800bdcc",
+            "name": "FUN_0800bdcc",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800be64",
+            "name": "FUN_0800be64",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "fb9015f7bc3aefe4",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 2 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800d1c0",
+          "name": "FUN_0800d1c0",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b894",
+            "name": "FUN_0800b894",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d51c",
+            "name": "FUN_0800d51c",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d526",
+            "name": "FUN_0800d526",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "NICHT_VERGLEICHBAR",
+        "subject": {
+          "address": "0800d1ca",
+          "name": "FUN_0800d1ca",
+          "size": 10,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "7113f9c6fcf8d166",
+          "confidence": "medium"
+        },
+        "reference": null,
+        "matchMethod": "fingerprint_ambiguous",
+        "matchConfidence": "AMBIGUOUS",
+        "similarityScore": 1.0,
+        "featuresUsed": [
+          "fingerprint"
+        ],
+        "candidates": [
+          {
+            "address": "0800b894",
+            "name": "FUN_0800b894",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d51c",
+            "name": "FUN_0800d51c",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          {
+            "address": "0800d526",
+            "name": "FUN_0800d526",
+            "size": 10,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "7113f9c6fcf8d166",
+            "confidence": "medium",
+            "callCount": 0
+          }
+        ],
+        "differences": {
+          "reason": "ambiguous-match"
+        },
+        "evidenceTier": "statisch",
+        "notes": "Ambiguous fingerprint shared by 3 reference functions."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08001188",
+          "name": "reset_handler",
+          "size": 4,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "4f677cc80f0fc58b",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08001188",
+          "name": "reset_handler",
+          "size": 38,
+          "basicBlocks": 1,
+          "cfgEdges": 2,
+          "fingerprint": "f90b142893604d54",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 4,
+            "reference": 38
+          },
+          "cfgEdges": {
+            "subject": 0,
+            "reference": 2
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080013f6",
+          "name": "BusFault_Handler",
+          "size": 2,
+          "basicBlocks": 1,
+          "cfgEdges": 0,
+          "fingerprint": "86d5259d28724e20",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "080013f6",
+          "name": "BusFault_Handler",
+          "size": 2,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "4b4d20b6dce0f4ca",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "cfgEdges": {
+            "subject": 0,
+            "reference": 1
+          },
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080013f8",
+          "name": "DebugMon_Handler",
+          "size": 1,
+          "basicBlocks": 0,
+          "cfgEdges": 0,
+          "fingerprint": "545acb9fe3d6b8c0",
+          "confidence": "low"
+        },
+        "reference": {
+          "address": "080013f8",
+          "name": "DebugMon_Handler",
+          "size": 64,
+          "basicBlocks": 4,
+          "cfgEdges": 4,
+          "fingerprint": "2df50029b74e511c",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 1,
+            "reference": 64
+          },
+          "basicBlocks": {
+            "subject": 0,
+            "reference": 4
+          },
+          "cfgEdges": {
+            "subject": 0,
+            "reference": 4
+          },
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080013fa",
+          "name": "HardFault_Handler",
+          "size": 2,
+          "basicBlocks": 1,
+          "cfgEdges": 1,
+          "fingerprint": "1c144d0171112cc2",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "0800141c",
+          "name": "HardFault_Handler",
+          "size": 149,
+          "basicBlocks": 7,
+          "cfgEdges": 18,
+          "fingerprint": "fd431ea0c35ae73d",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 2,
+            "reference": 149
+          },
+          "basicBlocks": {
+            "subject": 1,
+            "reference": 7
+          },
+          "cfgEdges": {
+            "subject": 1,
+            "reference": 18
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080013fe",
+          "name": "NMI_Handler",
+          "size": 30,
+          "basicBlocks": 2,
+          "cfgEdges": 3,
+          "fingerprint": "d0728036466b71e0",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08007550",
+          "name": "NMI_Handler",
+          "size": 160,
+          "basicBlocks": 23,
+          "cfgEdges": 37,
+          "fingerprint": "5ee8dfc802650f5a",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 30,
+            "reference": 160
+          },
+          "basicBlocks": {
+            "subject": 2,
+            "reference": 23
+          },
+          "cfgEdges": {
+            "subject": 3,
+            "reference": 37
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "0800141e",
+          "name": "SVC_Handler",
+          "size": 206,
+          "basicBlocks": 8,
+          "cfgEdges": 25,
+          "fingerprint": "f22870e4f600b4f3",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08008ff8",
+          "name": "SVC_Handler",
+          "size": 180,
+          "basicBlocks": 14,
+          "cfgEdges": 28,
+          "fingerprint": "0546173b421bacd9",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 206,
+            "reference": 180
+          },
+          "basicBlocks": {
+            "subject": 8,
+            "reference": 14
+          },
+          "cfgEdges": {
+            "subject": 25,
+            "reference": 28
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08008f56",
+          "name": "SysTick_Handler",
+          "size": 548,
+          "basicBlocks": 48,
+          "cfgEdges": 74,
+          "fingerprint": "f7a0b76fdbf6b421",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08009766",
+          "name": "SysTick_Handler",
+          "size": 8,
+          "basicBlocks": 3,
+          "cfgEdges": 3,
+          "fingerprint": "928f3753d16497d0",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 548,
+            "reference": 8
+          },
+          "basicBlocks": {
+            "subject": 48,
+            "reference": 3
+          },
+          "cfgEdges": {
+            "subject": 74,
+            "reference": 3
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "0800a268",
+          "name": "UsageFault_Handler",
+          "size": 90,
+          "basicBlocks": 1,
+          "cfgEdges": 7,
+          "fingerprint": "ab53d9ee04e567d4",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "0800a76c",
+          "name": "UsageFault_Handler",
+          "size": 30,
+          "basicBlocks": 1,
+          "cfgEdges": 3,
+          "fingerprint": "9e815235666ad67f",
+          "confidence": "medium"
+        },
+        "matchMethod": "name_reliable",
+        "matchConfidence": "MEDIUM",
+        "similarityScore": 0.85,
+        "featuresUsed": [
+          "name",
+          "size",
+          "basicBlocks",
+          "cfgEdges"
+        ],
+        "differences": {
+          "size": {
+            "subject": 90,
+            "reference": 30
+          },
+          "cfgEdges": {
+            "subject": 7,
+            "reference": 3
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080003ec",
+          "name": "FUN_080003ec",
+          "size": 102,
+          "basicBlocks": 7,
+          "cfgEdges": 7,
+          "fingerprint": "0819443abac9a0f3",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "080003ec",
+          "name": "FUN_080003ec",
+          "size": 102,
+          "basicBlocks": 7,
+          "cfgEdges": 7,
+          "fingerprint": "8457ae1c949ddb73",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.7092,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080004b2",
+          "name": "FUN_080004b2",
+          "size": 352,
+          "basicBlocks": 21,
+          "cfgEdges": 31,
+          "fingerprint": "3749f1243781eb51",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "080004b2",
+          "name": "FUN_080004b2",
+          "size": 352,
+          "basicBlocks": 21,
+          "cfgEdges": 31,
+          "fingerprint": "99093c48c08d9345",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08000ac0",
+          "name": "FUN_08000ac0",
+          "size": 670,
+          "basicBlocks": 44,
+          "cfgEdges": 90,
+          "fingerprint": "23270f988a14373e",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "0800092c",
+          "name": "FUN_0800092c",
+          "size": 646,
+          "basicBlocks": 45,
+          "cfgEdges": 87,
+          "fingerprint": "26a293a17a3b66da",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.6662,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "size": {
+            "subject": 670,
+            "reference": 646
+          },
+          "basicBlocks": {
+            "subject": 44,
+            "reference": 45
+          },
+          "cfgEdges": {
+            "subject": 90,
+            "reference": 87
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08000d80",
+          "name": "FUN_08000d80",
+          "size": 50,
+          "basicBlocks": 3,
+          "cfgEdges": 3,
+          "fingerprint": "41315de640e4aad7",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08000bd4",
+          "name": "FUN_08000bd4",
+          "size": 50,
+          "basicBlocks": 3,
+          "cfgEdges": 3,
+          "fingerprint": "9cdca3908c08c890",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.6695,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08001034",
+          "name": "FUN_08001034",
+          "size": 28,
+          "basicBlocks": 3,
+          "cfgEdges": 2,
+          "fingerprint": "0a824864431ebc76",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08004a9c",
+          "name": "FUN_08004a9c",
+          "size": 28,
+          "basicBlocks": 3,
+          "cfgEdges": 2,
+          "fingerprint": "31934369846df13f",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.623,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "0800195c",
+          "name": "FUN_0800195c",
+          "size": 196,
+          "basicBlocks": 22,
+          "cfgEdges": 36,
+          "fingerprint": "6c00cc8022ee399a",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08001bd0",
+          "name": "FUN_08001bd0",
+          "size": 196,
+          "basicBlocks": 22,
+          "cfgEdges": 36,
+          "fingerprint": "360599fb667a2ca5",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08001a28",
+          "name": "FUN_08001a28",
+          "size": 178,
+          "basicBlocks": 18,
+          "cfgEdges": 31,
+          "fingerprint": "618a4672da975485",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08001c9c",
+          "name": "FUN_08001c9c",
+          "size": 170,
+          "basicBlocks": 18,
+          "cfgEdges": 29,
+          "fingerprint": "61be1d418370e1d9",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.6409,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "size": {
+            "subject": 178,
+            "reference": 170
+          },
+          "cfgEdges": {
+            "subject": 31,
+            "reference": 29
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08003bac",
+          "name": "FUN_08003bac",
+          "size": 186,
+          "basicBlocks": 15,
+          "cfgEdges": 25,
+          "fingerprint": "89f5e9626cfbec95",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08003cb8",
+          "name": "FUN_08003cb8",
+          "size": 170,
+          "basicBlocks": 15,
+          "cfgEdges": 24,
+          "fingerprint": "65e72f78aa369c4f",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.6634,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "size": {
+            "subject": 186,
+            "reference": 170
+          },
+          "cfgEdges": {
+            "subject": 25,
+            "reference": 24
+          },
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08004360",
+          "name": "FUN_08004360",
+          "size": 36,
+          "basicBlocks": 4,
+          "cfgEdges": 5,
+          "fingerprint": "a8b1811a8c72ec0f",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08004450",
+          "name": "FUN_08004450",
+          "size": 36,
+          "basicBlocks": 4,
+          "cfgEdges": 5,
+          "fingerprint": "13f93d1c957eb076",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.6686,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08004394",
+          "name": "FUN_08004394",
+          "size": 36,
+          "basicBlocks": 1,
+          "cfgEdges": 2,
+          "fingerprint": "37bf24dc539d0556",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08004484",
+          "name": "FUN_08004484",
+          "size": 36,
+          "basicBlocks": 1,
+          "cfgEdges": 2,
+          "fingerprint": "6d9961cc392c7477",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08004452",
+          "name": "FUN_08004452",
+          "size": 80,
+          "basicBlocks": 4,
+          "cfgEdges": 5,
+          "fingerprint": "8842320d538c0fdd",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "0800452e",
+          "name": "FUN_0800452e",
+          "size": 80,
+          "basicBlocks": 4,
+          "cfgEdges": 5,
+          "fingerprint": "c1ed3d9a400d019d",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080044a2",
+          "name": "FUN_080044a2",
+          "size": 100,
+          "basicBlocks": 9,
+          "cfgEdges": 13,
+          "fingerprint": "7f2eaad0c36c887d",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "0800457e",
+          "name": "FUN_0800457e",
+          "size": 100,
+          "basicBlocks": 9,
+          "cfgEdges": 13,
+          "fingerprint": "609ab684bab66e36",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "080046e0",
+          "name": "FUN_080046e0",
+          "size": 68,
+          "basicBlocks": 8,
+          "cfgEdges": 12,
+          "fingerprint": "6635bd536b0ffee1",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "080047d8",
+          "name": "FUN_080047d8",
+          "size": 68,
+          "basicBlocks": 8,
+          "cfgEdges": 12,
+          "fingerprint": "953f8cd62ce4f6bc",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.648,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08004728",
+          "name": "FUN_08004728",
+          "size": 78,
+          "basicBlocks": 4,
+          "cfgEdges": 9,
+          "fingerprint": "5f3aecf5959a8f81",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08004820",
+          "name": "FUN_08004820",
+          "size": 78,
+          "basicBlocks": 4,
+          "cfgEdges": 9,
+          "fingerprint": "1aa32b1cf98e15e5",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      },
+      {
+        "status": "STRUKTURELL_VERAENDERT",
+        "subject": {
+          "address": "08004780",
+          "name": "FUN_08004780",
+          "size": 42,
+          "basicBlocks": 6,
+          "cfgEdges": 10,
+          "fingerprint": "733741e24f558d46",
+          "confidence": "medium"
+        },
+        "reference": {
+          "address": "08004878",
+          "name": "FUN_08004878",
+          "size": 42,
+          "basicBlocks": 6,
+          "cfgEdges": 10,
+          "fingerprint": "13b5ff5d648552bc",
+          "confidence": "medium"
+        },
+        "matchMethod": "structural",
+        "matchConfidence": "LOW",
+        "similarityScore": 0.72,
+        "featuresUsed": [
+          "size",
+          "basicBlocks",
+          "cfgEdges",
+          "mnemonics",
+          "callCount",
+          "constants"
+        ],
+        "differences": {
+          "callsChanged": true,
+          "fingerprintChanged": true,
+          "genericName": true
+        },
+        "evidenceTier": "statisch",
+        "notes": "Struktureller Vergleich \u2014 keine Tuning-Aussage."
+      }
+    ],
+    "analysisLimitations": [
+      "Funktionsdiff ist kein Manipulationsnachweis.",
+      "Vergleich basiert auf multi-stage Function Matching (kein Diaphora/BinDiff).",
+      "Absolute Adressen und generische FUN_*-Namen sind keine Identit\u00e4tsmerkmale.",
+      "Matching is structural/heuristic \u2014 not a manipulation verdict.",
+      "Identical helper functions with shared fingerprints stay AMBIGUOUS.",
+      "Absolute addresses are not used as identity keys.",
+      "Generic Ghidra FUN_* names are not treated as reliable identity."
+    ],
+    "notes": [
+      "functionMatching=ok matched=140 ambiguous=38 unmatched=83 high=68 medium=9 low=63",
+      "functionDiff=ok identical=68 changed=72 added=3 removed=80 ambiguous=38"
+    ],
+    "functionMatching": {
+      "ok": true,
+      "summary": {
+        "matched": 140,
+        "high": 68,
+        "medium": 9,
+        "low": 63,
+        "ambiguous": 38,
+        "unmatched": 83,
+        "pairCount": 261,
+        "truncated": false,
+        "maxFunctions": 2500
+      },
+      "tool": "intelligent-function-matcher",
+      "toolNote": "Multi-stage match (fingerprint \u2192 structural \u2192 neighborhood). Generic FUN_* names ignored as identity. Addresses never used as identity.",
+      "analysisLimitations": [
+        "Matching is structural/heuristic \u2014 not a manipulation verdict.",
+        "Identical helper functions with shared fingerprints stay AMBIGUOUS.",
+        "Absolute addresses are not used as identity keys.",
+        "Generic Ghidra FUN_* names are not treated as reliable identity."
+      ],
+      "sampleMatches": [
+        {
+          "subject": {
+            "address": "080001ac",
+            "name": "FUN_080001ac",
+            "size": 98,
+            "basicBlocks": 5,
+            "cfgEdges": 9,
+            "fingerprint": "80e606c2a07419f7",
+            "confidence": "medium",
+            "callCount": 2
+          },
+          "reference": {
+            "address": "080001ac",
+            "name": "FUN_080001ac",
+            "size": 98,
+            "basicBlocks": 5,
+            "cfgEdges": 9,
+            "fingerprint": "80e606c2a07419f7",
+            "confidence": "medium",
+            "callCount": 2
+          },
+          "subjectFunctionId": "080001ac|FUN_080001ac|80e606c2a07419f7",
+          "referenceFunctionId": "080001ac|FUN_080001ac|80e606c2a07419f7",
+          "subjectAddress": "080001ac",
+          "referenceAddress": "080001ac",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800020e",
+            "name": "FUN_0800020e",
+            "size": 30,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "12afd7908af4e387",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800020e",
+            "name": "FUN_0800020e",
+            "size": 30,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "12afd7908af4e387",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800020e|FUN_0800020e|12afd7908af4e387",
+          "referenceFunctionId": "0800020e|FUN_0800020e|12afd7908af4e387",
+          "subjectAddress": "0800020e",
+          "referenceAddress": "0800020e",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800022c",
+            "name": "FUN_0800022c",
+            "size": 32,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "6258c0317403ab7c",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800022c",
+            "name": "FUN_0800022c",
+            "size": 32,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "6258c0317403ab7c",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800022c|FUN_0800022c|6258c0317403ab7c",
+          "referenceFunctionId": "0800022c|FUN_0800022c|6258c0317403ab7c",
+          "subjectAddress": "0800022c",
+          "referenceAddress": "0800022c",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800024c",
+            "name": "FUN_0800024c",
+            "size": 36,
+            "basicBlocks": 8,
+            "cfgEdges": 10,
+            "fingerprint": "c1a6b2af57251fb1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800024c",
+            "name": "FUN_0800024c",
+            "size": 36,
+            "basicBlocks": 8,
+            "cfgEdges": 10,
+            "fingerprint": "c1a6b2af57251fb1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800024c|FUN_0800024c|c1a6b2af57251fb1",
+          "referenceFunctionId": "0800024c|FUN_0800024c|c1a6b2af57251fb1",
+          "subjectAddress": "0800024c",
+          "referenceAddress": "0800024c",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000270",
+            "name": "FUN_08000270",
+            "size": 14,
+            "basicBlocks": 4,
+            "cfgEdges": 4,
+            "fingerprint": "cd9d70bd661acd25",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000270",
+            "name": "FUN_08000270",
+            "size": 14,
+            "basicBlocks": 4,
+            "cfgEdges": 4,
+            "fingerprint": "cd9d70bd661acd25",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000270|FUN_08000270|cd9d70bd661acd25",
+          "referenceFunctionId": "08000270|FUN_08000270|cd9d70bd661acd25",
+          "subjectAddress": "08000270",
+          "referenceAddress": "08000270",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "0800027e",
+            "name": "FUN_0800027e",
+            "size": 4,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "6e96502cdb6f1b1b",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": {
+            "address": "0800027e",
+            "name": "FUN_0800027e",
+            "size": 4,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "6e96502cdb6f1b1b",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "subjectFunctionId": "0800027e|FUN_0800027e|6e96502cdb6f1b1b",
+          "referenceFunctionId": "0800027e|FUN_0800027e|6e96502cdb6f1b1b",
+          "subjectAddress": "0800027e",
+          "referenceAddress": "0800027e",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000282",
+            "name": "FUN_08000282",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "e8f607185126edb4",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": {
+            "address": "08000282",
+            "name": "FUN_08000282",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "e8f607185126edb4",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "subjectFunctionId": "08000282|FUN_08000282|e8f607185126edb4",
+          "referenceFunctionId": "08000282|FUN_08000282|e8f607185126edb4",
+          "subjectAddress": "08000282",
+          "referenceAddress": "08000282",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000294",
+            "name": "FUN_08000294",
+            "size": 26,
+            "basicBlocks": 5,
+            "cfgEdges": 6,
+            "fingerprint": "90bd69ba81c1ceec",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000294",
+            "name": "FUN_08000294",
+            "size": 26,
+            "basicBlocks": 5,
+            "cfgEdges": 6,
+            "fingerprint": "90bd69ba81c1ceec",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000294|FUN_08000294|90bd69ba81c1ceec",
+          "referenceFunctionId": "08000294|FUN_08000294|90bd69ba81c1ceec",
+          "subjectAddress": "08000294",
+          "referenceAddress": "08000294",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080002ae",
+            "name": "FUN_080002ae",
+            "size": 164,
+            "basicBlocks": 15,
+            "cfgEdges": 21,
+            "fingerprint": "c3ce3f99bdb7a9f0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080002ae",
+            "name": "FUN_080002ae",
+            "size": 164,
+            "basicBlocks": 15,
+            "cfgEdges": 21,
+            "fingerprint": "c3ce3f99bdb7a9f0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080002ae|FUN_080002ae|c3ce3f99bdb7a9f0",
+          "referenceFunctionId": "080002ae|FUN_080002ae|c3ce3f99bdb7a9f0",
+          "subjectAddress": "080002ae",
+          "referenceAddress": "080002ae",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000352",
+            "name": "FUN_08000352",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": null,
+          "subjectFunctionId": "08000352|FUN_08000352|75b3b9c4c09a57d7",
+          "referenceFunctionId": null,
+          "subjectAddress": "08000352",
+          "referenceAddress": null,
+          "similarityScore": 1.0,
+          "matchConfidence": "AMBIGUOUS",
+          "matchMethod": "fingerprint_ambiguous",
+          "featuresUsed": [
+            "fingerprint"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [
+            {
+              "address": "08000352",
+              "name": "FUN_08000352",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            },
+            {
+              "address": "08000358",
+              "name": "FUN_08000358",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            }
+          ],
+          "notes": "Ambiguous fingerprint shared by 2 reference functions."
+        },
+        {
+          "subject": {
+            "address": "08000358",
+            "name": "FUN_08000358",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "75b3b9c4c09a57d7",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": null,
+          "subjectFunctionId": "08000358|FUN_08000358|75b3b9c4c09a57d7",
+          "referenceFunctionId": null,
+          "subjectAddress": "08000358",
+          "referenceAddress": null,
+          "similarityScore": 1.0,
+          "matchConfidence": "AMBIGUOUS",
+          "matchMethod": "fingerprint_ambiguous",
+          "featuresUsed": [
+            "fingerprint"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [
+            {
+              "address": "08000352",
+              "name": "FUN_08000352",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            },
+            {
+              "address": "08000358",
+              "name": "FUN_08000358",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 1,
+              "fingerprint": "75b3b9c4c09a57d7",
+              "confidence": "medium",
+              "callCount": 1
+            }
+          ],
+          "notes": "Ambiguous fingerprint shared by 2 reference functions."
+        },
+        {
+          "subject": {
+            "address": "0800035e",
+            "name": "FUN_0800035e",
+            "size": 100,
+            "basicBlocks": 14,
+            "cfgEdges": 18,
+            "fingerprint": "02c4167e7b2247e0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "0800035e",
+            "name": "FUN_0800035e",
+            "size": 100,
+            "basicBlocks": 14,
+            "cfgEdges": 18,
+            "fingerprint": "02c4167e7b2247e0",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "0800035e|FUN_0800035e|02c4167e7b2247e0",
+          "referenceFunctionId": "0800035e|FUN_0800035e|02c4167e7b2247e0",
+          "subjectAddress": "0800035e",
+          "referenceAddress": "0800035e",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080003c2",
+            "name": "FUN_080003c2",
+            "size": 24,
+            "basicBlocks": 5,
+            "cfgEdges": 5,
+            "fingerprint": "0e80379bb828d769",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080003c2",
+            "name": "FUN_080003c2",
+            "size": 24,
+            "basicBlocks": 5,
+            "cfgEdges": 5,
+            "fingerprint": "0e80379bb828d769",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080003c2|FUN_080003c2|0e80379bb828d769",
+          "referenceFunctionId": "080003c2|FUN_080003c2|0e80379bb828d769",
+          "subjectAddress": "080003c2",
+          "referenceAddress": "080003c2",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080003da",
+            "name": "FUN_080003da",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "d62a66c1183681d1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "080003da",
+            "name": "FUN_080003da",
+            "size": 18,
+            "basicBlocks": 1,
+            "cfgEdges": 1,
+            "fingerprint": "d62a66c1183681d1",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080003da|FUN_080003da|d62a66c1183681d1",
+          "referenceFunctionId": "080003da|FUN_080003da|d62a66c1183681d1",
+          "subjectAddress": "080003da",
+          "referenceAddress": "080003da",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000410",
+            "name": "FUN_08000410",
+            "size": 6,
+            "basicBlocks": 1,
+            "cfgEdges": 0,
+            "fingerprint": "3ad58eba36979e32",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": null,
+          "subjectFunctionId": "08000410|FUN_08000410|3ad58eba36979e32",
+          "referenceFunctionId": null,
+          "subjectAddress": "08000410",
+          "referenceAddress": null,
+          "similarityScore": 1.0,
+          "matchConfidence": "AMBIGUOUS",
+          "matchMethod": "fingerprint_ambiguous",
+          "featuresUsed": [
+            "fingerprint"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [
+            {
+              "address": "08000410",
+              "name": "FUN_08000410",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "080008e4",
+              "name": "FUN_080008e4",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "080008f0",
+              "name": "FUN_080008f0",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "080008fc",
+              "name": "FUN_080008fc",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000908",
+              "name": "FUN_08000908",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000914",
+              "name": "FUN_08000914",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            },
+            {
+              "address": "08000920",
+              "name": "FUN_08000920",
+              "size": 6,
+              "basicBlocks": 1,
+              "cfgEdges": 0,
+              "fingerprint": "3ad58eba36979e32",
+              "confidence": "medium",
+              "callCount": 0
+            }
+          ],
+          "notes": "Ambiguous fingerprint shared by 7 reference functions."
+        },
+        {
+          "subject": {
+            "address": "08000436",
+            "name": "FUN_08000436",
+            "size": 142,
+            "basicBlocks": 20,
+            "cfgEdges": 27,
+            "fingerprint": "b505cd14bf69dad8",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000436",
+            "name": "FUN_08000436",
+            "size": 142,
+            "basicBlocks": 20,
+            "cfgEdges": 27,
+            "fingerprint": "b505cd14bf69dad8",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000436|FUN_08000436|b505cd14bf69dad8",
+          "referenceFunctionId": "08000436|FUN_08000436|b505cd14bf69dad8",
+          "subjectAddress": "08000436",
+          "referenceAddress": "08000436",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000706",
+            "name": "FUN_08000706",
+            "size": 50,
+            "basicBlocks": 8,
+            "cfgEdges": 9,
+            "fingerprint": "37bd7ea8a74c755e",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000600",
+            "name": "FUN_08000600",
+            "size": 50,
+            "basicBlocks": 8,
+            "cfgEdges": 9,
+            "fingerprint": "37bd7ea8a74c755e",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000706|FUN_08000706|37bd7ea8a74c755e",
+          "referenceFunctionId": "08000600|FUN_08000600|37bd7ea8a74c755e",
+          "subjectAddress": "08000706",
+          "referenceAddress": "08000600",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000738",
+            "name": "FUN_08000738",
+            "size": 40,
+            "basicBlocks": 5,
+            "cfgEdges": 4,
+            "fingerprint": "c2e7565ead183d69",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000632",
+            "name": "FUN_08000632",
+            "size": 40,
+            "basicBlocks": 5,
+            "cfgEdges": 4,
+            "fingerprint": "c2e7565ead183d69",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "08000738|FUN_08000738|c2e7565ead183d69",
+          "referenceFunctionId": "08000632|FUN_08000632|c2e7565ead183d69",
+          "subjectAddress": "08000738",
+          "referenceAddress": "08000632",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "08000760",
+            "name": "FUN_08000760",
+            "size": 62,
+            "basicBlocks": 8,
+            "cfgEdges": 10,
+            "fingerprint": "522223b56e46273c",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "reference": {
+            "address": "0800065a",
+            "name": "FUN_0800065a",
+            "size": 62,
+            "basicBlocks": 8,
+            "cfgEdges": 10,
+            "fingerprint": "522223b56e46273c",
+            "confidence": "medium",
+            "callCount": 1
+          },
+          "subjectFunctionId": "08000760|FUN_08000760|522223b56e46273c",
+          "referenceFunctionId": "0800065a|FUN_0800065a|522223b56e46273c",
+          "subjectAddress": "08000760",
+          "referenceAddress": "0800065a",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        },
+        {
+          "subject": {
+            "address": "080007d0",
+            "name": "FUN_080007d0",
+            "size": 38,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "20e30c8f25167be7",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "reference": {
+            "address": "08000698",
+            "name": "FUN_08000698",
+            "size": 38,
+            "basicBlocks": 3,
+            "cfgEdges": 2,
+            "fingerprint": "20e30c8f25167be7",
+            "confidence": "medium",
+            "callCount": 0
+          },
+          "subjectFunctionId": "080007d0|FUN_080007d0|20e30c8f25167be7",
+          "referenceFunctionId": "08000698|FUN_08000698|20e30c8f25167be7",
+          "subjectAddress": "080007d0",
+          "referenceAddress": "08000698",
+          "similarityScore": 1.0,
+          "matchConfidence": "HIGH",
+          "matchMethod": "fingerprint_exact",
+          "featuresUsed": [
+            "fingerprint",
+            "size",
+            "basicBlocks"
+          ],
+          "limitations": [
+            "Structural/heuristic match \u2014 not proof of equivalence of runtime behavior."
+          ],
+          "candidates": [],
+          "notes": ""
+        }
+      ]
+    }
+  },
+  "f3FunctionCount": 181,
+  "g3FunctionCount": 220,
+  "profileVersion": "2.2G.1",
+  "profileHash": "1d0aea6293aca111a858b0319a9661e8d5c5a0e5e06af517bd6b408a11819047",
+  "referenceTrust": "communityLibrary",
+  "note": "Isolated Ghidra exports from backend E2E; community stock copies \u2014 not OEM-verified."
+}

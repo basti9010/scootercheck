@@ -134,7 +134,10 @@ Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angr
 - Admin: JWT `role=admin` **oder** `ADMIN_API_TOKEN`
 - **Phase 2.2H secure default:** `API_TOKEN_GRANTS_ADMIN=0` — shared `API_TOKEN` does **not** grant admin
 - Legacy opt-in only: `API_TOKEN_GRANTS_ADMIN=1` (discouraged; staging/new deploys keep `0`)
-- Ops before next prod restart: set `ADMIN_API_TOKEN`, confirm `API_TOKEN_GRANTS_ADMIN=0` in remote env (no secret rotation by deploy script)
+- **Phase 2.2H.1:** `TRUST_API_TOKEN_CLIENT_ID=0` — `X-ScooterCheck-Client-Id` is **not** job ownership under shared token (spoofable). Prefer Bearer JWT (`sub`) for user jobs.
+- Legacy opt-in only: `TRUST_API_TOKEN_CLIENT_ID=1` (discouraged)
+- Bearer JWT is preferred over shared token when both headers are present
+- Ops before next prod restart: set `ADMIN_API_TOKEN`, confirm `API_TOKEN_GRANTS_ADMIN=0` and `TRUST_API_TOKEN_CLIENT_ID=0`
 
 ## Firmware-Identität / Auto-Funktionen (Phase 2.2B)
 

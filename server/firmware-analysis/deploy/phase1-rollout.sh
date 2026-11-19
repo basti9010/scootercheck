@@ -48,6 +48,7 @@ DEPLOY_PY_FILES=(
   test_phase22f.py
   test_phase22g.py
   test_phase22h_e2e.py
+  test_phase22h1_validation.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py

@@ -804,4 +804,135 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(deep.runtimeValidationDetails?.vehicleTest, false)
         XCTAssertEqual(deep.runtimeValidationDetails?.threeStateReproducible, true)
     }
+
+    /// Phase 2.2H.1: actually render a forensic PDF and validate header + key content bytes.
+    func testPhase22H1PDFRenderContainsAnalysisFields() throws {
+        var deep = makeDeep(stock: nil, sources: [.serverDecompile])
+        deep.subjectSHA256 = "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b"
+        deep.analysisProfile = FirmwareAnalysisProfile(
+            analysisProfileVersion: "2.2G.1",
+            analysisProfileHash: "8a4c448ec9122549deadbeef",
+            analyzerCompat: "2",
+            ghidraVersion: "12.2_PUBLIC",
+            processorArchitecture: "ARM:LE:32:Cortex",
+            requestedLoaderBase: "0x08000000",
+            seedCortexMEntryPoints: true
+        )
+        deep.analysisProfileHash = "8a4c448ec9122549deadbeef"
+        deep.callGraphQuality = FirmwareCallGraphQuality(
+            directCalls: 10,
+            indirectCalls: 1,
+            internalBranches: 20,
+            tailCalls: 2,
+            unresolvedCalls: 0,
+            unknownControlFlow: 0,
+            edgeCount: 33
+        )
+        deep.functionDiff = FirmwareFunctionDiffSummary(
+            ok: true,
+            tool: "function_diff",
+            toolNote: nil,
+            summary: FirmwareFunctionDiffCounts(
+                identical: 5,
+                structurallyChanged: 1,
+                added: 0,
+                removed: 0,
+                uncomparable: 0,
+                subjectFunctionCount: 6,
+                referenceFunctionCount: 6,
+                overall: nil,
+                matched: 6,
+                ambiguous: 0,
+                matchHigh: 5,
+                matchMedium: 1,
+                matchLow: 0
+            ),
+            samplePairs: nil,
+            functionMatching: nil,
+            analysisLimitations: ["Funktionsdiff ist kein Manipulationsnachweis."],
+            notes: nil
+        )
+        deep.referenceMetadata = FirmwareReferenceMetadata(
+            referenceLabel: "community test",
+            referenceTrust: "communityLibrary",
+            verificationStatus: "community"
+        )
+        deep.analysisCompleteness = "PARTIAL"
+        deep.analysisLimitations = ["Statische Analyse — kein Fahrzeugtest."]
+        deep.firmwareArchitectureConfidence = "ARCHITECTURE_UNKNOWN"
+
+        let digest = FirmwareFileDigest(
+            md5: "d41d8cd98f00b204e9800998ecf8427e",
+            sha256: deep.subjectSHA256 ?? "x",
+            byteCount: 256,
+            shannonEntropy: 4.2
+        )
+        let report = FirmwareForensicReport(
+            id: "phase22h1-pdf",
+            analyzedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            originalFileName: "version_a.dec.bin",
+            containerKind: .bareBinary,
+            archiveByteCount: 256,
+            archiveDigest: digest,
+            meta: FirmwarePackageMeta(
+                schemaVersion: 1,
+                displayName: "Test VCU",
+                models: ["test"],
+                type: "VCU",
+                compatible: [],
+                declaredMd5: nil,
+                declaredEncrypted: false,
+                rawInfoJSON: nil
+            ),
+            entries: [],
+            primaryFirmwarePath: "version_a.dec.bin",
+            crypto: plaintextCrypto(),
+            binary: FirmwareBinaryAnalysis(
+                performed: true,
+                unavailableReason: nil,
+                architecture: .armCortexMLikely,
+                vectorTableLikely: true,
+                resetHandlerHint: "0x08000101",
+                stringsSample: [],
+                codeDataNotes: []
+            ),
+            evidence: [],
+            comparison: nil,
+            verdict: .gray,
+            verdictRationale: "Testdaten — keine Manipulationsaussage.",
+            limits: ["Unit-Test-PDF"],
+            vehicleContext: nil,
+            vehicleLinkNotes: [],
+            summary: "Phase 2.2H.1 PDF-Render-Test",
+            deepAnalysis: deep,
+            serverArtifacts: FirmwareServerArtifacts(
+                jobId: "job-anon",
+                plaintextSaved: true,
+                plaintextSHA256: deep.subjectSHA256,
+                plaintextByteCount: 256,
+                decompileSaved: true,
+                decompileExcerpt: nil
+            )
+        )
+
+        let pdf = FirmwareForensicPDF.render(report)
+        XCTAssertGreaterThan(pdf.count, 800, "PDF should not be empty")
+        let head = String(data: pdf.prefix(8), encoding: .ascii) ?? ""
+        XCTAssertTrue(head.hasPrefix("%PDF-"), "PDF magic missing: \(head)")
+
+        // PDF text operators embed strings; search raw bytes for key forensic fields.
+        let blob = String(decoding: pdf, as: UTF8.self)
+        XCTAssertTrue(blob.contains("2.2G.1") || blob.contains("Analyseprofil"), "profile missing in PDF stream")
+        XCTAssertTrue(blob.contains("communityLibrary") || blob.contains("community"), "trust status missing")
+        XCTAssertTrue(blob.contains("kein Manipulationsnachweis") || blob.contains("Manipulationsnachweis"))
+        XCTAssertTrue(blob.contains("6b7d6ec0") || blob.contains(deep.subjectSHA256 ?? "nomatch"))
+
+        let jsonData = try FirmwareForensicPDF.jsonData(report)
+        let decoded = try JSONDecoder().decode(FirmwareForensicReport.self, from: jsonData)
+        XCTAssertEqual(decoded.deepAnalysis?.subjectSHA256, deep.subjectSHA256)
+        XCTAssertEqual(decoded.deepAnalysis?.analysisProfileHash, deep.analysisProfileHash)
+        XCTAssertEqual(decoded.deepAnalysis?.referenceMetadata?.referenceTrust, "communityLibrary")
+        XCTAssertEqual(decoded.deepAnalysis?.callGraphQuality?.unresolvedCalls, 0)
+        XCTAssertEqual(decoded.deepAnalysis?.functionDiff?.summary?.structurallyChanged, 1)
+    }
 }
