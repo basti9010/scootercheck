@@ -523,6 +523,12 @@ enum FirmwareForensicPDF {
                             if let v = qm.parameterRecoveryCoverage {
                                 qmLine += String(format: " params=%.1f%%", v)
                             }
+                            if let v = qm.parameterNonZeroCoverage {
+                                qmLine += String(format: " params>0=%.1f%%", v)
+                            }
+                            if let v = qm.parameterUnknownCoverage {
+                                qmLine += String(format: " paramsUnknown=%.1f%%", v)
+                            }
                             if let v = qm.memoryAccessCoverage {
                                 qmLine += String(format: " mem=%.1f%%", v)
                             }
@@ -533,6 +539,20 @@ enum FirmwareForensicPDF {
                                 qmLine += " unresolved=\(n)"
                             }
                             y = line(ctx, qmLine, y: y, size: 7)
+                            if let n = qm.parameterUnknownCount, n > 0 {
+                                y = line(
+                                    ctx,
+                                    "Hinweis: unbekannte Parametersignaturen werden nicht als 0 Parameter dargestellt.",
+                                    y: y,
+                                    size: 7
+                                )
+                            }
+                            if let dist = qm.parameterQualityDistribution, !dist.isEmpty {
+                                let pq = dist.sorted { $0.key < $1.key }
+                                    .map { "\($0.key)=\($0.value)" }
+                                    .joined(separator: " ")
+                                y = line(ctx, "Parameter-Qualität: \(pq)", y: y, size: 7)
+                            }
                             if let dist = qm.semanticConfidenceDistribution, !dist.isEmpty {
                                 let prov = dist.sorted { $0.key < $1.key }
                                     .map { "\($0.key)=\($0.value)" }

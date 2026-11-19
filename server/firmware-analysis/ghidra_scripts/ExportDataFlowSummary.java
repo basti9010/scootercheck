@@ -3,6 +3,8 @@
 // No full pcode dumps — counts and quality only.
 //@category ScooterCheck
 
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
@@ -10,9 +12,12 @@ import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.pcode.HighFunction;
+import ghidra.program.model.pcode.FunctionPrototype;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceManager;
+import ghidra.program.model.symbol.SourceType;
 import ghidra.util.task.ConsoleTaskMonitor;
 
 import java.io.BufferedWriter;
@@ -59,12 +64,39 @@ public class ExportDataFlowSummary extends GhidraScript {
         List<String> topLimitations = new ArrayList<>();
         topLimitations.add("Compact data-flow summary only — no pcode / SSA dump.");
         topLimitations.add("Memory read/write counts use RefType data refs plus LDR/STR mnemonic fallback.");
-        topLimitations.add("parameterCount from Ghidra signature when recovered; otherwise null.");
+        topLimitations.add(
+            "parameterCount null when signature source is DEFAULT (unknown); "
+                + "CONFIRMED_ZERO / RECOVERED / PARTIAL via SignatureSource + optional HighFunction."
+        );
         topLimitations.add("No activation / unlock sequence reconstruction.");
+
+        // Optional decompiler recovery for DEFAULT signatures (bounded).
+        boolean enableDecompParams = !"0".equals(System.getenv("GHIDRA_DATAFLOW_DECOMP_PARAMS"));
+        int decompBudget = 80;
+        String envBudget = System.getenv("GHIDRA_DATAFLOW_DECOMP_BUDGET");
+        if (envBudget != null && !envBudget.isEmpty()) {
+            try {
+                decompBudget = Math.max(0, Integer.parseInt(envBudget.trim()));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        DecompInterface decomp = null;
+        int decompUsed = 0;
+        if (enableDecompParams && decompBudget > 0) {
+            try {
+                decomp = new DecompInterface();
+                decomp.openProgram(currentProgram);
+            } catch (Exception e) {
+                topLimitations.add("DecompInterface unavailable: " + safeMsg(e));
+                decomp = null;
+            }
+        } else {
+            topLimitations.add("HighFunction parameter recovery disabled (budget=0 or env).");
+        }
 
         StringBuilder sb = new StringBuilder(128 * 1024);
         sb.append("{\n");
-        sb.append("  \"schemaVersion\": 1,\n");
+        sb.append("  \"schemaVersion\": 2,\n");
         sb.append("  \"tool\": ").append(jsonString("ExportDataFlowSummary")).append(",\n");
         sb.append("  \"program\": ").append(jsonString(currentProgram.getName())).append(",\n");
         sb.append("  \"processor\": ").append(jsonString(processor)).append(",\n");
@@ -86,15 +118,71 @@ public class ExportDataFlowSummary extends GhidraScript {
             try {
                 String entry = fn.getEntryPoint().toString();
                 String name = fn.getName(false);
-                int parameterCount = 0;
-                boolean paramKnown = false;
                 List<String> limitations = new ArrayList<>();
+                Integer parameterCount = null;
+                String parameterQuality = "UNKNOWN_PARAMETER_COUNT";
+                String signatureSource = "UNKNOWN";
                 try {
-                    parameterCount = fn.getParameterCount();
-                    paramKnown = true;
+                    SourceType src = fn.getSignatureSource();
+                    signatureSource = src == null ? "UNKNOWN" : src.toString();
+                    int rawCount = fn.getParameterCount();
+                    // DEFAULT + 0 is Ghidra's empty auto-signature — not a confirmed zero.
+                    if (src == SourceType.DEFAULT && rawCount == 0) {
+                        parameterCount = null;
+                        parameterQuality = "UNKNOWN_PARAMETER_COUNT";
+                        limitations.add("DEFAULT signature with 0 params — treated as unknown");
+                        if (decomp != null && decompUsed < decompBudget) {
+                            try {
+                                DecompileResults res = decomp.decompileFunction(fn, 20, monitor);
+                                decompUsed++;
+                                if (res != null && res.decompileCompleted()) {
+                                    HighFunction hf = res.getHighFunction();
+                                    if (hf != null) {
+                                        FunctionPrototype proto = hf.getFunctionPrototype();
+                                        if (proto != null) {
+                                            int n = proto.getNumParams();
+                                            parameterCount = n;
+                                            parameterQuality = n == 0
+                                                ? "CONFIRMED_ZERO_PARAMETERS"
+                                                : "RECOVERED_PARAMETER_COUNT";
+                                            limitations.add(
+                                                "parameterCount from HighFunction prototype"
+                                            );
+                                        } else {
+                                            parameterQuality = "PARTIAL_SIGNATURE";
+                                            limitations.add("HighFunction prototype null");
+                                        }
+                                    } else {
+                                        parameterQuality = "PARTIAL_SIGNATURE";
+                                        limitations.add("HighFunction null after decompile");
+                                    }
+                                } else {
+                                    parameterQuality = "PARTIAL_SIGNATURE";
+                                    limitations.add("decompile incomplete for parameters");
+                                }
+                            } catch (Exception de) {
+                                limitations.add("decomp param recovery: " + safeMsg(de));
+                                parameterQuality = "PARTIAL_SIGNATURE";
+                            }
+                        }
+                    } else if (src == SourceType.DEFAULT) {
+                        // Non-zero DEFAULT is unusual — mark partial, keep count.
+                        parameterCount = rawCount;
+                        parameterQuality = "PARTIAL_SIGNATURE";
+                        limitations.add("DEFAULT signature with non-zero parameterCount");
+                    } else if (rawCount == 0) {
+                        parameterCount = 0;
+                        parameterQuality = "CONFIRMED_ZERO_PARAMETERS";
+                    } else {
+                        parameterCount = rawCount;
+                        parameterQuality = "RECOVERED_PARAMETER_COUNT";
+                    }
                 } catch (Exception e) {
-                    limitations.add("parameterCount unavailable");
+                    parameterCount = null;
+                    parameterQuality = "UNKNOWN_PARAMETER_COUNT";
+                    limitations.add("parameterCount unavailable: " + safeMsg(e));
                 }
+                boolean paramKnown = parameterCount != null;
 
                 int memoryReads = 0;
                 int memoryWrites = 0;
@@ -220,6 +308,8 @@ public class ExportDataFlowSummary extends GhidraScript {
                 } else {
                     sb.append("      \"parameterCount\": null,\n");
                 }
+                sb.append("      \"parameterQuality\": ").append(jsonString(parameterQuality)).append(",\n");
+                sb.append("      \"signatureSource\": ").append(jsonString(signatureSource)).append(",\n");
                 sb.append("      \"memoryReads\": ").append(memoryReads).append(",\n");
                 sb.append("      \"memoryWrites\": ").append(memoryWrites).append(",\n");
                 sb.append("      \"compareOps\": ").append(compareOps).append(",\n");
@@ -239,6 +329,13 @@ public class ExportDataFlowSummary extends GhidraScript {
             topLimitations.add(
                 "Export truncated at maxFunctions=" + maxFns + " skipped=" + truncated
             );
+        }
+        if (decomp != null) {
+            topLimitations.add("HighFunction parameter recovery attempts=" + decompUsed);
+            try {
+                decomp.dispose();
+            } catch (Exception ignored) {
+            }
         }
 
         sb.append("\n  ],\n");

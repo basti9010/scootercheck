@@ -1961,10 +1961,28 @@ private func firmwareActivationDataflowQualityMetaLines(
     }
     pct("Export-Abdeckung", qm.dataflowExportCoverage)
     pct("Parameter-Wiederherstellung", qm.parameterRecoveryCoverage)
+    pct("Parameter > 0", qm.parameterNonZeroCoverage)
+    pct("Parameter unbekannt", qm.parameterUnknownCoverage)
+    pct("Signatur teilweise", qm.parameterPartialCoverage)
     pct("Speicherzugriffe", qm.memoryAccessCoverage)
     pct("Datenreferenzen", qm.dataReferenceCoverage)
     if let n = qm.unresolvedDataflowCount {
         lines.append(FirmwareActivationLabelValue(label: "offene Dataflows", value: "\(n)"))
+    }
+    if let n = qm.parameterUnknownCount, n > 0 {
+        lines.append(FirmwareActivationLabelValue(
+            label: "Hinweis Parameter",
+            value: "unbekannte Signaturen ≠ null Parameter"
+        ))
+    }
+    if let dist = qm.parameterQualityDistribution, !dist.isEmpty {
+        let label = dist.filter { $0.value > 0 }
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: " · ")
+        if !label.isEmpty {
+            lines.append(FirmwareActivationLabelValue(label: "Parameter-Qualität", value: label))
+        }
     }
     if let dist = qm.semanticConfidenceDistribution, !dist.isEmpty {
         let label = dist.filter { $0.value > 0 }

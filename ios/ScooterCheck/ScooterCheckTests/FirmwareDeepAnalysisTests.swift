@@ -1357,9 +1357,18 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
                 "totalFunctions": 50,
                 "dataflowExportCoverage": 66.0,
                 "parameterRecoveryCoverage": 40.0,
+                "parameterNonZeroCoverage": 22.0,
+                "parameterUnknownCoverage": 50.0,
+                "parameterPartialCoverage": 10.0,
                 "memoryAccessCoverage": 88.0,
                 "dataReferenceCoverage": 55.0,
                 "unresolvedDataflowCount": 3,
+                "parameterQualityDistribution": {
+                  "CONFIRMED_ZERO_PARAMETERS": 5,
+                  "RECOVERED_PARAMETER_COUNT": 15,
+                  "UNKNOWN_PARAMETER_COUNT": 25,
+                  "PARTIAL_SIGNATURE": 5
+                },
                 "semanticConfidenceDistribution": {
                   "GHIDRA_EXPORTED": 33,
                   "MNEMONIC_DERIVED": 12,
@@ -1379,9 +1388,14 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(qm.totalFunctions, 50)
         XCTAssertEqual(qm.dataflowExportCoverage, 66.0)
         XCTAssertEqual(qm.parameterRecoveryCoverage, 40.0)
+        XCTAssertEqual(qm.parameterNonZeroCoverage, 22.0)
+        XCTAssertEqual(qm.parameterUnknownCoverage, 50.0)
+        XCTAssertEqual(qm.parameterPartialCoverage, 10.0)
         XCTAssertEqual(qm.memoryAccessCoverage, 88.0)
         XCTAssertEqual(qm.dataReferenceCoverage, 55.0)
         XCTAssertEqual(qm.unresolvedDataflowCount, 3)
+        XCTAssertEqual(qm.parameterQualityDistribution?["UNKNOWN_PARAMETER_COUNT"], 25)
+        XCTAssertEqual(qm.parameterQualityDistribution?["RECOVERED_PARAMETER_COUNT"], 15)
         XCTAssertEqual(qm.semanticConfidenceDistribution?["GHIDRA_EXPORTED"], 33)
         XCTAssertEqual(qm.semanticConfidenceDistribution?["NOT_AVAILABLE"], 2)
         XCTAssertEqual(deep.activationForensics?.referenceComparison?.referenceTrust, "communityLibrary")

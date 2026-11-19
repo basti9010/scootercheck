@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.4",
+  "disclaimer": "Controlled ARM/Thumb parameter ground truth — no scooter logic.",
+  "processor": "ARM:LE:32:Cortex",
+  "baseAddr": "0x08000000",
+  "annotatorNote": "Expected parameter counts documented BEFORE Ghidra analysis.",
+  "functions": [
+    {
+      "id": "gt_zero",
+      "logicalName": "fn_zero_params",
+      "expectedParameterCount": 0,
+      "expectQuality": ["CONFIRMED_ZERO_PARAMETERS", "RECOVERED_PARAMETER_COUNT"],
+      "category": "zero_params"
+    },
+    {
+      "id": "gt_one",
+      "logicalName": "fn_one_param",
+      "expectedParameterCount": 1,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT"],
+      "category": "one_param"
+    },
+    {
+      "id": "gt_two",
+      "logicalName": "fn_two_params",
+      "expectedParameterCount": 2,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT"],
+      "category": "two_params"
+    },
+    {
+      "id": "gt_three",
+      "logicalName": "fn_three_params",
+      "expectedParameterCount": 3,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT"],
+      "category": "three_params"
+    },
+    {
+      "id": "gt_four",
+      "logicalName": "fn_four_params",
+      "expectedParameterCount": 4,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT"],
+      "category": "four_params"
+    },
+    {
+      "id": "gt_mem",
+      "logicalName": "fn_mem_access",
+      "expectedParameterCount": 2,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT"],
+      "category": "memory_access"
+    },
+    {
+      "id": "gt_ret",
+      "logicalName": "fn_with_return",
+      "expectedParameterCount": 1,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT"],
+      "category": "return_value"
+    },
+    {
+      "id": "gt_indirect",
+      "logicalName": "fn_indirect_call",
+      "expectedParameterCount": 2,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT", "PARTIAL_SIGNATURE"],
+      "category": "indirect_call"
+    },
+    {
+      "id": "gt_incomplete",
+      "logicalName": "fn_incomplete_sig",
+      "expectedParameterCount": 1,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT", "PARTIAL_SIGNATURE", "UNKNOWN_PARAMETER_COUNT"],
+      "category": "incomplete_signature",
+      "allowUnknown": true
+    },
+    {
+      "id": "gt_opaque",
+      "logicalName": "fn_opaque_cc",
+      "expectedParameterCount": 2,
+      "expectQuality": ["RECOVERED_PARAMETER_COUNT", "PARTIAL_SIGNATURE", "UNKNOWN_PARAMETER_COUNT"],
+      "category": "opaque_calling_convention",
+      "allowUnknown": true
+    }
+  ]
+}

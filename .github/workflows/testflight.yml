@@ -98,6 +98,7 @@ on:
       - cursor/firmware-phase-231-semantic-b100
       - cursor/firmware-phase-232-ghidra-validation-b100
       - cursor/firmware-phase-233-quality-b100
+      - cursor/firmware-phase-234-release-hardening-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

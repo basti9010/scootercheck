@@ -302,10 +302,25 @@ def _derive_from_function(
     call_count = None
     data_refs = None
 
+    parameter_quality: str | None = None
+    signature_source: str | None = None
     if isinstance(df, dict):
         has_export_row = True
         source = "dataflow_export"
         param = _int_or_none(df.get("parameterCount"))
+        pq_raw = df.get("parameterQuality")
+        parameter_quality = str(pq_raw).strip() if isinstance(pq_raw, str) and pq_raw.strip() else None
+        ss_raw = df.get("signatureSource")
+        signature_source = str(ss_raw).strip() if isinstance(ss_raw, str) and ss_raw.strip() else None
+        # Legacy ExportDataFlowSummary wrote DEFAULT empty signatures as 0 without quality.
+        if parameter_quality is None and param == 0 and (
+            signature_source in (None, "", "DEFAULT", "UNKNOWN")
+        ):
+            param = None
+            parameter_quality = "UNKNOWN_PARAMETER_COUNT"
+            limitations.append(
+                "legacy parameterCount=0 without quality reinterpreted as unknown"
+            )
         memory_reads = _int_or_none(df.get("memoryReads"))
         memory_writes = _int_or_none(df.get("memoryWrites"))
         compare_ops = _int_or_none(df.get("compareOps"))
@@ -320,8 +335,19 @@ def _derive_from_function(
             limitations.append(f"dataflow quality={q_df}")
 
     # Optional compact fields already on function export (Phase 2.3.1 extension).
-    if param is None:
+    # Do not overwrite an explicit UNKNOWN from dataflow with a legacy function-export 0.
+    if param is None and parameter_quality not in (
+        "UNKNOWN_PARAMETER_COUNT",
+        "PARTIAL_SIGNATURE",
+    ):
         param = _int_or_none(fn.get("parameterCount"))
+        if param == 0 and not isinstance(fn.get("parameterQuality"), str):
+            # Same DEFAULT-empty ambiguity on function exports without quality.
+            param = None
+            parameter_quality = "UNKNOWN_PARAMETER_COUNT"
+            limitations.append(
+                "function-export parameterCount=0 without quality reinterpreted as unknown"
+            )
     if memory_reads is None and fn.get("memoryReadCount") is not None:
         memory_reads = _int_or_zero(fn.get("memoryReadCount"))
         if source == "derived":
@@ -437,10 +463,20 @@ def _derive_from_function(
         has_mnemonics=bool(mnems),
     )
 
+    if parameter_quality is None:
+        if param is None:
+            parameter_quality = "UNKNOWN_PARAMETER_COUNT"
+        elif int(param) == 0:
+            parameter_quality = "CONFIRMED_ZERO_PARAMETERS"
+        else:
+            parameter_quality = "RECOVERED_PARAMETER_COUNT"
+
     return {
         "address": _addr(fn) or ( _addr(df) if isinstance(df, dict) else ""),
         "name": _name(fn) or (_name(df) if isinstance(df, dict) else ""),
         "parameterCount": param,
+        "parameterQuality": parameter_quality,
+        "signatureSource": signature_source,
         "memoryReads": int(memory_reads or 0),
         "memoryWrites": int(memory_writes or 0),
         "compareOps": int(compare_ops or 0),
@@ -483,11 +519,44 @@ def compute_dataflow_quality_metrics(sdf_full: dict[str, Any]) -> dict[str, Any]
         for r in records
         if r.get("provenance") == PROVENANCE_GHIDRA_EXPORTED and str(r.get("quality") or "").lower() == "ok"
     )
-    # parameterCount null = unknown; 0 = Ghidra recovered zero params (not invented, but may be incomplete).
-    with_params = sum(1 for r in records if r.get("parameterCount") is not None)
-    with_params_nonzero = sum(
-        1 for r in records if r.get("parameterCount") is not None and int(r.get("parameterCount") or 0) > 0
+    # parameterCount null / UNKNOWN = unknown; CONFIRMED_ZERO and RECOVERED count as known.
+    def _pq(r: dict[str, Any]) -> str:
+        q = r.get("parameterQuality")
+        if isinstance(q, str) and q.strip():
+            return q.strip()
+        if r.get("parameterCount") is None:
+            return "UNKNOWN_PARAMETER_COUNT"
+        if int(r.get("parameterCount") or 0) == 0:
+            return "CONFIRMED_ZERO_PARAMETERS"
+        return "RECOVERED_PARAMETER_COUNT"
+
+    pq_dist = {
+        "CONFIRMED_ZERO_PARAMETERS": 0,
+        "RECOVERED_PARAMETER_COUNT": 0,
+        "UNKNOWN_PARAMETER_COUNT": 0,
+        "PARTIAL_SIGNATURE": 0,
+    }
+    for r in records:
+        q = _pq(r)
+        if q not in pq_dist:
+            pq_dist[q] = 0
+        pq_dist[q] += 1
+
+    with_params = sum(
+        1
+        for r in records
+        if r.get("parameterCount") is not None
+        and _pq(r) in ("CONFIRMED_ZERO_PARAMETERS", "RECOVERED_PARAMETER_COUNT", "PARTIAL_SIGNATURE")
     )
+    with_params_nonzero = sum(
+        1
+        for r in records
+        if r.get("parameterCount") is not None
+        and int(r.get("parameterCount") or 0) > 0
+        and _pq(r) in ("RECOVERED_PARAMETER_COUNT", "PARTIAL_SIGNATURE")
+    )
+    unknown_params = pq_dist.get("UNKNOWN_PARAMETER_COUNT", 0)
+    partial_params = pq_dist.get("PARTIAL_SIGNATURE", 0)
     with_mem = sum(
         1 for r in records if int(r.get("memoryReads") or 0) > 0 or int(r.get("memoryWrites") or 0) > 0
     )
@@ -512,18 +581,24 @@ def compute_dataflow_quality_metrics(sdf_full: dict[str, Any]) -> dict[str, Any]
         "dataflowExportCoverage": pct(exported_ok),
         "parameterRecoveryCoverage": pct(with_params),
         "parameterNonZeroCoverage": pct(with_params_nonzero),
+        "parameterUnknownCoverage": pct(unknown_params),
+        "parameterPartialCoverage": pct(partial_params),
         "memoryAccessCoverage": pct(with_mem),
         "dataReferenceCoverage": pct(with_refs),
         "unresolvedDataflowCount": unresolved,
         "semanticConfidenceDistribution": dist,
+        "parameterQualityDistribution": pq_dist,
         "exportedOkCount": exported_ok,
         "parameterKnownCount": with_params,
         "parameterNonZeroCount": with_params_nonzero,
+        "parameterUnknownCount": unknown_params,
+        "parameterPartialCount": partial_params,
         "memoryAccessCount": with_mem,
         "dataReferenceCount": with_refs,
         "note": (
-            "parameterRecoveryCoverage zählt auch parameterCount=0 als bekannt "
-            "(nicht null); parameterNonZeroCoverage misst >0."
+            "parameterRecoveryCoverage zählt CONFIRMED_ZERO/RECOVERED/PARTIAL; "
+            "UNKNOWN bleibt null und senkt die Coverage. "
+            "Legacy parameterCount=0 ohne parameterQuality wird als UNKNOWN gewertet."
         ),
     }
 

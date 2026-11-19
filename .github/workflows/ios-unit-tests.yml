@@ -1,0 +1,84 @@
+# Phase 2.3.4 — PR build/unit-test CI (no TestFlight upload).
+# Separates compile+test validation from distribution allowlists.
+name: iOS Unit Tests
+
+on:
+  pull_request:
+    paths:
+      - "ios/ScooterCheck/**"
+      - ".github/workflows/ios-unit-tests.yml"
+  push:
+    branches:
+      - cursor/firmware-phase-234-release-hardening-b100
+      - cursor/firmware-phase-233-quality-b100
+    paths:
+      - "ios/ScooterCheck/**"
+      - ".github/workflows/ios-unit-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-unit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: ScooterCheck Unit Tests
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: ios/ScooterCheck
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          CANDIDATE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$CANDIDATE" ]; then
+            CANDIDATE=$(ls -d /Applications/Xcode_*.app /Applications/Xcode.app 2>/dev/null | sort -V | tail -1)
+          fi
+          echo "Using $CANDIDATE"
+          sudo xcode-select -s "$CANDIDATE/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+
+      - name: Unit tests (ScooterCheckTests)
+        run: |
+          DEST=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          preferred = ("iPhone 17", "iPhone 16", "iPhone 16e", "iPhone SE")
+          candidates = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime and "iPhone" not in runtime:
+                  continue
+              for d in devices:
+                  if not d.get("isAvailable"):
+                      continue
+                  name = d.get("name") or ""
+                  if "iPhone" not in name:
+                      continue
+                  candidates.append((name, d["udid"], runtime))
+          if not candidates:
+              sys.exit("no iPhone simulator available")
+          for pref in preferred:
+              for name, udid, runtime in candidates:
+                  if name.startswith(pref):
+                      print(udid)
+                      print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
+                      raise SystemExit(0)
+          name, udid, runtime = candidates[-1]
+          print(udid)
+          print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
+          ')
+          echo "Using simulator UDID=$DEST"
+          xcodebuild test \
+            -project ScooterCheck.xcodeproj \
+            -scheme ScooterCheck \
+            -destination "platform=iOS Simulator,id=$DEST" \
+            -only-testing:ScooterCheckTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
+            CODE_SIGNING_ALLOWED=NO

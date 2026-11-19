@@ -1223,14 +1223,26 @@ struct FirmwareActivationDataflowQualityMetrics: Equatable, Codable, Sendable {
     var totalFunctions: Int?
     var dataflowExportCoverage: Double?
     var parameterRecoveryCoverage: Double?
+    /// Phase 2.3.4 — Anteil mit parameterCount > 0 und RECOVERED/PARTIAL.
+    var parameterNonZeroCoverage: Double?
+    /// Phase 2.3.4 — UNKNOWN_PARAMETER_COUNT Anteil (%).
+    var parameterUnknownCoverage: Double?
+    /// Phase 2.3.4 — PARTIAL_SIGNATURE Anteil (%).
+    var parameterPartialCoverage: Double?
     var memoryAccessCoverage: Double?
     var dataReferenceCoverage: Double?
     var unresolvedDataflowCount: Int?
     var semanticConfidenceDistribution: [String: Int]?
+    /// Phase 2.3.4 — Verteilung CONFIRMED_ZERO / RECOVERED / UNKNOWN / PARTIAL.
+    var parameterQualityDistribution: [String: Int]?
     var exportedOkCount: Int?
     var parameterKnownCount: Int?
+    var parameterNonZeroCount: Int?
+    var parameterUnknownCount: Int?
+    var parameterPartialCount: Int?
     var memoryAccessCount: Int?
     var dataReferenceCount: Int?
+    var note: String?
 }
 
 struct FirmwareActivationSemanticDataFlow: Equatable, Codable, Sendable {
