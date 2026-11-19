@@ -180,11 +180,15 @@ jobs:
           print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
           ')
           echo "Using simulator UDID=$DEST"
+          # Parallel clones have caused multi-minute hangs / opaque failures on
+          # macos-15; keep unit tests deterministic for firmware-forensics CI.
           xcodebuild test \
             -project ScooterCheck.xcodeproj \
             -scheme ScooterCheck \
             -destination "platform=iOS Simulator,id=$DEST" \
             -only-testing:ScooterCheckTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Fastlane beta
