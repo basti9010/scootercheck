@@ -41,6 +41,7 @@ DEPLOY_PY_FILES=(
   test_function_diff.py
   test_function_matcher.py
   test_input_behavior.py
+  test_phase22d_quality.py
   test_job_auth.py
   test_firmware_identify.py
   test_auto_function_detection.py

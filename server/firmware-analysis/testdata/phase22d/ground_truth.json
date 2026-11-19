@@ -1,0 +1,33 @@
+{
+  "description": "Phase 2.2D synthetic Ghidra-export fixtures (harmless). Documented before analysis.",
+  "cases": {
+    "shifted_address_identical": {
+      "expect": "IDENTISCH match across different addresses",
+      "subject": "helper_leaf@0x08002000",
+      "reference": "helper_leaf@0x08001000"
+    },
+    "identical_helpers_ambiguous": {
+      "expect": "AMBIGUOUS when two refs share fingerprint",
+      "subject": "dup_a",
+      "references": ["dup_b", "dup_c"]
+    },
+    "wrapper_unchanged_callee_changed": {
+      "expect": "wrapper IDENTISCH; callee STRUKTURELL_VERAENDERT",
+      "wrapper": "reset_like",
+      "callee": "process_like"
+    },
+    "input_vs_helper": {
+      "expect": "process_input classified; add_values excluded",
+      "input": "process_input",
+      "helper": "add_values"
+    },
+    "multi_bb_not_fsm": {
+      "expect": "branchy math helper is NOT an FSM candidate",
+      "function": "branchy_math"
+    },
+    "documented_fsm_candidate": {
+      "expect": "STATE_MACHINE_CANDIDATE with null stateCount",
+      "function": "mode_fsm_tick"
+    }
+  }
+}

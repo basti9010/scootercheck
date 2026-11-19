@@ -265,11 +265,25 @@ enum FirmwareForensicPDF {
                 }
                 let sm = deep.stateMachineAnalysis ?? ib.stateMachineAnalysis
                 if let sm {
+                    let statesLabel: String = {
+                        if let n = sm.totalEstimatedStates { return "Zustände(verifiziert)=\(n)" }
+                        return "Zustände=nicht verifiziert"
+                    }()
+                    let transLabel: String = {
+                        if let n = sm.totalEstimatedTransitions { return "Übergänge(verifiziert)=\(n)" }
+                        return "Übergänge=nicht verifiziert"
+                    }()
                     y = line(
                         ctx,
-                        "Zustandsautomaten=\(sm.stateMachineCount ?? 0) · Zustände≈\(sm.totalEstimatedStates ?? 0) · Übergänge≈\(sm.totalEstimatedTransitions ?? 0)",
+                        "FSM-Kandidaten=\(sm.stateMachineCount ?? 0) · \(statesLabel) · \(transLabel)",
                         y: y,
                         size: 8
+                    )
+                    y = line(
+                        ctx,
+                        "Hinweis: Basic Blocks ≠ Zustände. Keine Aktivierungsfolgen.",
+                        y: y,
+                        size: 7
                     )
                 }
                 if let diff = deep.inputBehaviorDiff?.summary {

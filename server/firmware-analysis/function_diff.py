@@ -257,7 +257,12 @@ def _classify_pair(a: dict[str, Any], b: dict[str, Any]) -> tuple[str, dict[str,
     same_edges = a.get("cfgEdges") == b.get("cfgEdges")
     same_calls = sorted(a.get("calls") or []) == sorted(b.get("calls") or [])
     if same_fp and same_size and same_blocks:
-        return STATUS_IDENTICAL, {"reason": "fingerprint+size+blocks"}
+        # Body-identical: still note call-name set diffs as transitive dependency hints
+        # without flipping IDENTISCH (callee body may differ independently).
+        if not same_calls:
+            detail["dependencyNote"] = "callNamesDiffer; body fingerprint identical"
+            detail["callsChanged"] = True
+        return STATUS_IDENTICAL, {"reason": "fingerprint+size+blocks", **detail}
     if a.get("size") is None or b.get("size") is None:
         return STATUS_UNCOMPARABLE, {"reason": "missing-size"}
     if not same_size:
