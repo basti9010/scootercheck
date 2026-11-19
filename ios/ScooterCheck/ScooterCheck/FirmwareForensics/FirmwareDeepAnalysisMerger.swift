@@ -82,6 +82,7 @@ enum FirmwareDeepAnalysisMerger {
             ?? firmwareContainerAnalysis?.architectureConfidence
         let runtimeValidationDetails = firstNonNil(parts.map(\.runtimeValidationDetails))
         let ghidraReproducibility = firstNonNil(parts.map(\.ghidraReproducibility))
+        let activationForensics = firstNonNil(parts.map(\.activationForensics))
         let limitations = Array(Set(parts.compactMap(\.analysisLimitations).flatMap { $0 }))
 
         var result = FirmwareDeepAnalysisResult(
@@ -136,7 +137,8 @@ enum FirmwareDeepAnalysisMerger {
             ghidraAddressLayout: ghidraAddressLayout,
             firmwareArchitectureConfidence: firmwareArchitectureConfidence,
             runtimeValidationDetails: runtimeValidationDetails,
-            ghidraReproducibility: ghidraReproducibility
+            ghidraReproducibility: ghidraReproducibility,
+            activationForensics: activationForensics
         )
         if result.classifiedFindings == nil {
             result.classifiedFindings = FirmwareEvidenceClassifier.classify(from: result)
@@ -232,6 +234,7 @@ enum FirmwareDeepAnalysisMerger {
             out.runtimeValidationDetails = base.runtimeValidationDetails
         }
         if out.ghidraReproducibility == nil { out.ghidraReproducibility = base.ghidraReproducibility }
+        if out.activationForensics == nil { out.activationForensics = base.activationForensics }
         if out.yaraMatches.isEmpty, !base.yaraMatches.isEmpty {
             out.yaraMatches = base.yaraMatches
         }
