@@ -1116,8 +1116,14 @@ struct FirmwareActivationForensicsSummary: Equatable, Codable, Sendable {
     var sampleInputHandlers: [FirmwareActivationHandlerFinding]?
     var undocumentedLogic: FirmwareActivationUndocumentedSummary?
     var conditionalLogicFindings: FirmwareActivationConditionalSummary?
+    /// Phase 2.3.1 poll: quality class → count (parallel zu conditionalLogicFindings.summary.qualityClasses).
+    var conditionalLogicQuality: [String: Int]?
     var fsmIntegration: FirmwareActivationFSMIntegration?
     var activationEvidenceGraph: FirmwareActivationEvidenceGraphSummary?
+    var evidenceGraphQuality: FirmwareActivationEvidenceGraphQuality?
+    var activationEvidenceDistribution: FirmwareActivationEvidenceDistribution?
+    var inputDetectionQuality: FirmwareActivationInputDetectionQuality?
+    var semanticDataFlow: FirmwareActivationSemanticDataFlow?
     var referenceComparison: FirmwareActivationReferenceComparison?
     var prioritization: FirmwareActivationPrioritization?
     var evidenceTier: String?
@@ -1145,8 +1151,65 @@ struct FirmwareActivationHandlerFinding: Equatable, Codable, Sendable, Identifia
     var confidence: Double?
     var technicalFindings: [String]?
     var detectionMethods: [String]?
+    /// Generischer Symbolname (FUN_* o.ä.) — schwächere Benennungsevidenz.
+    var genericName: Bool?
+    var weakCandidate: Bool?
+    var structuralOnly: Bool?
 
     var id: String { (address ?? "") + "|" + (name ?? "") }
+}
+
+struct FirmwareActivationEvidenceDistribution: Equatable, Codable, Sendable {
+    var staticConfirmedCount: Int?
+    var indicativeCount: Int?
+    var speculativeCount: Int?
+    var unknownCount: Int?
+    var ambiguousCount: Int?
+    var overallEvidenceTier: String?
+    var overallEvidenceSummary: String?
+    var strongestIndividualFinding: FirmwareActivationStrongestFinding?
+    var limitations: [String]?
+}
+
+struct FirmwareActivationStrongestFinding: Equatable, Codable, Sendable {
+    var address: String?
+    var name: String?
+    var evidenceTier: String?
+    var inputCategories: [String]?
+}
+
+struct FirmwareActivationEvidenceGraphQuality: Equatable, Codable, Sendable {
+    var nodeCount: Int?
+    var edgeCount: Int?
+    var confirmedEdgeCount: Int?
+    var indicativeEdgeCount: Int?
+    var speculativeEdgeCount: Int?
+    var unresolvedEdgeCount: Int?
+}
+
+struct FirmwareActivationInputDetectionQuality: Equatable, Codable, Sendable {
+    var genericNamedHandlers: Int?
+    var namedHandlers: Int?
+    var structuralMultiSignal: Int?
+    var nameOrStringOnly: Int?
+    var note: String?
+}
+
+struct FirmwareActivationSemanticDataFlow: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var functionsAnalyzed: Int?
+    var withMemoryReads: Int?
+    var withMemoryWrites: Int?
+    var withConditionals: Int?
+    var withCalls: Int?
+    var qualityOk: Int?
+    var qualityPartial: Int?
+    var qualityMissing: Int?
+    /// Anzahl Funktionen mit Dataflow-Export-Quelle (nicht Bool).
+    var fromDataflowExport: Int?
+    /// Anzahl nur abgeleiteter Funktionen (nicht Bool).
+    var derivedOnly: Int?
+    var source: String?
 }
 
 struct FirmwareActivationUndocumentedSummary: Equatable, Codable, Sendable {

@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "functions": [
+    {
+      "address": "0x08002400",
+      "name": "FUN_08002400",
+      "basicBlocks": 0,
+      "cfgEdges": 0,
+      "mnemonics": [],
+      "calls": [],
+      "calledBy": [],
+      "strings": [],
+      "constants": []
+    }
+  ]
+}

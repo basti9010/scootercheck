@@ -51,7 +51,7 @@ class Phase23ActivationForensicsTests(unittest.TestCase):
 
     def test_engine_ok_and_limitations(self) -> None:
         self.assertTrue(self.full["ok"])
-        self.assertEqual(self.full["phase"], "2.3")
+        self.assertIn(self.full["phase"], {"2.3", "2.3.1"})
         lim = " ".join(self.full.get("analysisLimitations") or [])
         self.assertIn("kein nachweis realen fahrzeugverhaltens", lim.lower())
         self.assertIn("keine rekonstruktion", lim.lower())
@@ -59,6 +59,13 @@ class Phase23ActivationForensicsTests(unittest.TestCase):
         ref = self.full["referenceComparison"]
         self.assertTrue(ref["referenceIsCommunity"])
         self.assertFalse(ref["referenceIsOemVerified"])
+        # Phase 2.3.1: mixed STATIC_CONFIRMED must not wash overall to STATIC_CONFIRMED
+        dist = self.full.get("activationEvidenceDistribution") or {}
+        if dist.get("staticConfirmedCount") and (
+            dist.get("indicativeCount") or dist.get("speculativeCount")
+        ):
+            self.assertNotEqual(dist.get("overallEvidenceTier"), af.STATIC_CONFIRMED)
+            self.assertEqual(dist.get("overallEvidenceTier"), af.INDICATIVE)
 
     def test_input_categories_present(self) -> None:
         cats = self.full.get("categoryCounts") or {}

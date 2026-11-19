@@ -1,0 +1,183 @@
+{
+  "ok": true,
+  "schemaVersion": 1,
+  "functions": [
+    {
+      "address": "0x08002000",
+      "name": "FUN_08002000",
+      "parameterCount": 2,
+      "basicBlocks": 4,
+      "cfgEdges": 5,
+      "mnemonics": [
+        "push",
+        "ldr",
+        "cmp",
+        "bne",
+        "ldr",
+        "str",
+        "pop"
+      ],
+      "calls": [],
+      "calledBy": [
+        "FUN_08002100",
+        "FUN_08002120",
+        "FUN_08002140"
+      ],
+      "constants": [],
+      "strings": [],
+      "size": 40,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002080",
+      "name": "FUN_08002080",
+      "basicBlocks": 3,
+      "cfgEdges": 4,
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "cmp",
+        "beq",
+        "str",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [
+        "FUN_08002100"
+      ],
+      "constants": [
+        "0x40020000"
+      ],
+      "strings": [],
+      "size": 28,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002100",
+      "name": "mode_state_apply",
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "str",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [
+        "state"
+      ],
+      "size": 20,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002180",
+      "name": "FUN_08002180",
+      "basicBlocks": 5,
+      "cfgEdges": 6,
+      "mnemonics": [
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "size": 32,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002200",
+      "name": "FUN_08002200",
+      "basicBlocks": 1,
+      "cfgEdges": 0,
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "str",
+        "str",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "size": 24,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002280",
+      "name": "FUN_08002280",
+      "basicBlocks": 8,
+      "cfgEdges": 10,
+      "mnemonics": [
+        "cmp",
+        "bne",
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "cmp",
+        "bgt",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "size": 48,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002300",
+      "name": "FUN_08002300",
+      "basicBlocks": 2,
+      "cfgEdges": 1,
+      "mnemonics": [
+        "add",
+        "mul",
+        "sub",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "size": 16,
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x08002380",
+      "name": "FUN_08002380",
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "calls": [],
+      "calledBy": [
+        "FUN_x"
+      ],
+      "constants": [],
+      "strings": [
+        "msg"
+      ],
+      "size": 24,
+      "processor": "ARM:LE:32:Cortex"
+    }
+  ],
+  "processor": "ARM:LE:32:Cortex"
+}

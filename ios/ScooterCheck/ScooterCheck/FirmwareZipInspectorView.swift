@@ -1181,6 +1181,8 @@ struct FirmwareZipInspectorView: View {
                 "Statische Codeanalyse — kein Nachweis realen Fahrzeugverhaltens; "
                     + "keine Aktivierungssequenzen."
             ))
+
+            rows.append(.title("Eingabeverarbeitung", top: 6))
             if let n = af.summary?.functionsExamined {
                 rows.append(.meta("Untersuchte Funktionen", "\(n)"))
             }
@@ -1193,14 +1195,26 @@ struct FirmwareZipInspectorView: View {
                     rows.append(.meta("Eingabekategorien", label))
                 }
             }
-            if let tier = af.evidenceTier {
+            let tier = af.activationEvidenceDistribution?.overallEvidenceTier ?? af.evidenceTier
+            if let tier {
                 rows.append(.meta("Evidenzstufe", tier))
+            }
+            if let idq = af.inputDetectionQuality {
+                let parts = [
+                    idq.namedHandlers.map { "benannt: \($0)" },
+                    idq.genericNamedHandlers.map { "generisch: \($0)" },
+                    idq.structuralMultiSignal.map { "Struktur+: \($0)" },
+                    idq.nameOrStringOnly.map { "nur Name/String: \($0)" },
+                ].compactMap { $0 }
+                if !parts.isEmpty {
+                    rows.append(.meta("Erkennungsqualität", parts.joined(separator: " · ")))
+                }
+                if let note = idq.note, !note.isEmpty {
+                    rows.append(.warn(note))
+                }
             }
             if let u = af.undocumentedLogic?.summary?.findingCount {
                 rows.append(.meta("Undokumentierte / Diff-Befunde", "\(u)"))
-            }
-            if let c = af.conditionalLogicFindings?.summary?.functionsWithConditionalLogic {
-                rows.append(.meta("Bedingte Programmstrukturen", "\(c)"))
             }
             if let fsm = af.fsmIntegration?.fsmCandidateCount {
                 rows.append(.meta("Zustandsautomaten-Kandidaten", "\(fsm)"))
@@ -1208,20 +1222,109 @@ struct FirmwareZipInspectorView: View {
             if let linked = af.fsmIntegration?.inputLinkedFsmCount {
                 rows.append(.meta("FSM ↔ Input verknüpft", "\(linked)"))
             }
-            if let nodes = af.activationEvidenceGraph?.nodeCount,
-               let edges = af.activationEvidenceGraph?.edgeCount {
-                rows.append(.meta("Evidence-Graph", "\(nodes) Knoten / \(edges) Kanten"))
-            }
-            if af.referenceComparison?.referenceIsCommunity == true {
-                rows.append(.warn("Community-Referenz — keine verifizierte Herstellerfirmware."))
-            }
             for h in (af.sampleInputHandlers ?? []).prefix(6) {
                 let cats = (h.inputCategories ?? []).joined(separator: ",")
                 let title = h.name ?? h.address ?? "Funktion"
+                var tags: [String] = []
+                if h.genericName == true { tags.append("generischer Name") }
+                if h.weakCandidate == true { tags.append("schwach") }
+                if h.structuralOnly == true { tags.append("nur Struktur") }
+                let suffix = tags.isEmpty ? "" : " · " + tags.joined(separator: ", ")
                 rows.append(.meta(
                     title,
-                    "\(cats) · \(h.evidenceTier ?? "—")"
+                    "\(cats) · \(h.evidenceTier ?? "—")\(suffix)"
                 ))
+            }
+
+            let condQuality = af.conditionalLogicQuality
+            if condQuality != nil || af.conditionalLogicFindings?.summary != nil {
+                rows.append(.title("Bedingte Programmlogik", top: 6))
+                if let c = af.conditionalLogicFindings?.summary?.functionsWithConditionalLogic {
+                    rows.append(.meta("Funktionen mit Verzweigungen", "\(c)"))
+                }
+                let qc = condQuality ?? [:]
+                if !qc.isEmpty {
+                    let label = qc.filter { $0.value > 0 }
+                        .sorted { $0.key < $1.key }
+                        .map { "\(firmwareActivationConditionalQualityLabel($0.key)): \($0.value)" }
+                        .joined(separator: ", ")
+                    if !label.isEmpty {
+                        rows.append(.meta("Qualitätsklassen", label))
+                    }
+                }
+            }
+
+            if let sdf = af.semanticDataFlow, sdf.ok != false {
+                rows.append(.title("Datenflussanalyse", top: 6))
+                if let n = sdf.functionsAnalyzed {
+                    rows.append(.meta("Funktionen", "\(n)"))
+                }
+                let flowParts = [
+                    sdf.withMemoryReads.map { "Reads: \($0)" },
+                    sdf.withMemoryWrites.map { "Writes: \($0)" },
+                    sdf.withConditionals.map { "Branches: \($0)" },
+                    sdf.withCalls.map { "Calls: \($0)" },
+                ].compactMap { $0 }
+                if !flowParts.isEmpty {
+                    rows.append(.meta("Merkmale", flowParts.joined(separator: " · ")))
+                }
+                let qParts = [
+                    sdf.qualityOk.map { "vollständig: \($0)" },
+                    sdf.qualityPartial.map { "teilweise: \($0)" },
+                    sdf.qualityMissing.map { "fehlend: \($0)" },
+                ].compactMap { $0 }
+                if !qParts.isEmpty {
+                    rows.append(.meta("Datenfluss-Qualität", qParts.joined(separator: " · ")))
+                }
+                if let src = sdf.source, !src.isEmpty {
+                    rows.append(.meta("Quelle", src))
+                }
+            }
+
+            if af.activationEvidenceDistribution != nil || af.evidenceGraphQuality != nil
+                || af.activationEvidenceGraph != nil {
+                rows.append(.title("Evidenzqualität", top: 6))
+                if let dist = af.activationEvidenceDistribution {
+                    let parts = [
+                        dist.staticConfirmedCount.map { "STATIC: \($0)" },
+                        dist.indicativeCount.map { "INDIC: \($0)" },
+                        dist.speculativeCount.map { "SPEC: \($0)" },
+                        dist.unknownCount.map { "UNK: \($0)" },
+                        dist.ambiguousCount.map { "ambig: \($0)" },
+                    ].compactMap { $0 }
+                    if !parts.isEmpty {
+                        rows.append(.meta("Verteilung Handler", parts.joined(separator: " · ")))
+                    }
+                    if let summary = dist.overallEvidenceSummary, !summary.isEmpty {
+                        rows.append(.meta("Gesamteinschätzung", summary))
+                    }
+                    for lim in (dist.limitations ?? []).prefix(2) {
+                        rows.append(.warn(lim))
+                    }
+                }
+                let nodeN = af.evidenceGraphQuality?.nodeCount ?? af.activationEvidenceGraph?.nodeCount
+                let edgeN = af.evidenceGraphQuality?.edgeCount ?? af.activationEvidenceGraph?.edgeCount
+                if nodeN != nil || edgeN != nil {
+                    rows.append(.meta(
+                        "Evidence-Graph",
+                        "\(nodeN ?? 0) Knoten / \(edgeN ?? 0) Kanten"
+                    ))
+                }
+                if let gq = af.evidenceGraphQuality {
+                    let edgeParts = [
+                        gq.confirmedEdgeCount.map { "bestätigt: \($0)" },
+                        gq.indicativeEdgeCount.map { "indikativ: \($0)" },
+                        gq.speculativeEdgeCount.map { "spekulativ: \($0)" },
+                        gq.unresolvedEdgeCount.map { "offen: \($0)" },
+                    ].compactMap { $0 }
+                    if !edgeParts.isEmpty {
+                        rows.append(.meta("Kantenqualität", edgeParts.joined(separator: " · ")))
+                    }
+                }
+            }
+
+            if af.referenceComparison?.referenceIsCommunity == true {
+                rows.append(.warn("Community-Referenz — keine verifizierte Herstellerfirmware."))
             }
             for p in (af.prioritization?.top ?? []).prefix(3) {
                 rows.append(.meta(
@@ -1796,6 +1899,17 @@ struct FirmwareZipInspectorView: View {
         try? data.write(to: url)
         shareItems = [url]
         showShare = true
+    }
+}
+
+private func firmwareActivationConditionalQualityLabel(_ key: String) -> String {
+    switch key {
+    case "CONDITIONAL_LOGIC_ONLY": return "nur Verzweigung"
+    case "INPUT_RELATED_CONDITIONAL_LOGIC": return "eingabebezogen"
+    case "STATE_RELATED_CONDITIONAL_LOGIC": return "zustandsbezogen"
+    case "FEATURE_GATE_CANDIDATE": return "Feature-Gate"
+    case "NOT_CLASSIFIABLE": return "unklar"
+    default: return key
     }
 }
 

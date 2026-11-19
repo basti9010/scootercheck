@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "processor": "x86:LE:32:default",
+  "functions": [
+    {
+      "address": "0x00401000",
+      "name": "FUN_00401000",
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "cmp",
+        "jz",
+        "mov",
+        "ret"
+      ],
+      "calls": [],
+      "calledBy": [],
+      "strings": [],
+      "constants": []
+    }
+  ]
+}

@@ -158,9 +158,26 @@ def run_ghidra_decompile(
                 "-postScript",
                 "ExportCallGraph.java",
                 str(callgraph_json),
-                "-deleteProject",
             ]
         )
+        # Phase 2.3.1: optional compact data-flow summary next to functions.json
+        dataflow_json: Path | None = None
+        if (script_dir / "ExportDataFlowSummary.java").exists():
+            if functions_json.name.endswith(".functions.json"):
+                dataflow_json = functions_json.with_name(
+                    functions_json.name[: -len(".functions.json")] + ".dataflow.json"
+                )
+            else:
+                dataflow_json = output_c.with_suffix(".dataflow.json")
+            dataflow_json.parent.mkdir(parents=True, exist_ok=True)
+            cmd.extend(
+                [
+                    "-postScript",
+                    "ExportDataFlowSummary.java",
+                    str(dataflow_json),
+                ]
+            )
+        cmd.append("-deleteProject")
         # Extra headless timeout buffer for Phase-2 exports (still capped by caller).
         timeout_sec = max(timeout_sec, int(os.environ.get("GHIDRA_TIMEOUT_SEC", str(timeout_sec)) or timeout_sec))
         env = os.environ.copy()
@@ -232,6 +249,11 @@ def run_ghidra_decompile(
             notes.append(f"callgraph.json {callgraph_json.stat().st_size}B")
         else:
             notes.append("callgraph.json=missing-or-empty")
+        if dataflow_json is not None:
+            if dataflow_json.exists() and dataflow_json.stat().st_size > 0:
+                notes.append(f"dataflow.json {dataflow_json.stat().st_size}B")
+            else:
+                notes.append("dataflow.json=missing-or-empty")
         if profile_path is not None:
             notes.append(f"analysisProfile={profile_path.name}")
         return True, ", ".join(notes)
