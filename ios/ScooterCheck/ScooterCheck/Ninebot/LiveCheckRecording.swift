@@ -139,8 +139,8 @@ struct LiveCheckRecording: Codable, Hashable, Identifiable, Sendable {
         id = try c.decode(UUID.self, forKey: .id)
         protocolNumber = try c.decodeIfPresent(String.self, forKey: .protocolNumber)
         serialDisplay = try c.decodeIfPresent(String.self, forKey: .serialDisplay)
-        startedAt = try c.decode(Date.self, forKey: .startedAt)
-        endedAt = try c.decodeIfPresent(Date.self, forKey: .endedAt)
+        startedAt = try Self.decodeFlexibleDate(c, forKey: .startedAt) ?? Date()
+        endedAt = try Self.decodeFlexibleDate(c, forKey: .endedAt)
         samples = try c.decodeIfPresent([LiveCheckSample].self, forKey: .samples) ?? []
         events = try c.decodeIfPresent([LiveCheckEvent].self, forKey: .events) ?? []
         peakSpeedKmh = try c.decodeIfPresent(Double.self, forKey: .peakSpeedKmh)
@@ -162,6 +162,30 @@ struct LiveCheckRecording: Codable, Hashable, Identifiable, Sendable {
         try c.encodeIfPresent(peakPowerW, forKey: .peakPowerW)
         try c.encodeIfPresent(maxControllerTempC, forKey: .maxControllerTempC)
         try c.encodeIfPresent(maxBatteryTempC, forKey: .maxBatteryTempC)
+    }
+
+    /// Accept ISO-8601 strings (legacy JSON) and default Date decoding.
+    private static func decodeFlexibleDate(
+        _ c: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) throws -> Date? {
+        if !c.contains(key) { return nil }
+        if let d = try? c.decode(Date.self, forKey: key) { return d }
+        if let s = try? c.decode(String.self, forKey: key) {
+            let fmt = ISO8601DateFormatter()
+            fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let d = fmt.date(from: s) { return d }
+            fmt.formatOptions = [.withInternetDateTime]
+            if let d = fmt.date(from: s) { return d }
+        }
+        if key == .startedAt {
+            throw DecodingError.dataCorruptedError(
+                forKey: key,
+                in: c,
+                debugDescription: "expected Date or ISO-8601 string"
+            )
+        }
+        return nil
     }
 
     /// Schwellen-Events nur einmal — anhand der bereits gespeicherten Events.

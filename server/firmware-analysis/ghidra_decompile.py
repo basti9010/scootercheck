@@ -48,6 +48,10 @@ def run_ghidra_decompile(
     timeout_sec: int = 600,
     speed_json: Path | None = None,
     limit_c: Path | None = None,
+    functions_json: Path | None = None,
+    callgraph_json: Path | None = None,
+    seed_ivt_entry_points: bool | None = None,
+    auto_identify: bool | None = None,
 ) -> tuple[bool, str]:
     headless = _headless_bin()
     if not headless:
@@ -57,6 +61,29 @@ def run_ghidra_decompile(
     if not (script_dir / "ExportAllDecompiled.java").exists():
         return False, f"missing ExportAllDecompiled.java in {script_dir}"
 
+    identify_notes: list[str] = []
+    do_identify = auto_identify if auto_identify is not None else (
+        os.environ.get("GHIDRA_AUTO_IDENTIFY", "1").strip() not in ("0", "false", "False")
+    )
+    if do_identify:
+        try:
+            from firmware_identify import identify_firmware_image
+
+            ident = identify_firmware_image(plaintext_bin)
+            identify_notes.extend(ident.get("notes") or [])
+            if ident.get("ok") and ident.get("baseAddr"):
+                base_addr = str(ident["baseAddr"])
+            if ident.get("ok") and ident.get("processor"):
+                processor = str(ident["processor"])
+            if ident.get("architectureUnknown"):
+                identify_notes.append("architecture=uncertain")
+        except Exception as e:
+            identify_notes.append(f"identify=error:{type(e).__name__}")
+
+    do_seed = seed_ivt_entry_points if seed_ivt_entry_points is not None else (
+        os.environ.get("GHIDRA_SEED_IVT", "1").strip() not in ("0", "false", "False")
+    )
+
     output_c.parent.mkdir(parents=True, exist_ok=True)
     if speed_json is None:
         speed_json = output_c.with_suffix(".speeds.json")
@@ -64,6 +91,12 @@ def run_ghidra_decompile(
     if limit_c is None:
         limit_c = output_c.with_suffix(".limits.c")
     limit_c.parent.mkdir(parents=True, exist_ok=True)
+    if functions_json is None:
+        functions_json = output_c.with_suffix(".functions.json")
+    functions_json.parent.mkdir(parents=True, exist_ok=True)
+    if callgraph_json is None:
+        callgraph_json = output_c.with_suffix(".callgraph.json")
+    callgraph_json.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="ghidra-proj-") as proj:
         proj_dir = Path(proj)
@@ -84,17 +117,32 @@ def run_ghidra_decompile(
             base_addr,
             "-scriptPath",
             str(script_dir),
-            "-postScript",
-            "ExportAllDecompiled.java",
-            str(output_c),
-            "-postScript",
-            "ExportSpeedXrefs.java",
-            str(speed_json),
-            "-postScript",
-            "ExportLimitFunctions.java",
-            str(limit_c),
-            "-deleteProject",
         ]
+        if do_seed and (script_dir / "SeedCortexMEntryPoints.java").exists():
+            cmd.extend(["-preScript", "SeedCortexMEntryPoints.java"])
+            identify_notes.append("seedIvt=1")
+        cmd.extend(
+            [
+                "-postScript",
+                "ExportAllDecompiled.java",
+                str(output_c),
+                "-postScript",
+                "ExportSpeedXrefs.java",
+                str(speed_json),
+                "-postScript",
+                "ExportLimitFunctions.java",
+                str(limit_c),
+                "-postScript",
+                "ExportFunctionAnalysis.java",
+                str(functions_json),
+                "-postScript",
+                "ExportCallGraph.java",
+                str(callgraph_json),
+                "-deleteProject",
+            ]
+        )
+        # Extra headless timeout buffer for Phase-2 exports (still capped by caller).
+        timeout_sec = max(timeout_sec, int(os.environ.get("GHIDRA_TIMEOUT_SEC", str(timeout_sec)) or timeout_sec))
         try:
             proc = subprocess.run(
                 cmd,
@@ -113,11 +161,21 @@ def run_ghidra_decompile(
             return False, f"ghidra exit {proc.returncode}: {log_tail}"
         if not output_c.exists() or output_c.stat().st_size == 0:
             return False, f"ghidra produced empty decompile: {log_tail}"
-        notes = [f"decompiled {output_c.stat().st_size} bytes"]
+        notes = [f"decompiled {output_c.stat().st_size} bytes", f"processor={processor}", f"base={base_addr}"]
+        notes.extend(identify_notes)
         if speed_json.exists() and speed_json.stat().st_size > 0:
             notes.append(f"speedXrefs {speed_json.stat().st_size}B")
         if limit_c.exists() and limit_c.stat().st_size > 0:
             notes.append(f"limits.c {limit_c.stat().st_size}B")
+        # Phase-2 exports are best-effort: missing files must not fail the whole decompile.
+        if functions_json.exists() and functions_json.stat().st_size > 0:
+            notes.append(f"functions.json {functions_json.stat().st_size}B")
+        else:
+            notes.append("functions.json=missing-or-empty")
+        if callgraph_json.exists() and callgraph_json.stat().st_size > 0:
+            notes.append(f"callgraph.json {callgraph_json.stat().st_size}B")
+        else:
+            notes.append("callgraph.json=missing-or-empty")
         return True, ", ".join(notes)
 
 

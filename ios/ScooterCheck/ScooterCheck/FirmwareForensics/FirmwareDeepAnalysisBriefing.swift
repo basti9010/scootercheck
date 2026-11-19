@@ -252,7 +252,9 @@ enum FirmwareDeepAnalysisBriefing {
             if looksTechnical(blob) || t.trigger.contains("0x") {
                 tech.append(t)
             } else {
-                human.append(t)
+                var copy = t
+                copy.trigger = FirmwareComboPolicy.sanitizeTrigger(t.trigger)
+                human.append(copy)
             }
         }
         return (human, tech)

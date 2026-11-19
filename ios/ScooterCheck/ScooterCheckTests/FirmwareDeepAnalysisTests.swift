@@ -204,7 +204,13 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             )
         )
         let brief = FirmwareDeepAnalysisBriefing.build(from: deep)
-        XCTAssertTrue(brief.headline.localizedCaseInsensitiveContains("Referenz") || brief.headline.localizedCaseInsensitiveContains("Bibliothek"))
+        // Yellow headline is Ampel-neutral; library/reference wording lives in bullets/rationale.
+        XCTAssertTrue(
+            brief.bullets.contains {
+                $0.localizedCaseInsensitiveContains("Bibliothek") || $0.localizedCaseInsensitiveContains("Referenz")
+            },
+            "expected library/reference bullet, got: \(brief.bullets)"
+        )
         XCTAssertEqual(brief.actionableCombos, ["Live-Kombination (SN): Gas+Bremse+Power"])
         XCTAssertTrue(brief.technicalCombos.contains { $0.localizedCaseInsensitiveContains("Bitfeld") })
         XCTAssertFalse(brief.actionableCombos.contains { $0.localizedCaseInsensitiveContains("Vermutete") })
@@ -613,5 +619,64 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(deep.legalCapKmhInCode, 20)
         XCTAssertTrue(deep.sources.contains(.knownCatalog))
         XCTAssertTrue(deep.comboSummaries.isEmpty, "hash catalog must not claim unverified unlock combos")
+    }
+
+    func testPhase2FunctionDiffDecodesWithoutClaimingManipulation() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-18T21:00:00Z",
+          "sources": ["serverDecompile"],
+          "subjectSHA256": "abc",
+          "models": ["g3"],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "ok"},
+          "functionAnalysis": {"ok": true, "functionCount": 12, "processor": "ARM:LE:32:Cortex"},
+          "functionDiff": {
+            "ok": true,
+            "summary": {
+              "identical": 8,
+              "structurallyChanged": 2,
+              "added": 1,
+              "removed": 1,
+              "uncomparable": 0,
+              "subjectFunctionCount": 12
+            },
+            "samplePairs": [
+              {
+                "status": "STRUKTURELL_VERAENDERT",
+                "subject": {"address": "0x08001000", "name": "FUN_08001000", "size": 96},
+                "evidenceTier": "statisch",
+                "notes": "Struktureller Vergleich — keine Tuning-Aussage."
+              }
+            ],
+            "analysisLimitations": ["Funktionsdiff ist kein Manipulationsnachweis."]
+          },
+          "referenceMetadata": {
+            "referenceLabel": "G3 VCU community",
+            "verificationStatus": "community",
+            "referenceTrust": "communityLibrary"
+          },
+          "analysisLimitations": ["Kein Diaphora/BinDiff."]
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let deep = try decoder.decode(FirmwareDeepAnalysisResult.self, from: json)
+        XCTAssertEqual(deep.functionAnalysis?.functionCount, 12)
+        XCTAssertEqual(deep.functionDiff?.summary?.structurallyChanged, 2)
+        XCTAssertEqual(deep.functionDiff?.samplePairs?.first?.status, .structurallyChanged)
+        XCTAssertEqual(deep.referenceMetadata?.verificationStatus, "community")
+        XCTAssertTrue((deep.functionDiff?.analysisLimitations ?? []).contains {
+            $0.contains("kein Manipulationsnachweis")
+        })
+        // Legacy clients ignore unknown keys — encoding round-trip keeps phase-1 fields.
+        XCTAssertEqual(deep.schemaVersion, 1)
+        XCTAssertTrue(deep.speedLimits.isEmpty)
     }
 }

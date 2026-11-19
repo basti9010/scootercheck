@@ -53,6 +53,12 @@ enum FirmwareDeepAnalysisMerger {
             classified = []
         }
 
+        let functionAnalysis = firstNonNil(parts.map(\.functionAnalysis))
+        let functionDiff = firstNonNil(parts.map(\.functionDiff))
+        let callGraph = firstNonNil(parts.map(\.callGraph))
+        let referenceMetadata = firstNonNil(parts.map(\.referenceMetadata))
+        let limitations = Array(Set(parts.compactMap(\.analysisLimitations).flatMap { $0 }))
+
         var result = FirmwareDeepAnalysisResult(
             schemaVersion: FirmwareDeepAnalysisResult.currentSchemaVersion,
             producedAt: Date(),
@@ -81,7 +87,12 @@ enum FirmwareDeepAnalysisMerger {
             yaraMatches: yara,
             cortexMIvt: ivt,
             boardPinout: pinout,
-            classifiedFindings: classified.isEmpty ? nil : classified
+            classifiedFindings: classified.isEmpty ? nil : classified,
+            functionAnalysis: functionAnalysis,
+            functionDiff: functionDiff,
+            callGraph: callGraph,
+            referenceMetadata: referenceMetadata,
+            analysisLimitations: limitations.isEmpty ? nil : limitations
         )
         if result.classifiedFindings == nil {
             result.classifiedFindings = FirmwareEvidenceClassifier.classify(from: result)
@@ -93,10 +104,14 @@ enum FirmwareDeepAnalysisMerger {
     static func validateServerResult(_ result: FirmwareDeepAnalysisResult) -> FirmwareDeepAnalysisResult? {
         guard result.schemaVersion == FirmwareDeepAnalysisResult.currentSchemaVersion else { return nil }
         let stockHit = result.stockDiff?.outcome == .identical || result.stockDiff?.outcome == .different
+        let phase2Hit = (result.functionAnalysis?.functionCount ?? 0) > 0
+            || (result.functionDiff?.summary?.subjectFunctionCount ?? 0) > 0
+            || (result.callGraph?.edgeCount ?? 0) > 0
         let meaningful = !result.speedLimits.isEmpty
             || !result.modeTransitions.isEmpty
             || !result.comboSummaries.isEmpty
             || stockHit
+            || phase2Hit
             || result.cortexMIvt != nil
             || result.boardPinout != nil
             || !result.yaraMatches.isEmpty
@@ -138,6 +153,11 @@ enum FirmwareDeepAnalysisMerger {
         if out.boardPinout == nil { out.boardPinout = base.boardPinout }
         if out.stockDiff == nil { out.stockDiff = base.stockDiff }
         if out.classifiedFindings == nil { out.classifiedFindings = base.classifiedFindings }
+        if out.functionAnalysis == nil { out.functionAnalysis = base.functionAnalysis }
+        if out.functionDiff == nil { out.functionDiff = base.functionDiff }
+        if out.callGraph == nil { out.callGraph = base.callGraph }
+        if out.referenceMetadata == nil { out.referenceMetadata = base.referenceMetadata }
+        if out.analysisLimitations == nil { out.analysisLimitations = base.analysisLimitations }
         if out.yaraMatches.isEmpty, !base.yaraMatches.isEmpty {
             out.yaraMatches = base.yaraMatches
         }

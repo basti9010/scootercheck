@@ -443,11 +443,18 @@ final class IndoorMotionTracker {
     }
 
     /// Test-/Engine-Hook: manueller Schritt mit bekanntem Heading.
+    /// Ends in standstill so follow-up compass updates use the standstill path.
     func debugAdvance(steps: Int, headingDegrees: Double) {
-        applyHeading(headingDegrees, alpha: 1.0, minDeltaScale: 0)
+        // Absolute heading (skip delta clamp) so U-turns (Δ≈180°) always apply.
+        smoothedHeading = normalize(headingDegrees)
+        if let h = smoothedHeading {
+            onHeadingUpdated?(h)
+        }
         isWalking = true
         lastWalkAt = Date()
         advanceBySteps(steps)
+        isWalking = false
+        lastWalkAt = .distantPast
     }
 
     /// Test-Hook: Gyro-Drehung in Grad (positiv = Linksdrehung / Heading sinkt).

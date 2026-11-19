@@ -31,7 +31,7 @@ struct FAQItem: Identifiable, Hashable, Sendable {
                 parts.append(contentsOf: items)
             }
         }
-        return parts.joined(separator: " ").lowercased()
+        return FAQCatalog.normalizeSearch(parts.joined(separator: " "))
     }
 }
 
@@ -67,8 +67,17 @@ enum FAQCatalog {
         }
     }
 
+    /// Fold umlauts so queries like „Schriftgroesse“ match „Schriftgröße“.
+    static func normalizeSearch(_ s: String) -> String {
+        s.lowercased()
+            .replacingOccurrences(of: "ä", with: "ae")
+            .replacingOccurrences(of: "ö", with: "oe")
+            .replacingOccurrences(of: "ü", with: "ue")
+            .replacingOccurrences(of: "ß", with: "ss")
+    }
+
     static func filtered(query: String) -> [FAQCategory] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let q = normalizeSearch(query.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !q.isEmpty else { return categories }
         return categories.compactMap { category in
             let items = category.items.filter { $0.searchableText.contains(q) }

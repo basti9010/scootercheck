@@ -74,6 +74,21 @@ apt-get install -y radare2
 
 Health: `capstoneConfigured`, `yaraConfigured`. Abschaltbar via `ENABLE_CAPSTONE=0` / `ENABLE_YARA=0`.
 
+## Phase 2 — Funktionsanalyse / Callgraph / Function-Diff
+
+Zusätzlich zu Decompile/Xrefs (Phase 1 bleibt unverändert):
+
+- `ExportFunctionAnalysis.java` → `FIRM.functions.json` (Adresse, Größe, CFG, Calls, Konstanten/Strings, Fingerprint)
+- `ExportCallGraph.java` → `FIRM.callgraph.json` (+ optionales `.dot`-Stub ohne Extra-Deps)
+- `function_diff.py` vergleicht Subject vs. optionale Referenz-`*.functions.json`  
+  Status: `IDENTISCH` | `STRUKTURELL_VERAENDERT` | `HINZUGEFUEGT` | `ENTFERNT` | `NICHT_VERGLEICHBAR`  
+  **Kein Diaphora/BinDiff** (Lizenz/RAM/Headless) — strukturelle Änderung ≠ Manipulation
+- Poll-Payload trägt nur Summaries (`functionAnalysis`, `functionDiff`, `callGraph`, `referenceMetadata`, `analysisLimitations`)
+- Vollartefakte (auth):  
+  `GET /v1/firmware/jobs/{id}/functions` · `/callgraph` · `/function-diff`
+- LLM bleibt opt-in (`allowLLM=false`); `llm_verify.py` streicht unbelegte Adress-/FUN_-Claims
+- Limits: `GHIDRA_MAX_FUNCTIONS`, bestehendes `HEAVY_ANALYSIS_LOCK`, best-effort bei Export-Fehlern
+
 ## Limit-Slice / Pinout / Input-Probe (Kombi-Forensik)
 
 Nach Speed-Scan:
@@ -111,10 +126,20 @@ ANGR_SYMBOLIC=0            # 1 = kurze Local-Explore je Speed-Site
 
 Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angrTimeoutSec`, `angrMemMb`, `angrCfgDepth`, `angrSymbolic`.
 
-## Auth
+## Auth (Phase 2.1 / 2.2B)
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API
-- und/oder `X-ScooterCheck-Token` wenn `API_TOKEN` gesetzt
+- und/oder `X-ScooterCheck-Token` wenn `API_TOKEN` / `ADMIN_API_TOKEN` gesetzt
+- `X-ScooterCheck-Client-Id` bindet Jobs an einen Client-Principal (Ownership), ist **kein** Identitätsnachweis
+- Admin: JWT `role=admin`, oder `ADMIN_API_TOKEN`, oder (Kompatibilität) shared `API_TOKEN` solange `API_TOKEN_GRANTS_ADMIN=1` (Default)
+- Migration (ohne Prod-Token-Rotation in dieser Phase): App → JWT für Nutzer; Ops setzt `ADMIN_API_TOKEN`; dann `API_TOKEN_GRANTS_ADMIN=0` — shared Token nur noch mit Client-Id für eigene Jobs
+
+## Firmware-Identität / Auto-Funktionen (Phase 2.2B)
+
+- `firmware_identify.py` plausibilisiert Cortex-M-IVT (SP/Reset/Thumb) und schlägt Processor + Base vor — unsichere Layouts werden als `architectureUnknown` markiert
+- Ghidra `-preScript SeedCortexMEntryPoints.java` setzt IVT-Entry-Points (Thumb-Kontext), folgt Calls und scanned Literal-Pool-Thumb-Pointer (ohne manuelle Adressliste)
+- Optional weiterhin `CreateKnownThumbFunctions.java` nur für Ground-Truth-Validierung
+- ENV: `GHIDRA_AUTO_IDENTIFY=1` (Default), `GHIDRA_SEED_IVT=1` (Default)
 
 ## Hetzner
 

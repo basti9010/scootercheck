@@ -37,8 +37,22 @@ from capstone_extract import (
     merge_capstone_into_result,
 )
 from cortex_m_ivt import analyze_firmware as ivt_analyze, merge_ivt_into_result
+from function_analysis import (
+    load_call_graph,
+    load_function_analysis,
+    summarize_call_graph_for_poll,
+    summarize_for_poll as summarize_functions_for_poll,
+)
+from function_diff import compare_function_analyses, summarize_diff_for_poll
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
+from job_auth import (
+    api_token_grants_admin,
+    enrich_auth_with_client_id,
+    is_admin,
+    ownership_fields_for_new_job,
+    require_job_access,
+)
 from limit_slice import analyze as limit_slice_analyze, merge_into_result as merge_limit_slice
 from llm_enrich import (
     _model as llm_model_name,
@@ -47,7 +61,13 @@ from llm_enrich import (
     llm_key_status,
     llm_provider,
 )
+from llm_verify import verify_enrichment
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
+from reference_catalog import (
+    build_catalogs,
+    find_catalog_for_stock,
+    list_catalogs,
+)
 from speed_extract import deep_result
 from stock_diff import (
     TRUSTED_SOURCES,
@@ -75,6 +95,8 @@ from zip_safe import (
 APP = FastAPI(title="ScooterCheck Firmware Analysis", version="1.5.0")
 
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
+# Optional dedicated admin token (preferred over granting admin via shared API_TOKEN).
+ADMIN_API_TOKEN = os.environ.get("ADMIN_API_TOKEN", "").strip()
 JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256").strip() or "HS256"
 DECRYPT_CMD = os.environ.get("DECRYPT_CMD", "").strip()
@@ -162,12 +184,22 @@ def load_job(job_id: str) -> dict[str, Any] | None:
 def require_auth(
     authorization: str | None = Header(default=None),
     x_scootercheck_token: str | None = Header(default=None),
+    x_scootercheck_client_id: str | None = Header(default=None, alias="X-ScooterCheck-Client-Id"),
 ) -> dict[str, Any]:
-    """Accept active ScooterCheck JWT and/or shared X-ScooterCheck-Token."""
-    if API_TOKEN and x_scootercheck_token and x_scootercheck_token == API_TOKEN:
-        return {"auth": "api_token"}
+    """Accept active ScooterCheck JWT and/or shared X-ScooterCheck-Token.
 
-    if authorization and authorization.lower().startswith("bearer "):
+    Shared API tokens are not unique owners — pass X-ScooterCheck-Client-Id to
+    bind jobs to a client principal. Without it, only admin can later access.
+    """
+    auth: dict[str, Any]
+    if x_scootercheck_token:
+        if ADMIN_API_TOKEN and x_scootercheck_token == ADMIN_API_TOKEN:
+            auth = {"auth": "api_token", "adminToken": True}
+        elif API_TOKEN and x_scootercheck_token == API_TOKEN:
+            auth = {"auth": "api_token", "adminToken": False}
+        else:
+            raise HTTPException(status_code=401, detail="missing or invalid credentials")
+    elif authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
         if not JWT_SECRET:
             raise HTTPException(status_code=401, detail="JWT auth not configured on firmware worker")
@@ -180,26 +212,28 @@ def require_auth(
         status = str(payload.get("status") or "")
         if status != "active":
             raise HTTPException(status_code=403, detail="account not active")
-        return {
+        auth = {
             "auth": "jwt",
             "userId": payload.get("sub"),
             "email": payload.get("email"),
             "role": payload.get("role"),
         }
-
-    if not API_TOKEN and not JWT_SECRET:
+    elif not API_TOKEN and not ADMIN_API_TOKEN and not JWT_SECRET:
         # Dev mode: open if nothing configured (still bind localhost in prod).
-        return {"auth": "open"}
-
-    raise HTTPException(status_code=401, detail="missing or invalid credentials")
+        auth = {"auth": "open"}
+    else:
+        raise HTTPException(status_code=401, detail="missing or invalid credentials")
+    return enrich_auth_with_client_id(auth, x_scootercheck_client_id)
 
 
 def require_admin(auth: dict[str, Any] = Depends(require_auth)) -> dict[str, Any]:
-    if auth.get("auth") == "api_token":
-        return auth
-    if auth.get("role") == "admin":
+    if is_admin(auth):
         return auth
     raise HTTPException(status_code=403, detail="admin only")
+
+
+def _load_job_authorized(job_id: str, auth: dict[str, Any]) -> dict[str, Any]:
+    return require_job_access(load_job(job_id), auth)
 
 
 def sha256_file(path: Path) -> str:
@@ -317,6 +351,93 @@ def _sanitize_result_for_app(result: Any) -> Any:
     return out
 
 
+def _job_artifact_path(job: dict[str, Any], *candidates: Any, fallback_name: str) -> Path | None:
+    """Resolve an artifact path that must stay inside the job directory."""
+    job_dir = Path(str(job.get("dir") or ""))
+    if not job_dir.is_dir():
+        return None
+    root = job_dir.resolve()
+    for cand in candidates:
+        if not cand:
+            continue
+        try:
+            p = Path(str(cand)).resolve()
+        except OSError:
+            continue
+        if p.is_file() and (p == root or root in p.parents):
+            return p
+    fallback = (job_dir / fallback_name).resolve()
+    if fallback.is_file() and (fallback == root or root in fallback.parents):
+        return fallback
+    return None
+
+
+def _reference_metadata_from_stock(stock: dict[str, Any] | None) -> dict[str, Any]:
+    stock = stock or {}
+    return {
+        "referenceId": stock.get("referenceId"),
+        "referenceLabel": stock.get("referenceLabel"),
+        "referenceSHA256": stock.get("referenceSHA256"),
+        "referenceSource": stock.get("referenceSource"),
+        "referenceTrust": stock.get("referenceTrust"),
+        "referenceProvenanceVerified": bool(stock.get("referenceProvenanceVerified")),
+        "matchedModels": stock.get("matchedModels"),
+        "outcome": stock.get("outcome"),
+        "note": stock.get("note"),
+        "manufacturer": stock.get("manufacturer"),
+        "model": stock.get("model"),
+        "modelAliases": stock.get("modelAliases") or [],
+        "controllerType": stock.get("controllerType"),
+        "hardwareVersion": stock.get("hardwareVersion"),
+        "firmwareVersion": stock.get("firmwareVersion"),
+        "fileSize": stock.get("fileSize") or stock.get("referenceBytes"),
+        "origin": stock.get("origin") or stock.get("referenceSource"),
+        "addedAt": stock.get("addedAt"),
+        "verificationStatus": stock.get("verificationStatus"),
+        "compatibility": stock.get("compatibility"),
+        "candidateRefCount": stock.get("candidateRefCount"),
+        "totalRefCount": stock.get("totalRefCount"),
+    }
+
+
+def _load_stock_function_analysis(stock: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Load reference function catalog (Phase 2.1) or legacy sibling *.functions.json."""
+    if not stock or stock.get("outcome") not in {"identical", "different"}:
+        return None
+    # Prefer versioned catalogs keyed by SHA-256 (never alter trust).
+    catalog = find_catalog_for_stock(stock)
+    if catalog is not None:
+        return catalog
+
+    ref_id = str(stock.get("referenceId") or "")
+    ref_sha = str(stock.get("referenceSHA256") or "")
+    ensure_stock_dir()
+    candidates: list[Path] = []
+    root = stock_dir()
+    for pattern in (
+        f"{ref_id}.functions.json",
+        f"{ref_sha[:16]}.functions.json",
+        f"{ref_sha}.functions.json",
+    ):
+        if ref_id or ref_sha:
+            candidates.append(root / pattern)
+    try:
+        from stock_diff import _load_refs  # type: ignore
+
+        for r in _load_refs():
+            if ref_sha and r.get("sha256") == ref_sha:
+                p = Path(r.get("path") or "")
+                if p.is_file():
+                    candidates.append(p.with_suffix(p.suffix + ".functions.json"))
+                    candidates.append(Path(str(p) + ".functions.json"))
+    except Exception:
+        pass
+    for c in candidates:
+        if c.is_file():
+            return load_function_analysis(c)
+    return None
+
+
 def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> dict[str, Any]:
     req = _request_meta(job)
     payload = {
@@ -327,6 +448,8 @@ def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> d
         "errorCode": job.get("errorCode"),
         "createdBy": job.get("createdBy"),
         "createdByUserId": job.get("createdByUserId"),
+        "ownerPrincipal": job.get("ownerPrincipal"),
+        "ownerAuthKind": job.get("ownerAuthKind"),
         "createdAt": job.get("createdAt"),
         "updatedAt": job.get("updatedAt"),
         "originalFileName": req.get("originalFileName") or job.get("originalFileName"),
@@ -578,8 +701,13 @@ def process_job(job_id: str) -> None:
         # Serialize Ghidra so parallel uploads don't OOM the VPS.
         speed_json = out_c.with_suffix(".speeds.json")
         limit_c = out_c.with_suffix(".limits.c")
+        functions_json = out_c.with_suffix(".functions.json")
+        callgraph_json = out_c.with_suffix(".callgraph.json")
         with _GHIDRA_LOCK:
-            _update(job, message="Ghidra Headless → .c + Speed-Xrefs + Limit-Funktionen…")
+            _update(
+                job,
+                message="Ghidra Headless → .c + Speeds + Limits + Funktionen + Callgraph…",
+            )
             ok_g, msg_g = run_ghidra_decompile(
                 stored,
                 out_c,
@@ -587,6 +715,8 @@ def process_job(job_id: str) -> None:
                 base_addr=GHIDRA_BASE_ADDR,
                 speed_json=speed_json,
                 limit_c=limit_c,
+                functions_json=functions_json,
+                callgraph_json=callgraph_json,
             )
         notes.append(f"ghidra={msg_g}")
         if ok_g:
@@ -597,10 +727,23 @@ def process_job(job_id: str) -> None:
                 shutil.copy2(limit_c, job_dir / "FIRM.limits.c")
             ghidra_xrefs = load_speed_xrefs(speed_json)
             notes.extend(ghidra_xrefs.get("notes") or [])
+            # Phase-2 artifacts (best-effort; never abort job if missing).
+            try:
+                if functions_json.is_file():
+                    shutil.copy2(functions_json, job_dir / "FIRM.functions.json")
+                if callgraph_json.is_file():
+                    shutil.copy2(callgraph_json, job_dir / "FIRM.callgraph.json")
+                    dot = Path(str(callgraph_json).replace(".json", ".dot"))
+                    if dot.is_file():
+                        shutil.copy2(dot, job_dir / "FIRM.callgraph.dot")
+            except OSError as e:
+                notes.append(f"phase2ArtifactCopy={e}")
             _update(
                 job,
                 decompilePath=str(out_c),
                 decompileSaved=True,
+                functionsPath=str(functions_json) if functions_json.is_file() else None,
+                callgraphPath=str(callgraph_json) if callgraph_json.is_file() else None,
                 message=f"Decompile .c gespeichert: {out_c.name}",
             )
         else:
@@ -728,12 +871,90 @@ def process_job(job_id: str) -> None:
     if stock.get("panicRegionAffected"):
         result.setdefault("notes", []).append("stockDiff=panicRegionAffected")
 
+    # Phase-2: structured function analysis + optional functionDiff vs stock export.
+    # Best-effort: never abort the whole job if function/callgraph/diff fails.
+    _update(job, progressPercent=90, message="Funktionsanalyse / Callgraph…")
+    func_path = Path(job.get("functionsPath") or (job_dir / "FIRM.functions.json"))
+    cg_path = Path(job.get("callgraphPath") or (job_dir / "FIRM.callgraph.json"))
+    func_full: dict[str, Any] = {"ok": False, "functions": [], "notes": [], "analysisLimitations": []}
+    try:
+        func_full = load_function_analysis(func_path if func_path.is_file() else None)
+        cg_full = load_call_graph(cg_path if cg_path.is_file() else None)
+        result["functionAnalysis"] = summarize_functions_for_poll(func_full)
+        result["callGraph"] = summarize_call_graph_for_poll(cg_full)
+        notes.extend(func_full.get("notes") or [])
+        notes.extend(cg_full.get("notes") or [])
+
+        ref_func = _load_stock_function_analysis(stock)
+        func_diff_full = compare_function_analyses(func_full, ref_func)
+        poll_diff = summarize_diff_for_poll(func_diff_full)
+        catalog_meta = (ref_func or {}).get("catalogMeta") if isinstance(ref_func, dict) else None
+        if isinstance(catalog_meta, dict):
+            poll_diff["referenceCatalog"] = {
+                "referenceId": catalog_meta.get("referenceId"),
+                "firmwareSHA256": catalog_meta.get("firmwareSHA256"),
+                "analyzerCompat": catalog_meta.get("analyzerCompat"),
+                "functionCount": catalog_meta.get("functionCount"),
+                "analyzedAt": catalog_meta.get("analyzedAt"),
+                "analysisQuality": catalog_meta.get("analysisQuality"),
+                "referenceTrust": catalog_meta.get("referenceTrust"),
+                "processor": catalog_meta.get("processor"),
+            }
+            poll_diff.setdefault("notes", []).append("functionDiff=referenceCatalog")
+        elif stock.get("outcome") in {"identical", "different"}:
+            poll_diff.setdefault("analysisLimitations", []).append(
+                "Kein kompatibler Referenz-Funktionskatalog — FunctionDiff eingeschränkt/NICHT_VERGLEICHBAR."
+            )
+        result["functionDiff"] = poll_diff
+        notes.extend(func_diff_full.get("notes") or [])
+
+        # Reference metadata for UI (never auto-elevate trust).
+        result["referenceMetadata"] = _reference_metadata_from_stock(stock)
+        if isinstance(catalog_meta, dict):
+            result["referenceMetadata"]["functionCatalog"] = {
+                "present": True,
+                "analyzerCompat": catalog_meta.get("analyzerCompat"),
+                "functionCount": catalog_meta.get("functionCount"),
+                "analyzedAt": catalog_meta.get("analyzedAt"),
+            }
+        else:
+            result["referenceMetadata"]["functionCatalog"] = {"present": False}
+        limitations = []
+        limitations.extend(result.get("functionAnalysis", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("functionDiff", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("callGraph", {}).get("analysisLimitations") or [])
+        if stock.get("outcome") == "noReference":
+            limitations.append("Keine eindeutig passende Referenzfirmware für Funktionsvergleich.")
+        result["analysisLimitations"] = limitations
+        job["phase2"] = {
+            "functionsPath": str(func_path) if func_path.is_file() else None,
+            "callgraphPath": str(cg_path) if cg_path.is_file() else None,
+            "functionDiffSummary": result["functionDiff"].get("summary"),
+        }
+    except Exception as e:
+        notes.append(f"phase2=error:{type(e).__name__}:{e}")
+        result.setdefault("analysisLimitations", []).append(
+            "Phase-2-Funktionsanalyse fehlgeschlagen — Phase-1-Ergebnis bleibt gültig."
+        )
+        result.setdefault("functionAnalysis", {"ok": False, "functionCount": 0, "notes": [f"phase2={e}"]})
+        result.setdefault("functionDiff", {"ok": False, "summary": {}, "notes": [f"phase2={e}"]})
+        result.setdefault("callGraph", {"ok": False, "edgeCount": 0, "notes": [f"phase2={e}"]})
+        result.setdefault("referenceMetadata", _reference_metadata_from_stock(stock))
+    for n in notes:
+        if n and n not in (result.get("notes") or []):
+            result.setdefault("notes", []).append(n)
+
     if meta.allowLLM and llm_configured():
         _update(job, state="llmEnrichment", progressPercent=92, message="KI-Anreicherung (schema)…")
         result = enrich_result(
             result,
             decompiled_text=decompiled_text,
             limit_c_text=limit_c_text,
+        )
+        result = verify_enrichment(
+            result,
+            function_analysis=func_full,
+            plaintext_size=len(plaintext),
         )
     elif meta.allowLLM:
         # enrich_result also annotates bad key kinds (e.g. sk-ant-oat OAuth)
@@ -792,6 +1013,8 @@ def health() -> dict[str, Any]:
         "ghidraEnabled": ENABLE_GHIDRA,
         "jwtConfigured": bool(JWT_SECRET),
         "apiTokenConfigured": bool(API_TOKEN),
+        "adminApiTokenConfigured": bool(ADMIN_API_TOKEN),
+        "apiTokenGrantsAdmin": api_token_grants_admin(),
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),
@@ -867,8 +1090,6 @@ async def submit_job(
         "archiveSHA256": archive_sha,
         "originalFileName": safe_upload_name,
         "request": meta.model_dump(),
-        "createdBy": auth.get("email") or auth.get("userId") or auth.get("auth"),
-        "createdByUserId": auth.get("userId"),
         "createdAt": _utc_now().isoformat(),
         "encSHA256": None,
         "plaintextSHA256": None,
@@ -877,16 +1098,15 @@ async def submit_job(
         "decompilePath": None,
         "decompileSaved": False,
     }
+    job.update(ownership_fields_for_new_job(auth))
     persist_job(job)
     background_tasks.add_task(process_job, job_id)
     return JSONResponse(job_status_payload(job))
 
 
 @APP.get("/v1/firmware/jobs/{job_id}")
-def get_job(job_id: str, _: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
-    job = load_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
+def get_job(job_id: str, auth: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    job = _load_job_authorized(job_id, auth)
     return JSONResponse(job_status_payload(job))
 
 
@@ -1080,10 +1300,8 @@ def admin_promote_job_stock(
 
 
 @APP.get("/v1/firmware/jobs/{job_id}/plaintext")
-def download_plaintext(job_id: str, _: dict[str, Any] = Depends(require_auth)):
-    job = load_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
+def download_plaintext(job_id: str, auth: dict[str, Any] = Depends(require_auth)):
+    job = _load_job_authorized(job_id, auth)
     path = Path(job.get("plaintextPath") or (Path(job["dir"]) / "FIRM.dec.bin"))
     if not path.exists():
         raise HTTPException(status_code=404, detail="plaintext not available")
@@ -1094,11 +1312,9 @@ def download_plaintext(job_id: str, _: dict[str, Any] = Depends(require_auth)):
 def download_decompile(
     job_id: str,
     preview_chars: int = 0,
-    _: dict[str, Any] = Depends(require_auth),
+    auth: dict[str, Any] = Depends(require_auth),
 ):
-    job = load_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="job not found")
+    job = _load_job_authorized(job_id, auth)
     path = Path(job.get("decompilePath") or (Path(job["dir"]) / "FIRM.dec.c"))
     if not path.exists():
         raise HTTPException(status_code=404, detail="decompile not available")
@@ -1115,6 +1331,74 @@ def download_decompile(
             }
         )
     return FileResponse(path, filename=path.name, media_type="text/x-c")
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/functions")
+def download_functions(job_id: str, auth: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    """Full functionAnalysis artifact (not embedded in poll payload)."""
+    job = _load_job_authorized(job_id, auth)
+    path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("functionsPath"),
+        job.get("functionsPath"),
+        fallback_name="FIRM.functions.json",
+    )
+    data = load_function_analysis(path)
+    if not data.get("ok"):
+        raise HTTPException(status_code=404, detail="function analysis not available")
+    return JSONResponse(data)
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/callgraph")
+def download_callgraph(job_id: str, auth: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    job = _load_job_authorized(job_id, auth)
+    path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("callgraphPath"),
+        job.get("callgraphPath"),
+        fallback_name="FIRM.callgraph.json",
+    )
+    data = load_call_graph(path)
+    if not data.get("ok"):
+        raise HTTPException(status_code=404, detail="call graph not available")
+    return JSONResponse(data)
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/function-diff")
+def download_function_diff(job_id: str, auth: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    """Recompute or return full functionDiff (pairs may be large)."""
+    job = _load_job_authorized(job_id, auth)
+    result = job.get("result") or {}
+    func_path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("functionsPath"),
+        job.get("functionsPath"),
+        fallback_name="FIRM.functions.json",
+    )
+    func_full = load_function_analysis(func_path)
+    stock = result.get("stockDiff") if isinstance(result, dict) else None
+    ref_func = _load_stock_function_analysis(stock if isinstance(stock, dict) else None)
+    full = compare_function_analyses(func_full, ref_func)
+    return JSONResponse(full)
+
+
+@APP.get("/v1/firmware/admin/reference-catalogs")
+def admin_list_reference_catalogs(_: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
+    cats = list_catalogs()
+    return JSONResponse({"count": len(cats), "catalogs": cats})
+
+
+@APP.post("/v1/firmware/admin/reference-catalogs/build")
+def admin_build_reference_catalogs(
+    limit: int | None = Query(default=None),
+    force: bool = Query(default=False),
+    only_sha: str | None = Query(default=None),
+    _: dict[str, Any] = Depends(require_admin),
+) -> JSONResponse:
+    """Build Ghidra function catalogs for stock refs. Does not elevate trust. Heavy."""
+    with _HEAVY_ANALYSIS_LOCK:
+        out = build_catalogs(limit=limit, force=force, only_sha=only_sha)
+    return JSONResponse(out)
 
 
 @APP.delete("/v1/firmware/admin/jobs/{job_id}")

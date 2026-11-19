@@ -94,13 +94,18 @@ final class ElevatedLimitVerdictTests: XCTestCase {
     }
 
     func testStockLimitRemainsStock() {
+        // Use catalogued Max G3 MCU/BLE/VCU so fw.unknown does not flip verdict.
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
             speedLimitKmh: 22,
             peakSpeedKmh: 18,
-            fwMcu: "1.0.0"
+            fwMcu: "1.4.9",
+            fwBle: "0.4.0",
+            fwVcu: "1.5.8"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .maxG3D)
+        XCTAssertNil(assessment.results.first { $0.fact.markerID == "speed.limit" })
+        XCTAssertNil(assessment.results.first { $0.fact.markerID == "fw.unknown" })
         XCTAssertEqual(assessment.verdict, .stock)
         XCTAssertGreaterThanOrEqual(assessment.score, 90)
     }

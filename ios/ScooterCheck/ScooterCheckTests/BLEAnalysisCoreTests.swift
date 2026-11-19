@@ -223,20 +223,28 @@ final class BLEAnalysisCoreTests: XCTestCase {
 
     // 7. Multi-device: Status unabhängig (Fingerprint-Vergleich)
     func testFingerprintIndependenceAcrossDevices() {
+        // Sparse fingerprints score below .high on self-match; enrich like production ads.
         let a = BLEDeviceFingerprint(
             localName: "A",
             manufacturerDataHex: "1111",
-            serviceUUIDs: ["AAAA"]
+            serviceUUIDs: ["AAAA"],
+            advertisingStructureKey: "adv-a",
+            txPower: -59,
+            isConnectable: true
         )
         let b = BLEDeviceFingerprint(
             localName: "B",
             manufacturerDataHex: "2222",
-            serviceUUIDs: ["BBBB"]
+            serviceUUIDs: ["BBBB"],
+            advertisingStructureKey: "adv-b",
+            txPower: -70,
+            isConnectable: false
         )
         let matchAB = BLEFingerprintService.compare(a, b)
         let matchAA = BLEFingerprintService.compare(a, a)
         XCTAssertEqual(matchAA.similarity, .high)
         XCTAssertNotEqual(matchAB.similarity, .high)
+        XCTAssertGreaterThan(matchAA.score, matchAB.score)
     }
 
     // 8. ObservedBLEDevice bleibt userSelected / keine Scooter-Persistenz-Grenze

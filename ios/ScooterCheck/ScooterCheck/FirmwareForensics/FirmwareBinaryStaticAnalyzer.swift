@@ -3,6 +3,7 @@ import Foundation
 enum FirmwareBinaryStaticAnalyzer {
     static func analyze(
         path: String?,
+        archiveFileName: String? = nil,
         data: Data?,
         crypto: FirmwareCryptoAssessment,
         meta: FirmwarePackageMeta,
@@ -10,9 +11,11 @@ enum FirmwareBinaryStaticAnalyzer {
     ) -> (FirmwareBinaryAnalysis, [FirmwareEvidenceItem]) {
         var evidence: [FirmwareEvidenceItem] = []
 
-        // Filename-only hints (never treated as confirmed function)
-        if let path {
-            let base = FirmwarePackageLoader.baseName(path)
+        // Filename-only hints (never treated as confirmed function). Prefer archive
+        // display name when the payload path is a generic FIRM.bin.enc.
+        let hintSources = [archiveFileName, path].compactMap { $0 }
+        for source in hintSources {
+            let base = FirmwarePackageLoader.baseName(source)
             if base.lowercased().contains("panic") {
                 evidence.append(.init(
                     id: "fn-panic",
@@ -24,6 +27,7 @@ enum FirmwareBinaryStaticAnalyzer {
                     verifiability: .unverified,
                     confirmed: false
                 ))
+                break
             }
         }
 
