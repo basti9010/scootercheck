@@ -33,12 +33,40 @@ class JobOwnershipTests(unittest.TestCase):
         job = {"ownerPrincipal": "user:u1"}
         self.assertTrue(ja.can_access_job(job, auth))
 
-    def test_api_token_is_admin_compat_default(self) -> None:
-        auth = {"auth": "api_token"}
-        job = {"ownerPrincipal": "user:u1"}
-        self.assertTrue(ja.api_token_grants_admin())
-        self.assertTrue(ja.can_access_job(job, auth))
-        self.assertTrue(ja.is_admin(auth))
+    def test_api_token_not_admin_by_default(self) -> None:
+        """Phase 2.2H: shared API_TOKEN must not grant admin unless explicitly enabled."""
+        import os
+
+        prev = os.environ.get("API_TOKEN_GRANTS_ADMIN")
+        os.environ.pop("API_TOKEN_GRANTS_ADMIN", None)
+        try:
+            auth = {"auth": "api_token", "adminToken": False}
+            job = {"ownerPrincipal": "user:u1"}
+            self.assertFalse(ja.api_token_grants_admin())
+            self.assertFalse(ja.is_admin(auth))
+            self.assertFalse(ja.can_access_job(job, auth))
+        finally:
+            if prev is None:
+                os.environ.pop("API_TOKEN_GRANTS_ADMIN", None)
+            else:
+                os.environ["API_TOKEN_GRANTS_ADMIN"] = prev
+
+    def test_api_token_admin_compat_opt_in(self) -> None:
+        import os
+
+        prev = os.environ.get("API_TOKEN_GRANTS_ADMIN")
+        os.environ["API_TOKEN_GRANTS_ADMIN"] = "1"
+        try:
+            auth = {"auth": "api_token", "adminToken": False}
+            job = {"ownerPrincipal": "user:u1"}
+            self.assertTrue(ja.api_token_grants_admin())
+            self.assertTrue(ja.is_admin(auth))
+            self.assertTrue(ja.can_access_job(job, auth))
+        finally:
+            if prev is None:
+                os.environ.pop("API_TOKEN_GRANTS_ADMIN", None)
+            else:
+                os.environ["API_TOKEN_GRANTS_ADMIN"] = prev
 
     def test_api_token_admin_disabled_requires_ownership(self) -> None:
         import os

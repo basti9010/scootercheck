@@ -50,6 +50,7 @@ from input_behavior import (
     summarize_input_behavior_for_poll,
     summarize_input_diff_for_poll,
 )
+from analysis_profile import build_analysis_profile, summarize_profile_for_poll
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
 from job_auth import (
@@ -689,7 +690,9 @@ def process_job(job_id: str) -> None:
     notes.append(f"plaintextSHA256={plain_sha}")
     notes.append(f"plaintextBytes={len(plaintext)}")
 
-    # Phase 2.2F: optional firmware container analysis (e.g. RAW4TFT BLE).
+    # Phase 2.2F/H: container analysis before deep_result (must not touch `result` yet).
+    container_meta: dict[str, Any] | None = None
+    architecture_confidence: str | None = None
     try:
         from ble_container import identify_ble_container
         from firmware_identify import identify_firmware_image
@@ -698,7 +701,7 @@ def process_job(job_id: str) -> None:
             plaintext, original_name=job.get("originalFileName") or "upload"
         )
         identity = identify_firmware_image(plaintext)
-        result["firmwareContainerAnalysis"] = {
+        container_meta = {
             "ok": bool(container.get("ok") or identity.get("ok")),
             "status": container.get("status") or (
                 "ARCHITECTURE_UNKNOWN" if identity.get("architectureUnknown") else "IDENTIFIED"
@@ -720,9 +723,7 @@ def process_job(job_id: str) -> None:
             + list(identity.get("analysisLimitations") or []),
             "notes": list(container.get("notes") or [])[:6],
         }
-        result["firmwareArchitectureConfidence"] = result["firmwareContainerAnalysis"].get(
-            "architectureConfidence"
-        )
+        architecture_confidence = container_meta.get("architectureConfidence")
         notes.extend((container.get("notes") or [])[:2])
     except Exception as cont_e:
         notes.append(f"phase22fContainer={type(cont_e).__name__}")
@@ -756,7 +757,24 @@ def process_job(job_id: str) -> None:
         notes.append("r2=skipped (radare2 not installed or ENABLE_R2=0)")
 
     ghidra_xrefs: dict[str, Any] = {"ok": False, "speeds": [], "notes": []}
-    if ENABLE_GHIDRA and ghidra_configured():
+    # Phase 2.2H: never force Cortex-M Ghidra when container analysis forbids import.
+    cont_meta = container_meta or {}
+    ghidra_blocked = cont_meta.get("ghidraImportAllowed") is False
+    if ghidra_blocked:
+        notes.append(
+            "ghidra=skipped (architectureConfidence/ghidraImportAllowed=false — "
+            "no Cortex-M import without technical evidence)"
+        )
+        result.setdefault("analysisLimitations", []).append(
+            "Ghidra übersprungen: Architektur nicht ausreichend belegt."
+        )
+        _update(
+            job,
+            progressPercent=70,
+            message="Ghidra übersprungen (Architektur unbestätigt)",
+            decompileSaved=False,
+        )
+    elif ENABLE_GHIDRA and ghidra_configured():
         _update(
             job,
             state="decompiling",
@@ -849,6 +867,11 @@ def process_job(job_id: str) -> None:
         notes=notes,
         decompiled_text=decompiled_text,
     )
+    if container_meta is not None:
+        result["firmwareContainerAnalysis"] = container_meta
+        result["firmwareArchitectureConfidence"] = architecture_confidence
+        for lim in container_meta.get("analysisLimitations") or []:
+            result.setdefault("analysisLimitations", []).append(lim)
     if "serverDecompile" not in result["sources"]:
         result["sources"] = list(result["sources"]) + ["serverDecompile"]
     result = merge_r2_into_result(result, r2_info)
@@ -952,10 +975,22 @@ def process_job(job_id: str) -> None:
         result["callGraph"] = summarize_call_graph_for_poll(cg_full)
         if isinstance(result["callGraph"].get("callGraphQuality"), dict):
             result["callGraphQuality"] = result["callGraph"]["callGraphQuality"]
-        # Phase 2.2G: analysis profile + address layout
+        # Phase 2.2G/H: analysis profile + address layout (always expose intended profile)
         if isinstance(func_full.get("analysisProfile"), dict):
             result["analysisProfile"] = func_full["analysisProfile"]
             result["analysisProfileHash"] = func_full["analysisProfile"].get("analysisProfileHash")
+        elif not result.get("analysisProfile"):
+            stub = summarize_profile_for_poll(
+                build_analysis_profile(
+                    processor=GHIDRA_PROCESSOR,
+                    loader_base=GHIDRA_BASE_ADDR,
+                    seed_ivt=True,
+                )
+            )
+            stub["ghidraExecuted"] = False
+            stub["note"] = "Profile declared without Ghidra execution in this job"
+            result["analysisProfile"] = stub
+            result["analysisProfileHash"] = stub.get("analysisProfileHash")
         result["ghidraAddressLayout"] = {
             "requestedLoaderBase": func_full.get("requestedLoaderBase"),
             "actualImageBase": func_full.get("actualImageBase") or func_full.get("imageBase"),
