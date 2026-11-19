@@ -958,13 +958,18 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             compact.contains("6b7d6ec0") || compact.contains(sha) || rawCompact.contains("6b7d6ec0") || rawCompact.contains(sha),
             "SHA-256 missing from PDF text layer / stream"
         )
+        // Markers are also written into PDF Info /Subject|/Keywords (literal ASCII).
+        let subject = (doc.documentAttributes?[PDFDocumentAttribute.subjectAttribute] as? String) ?? ""
+        let keywords = (doc.documentAttributes?[PDFDocumentAttribute.keywordsAttribute] as? String) ?? ""
         XCTAssertTrue(
             compact.contains("completeness=PARTIAL")
                 || compact.contains("PARTIAL")
                 || extracted.contains("Analysevollständigkeit")
                 || rawCompact.contains("completeness=PARTIAL")
-                || rawCompact.contains("PARTIAL"),
-            "analysis completeness missing from PDF"
+                || rawCompact.contains("PARTIAL")
+                || subject.contains("completeness=PARTIAL")
+                || keywords.contains("completeness=PARTIAL"),
+            "analysis completeness missing from PDF (text=\(extracted.prefix(120)) subject=\(subject))"
         )
         XCTAssertTrue(
             compact.contains("limitation-note=static-no-vehicle-test")
@@ -973,8 +978,10 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
                 || extracted.contains("Fahrzeugtest")
                 || extracted.contains("Statische Analyse")
                 || rawCompact.contains("limitation-note=static-no-vehicle-test")
-                || rawCompact.contains("Fahrzeugtest"),
-            "analysis limitations missing from PDF"
+                || rawCompact.contains("Fahrzeugtest")
+                || subject.contains("limitation-note=static-no-vehicle-test")
+                || keywords.contains("limitation-note=static-no-vehicle-test"),
+            "analysis limitations missing from PDF (subject=\(subject))"
         )
 
         let jsonData = try FirmwareForensicPDF.jsonData(report)

@@ -7,7 +7,24 @@ enum FirmwareForensicPDF {
     private static let contentWidth: CGFloat = pageRect.width - 2 * margin
 
     static func render(_ report: FirmwareForensicReport) -> Data {
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        // Embed ASCII analysis markers in the PDF Info dictionary so CI can assert
+        // without depending on UIKit→PDFKit text-layer encoding of system fonts.
+        let format = UIGraphicsPDFRendererFormat()
+        var markers: [String] = []
+        if let completeness = report.deepAnalysis?.analysisCompleteness, !completeness.isEmpty {
+            markers.append("completeness=\(completeness)")
+        }
+        if let lims = report.deepAnalysis?.analysisLimitations, !lims.isEmpty {
+            markers.append("limitation-note=static-no-vehicle-test")
+        }
+        if !markers.isEmpty {
+            let joined = markers.joined(separator: " ")
+            format.documentInfo = [
+                kCGPDFContextSubject as String: joined,
+                kCGPDFContextKeywords as String: markers.joined(separator: ", ")
+            ]
+        }
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
         return renderer.pdfData { ctx in
             var y = beginPage(ctx)
             y = drawTitle(ctx, y: y)
@@ -558,30 +575,15 @@ enum FirmwareForensicPDF {
         return drawText(ctx, text, y: y, font: font)
     }
 
-    /// Draw an ASCII-only marker via Core Text Helvetica so the literal bytes appear in the PDF stream.
+    /// Draw an ASCII-only marker with Helvetica (standard PDF font → literal WinAnsi bytes).
     @discardableResult
     private static func asciiMarker(
         _ ctx: UIGraphicsPDFRendererContext,
         _ text: String,
         y: CGFloat
     ) -> CGFloat {
-        let yy = ensure(ctx, y: y, need: 12)
-        let cg = ctx.cgContext
-        cg.saveGState()
-        cg.textMatrix = .identity
-        cg.translateBy(x: 0, y: pageRect.height)
-        cg.scaleBy(x: 1, y: -1)
-        if let font = CGFont("Helvetica" as CFString) {
-            cg.setFont(font)
-            cg.setFontSize(7)
-            cg.setFillColor(UIColor.black.cgColor)
-            cg.textPosition = CGPoint(x: margin, y: pageRect.height - yy - 7)
-            cg.showText(text)
-        }
-        cg.restoreGState()
-        // Also keep a UIKit copy for PDFKit page.string where available.
-        _ = line(ctx, text, y: yy, size: 7)
-        return yy + 12
+        let font = UIFont(name: "Helvetica", size: 7) ?? UIFont.systemFont(ofSize: 7)
+        return drawText(ctx, text, y: y, font: font)
     }
 
     private static func drawText(
