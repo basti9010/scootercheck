@@ -36,7 +36,7 @@ except Exception:  # pragma: no cover
     analyze_semantic_dataflow = None  # type: ignore
 
 SCHEMA_VERSION = 2
-PHASE = "2.3.1"
+PHASE = "2.3.2"
 MAX_FUNCTIONS = 2500
 MAX_HANDLERS = 100
 MAX_CONDITIONAL = 80
@@ -111,6 +111,11 @@ REL_UPDATES_STATE = "UPDATES_STATE"
 REL_STRUCTURALLY_DIFFERS = "STRUCTURALLY_DIFFERS_FROM"
 REL_BELONGS_TO_GROUP = "BELONGS_TO_FUNCTION_GROUP"
 
+PROVENANCE_GHIDRA = "GHIDRA_EXPORTED"
+PROVENANCE_MNEMONIC = "MNEMONIC_DERIVED"
+PROVENANCE_PARTIAL = "PARTIAL"
+PROVENANCE_UNAVAILABLE = "NOT_AVAILABLE"
+
 BASE_LIMITATIONS = [
     "Activation Forensics ist eine statische Codeanalyse — kein Nachweis realen Fahrzeugverhaltens.",
     "Keine Rekonstruktion oder Ausgabe von Aktivierungs-/Umgehungssequenzen.",
@@ -120,6 +125,48 @@ BASE_LIMITATIONS = [
     "Community-Referenzen sind keine verifizierte Herstellerfirmware.",
     "Gesamt-Evidenz spiegelt die Verteilung der Einzelfunde wider — ein starker Einzelfund bestätigt nicht alle Ergebnisse.",
 ]
+
+
+def _result_limits(
+    *,
+    total_analyzed: int,
+    total_candidates: int,
+    returned: int,
+    configured_limit: int,
+    truncation_reason: str | None = None,
+    analysis_complete: bool = True,
+) -> dict[str, Any]:
+    omitted = max(0, total_candidates - returned)
+    return {
+        "totalFunctionsAnalyzed": total_analyzed,
+        "totalCandidatesDetected": total_candidates,
+        "returnedCandidates": returned,
+        "omittedCandidates": omitted,
+        "resultTruncated": omitted > 0,
+        "truncationReason": truncation_reason if omitted > 0 else None,
+        "configuredLimit": configured_limit,
+        "analysisComplete": analysis_complete,
+    }
+
+
+def _dataflow_provenance(dataflow_fn: dict[str, Any] | None) -> str:
+    if not isinstance(dataflow_fn, dict):
+        return PROVENANCE_UNAVAILABLE
+    prov = str(dataflow_fn.get("provenance") or dataflow_fn.get("source") or "").upper()
+    if prov in (PROVENANCE_GHIDRA, "DATAFLOW_EXPORT", "GHIDRA_EXPORTED"):
+        return PROVENANCE_GHIDRA
+    if prov in (PROVENANCE_MNEMONIC, "DERIVED", "MNEMONIC_DERIVED"):
+        q = str(dataflow_fn.get("quality") or "").lower()
+        return PROVENANCE_PARTIAL if q in ("partial", "missing") else PROVENANCE_MNEMONIC
+    if prov == PROVENANCE_PARTIAL:
+        return PROVENANCE_PARTIAL
+    src = str(dataflow_fn.get("source") or "").lower()
+    if src == "dataflow_export" and str(dataflow_fn.get("quality") or "").lower() == "ok":
+        return PROVENANCE_GHIDRA
+    if src in ("derived", "function_export"):
+        q = str(dataflow_fn.get("quality") or "").lower()
+        return PROVENANCE_PARTIAL if q != "ok" else PROVENANCE_MNEMONIC
+    return PROVENANCE_UNAVAILABLE
 
 
 def _map_tier(legacy: str | None) -> str:
@@ -371,8 +418,14 @@ def classify_activation_handler(
     structural_only = False
     if not categories:
         strong, weak, details = _structural_input_strength(sig)
-        # Require ≥1 strong signal AND ≥1 additional co-signal (strong or weak).
-        if strong >= 1 and (strong + weak) >= 2:
+        # Require ≥1 strong signal AND ≥1 additional co-signal; name-independent path needs MMIO or fan-in≥3.
+        has_linkage = (
+            "mmio_input_path" in details
+            or "fan_in_isr_like" in details
+            or sig.get("calledByCount", 0) >= 3
+            or sig.get("mmioHint")
+        )
+        if strong >= 1 and (strong + weak) >= 2 and has_linkage:
             structural_only = True
             categories.append("input_callback")
             methods.append("structural_multi_signal")
@@ -407,10 +460,15 @@ def classify_activation_handler(
     legacy_tier = scored.get("evidenceTier") if scored else None
     tier = _map_tier(legacy_tier)
     independent = [m for m in methods if m not in ("name_hint", "string_hint", "generic_name")]
+    df_prov = _dataflow_provenance(dataflow_fn)
     if structural_only:
-        # Structural-only FUN_* candidates stay speculative / weak unless many strong signals.
+        # Structural-only without Ghidra export / name-IB semantics: never INDICATIVE from mnemonics alone.
         strong, _weak, _d = _structural_input_strength(sig)
-        tier = INDICATIVE if strong >= 2 else SPECULATIVE
+        ghidra_ok = df_prov == PROVENANCE_GHIDRA
+        if ghidra_ok and strong >= 2 and not name_only:
+            tier = INDICATIVE
+        else:
+            tier = SPECULATIVE
     elif name_only or (not independent and extras and not scored):
         tier = SPECULATIVE
     elif scored and scored.get("evidenceTier") in (EVIDENCE_CONFIRMED, "confirmed", "confirmed_static"):
@@ -465,6 +523,7 @@ def classify_activation_handler(
         "basicBlocks": sig["basicBlocks"],
         "cfgEdges": sig["cfgEdges"],
         "fingerprint": f.get("fingerprint"),
+        "dataflowProvenance": df_prov,
         "limitations": [
             "STATIC_CONFIRMED bezieht sich auf Codeeigenschaften, nicht auf Fahrzeugverhalten.",
             "Namen/Strings allein erzeugen keinen sicheren Nachweis.",
@@ -607,7 +666,7 @@ def analyze_conditional_logic(
     dataflow_by_addr: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     handler_by_addr = {str(h.get("address") or ""): h for h in (input_handlers or []) if h.get("address")}
-    findings: list[dict[str, Any]] = []
+    findings_all: list[dict[str, Any]] = []
     class_counts = {
         CONDITIONAL_LOGIC_ONLY: 0,
         INPUT_RELATED_CONDITIONAL_LOGIC: 0,
@@ -634,7 +693,7 @@ def analyze_conditional_logic(
             tier = INDICATIVE if linked and not structural_only else SPECULATIVE
         else:
             tier = SPECULATIVE
-        findings.append(
+        findings_all.append(
             {
                 "functionId": addr or _name(f) or "unknown",
                 "address": addr or None,
@@ -662,25 +721,36 @@ def analyze_conditional_logic(
                 ],
             }
         )
-    findings.sort(
+    findings_all.sort(
         key=lambda x: (
             0 if x.get("qualityClass") == FEATURE_GATE_CANDIDATE else 1,
             0 if x.get("inputCategories") else 1,
             -int(x.get("conditionalBranches") or 0),
         )
     )
-    findings = findings[:MAX_CONDITIONAL]
+    total_cond = len(findings_all)
+    findings = findings_all[:MAX_CONDITIONAL]
+    cond_limits = _result_limits(
+        total_analyzed=min(len(subject_fns), MAX_FUNCTIONS),
+        total_candidates=total_cond,
+        returned=len(findings),
+        configured_limit=MAX_CONDITIONAL,
+        truncation_reason="MAX_CONDITIONAL" if total_cond > MAX_CONDITIONAL else None,
+    )
     return {
         "ok": True,
         "summary": {
             "functionsWithConditionalLogic": len(findings),
+            "functionsWithConditionalLogicTotal": total_cond,
             "inputLinked": sum(1 for x in findings if x.get("inputCategories")),
             "stateStorePatterns": sum(1 for x in findings if x.get("stateUpdatePattern")),
             "qualityClasses": class_counts,
             "featureGateCandidates": class_counts.get(FEATURE_GATE_CANDIDATE, 0),
             "conditionalLogicOnly": class_counts.get(CONDITIONAL_LOGIC_ONLY, 0),
+            "resultLimits": cond_limits,
         },
         "findings": findings,
+        "resultLimits": cond_limits,
         "evidenceTier": INDICATIVE if findings else UNKNOWN,
         "analysisLimitations": [
             "Bedingte Verzweigungen allein sind keine Aktivierungslogik.",
@@ -754,7 +824,8 @@ def build_evidence_graph(
         else:
             edge_tier_counts["unresolvedEdgeCount"] += 1
 
-    for h in handlers[:MAX_HANDLERS]:
+    handler_work = handlers
+    for h in handler_work[:MAX_HANDLERS]:
         addr = str(h.get("address") or h.get("functionId") or "")
         if not addr:
             continue
@@ -839,6 +910,24 @@ def build_evidence_graph(
             confirmed=True,
         )
 
+    nodes_total = len(nodes)
+    edges_total = len(edges)
+    graph_limits = _result_limits(
+        total_analyzed=len(handlers),
+        total_candidates=nodes_total + edges_total,
+        returned=nodes_total + edges_total,
+        configured_limit=MAX_GRAPH_NODES + MAX_GRAPH_EDGES,
+        truncation_reason=(
+            "MAX_GRAPH_NODES_OR_EDGES"
+            if (len(seen_nodes) >= MAX_GRAPH_NODES or len(edges) >= MAX_GRAPH_EDGES)
+            else None
+        ),
+    )
+    graph_limits["totalGraphNodes"] = nodes_total
+    graph_limits["totalGraphEdges"] = edges_total
+    graph_limits["returnedGraphNodes"] = nodes_total
+    graph_limits["returnedGraphEdges"] = edges_total
+
     return {
         "ok": True,
         "schemaVersion": SCHEMA_VERSION,
@@ -851,6 +940,7 @@ def build_evidence_graph(
             "edgeCount": len(edges),
             **edge_tier_counts,
         },
+        "resultLimits": graph_limits,
         "analysisLimitations": [
             "Graph dokumentiert technische Zusammenhänge, keine Umgehungssequenzen.",
             "CALLS nur bei Callgraph-Beleg; PROCESSES_INPUT nur bei ausreichender Input-Evidenz.",
@@ -1145,7 +1235,11 @@ def summarize_activation_forensics_for_poll(full: dict[str, Any]) -> dict[str, A
             "summary": (full.get("undocumentedLogic") or {}).get("summary"),
             "evidenceTier": (full.get("undocumentedLogic") or {}).get("evidenceTier"),
         },
-        "conditionalLogicFindings": {"summary": (full.get("conditionalLogicFindings") or {}).get("summary")},
+        "conditionalLogicFindings": {
+            "summary": (full.get("conditionalLogicFindings") or {}).get("summary"),
+            "resultLimits": (full.get("conditionalLogicFindings") or {}).get("resultLimits"),
+        },
+        "resultLimits": full.get("resultLimits"),
         "conditionalLogicQuality": (full.get("conditionalLogicFindings") or {}).get("summary", {}).get("qualityClasses"),
         "fsmIntegration": {
             "fsmCandidateCount": (full.get("fsmIntegration") or {}).get("fsmCandidateCount"),
@@ -1154,6 +1248,7 @@ def summarize_activation_forensics_for_poll(full: dict[str, Any]) -> dict[str, A
         "activationEvidenceGraph": {
             "nodeCount": (full.get("activationEvidenceGraph") or {}).get("nodeCount"),
             "edgeCount": (full.get("activationEvidenceGraph") or {}).get("edgeCount"),
+            "resultLimits": (full.get("activationEvidenceGraph") or {}).get("resultLimits"),
         },
         "evidenceGraphQuality": (full.get("activationEvidenceGraph") or {}).get("quality"),
         "activationEvidenceDistribution": {
@@ -1246,22 +1341,33 @@ def run_activation_forensics(
         except Exception as e:
             notes.append(f"semanticDataFlow={type(e).__name__}")
 
-    handlers: list[dict[str, Any]] = []
+    handlers_all: list[dict[str, Any]] = []
+    analysis_complete = True
     for f in subject_fns[:MAX_FUNCTIONS]:
         if time.monotonic() - t0 > limit:
             notes.append("activationForensics=timeout_partial")
             limitations.append("Analyse vorzeitig beendet (Timeout) — Teilergebnis.")
+            analysis_complete = False
             break
         h = classify_activation_handler(f, dataflow_fn=dataflow_by_addr.get(_addr(f)))
         if h:
-            handlers.append(h)
-    handlers.sort(
+            handlers_all.append(h)
+    handlers_all.sort(
         key=lambda x: (
             {STATIC_CONFIRMED: 0, INDICATIVE: 1, SPECULATIVE: 2, UNKNOWN: 3}.get(str(x.get("evidenceTier")), 9),
             -float(x.get("confidence") or 0),
         )
     )
-    handlers = handlers[:MAX_HANDLERS]
+    total_handler_candidates = len(handlers_all)
+    handlers = handlers_all[:MAX_HANDLERS]
+    handler_limits = _result_limits(
+        total_analyzed=min(len(subject_fns), MAX_FUNCTIONS),
+        total_candidates=total_handler_candidates,
+        returned=len(handlers),
+        configured_limit=MAX_HANDLERS,
+        truncation_reason="MAX_HANDLERS" if total_handler_candidates > MAX_HANDLERS else None,
+        analysis_complete=analysis_complete,
+    )
 
     category_counts: dict[str, int] = {c: 0 for c in INPUT_CATEGORIES}
     for h in handlers:
@@ -1312,7 +1418,7 @@ def run_activation_forensics(
         sdf_sum = sdf.get("summary") or {}
         semantic_summary = {
             "ok": sdf.get("ok"),
-            "functionsAnalyzed": sdf_sum.get("functionCount"),
+            "functionsAnalyzed": sdf_sum.get("totalFunctions", sdf_sum.get("functionCount")),
             "withMemoryReads": sdf_sum.get("withMemoryReads"),
             "withMemoryWrites": sdf_sum.get("withMemoryWrites"),
             "withConditionals": sdf_sum.get("withConditionals"),
@@ -1320,12 +1426,14 @@ def run_activation_forensics(
             "qualityOk": sdf_sum.get("qualityOk"),
             "qualityPartial": sdf_sum.get("qualityPartial"),
             "qualityMissing": sdf_sum.get("qualityMissing"),
-            "fromDataflowExport": sdf_sum.get("fromDataflowExport"),
-            "derivedOnly": sdf_sum.get("derivedOnly"),
+            "fromDataflowExport": sdf_sum.get("exportedFunctions", sdf_sum.get("fromDataflowExport")),
+            "derivedOnly": sdf_sum.get("derivedFunctions", sdf_sum.get("derivedOnly")),
+            "provenanceCounts": sdf_sum.get("provenanceCounts"),
+            "dataflowCoveragePercent": sdf_sum.get("dataflowCoveragePercent"),
             "source": (
                 "dataflow_export"
-                if sdf_sum.get("fromDataflowExport")
-                else ("derived" if sdf_sum.get("derivedOnly") else None)
+                if sdf_sum.get("exportedFunctions", sdf_sum.get("fromDataflowExport"))
+                else ("derived" if sdf_sum.get("derivedFunctions", sdf_sum.get("derivedOnly")) else None)
             ),
         }
         for lim in list(sdf.get("analysisLimitations") or [])[:4]:
@@ -1344,6 +1452,7 @@ def run_activation_forensics(
         "summary": {
             "functionsExamined": min(len(subject_fns), MAX_FUNCTIONS),
             "inputHandlerCount": len(handlers),
+            "inputHandlerCandidateTotal": total_handler_candidates,
             "categories": {k: v for k, v in category_counts.items() if v},
             "undocumentedFindingCount": (undoc.get("summary") or {}).get("findingCount"),
             "conditionalLogicCount": (cond.get("summary") or {}).get("functionsWithConditionalLogic"),
@@ -1352,6 +1461,11 @@ def run_activation_forensics(
             "graphEdgeCount": graph.get("edgeCount"),
             "elapsedSec": elapsed,
             "negativeControl": negative_control,
+        },
+        "resultLimits": {
+            "handlers": handler_limits,
+            "conditionalLogic": cond.get("resultLimits") or (cond.get("summary") or {}).get("resultLimits"),
+            "evidenceGraph": graph.get("resultLimits"),
         },
         "categoryCounts": category_counts,
         "inputHandlerFindings": handlers,
@@ -1397,18 +1511,27 @@ def evaluate_detection_quality(
     for g in gt_neg:
         if _key(g) in found_keys:
             fp += 1
+    tn = 0
+    for g in gt_neg:
+        if _key(g) not in found_keys:
+            tn += 1
     gt_keys = {_key(g) for g in ground_truth}
     for f in findings:
         if _key(f) and _key(f) not in gt_keys:
             fp += 1
     precision = (tp / (tp + fp)) if (tp + fp) else None
     recall = (tp / (tp + fn)) if (tp + fn) else None
+    f1 = None
+    if precision is not None and recall is not None and (precision + recall) > 0:
+        f1 = 2 * precision * recall / (precision + recall)
     return {
         "truePositives": tp,
+        "trueNegatives": tn,
         "falsePositives": fp,
         "falseNegatives": fn,
         "precision": round(precision, 4) if precision is not None else None,
         "recall": round(recall, 4) if recall is not None else None,
+        "f1Score": round(f1, 4) if f1 is not None else None,
         "ambiguousFindings": ambiguous,
         "unknownFindings": sum(1 for f in findings if f.get("evidenceTier") == UNKNOWN),
         "disclaimer": (

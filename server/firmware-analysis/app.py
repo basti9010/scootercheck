@@ -1189,6 +1189,13 @@ def process_job(job_id: str) -> None:
             result["evidenceGraphQuality"] = (result["activationForensics"] or {}).get(
                 "evidenceGraphQuality"
             )
+            result["resultLimits"] = (result["activationForensics"] or {}).get("resultLimits")
+            result["analysisLimitations"] = list(
+                dict.fromkeys(
+                    list(result.get("analysisLimitations") or [])
+                    + list((result["activationForensics"] or {}).get("analysisLimitations") or [])
+                )
+            )
             notes.extend(activation_full.get("notes") or [])
         except Exception as act_e:
             notes.append(f"phase23Activation={type(act_e).__name__}")

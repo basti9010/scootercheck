@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "jobId": "ffa3eeb8-4b02-44e9-8f16-3e3ce25cd61c",
+  "elapsedSec": 20.373,
+  "plaintextSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+  "ghidraNotes": [
+    "ghidra=decompiled 207024 bytes, processor=ARM:LE:32:Cortex, base=0x08000000, analysisProfileHash=c0f507820a1457a1, seedIvt=1, identify=source:/tmp/phase232-e2e-jobs/plaintext/2026/11/19/ffa3eeb8-4b02-44e9-8f16-3e3ce25cd61c_895e06427e16_f3_vcu_1.5.8.bin.dec.bin, byteCount=56372, ivt=ok sp=0x20005948 reset=0x08001188, Cortex-M IVT: Reset @0x08001188 (fileOff=4488, thumb=True), ivt=ok sp=0x20005948 reset=0x08001188, Cortex-M IVT: Reset @0x08001188 (fileOff=None, thumb=True), identify=selectedBase:0x08000000, identify=confidence:high, seedIvt=1, speedXrefs 711B, limits.c 46506B, functions.json 182371B, callgraph.json 401469B, dataflow.json 59346B, analysisProfile=ffa3eeb8-4b02-44e9-8f16-3e3ce25cd61c_895e06427e16_f3_vcu_1.5.8.bin.dec.functions.analysis_profile.json",
+    "ghidraXrefs=ok packed=6 hits=11",
+    "dataflowExport=ok count=181",
+    "semanticDataflow=ok functions=181 ok=173 partial=7 missing=1"
+  ],
+  "activationForensicsPoll": true,
+  "semanticDataFlowPoll": true,
+  "pollHttp": 200,
+  "activationArtifactHttp": 200,
+  "semanticArtifactHttp": 200,
+  "foreignSemanticHttp": 404,
+  "resultLimits": {
+    "handlers": {
+      "totalFunctionsAnalyzed": 181,
+      "totalCandidatesDetected": 21,
+      "returnedCandidates": 21,
+      "omittedCandidates": 0,
+      "resultTruncated": false,
+      "truncationReason": null,
+      "configuredLimit": 100,
+      "analysisComplete": true
+    },
+    "conditionalLogic": {
+      "totalFunctionsAnalyzed": 181,
+      "totalCandidatesDetected": 104,
+      "returnedCandidates": 80,
+      "omittedCandidates": 24,
+      "resultTruncated": true,
+      "truncationReason": "MAX_CONDITIONAL",
+      "configuredLimit": 80,
+      "analysisComplete": true
+    },
+    "evidenceGraph": {
+      "totalFunctionsAnalyzed": 21,
+      "totalCandidatesDetected": 58,
+      "returnedCandidates": 58,
+      "omittedCandidates": 0,
+      "resultTruncated": false,
+      "truncationReason": null,
+      "configuredLimit": 600,
+      "analysisComplete": true,
+      "totalGraphNodes": 39,
+      "totalGraphEdges": 19,
+      "returnedGraphNodes": 39,
+      "returnedGraphEdges": 19
+    }
+  },
+  "workRoot": "/tmp/phase232-e2e-jobs"
+}

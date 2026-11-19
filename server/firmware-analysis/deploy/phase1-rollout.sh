@@ -58,6 +58,8 @@ DEPLOY_PY_FILES=(
   test_phase22h2_jwt_e2e.py
   test_phase23_activation.py
   test_phase231_semantic.py
+  test_phase232_validation.py
+  test_phase232_jwt_dataflow.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py
@@ -79,6 +81,7 @@ DEPLOY_PY_FILES=(
   docs/phase22h2-release.md
   docs/phase23-activation-forensics.md
   docs/phase231-semantic-validation.md
+  docs/phase232-ghidra-validation.md
   .env.example
 )
 

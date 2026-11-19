@@ -1282,7 +1282,7 @@ struct FirmwareZipInspectorView: View {
             }
 
             if af.activationEvidenceDistribution != nil || af.evidenceGraphQuality != nil
-                || af.activationEvidenceGraph != nil {
+                || af.activationEvidenceGraph != nil || af.resultLimits != nil {
                 rows.append(.title("Evidenzqualität", top: 6))
                 if let dist = af.activationEvidenceDistribution {
                     let parts = [
@@ -1320,6 +1320,9 @@ struct FirmwareZipInspectorView: View {
                     if !edgeParts.isEmpty {
                         rows.append(.meta("Kantenqualität", edgeParts.joined(separator: " · ")))
                     }
+                }
+                for warn in firmwareActivationResultLimitWarnings(af.resultLimits) {
+                    rows.append(.warn(warn))
                 }
             }
 
@@ -1911,6 +1914,27 @@ private func firmwareActivationConditionalQualityLabel(_ key: String) -> String 
     case "NOT_CLASSIFIABLE": return "unklar"
     default: return key
     }
+}
+
+private func firmwareActivationResultLimitWarnings(_ limits: FirmwareActivationResultLimits?) -> [String] {
+    guard let limits else { return [] }
+    var warns: [String] = []
+    func append(_ area: String, _ bucket: FirmwareActivationResultLimitBucket?) {
+        guard let bucket, bucket.resultTruncated == true else { return }
+        let omitted = bucket.omittedCandidates ?? 0
+        var detail = "\(omitted) weggelassene Kandidaten"
+        if let reason = bucket.truncationReason, !reason.isEmpty {
+            detail += " (\(reason))"
+        }
+        if let lim = bucket.configuredLimit {
+            detail += ", Limit \(lim)"
+        }
+        warns.append("Ergebnis begrenzt (\(area)): \(detail).")
+    }
+    append("Handler", limits.handlers)
+    append("Bedingte Logik", limits.conditionalLogic)
+    append("Evidence-Graph", limits.evidenceGraph)
+    return warns
 }
 
 private extension String {

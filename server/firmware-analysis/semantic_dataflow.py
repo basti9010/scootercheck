@@ -20,7 +20,12 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 1
-PHASE = "2.3.1"
+PHASE = "2.3.2"
+
+PROVENANCE_GHIDRA_EXPORTED = "GHIDRA_EXPORTED"
+PROVENANCE_MNEMONIC_DERIVED = "MNEMONIC_DERIVED"
+PROVENANCE_PARTIAL = "PARTIAL"
+PROVENANCE_NOT_AVAILABLE = "NOT_AVAILABLE"
 MAX_FUNCTIONS = int(os.environ.get("FW_DATAFLOW_MAX_FUNCTIONS", "2500") or "2500")
 MAX_POLL_FUNCTIONS = int(os.environ.get("FW_DATAFLOW_POLL_MAX", "40") or "40")
 MAX_LIMITATIONS_PER_FN = 6
@@ -258,6 +263,24 @@ def load_dataflow_export(path: Path | str | None) -> dict[str, Any]:
     }
 
 
+def _provenance_from_state(
+    *,
+    source: str,
+    quality: str,
+    has_export_row: bool,
+    has_mnemonics: bool,
+) -> str:
+    if has_export_row and source == "dataflow_export" and quality == "ok":
+        return PROVENANCE_GHIDRA_EXPORTED
+    if quality == "missing" and not has_mnemonics and not has_export_row:
+        return PROVENANCE_NOT_AVAILABLE
+    if has_mnemonics or source in ("derived", "function_export"):
+        return PROVENANCE_PARTIAL if quality in ("partial", "missing") else PROVENANCE_MNEMONIC_DERIVED
+    if has_export_row:
+        return PROVENANCE_PARTIAL
+    return PROVENANCE_NOT_AVAILABLE
+
+
 def _derive_from_function(
     fn: dict[str, Any],
     *,
@@ -268,6 +291,7 @@ def _derive_from_function(
     limitations: list[str] = []
     source = "derived"
     mnems = _mnemonics(fn)
+    has_export_row = False
 
     # Prefer explicit dataflow export fields when present.
     param = None
@@ -279,6 +303,7 @@ def _derive_from_function(
     data_refs = None
 
     if isinstance(df, dict):
+        has_export_row = True
         source = "dataflow_export"
         param = _int_or_none(df.get("parameterCount"))
         memory_reads = _int_or_none(df.get("memoryReads"))
@@ -405,6 +430,13 @@ def _derive_from_function(
     if len(limitations) > MAX_LIMITATIONS_PER_FN:
         limitations = limitations[:MAX_LIMITATIONS_PER_FN]
 
+    provenance = _provenance_from_state(
+        source=source,
+        quality=quality,
+        has_export_row=has_export_row,
+        has_mnemonics=bool(mnems),
+    )
+
     return {
         "address": _addr(fn) or ( _addr(df) if isinstance(df, dict) else ""),
         "name": _name(fn) or (_name(df) if isinstance(df, dict) else ""),
@@ -419,6 +451,7 @@ def _derive_from_function(
         "quality": quality,
         "limitations": limitations,
         "source": source,
+        "provenance": provenance,
     }
 
 
@@ -530,9 +563,25 @@ def analyze_semantic_dataflow(
     )
     derived_n = sum(1 for r in records if r.get("source") == "derived")
     export_n = sum(1 for r in records if r.get("source") == "dataflow_export")
+    prov_counts = {
+        PROVENANCE_GHIDRA_EXPORTED: sum(
+            1 for r in records if r.get("provenance") == PROVENANCE_GHIDRA_EXPORTED
+        ),
+        PROVENANCE_MNEMONIC_DERIVED: sum(
+            1 for r in records if r.get("provenance") == PROVENANCE_MNEMONIC_DERIVED
+        ),
+        PROVENANCE_PARTIAL: sum(1 for r in records if r.get("provenance") == PROVENANCE_PARTIAL),
+        PROVENANCE_NOT_AVAILABLE: sum(
+            1 for r in records if r.get("provenance") == PROVENANCE_NOT_AVAILABLE
+        ),
+    }
+    total_fn = len(records)
+    exported_n = prov_counts[PROVENANCE_GHIDRA_EXPORTED]
+    coverage_pct = (exported_n / total_fn * 100.0) if total_fn else 0.0
 
     summary = {
-        "functionCount": len(records),
+        "functionCount": total_fn,
+        "totalFunctions": total_fn,
         "qualityOk": quality_ok,
         "qualityPartial": quality_partial,
         "qualityMissing": quality_missing,
@@ -543,6 +592,12 @@ def analyze_semantic_dataflow(
         "withParameters": with_params,
         "fromDataflowExport": export_n,
         "derivedOnly": derived_n,
+        "exportedFunctions": exported_n,
+        "derivedFunctions": prov_counts[PROVENANCE_MNEMONIC_DERIVED],
+        "partialFunctions": prov_counts[PROVENANCE_PARTIAL],
+        "unavailableFunctions": prov_counts[PROVENANCE_NOT_AVAILABLE],
+        "dataflowCoveragePercent": coverage_pct,
+        "provenanceCounts": prov_counts,
         "truncated": truncated,
         "maxFunctions": max_fns,
     }
@@ -590,6 +645,13 @@ def summarize_semantic_dataflow_for_poll(full: dict[str, Any]) -> dict[str, Any]
             "withCalls": summary.get("withCalls"),
             "fromDataflowExport": summary.get("fromDataflowExport"),
             "derivedOnly": summary.get("derivedOnly"),
+            "totalFunctions": summary.get("totalFunctions"),
+            "exportedFunctions": summary.get("exportedFunctions"),
+            "derivedFunctions": summary.get("derivedFunctions"),
+            "partialFunctions": summary.get("partialFunctions"),
+            "unavailableFunctions": summary.get("unavailableFunctions"),
+            "dataflowCoveragePercent": summary.get("dataflowCoveragePercent"),
+            "provenanceCounts": summary.get("provenanceCounts"),
             "truncated": summary.get("truncated"),
         },
         "sampleFunctions": [
@@ -605,6 +667,7 @@ def summarize_semantic_dataflow_for_poll(full: dict[str, Any]) -> dict[str, Any]
                 "dataReferenceCount": f.get("dataReferenceCount"),
                 "features": f.get("features"),
                 "quality": f.get("quality"),
+                "provenance": f.get("provenance"),
             }
             for f in sample
             if isinstance(f, dict)

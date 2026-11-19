@@ -1,0 +1,96 @@
+{
+  "ok": true,
+  "functions": [
+    {
+      "address": "0x08001000",
+      "name": "btn_input_handler",
+      "size": 48,
+      "basicBlocks": 4,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [
+        "0x0800f001",
+        "0x0800f002",
+        "0x0800f003"
+      ],
+      "constants": [
+        1,
+        0,
+        "0x40020000"
+      ],
+      "strings": [
+        "button"
+      ],
+      "mnemonics": [
+        "str",
+        "bne",
+        "ldr",
+        "cmp",
+        "beq",
+        "movs",
+        "strb",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_btn",
+      "confidence": "high",
+      "processor": "ARM:LE:32:Cortex",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001080",
+      "name": "gpio_exti_isr",
+      "size": 40,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "calls": [],
+      "strings": [
+        "gpio"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_gpio",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f001",
+        "0x0800f002",
+        "0x0800f003"
+      ],
+      "constants": [
+        "0x40020010"
+      ]
+    },
+    {
+      "address": "0x08001100",
+      "name": "indicator_process",
+      "size": 36,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "strings": [
+        "indicator"
+      ],
+      "mnemonics": [
+        "bne",
+        "ldr",
+        "cmp",
+        "beq",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_ind",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f010",
+        "0x0800f011"
+      ],
+      "constants": []
+    }
+  ]
+}
