@@ -4,23 +4,38 @@ import UIKit
 @testable import ScooterCheck
 
 /// Final release — six synthetic PDFKit reports + page previews for CI artifacts.
+///
+/// Files are written under a stable subdirectory of the process temporary directory
+/// (`release-validation-pdf/`) and also attached via `XCTAttachment` so GitHub Actions
+/// can recover them from the simulator data container and/or the `.xcresult` bundle.
 final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
 
+    /// Prefer an explicit host-forwarded env var; always also write under tmp marker dir.
     private var outputRoot: URL {
+        let tmpRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("release-validation-pdf", isDirectory: true)
         if let env = ProcessInfo.processInfo.environment["FIRMWARE_PDF_VALIDATION_DIR"], !env.isEmpty {
+            // When the simulator can write to the host path (SIMCTL_CHILD_*), use it.
+            // Always keep tmpRoot as a discoverable fallback for simctl get_app_container.
             return URL(fileURLWithPath: env, isDirectory: true)
         }
-        return FileManager.default.temporaryDirectory
+        return tmpRoot
+    }
+
+    private var fallbackTmpRoot: URL {
+        FileManager.default.temporaryDirectory
             .appendingPathComponent("release-validation-pdf", isDirectory: true)
     }
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        try FileManager.default.createDirectory(at: outputRoot, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(
-            at: outputRoot.appendingPathComponent("previews", isDirectory: true),
-            withIntermediateDirectories: true
-        )
+        for root in [outputRoot, fallbackTmpRoot] {
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(
+                at: root.appendingPathComponent("previews", isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
     }
 
     func testReleasePDFValidationSixReportsAndPreviews() throws {
@@ -40,11 +55,11 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
             summary.append(result)
         }
 
-        let summaryURL = outputRoot.appendingPathComponent("validation-summary.json")
         let payload: [String: Any] = [
-            "phase": "final-release-integration",
-            "environment": "PDFKit/macOS-or-iOS-Simulator",
+            "phase": "final-release-acceptance",
+            "environment": "PDFKit/iOS-Simulator",
             "outputDirectory": outputRoot.path,
+            "fallbackDirectory": fallbackTmpRoot.path,
             "reports": summary,
             "checks": [
                 "pdfMagic",
@@ -54,13 +69,51 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
                 "textExtraction",
                 "jsonConsistency",
                 "pagePreviews",
+                "xctAttachment",
             ],
             "note": "Synthetic fixtures only — no personal or production data.",
         ]
         let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
-        try data.write(to: summaryURL)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: summaryURL.path))
+        try writeArtifact(data, relativePath: "validation-summary.json", contentType: "public.json")
+        // Machine-readable path marker for CI logs / simctl recovery.
+        let marker = """
+        FIRMWARE_PDF_VALIDATION_OUTPUT=\(outputRoot.path)
+        FIRMWARE_PDF_VALIDATION_FALLBACK=\(fallbackTmpRoot.path)
+        FIRMWARE_PDF_VALIDATION_REPORTS=\(summary.count)
+        """
+        try writeArtifact(
+            Data(marker.utf8),
+            relativePath: "validation-path.txt",
+            contentType: "public.plain-text"
+        )
+        print(marker)
         XCTAssertEqual(summary.count, 6)
+    }
+
+    // MARK: - Artifact I/O
+
+    /// Writes to the preferred output root, mirrors into the tmp fallback, and attaches for xcresult.
+    private func writeArtifact(_ data: Data, relativePath: String, contentType: String) throws {
+        let roots = (outputRoot.path == fallbackTmpRoot.path)
+            ? [outputRoot]
+            : [outputRoot, fallbackTmpRoot]
+        for root in roots {
+            let url = root.appendingPathComponent(relativePath)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try data.write(to: url, options: .atomic)
+            XCTAssertGreaterThan(
+                (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0,
+                0,
+                "empty artifact \(relativePath)"
+            )
+        }
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: contentType)
+        attachment.name = relativePath
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     // MARK: - Validation helpers
@@ -76,10 +129,10 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
         let magic = String(data: pdf.prefix(5), encoding: .ascii) ?? ""
         XCTAssertEqual(magic, "%PDF-", "\(name): missing PDF magic")
 
-        let pdfURL = outputRoot.appendingPathComponent("\(name).pdf")
-        try pdf.write(to: pdfURL)
+        let pdfName = "\(name).pdf"
+        try writeArtifact(pdf, relativePath: pdfName, contentType: "com.adobe.pdf")
 
-        guard let doc = PDFDocument(url: pdfURL) else {
+        guard let doc = PDFDocument(data: pdf) else {
             XCTFail("\(name): PDFDocument.open failed")
             return ["name": name, "ok": false]
         }
@@ -87,6 +140,13 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
 
         var extracted = ""
         var previewPaths: [String] = []
+        let pageIndexes: [Int]
+        if doc.pageCount <= 2 {
+            pageIndexes = Array(0..<doc.pageCount)
+        } else {
+            // First, last, and a middle page (tables / long text coverage).
+            pageIndexes = Array(Set([0, doc.pageCount / 2, doc.pageCount - 1])).sorted()
+        }
         for i in 0..<doc.pageCount {
             guard let page = doc.page(at: i) else {
                 XCTFail("\(name): missing page \(i)")
@@ -99,15 +159,18 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
             XCTAssertGreaterThan(box.width * box.height, 10_000)
 
             extracted += page.string ?? ""
-            let thumb = page.thumbnail(of: CGSize(width: 360, height: 480), for: .mediaBox)
-            XCTAssertGreaterThan(thumb.size.width, 0)
-            if let png = thumb.pngData() {
-                let previewName = String(format: "%@-page-%02d.png", name, i + 1)
-                let previewURL = outputRoot
-                    .appendingPathComponent("previews", isDirectory: true)
-                    .appendingPathComponent(previewName)
-                try png.write(to: previewURL)
-                previewPaths.append("previews/\(previewName)")
+            if pageIndexes.contains(i) {
+                let thumb = page.thumbnail(of: CGSize(width: 360, height: 480), for: .mediaBox)
+                XCTAssertGreaterThan(thumb.size.width, 0)
+                if let png = thumb.pngData() {
+                    let previewName = String(format: "%@-page-%02d.png", name, i + 1)
+                    try writeArtifact(
+                        png,
+                        relativePath: "previews/\(previewName)",
+                        contentType: "public.png"
+                    )
+                    previewPaths.append("previews/\(previewName)")
+                }
             }
         }
 

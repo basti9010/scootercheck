@@ -7,10 +7,12 @@ on:
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/ios-unit-tests.yml"
+      - "scripts/export-pdf-validation-artifacts.sh"
   push:
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/ios-unit-tests.yml"
+      - "scripts/export-pdf-validation-artifacts.sh"
   workflow_dispatch:
 
 concurrency:
@@ -46,8 +48,10 @@ jobs:
         run: |
           mkdir -p "$GITHUB_WORKSPACE/release-validation/pdf/previews"
           echo "FIRMWARE_PDF_VALIDATION_DIR=$GITHUB_WORKSPACE/release-validation/pdf" >> "$GITHUB_ENV"
+          chmod +x "$GITHUB_WORKSPACE/scripts/export-pdf-validation-artifacts.sh"
 
       - name: Unit tests (ScooterCheckTests)
+        id: xctest
         env:
           FIRMWARE_PDF_VALIDATION_DIR: ${{ github.workspace }}/release-validation/pdf
           # Pass through to the iOS Simulator test process (xcodebuild env alone is not enough).
@@ -81,6 +85,8 @@ jobs:
           print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
           ')
           echo "Using simulator UDID=$DEST"
+          echo "$DEST" > "$GITHUB_WORKSPACE/release-validation/simulator-udid.txt"
+          echo "SIMULATOR_UDID=$DEST" >> "$GITHUB_ENV"
           xcodebuild test \
             -project ScooterCheck.xcodeproj \
             -scheme ScooterCheck \
@@ -91,13 +97,32 @@ jobs:
             -resultBundlePath "$GITHUB_WORKSPACE/release-validation/ScooterCheckTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Export PDF validation artifacts to host
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          DEST="${SIMULATOR_UDID:-}"
+          if [ -z "$DEST" ] && [ -f release-validation/simulator-udid.txt ]; then
+            DEST="$(cat release-validation/simulator-udid.txt)"
+          fi
+          if [ -z "$DEST" ]; then
+            echo "::warning::simulator UDID unknown; attempting xcresult-only recovery"
+            DEST="unknown"
+          fi
+          bash scripts/export-pdf-validation-artifacts.sh "$DEST" "$GITHUB_WORKSPACE"
+
       - name: Summarize PDF validation artifacts
         if: always()
+        working-directory: ${{ github.workspace }}
         run: |
           OUT="$GITHUB_WORKSPACE/release-validation/pdf"
           echo "PDF validation dir: $OUT"
           ls -la "$OUT" || true
           ls -la "$OUT/previews" || true
+          PDF_COUNT=$(find "$OUT" -maxdepth 1 -type f -name '*.pdf' | wc -l | tr -d ' ')
+          PNG_COUNT=$(find "$OUT/previews" -type f -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+          BYTES=$(du -sk "$OUT" 2>/dev/null | awk '{print $1}')
+          echo "Recovered PDFs=$PDF_COUNT PNGs=$PNG_COUNT size_kib=$BYTES"
           if [ -f "$OUT/validation-summary.json" ]; then
             python3 - <<'PY'
           import json, pathlib
@@ -107,10 +132,8 @@ jobs:
           for r in data.get("reports") or []:
               print(f"  - {r.get('name')}: pages={r.get('pageCount')} ok={r.get('ok')} bytes={r.get('byteCount')}")
           PY
-          else
-            echo "validation-summary.json missing (test may have failed before export)"
           fi
-        working-directory: ${{ github.workspace }}
+          test "$PDF_COUNT" -ge 6
 
       - name: Upload PDF release-validation artifacts
         if: always()
@@ -119,5 +142,5 @@ jobs:
           name: pdf-release-validation
           path: |
             release-validation/pdf/**
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
