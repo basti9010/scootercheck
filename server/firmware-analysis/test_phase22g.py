@@ -27,6 +27,51 @@ class AnalysisProfileTests(unittest.TestCase):
         b = ap.build_analysis_profile(seed_ivt=False)
         self.assertNotEqual(a["analysisProfileHash"], b["analysisProfileHash"])
 
+    def test_phase22h2_runtime_soft_fields_excluded_from_hash(self) -> None:
+        """ghidraVersion / timeout / heap must not flip the semantic profile hash.
+
+        Explains Phase 2.2H (null ghidra) vs 2.2H.1 (ghidra 12.2) hash drift.
+        """
+        a = ap.build_analysis_profile(ghidra_version=None, timeout_sec=600, memory_limit="2g")
+        b = ap.build_analysis_profile(ghidra_version="12.2", timeout_sec=900, memory_limit="4g")
+        self.assertEqual(a["analysisProfileHash"], b["analysisProfileHash"])
+        self.assertEqual(a["ghidraVersion"], None)
+        self.assertEqual(b["ghidraVersion"], "12.2")
+        self.assertIn("runtimeConfig", b)
+        self.assertEqual(b["runtimeConfig"]["ghidraVersion"], "12.2")
+        # Semantic hash (runtime soft fields excluded). Distinct from pre-2.2H.2
+        # hashes that embedded ghidraVersion=null (8a4c…) or "12.2" (1d0a…).
+        self.assertEqual(
+            a["analysisProfileHash"],
+            "c0f507820a1457a1af98c2a66352db531f2f4ad1bcf72bc32c58e307e3f41de7",
+        )
+        self.assertNotEqual(
+            a["analysisProfileHash"],
+            "8a4c448ec9122549a18053fd210dfbb295be984ead0eb98c7e79c626bde0f50b",
+        )
+        self.assertNotEqual(
+            a["analysisProfileHash"],
+            "1d0aea6293aca111a858b0319a9661e8d5c5a0e5e06af517bd6b408a11819047",
+        )
+
+    def test_profiles_compatible_despite_legacy_stored_hash_drift(self) -> None:
+        """Legacy stored hashes that embedded ghidraVersion still soft-compatible."""
+        semantic = ap.build_analysis_profile(ghidra_version="12.2")
+        legacy_null = dict(semantic)
+        legacy_null["ghidraVersion"] = None
+        # Simulate pre-2.2H.2 stored hash that included null ghidraVersion.
+        legacy_null["analysisProfileHash"] = (
+            "8a4c448ec9122549a18053fd210dfbb295be984ead0eb98c7e79c626bde0f50b"
+        )
+        legacy_12 = dict(semantic)
+        legacy_12["analysisProfileHash"] = (
+            "1d0aea6293aca111a858b0319a9661e8d5c5a0e5e06af517bd6b408a11819047"
+        )
+        ok, status, reasons = ap.profiles_compatible(legacy_null, legacy_12)
+        self.assertTrue(ok)
+        self.assertIn(status, {"COMPATIBLE", "LEGACY_PARTIAL"})
+        self.assertTrue(any("soft" in r or "semantic" in r or "stored" in r for r in reasons))
+
     def test_profiles_compatible_legacy(self) -> None:
         ok, status, reasons = ap.profiles_compatible(
             {"analyzerCompat": "2", "analysisProfileHash": "abc"},

@@ -10,14 +10,23 @@ final class AuthSessionStore: ObservableObject {
     @Published private(set) var isBootstrapping = true
     @Published var lastError: String?
 
-    private let tokenKey = "scootercheck.auth.token"
+    /// Legacy UserDefaults key — migrated once into Keychain then cleared.
+    private let legacyTokenKey = "scootercheck.auth.token"
 
     var isLoggedIn: Bool { token != nil && user != nil }
     var canUseApp: Bool { user?.isActive == true }
     var isAdmin: Bool { user?.isAdmin == true }
 
     private init() {
-        token = UserDefaults.standard.string(forKey: tokenKey)
+        if let keychain = AuthKeychainStore.loadToken(), !keychain.isEmpty {
+            token = keychain
+        } else if let legacy = UserDefaults.standard.string(forKey: legacyTokenKey),
+                  !legacy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // One-shot migration: UserDefaults → Keychain, then wipe plaintext.
+            token = legacy
+            AuthKeychainStore.saveToken(legacy)
+            UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+        }
     }
 
     func bootstrap() async {
@@ -85,13 +94,15 @@ final class AuthSessionStore: ObservableObject {
     private func apply(_ response: AuthResponse) {
         token = response.accessToken
         user = response.user
-        UserDefaults.standard.set(response.accessToken, forKey: tokenKey)
+        AuthKeychainStore.saveToken(response.accessToken)
+        UserDefaults.standard.removeObject(forKey: legacyTokenKey)
         lastError = nil
     }
 
     private func clearSession() {
         token = nil
         user = nil
-        UserDefaults.standard.removeObject(forKey: tokenKey)
+        AuthKeychainStore.deleteToken()
+        UserDefaults.standard.removeObject(forKey: legacyTokenKey)
     }
 }

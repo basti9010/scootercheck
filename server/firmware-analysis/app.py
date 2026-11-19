@@ -217,9 +217,12 @@ def require_auth(
         status = str(payload.get("status") or "")
         if status != "active":
             raise HTTPException(status_code=403, detail="account not active")
+        sub = payload.get("sub")
+        if not sub:
+            raise HTTPException(status_code=401, detail="invalid token: missing subject")
         auth = {
             "auth": "jwt",
-            "userId": payload.get("sub"),
+            "userId": sub,
             "email": payload.get("email"),
             "role": payload.get("role"),
         }
@@ -1243,8 +1246,33 @@ def process_job(job_id: str) -> None:
     )
 
 
+def _auth_security_warnings() -> list[str]:
+    """Surface insecure legacy auth flags (fail-open for ops visibility, fail-closed for ownership)."""
+    warnings: list[str] = []
+    if api_token_grants_admin():
+        warnings.append(
+            "INSECURE: API_TOKEN_GRANTS_ADMIN=1 — shared API_TOKEN grants admin. "
+            "Set API_TOKEN_GRANTS_ADMIN=0 and use ADMIN_API_TOKEN / JWT role=admin."
+        )
+    if trust_api_token_client_id():
+        warnings.append(
+            "INSECURE: TRUST_API_TOKEN_CLIENT_ID=1 — Client-Id can own/access jobs under "
+            "shared API_TOKEN (spoofable). Set TRUST_API_TOKEN_CLIENT_ID=0; prefer Bearer JWT."
+        )
+    if API_TOKEN and not ADMIN_API_TOKEN and api_token_grants_admin():
+        warnings.append(
+            "INSECURE: shared API_TOKEN is the only admin credential (no ADMIN_API_TOKEN)."
+        )
+    if not JWT_SECRET:
+        warnings.append(
+            "JWT_SECRET unset — user-owned firmware jobs via Bearer JWT are unavailable."
+        )
+    return warnings
+
+
 @APP.get("/health")
 def health() -> dict[str, Any]:
+    auth_warnings = _auth_security_warnings()
     return {
         "ok": True,
         "service": "scootercheck-fw",
@@ -1256,6 +1284,8 @@ def health() -> dict[str, Any]:
         "adminApiTokenConfigured": bool(ADMIN_API_TOKEN),
         "apiTokenGrantsAdmin": api_token_grants_admin(),
         "trustApiTokenClientId": trust_api_token_client_id(),
+        "authSecurityOk": len(auth_warnings) == 0,
+        "authSecurityWarnings": auth_warnings,
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),

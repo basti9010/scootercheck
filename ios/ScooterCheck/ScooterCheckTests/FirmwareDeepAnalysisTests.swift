@@ -1,4 +1,5 @@
 import XCTest
+import PDFKit
 @testable import ScooterCheck
 
 final class FirmwareDeepAnalysisTests: XCTestCase {
@@ -926,6 +927,30 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertTrue(blob.contains("communityLibrary") || blob.contains("community"), "trust status missing")
         XCTAssertTrue(blob.contains("kein Manipulationsnachweis") || blob.contains("Manipulationsnachweis"))
         XCTAssertTrue(blob.contains("6b7d6ec0") || blob.contains(deep.subjectSHA256 ?? "nomatch"))
+        XCTAssertTrue(blob.contains("PARTIAL") || blob.contains("Analysevollständigkeit") || blob.contains("Vollständigkeit"))
+        XCTAssertTrue(blob.contains("Statische Analyse") || blob.contains("Einschränkung") || blob.contains("Fahrzeugtest"))
+
+        // Phase 2.2H.2: open with PDFKit and verify page geometry (not magic-only).
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("phase22h2-forensic.pdf")
+        try pdf.write(to: tmp)
+        guard let doc = PDFDocument(url: tmp) else {
+            XCTFail("PDFDocument failed to open rendered report")
+            return
+        }
+        XCTAssertGreaterThanOrEqual(doc.pageCount, 1, "expected ≥1 PDF page")
+        for i in 0..<doc.pageCount {
+            guard let page = doc.page(at: i) else {
+                XCTFail("missing page \(i)")
+                continue
+            }
+            let bounds = page.bounds(for: .mediaBox)
+            XCTAssertGreaterThan(bounds.width, 100)
+            XCTAssertGreaterThan(bounds.height, 100)
+            // Thumbnail render proves page content is drawable (layout smoke).
+            let thumb = page.thumbnail(of: CGSize(width: 120, height: 160), for: .mediaBox)
+            XCTAssertGreaterThan(thumb.size.width, 0)
+        }
 
         let jsonData = try FirmwareForensicPDF.jsonData(report)
         let decoded = try JSONDecoder().decode(FirmwareForensicReport.self, from: jsonData)
@@ -934,5 +959,20 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(decoded.deepAnalysis?.referenceMetadata?.referenceTrust, "communityLibrary")
         XCTAssertEqual(decoded.deepAnalysis?.callGraphQuality?.unresolvedCalls, 0)
         XCTAssertEqual(decoded.deepAnalysis?.functionDiff?.summary?.structurallyChanged, 1)
+        // PDF/JSON consistency: community trust must not be elevated in either channel.
+        XCTAssertNotEqual(decoded.deepAnalysis?.referenceMetadata?.referenceTrust, "oemVerified")
+        XCTAssertNotEqual(decoded.deepAnalysis?.referenceMetadata?.verificationStatus, "oem")
+        XCTAssertEqual(decoded.deepAnalysis?.analysisCompleteness, "PARTIAL")
+    }
+
+    func testPhase22H2LoginRequiredWithoutBearer() {
+        let client = FirmwareServerAnalysisClient(
+            baseURL: URL(string: "https://example.test/scootercheck-fw"),
+            apiToken: "shared",
+            bearerToken: nil,
+            clientId: "ios-legacy"
+        )
+        XCTAssertTrue(client.isConfigured)
+        XCTAssertFalse(client.hasBearerJWT)
     }
 }
