@@ -1,19 +1,23 @@
-"""Multi-stage intelligent function matching (Phase 2.2C).
+"""Multi-stage intelligent function matching (Phase 2.2C / 2.2E).
 
 Matches Ghidra ExportFunctionAnalysis inventories across firmware versions
 without relying on absolute addresses or generic FUN_* names.
 
 Stages:
   1. Exact normalized fingerprint (unique 1:1)
-  2. Structural CFG / size / mnemonic similarity
+  2. Structural CFG / size / mnemonic similarity (size-bucket prefilter)
   3. Call-neighborhood propagation from already matched pairs
   4. Ambiguity detection (identical helpers → AMBIGUOUS, no forced pick)
+
+Phase 2.2E: size/BB prefiltering avoids uncontrolled O(n·m) pairwise scans.
+The 2500-function soft cap remains; overflow is truncated=true (incomplete).
 
 Confidence: HIGH | MEDIUM | LOW | AMBIGUOUS | UNMATCHED
 """
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from typing import Any
 
 CONF_HIGH = "HIGH"
@@ -27,6 +31,10 @@ _STRUCT_HIGH = 0.92
 _STRUCT_MEDIUM = 0.78
 _STRUCT_LOW = 0.62
 _AMBIGUITY_GAP = 0.05  # if top-2 scores within this → AMBIGUOUS
+_SIZE_BUCKET = 16  # bytes — index granularity for candidate prefilter
+_SIZE_TOLERANCE = 0.35  # ±35% size window
+_BB_TOLERANCE = 3  # ± basic-block window when both known
+_MAX_CANDIDATES = 64  # hard cap per subject after prefilter
 
 _GENERIC_NAME_RE = re.compile(
     r"^(FUN_|SUB_|LAB_|DAT_|unk_|thunk_|FID_conflict_|s_|caseD_)",
@@ -145,15 +153,15 @@ def match_functions(
         still.append(s)
     pending_sub = still
 
-    # --- Stage 2: structural similarity ---
+    # --- Stage 2: structural similarity (size/BB prefiltered — avoid O(n·m)) ---
     available_ref = [r for r in ref if id(r) not in used_ref]
+    size_index = _build_size_index(available_ref)
     still = []
     for s in pending_sub:
-        scored: list[tuple[float, dict[str, Any]]] = []
-        for r in available_ref:
-            if id(r) in used_ref:
-                continue
-            scored.append((structural_similarity(s, r), r))
+        candidates = _prefilter_candidates(s, available_ref, size_index, used_ref)
+        scored: list[tuple[float, dict[str, Any]]] = [
+            (structural_similarity(s, r), r) for r in candidates
+        ]
         scored.sort(key=lambda t: t[0], reverse=True)
         if not scored or scored[0][0] < _STRUCT_LOW:
             still.append(s)
@@ -208,12 +216,11 @@ def match_functions(
 
     still = []
     available_ref = [r for r in ref if id(r) not in used_ref]
+    size_index = _build_size_index(available_ref)
     for s in pending_sub:
         best: tuple[float, dict[str, Any]] | None = None
         second_score = 0.0
-        for r in available_ref:
-            if id(r) in used_ref:
-                continue
+        for r in _prefilter_candidates(s, available_ref, size_index, used_ref):
             nb = neighborhood_score(s, r, name_map_sub_to_ref)
             base = structural_similarity(s, r)
             score = 0.55 * base + 0.45 * nb
@@ -328,6 +335,53 @@ def match_functions(
         "analysisLimitations": limitations,
         "notes": notes,
     }
+
+
+def _build_size_index(refs: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
+    idx: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for r in refs:
+        sz = _num(r.get("size"))
+        bucket = int(sz // _SIZE_BUCKET) if sz is not None else -1
+        idx[bucket].append(r)
+    return idx
+
+
+def _prefilter_candidates(
+    subject: dict[str, Any],
+    available_ref: list[dict[str, Any]],
+    size_index: dict[int, list[dict[str, Any]]],
+    used_ref: set[int],
+) -> list[dict[str, Any]]:
+    """Restrict pairwise comparisons to size/BB-compatible refs."""
+    sz = _num(subject.get("size"))
+    bb = _num(subject.get("basicBlocks"))
+    if sz is None or sz <= 0:
+        # No size → capped scan of unused refs
+        out = [r for r in available_ref if id(r) not in used_ref][:_MAX_CANDIDATES]
+        return out
+
+    lo = max(1.0, sz * (1.0 - _SIZE_TOLERANCE))
+    hi = sz * (1.0 + _SIZE_TOLERANCE)
+    b0 = int(lo // _SIZE_BUCKET)
+    b1 = int(hi // _SIZE_BUCKET)
+    cands: list[dict[str, Any]] = []
+    for b in range(b0, b1 + 1):
+        for r in size_index.get(b, []):
+            if id(r) in used_ref:
+                continue
+            rsz = _num(r.get("size"))
+            if rsz is None or not (lo <= rsz <= hi):
+                continue
+            rbb = _num(r.get("basicBlocks"))
+            if bb is not None and rbb is not None and abs(bb - rbb) > _BB_TOLERANCE:
+                continue
+            cands.append(r)
+            if len(cands) >= _MAX_CANDIDATES:
+                return cands
+    # Fallback: if prefilter empty, allow a small unfiltered sample (still capped)
+    if not cands:
+        cands = [r for r in available_ref if id(r) not in used_ref][: min(16, _MAX_CANDIDATES)]
+    return cands
 
 
 def structural_similarity(a: dict[str, Any], b: dict[str, Any]) -> float:

@@ -152,20 +152,24 @@ class FsmQualityTests(unittest.TestCase):
         syn = json.loads((P22D / "synthetic.functions.json").read_text(encoding="utf-8"))
         out = ib.analyze_input_behavior(syn)
         sm = out["stateMachineAnalysis"]
-        self.assertIsNone(sm.get("totalEstimatedStates"))
-        self.assertIsNone(sm.get("totalEstimatedTransitions"))
         names = {m["functionName"]: m for m in sm["stateMachines"]}
         # branchy_math must NOT be an FSM candidate (no state/input naming)
         self.assertNotIn("branchy_math", names)
-        # mode_fsm_tick should be candidate/structure with null counts
+        # mode_fsm_tick: Phase 2.2E may verify counts from constants/labels
         self.assertIn("mode_fsm_tick", names)
         m = names["mode_fsm_tick"]
-        self.assertIsNone(m.get("stateCount"))
-        self.assertIsNone(m.get("estimatedStates"))
         self.assertIn(
             m.get("analysisQuality"),
-            {ib.FSM_CANDIDATE, ib.FSM_STRUCTURE, ib.FSM_NOT_VERIFIABLE},
+            {ib.FSM_CANDIDATE, ib.FSM_STRUCTURE, ib.FSM_TRANSITIONS, ib.FSM_NOT_VERIFIABLE},
         )
+        # Totals only when verified — never BB-derived placeholders for unverified machines
+        for machine in sm["stateMachines"]:
+            if not machine.get("stateCountVerified"):
+                self.assertIsNone(machine.get("stateCount"))
+        if sm.get("totalEstimatedStates") is not None:
+            self.assertTrue(
+                any(x.get("stateCountVerified") for x in sm["stateMachines"])
+            )
 
     def test_multi_bb_without_state_signals_excluded(self) -> None:
         fa = {

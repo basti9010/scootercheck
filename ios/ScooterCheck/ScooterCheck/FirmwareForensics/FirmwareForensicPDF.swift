@@ -263,6 +263,34 @@ enum FirmwareForensicPDF {
                     let label = cats.map { "\($0.key):\($0.value)" }.sorted().joined(separator: ", ")
                     y = line(ctx, "Kategorien: \(label)", y: y, size: 8)
                 }
+                if let completeness = deep.analysisCompleteness {
+                    y = line(ctx, "Analysevollständigkeit: \(completeness)", y: y, size: 8)
+                }
+                if let cov = deep.firmwareAnalysisCoverage {
+                    y = line(
+                        ctx,
+                        "Funktionen erkannt=\(cov.recognizedFunctionCount ?? 0) analysiert=\(cov.analyzedFunctionCount ?? 0) truncated=\(cov.truncated == true ? "ja" : "nein")",
+                        y: y,
+                        size: 8
+                    )
+                    y = line(
+                        ctx,
+                        "Tatsächliche Gesamtfunktionenzahl: \(cov.unknownTrueFunctionTotal == true ? "unbekannt" : "\(cov.trueFunctionTotal ?? 0)")",
+                        y: y,
+                        size: 7
+                    )
+                }
+                if let cat = deep.referenceCatalogCoverage {
+                    y = line(
+                        ctx,
+                        "Referenzkatalog: present=\(cat.present == true) compat=\(cat.analyzerCompat ?? "—") completeness=\(cat.completenessStatus ?? "—") trust=\(cat.referenceTrust ?? "—")",
+                        y: y,
+                        size: 8
+                    )
+                    if let gv = cat.ghidraVersion {
+                        y = line(ctx, "Ghidra=\(gv) processor=\(cat.processor ?? "—") base=\(cat.baseAddr ?? "—")", y: y, size: 7)
+                    }
+                }
                 let sm = deep.stateMachineAnalysis ?? ib.stateMachineAnalysis
                 if let sm {
                     let statesLabel: String = {
@@ -275,13 +303,14 @@ enum FirmwareForensicPDF {
                     }()
                     y = line(
                         ctx,
-                        "FSM-Kandidaten=\(sm.stateMachineCount ?? 0) · \(statesLabel) · \(transLabel)",
+                        "FSM-Kandidaten=\(sm.stateMachineCount ?? 0) · structure=\(sm.structureIdentifiedCount ?? 0) · transitions=\(sm.transitionsIdentifiedCount ?? 0) · \(statesLabel) · \(transLabel)",
                         y: y,
                         size: 8
                     )
+                    let dyn = (deep.stateMachineValidation ?? sm.stateMachineValidation)?.dynamicRuntimeVerified == true
                     y = line(
                         ctx,
-                        "Hinweis: Basic Blocks ≠ Zustände. Keine Aktivierungsfolgen.",
+                        "Hinweis: Basic Blocks ≠ Zustände. Dynamische Laufzeitverifikation=\(dyn ? "ja" : "nein"). Keine Aktivierungsfolgen.",
                         y: y,
                         size: 7
                     )
