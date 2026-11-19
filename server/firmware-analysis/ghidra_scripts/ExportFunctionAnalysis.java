@@ -72,6 +72,9 @@ public class ExportFunctionAnalysis extends GhidraScript {
         StringBuilder sb = new StringBuilder(256 * 1024);
         sb.append("{\n");
         sb.append("  \"schemaVersion\": 1,\n");
+        // featuresVersion documents optional fields (branchMnemonicCount) without
+        // changing fingerprint semantics (analyzerCompat stays "2").
+        sb.append("  \"featuresVersion\": 1,\n");
         sb.append("  \"program\": ").append(jsonString(currentProgram.getName())).append(",\n");
         sb.append("  \"processor\": ").append(jsonString(processor)).append(",\n");
         sb.append("  \"imageBase\": ").append(jsonString(currentProgram.getImageBase().toString())).append(",\n");
@@ -144,6 +147,7 @@ public class ExportFunctionAnalysis extends GhidraScript {
                 List<String> strings = new ArrayList<>();
                 collectRefs(fn, listing, constants, strings);
                 List<String> mnemonics = collectMnemonics(fn, listing);
+                int branchMnemonics = countBranchMnemonics(mnemonics);
 
                 Collections.sort(calls);
                 Collections.sort(calledBy);
@@ -168,6 +172,8 @@ public class ExportFunctionAnalysis extends GhidraScript {
                 sb.append("      \"constants\": ").append(jsonStringArray(constants)).append(",\n");
                 sb.append("      \"strings\": ").append(jsonStringArray(strings)).append(",\n");
                 sb.append("      \"mnemonics\": ").append(jsonStringArray(mnemonics)).append(",\n");
+                // Phase 2.2C: optional structural hints (do not affect fingerprint).
+                sb.append("      \"branchMnemonicCount\": ").append(branchMnemonics).append(",\n");
                 sb.append("      \"fingerprint\": ").append(jsonString(fingerprint)).append(",\n");
                 sb.append("      \"confidence\": ").append(jsonString(confidence)).append(",\n");
                 sb.append("      \"processor\": ").append(jsonString(processor)).append(",\n");
@@ -274,6 +280,21 @@ public class ExportFunctionAnalysis extends GhidraScript {
         } catch (Exception ignored) {
         }
         return out;
+    }
+
+    private static int countBranchMnemonics(List<String> mnemonics) {
+        int n = 0;
+        for (String m : mnemonics) {
+            if (m == null || m.isEmpty()) {
+                continue;
+            }
+            String low = m.toLowerCase(Locale.ROOT);
+            if (low.startsWith("b") || low.startsWith("cbz") || low.startsWith("cbnz")
+                || low.startsWith("tbz") || low.startsWith("tbnz") || low.equals("it")) {
+                n++;
+            }
+        }
+        return n;
     }
 
     private static String fingerprint(

@@ -48,6 +48,14 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var referenceMetadata: FirmwareReferenceMetadata? = nil
     /// Phase-2: technische Einschränkungen der Analyse.
     var analysisLimitations: [String]? = nil
+    /// Phase 2.2C: multi-stage Function Matching (optional).
+    var functionMatching: FirmwareFunctionMatchingSummary? = nil
+    /// Phase 2.2C: Input Behavior Analysis (optional).
+    var inputBehaviorAnalysis: FirmwareInputBehaviorSummary? = nil
+    /// Phase 2.2C: State Machine Analysis (optional; often nested under inputBehavior).
+    var stateMachineAnalysis: FirmwareStateMachineAnalysisSummary? = nil
+    /// Phase 2.2C: Input Behavior Diff vs reference (optional).
+    var inputBehaviorDiff: FirmwareInputBehaviorDiffSummary? = nil
 
     static let currentSchemaVersion = 1
 
@@ -66,6 +74,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case modeTransitions, inputHints, comboSummaries, notes, caveats, quality
         case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout, classifiedFindings
         case functionAnalysis, functionDiff, callGraph, referenceMetadata, analysisLimitations
+        case functionMatching, inputBehaviorAnalysis, stateMachineAnalysis, inputBehaviorDiff
     }
 
     init(from decoder: Decoder) throws {
@@ -98,6 +107,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         callGraph = try c.decodeIfPresent(FirmwareCallGraphSummary.self, forKey: .callGraph)
         referenceMetadata = try c.decodeIfPresent(FirmwareReferenceMetadata.self, forKey: .referenceMetadata)
         analysisLimitations = try c.decodeIfPresent([String].self, forKey: .analysisLimitations)
+        functionMatching = try c.decodeIfPresent(FirmwareFunctionMatchingSummary.self, forKey: .functionMatching)
+        inputBehaviorAnalysis = try c.decodeIfPresent(FirmwareInputBehaviorSummary.self, forKey: .inputBehaviorAnalysis)
+        stateMachineAnalysis = try c.decodeIfPresent(FirmwareStateMachineAnalysisSummary.self, forKey: .stateMachineAnalysis)
+            ?? inputBehaviorAnalysis?.stateMachineAnalysis
+        inputBehaviorDiff = try c.decodeIfPresent(FirmwareInputBehaviorDiffSummary.self, forKey: .inputBehaviorDiff)
     }
 
     init(
@@ -127,7 +141,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         functionDiff: FirmwareFunctionDiffSummary? = nil,
         callGraph: FirmwareCallGraphSummary? = nil,
         referenceMetadata: FirmwareReferenceMetadata? = nil,
-        analysisLimitations: [String]? = nil
+        analysisLimitations: [String]? = nil,
+        functionMatching: FirmwareFunctionMatchingSummary? = nil,
+        inputBehaviorAnalysis: FirmwareInputBehaviorSummary? = nil,
+        stateMachineAnalysis: FirmwareStateMachineAnalysisSummary? = nil,
+        inputBehaviorDiff: FirmwareInputBehaviorDiffSummary? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -156,6 +174,10 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.callGraph = callGraph
         self.referenceMetadata = referenceMetadata
         self.analysisLimitations = analysisLimitations
+        self.functionMatching = functionMatching
+        self.inputBehaviorAnalysis = inputBehaviorAnalysis
+        self.stateMachineAnalysis = stateMachineAnalysis ?? inputBehaviorAnalysis?.stateMachineAnalysis
+        self.inputBehaviorDiff = inputBehaviorDiff
     }
 
     func encode(to encoder: Encoder) throws {
@@ -187,6 +209,10 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encodeIfPresent(callGraph, forKey: .callGraph)
         try c.encodeIfPresent(referenceMetadata, forKey: .referenceMetadata)
         try c.encodeIfPresent(analysisLimitations, forKey: .analysisLimitations)
+        try c.encodeIfPresent(functionMatching, forKey: .functionMatching)
+        try c.encodeIfPresent(inputBehaviorAnalysis, forKey: .inputBehaviorAnalysis)
+        try c.encodeIfPresent(stateMachineAnalysis, forKey: .stateMachineAnalysis)
+        try c.encodeIfPresent(inputBehaviorDiff, forKey: .inputBehaviorDiff)
     }
 }
 
@@ -362,6 +388,12 @@ struct FirmwareFunctionDiffCounts: Equatable, Codable, Sendable {
     var subjectFunctionCount: Int?
     var referenceFunctionCount: Int?
     var overall: String?
+    /// Phase 2.2C matching stats (optional).
+    var matched: Int?
+    var ambiguous: Int?
+    var matchHigh: Int?
+    var matchMedium: Int?
+    var matchLow: Int?
 }
 
 struct FirmwareFunctionDiffPair: Equatable, Codable, Sendable, Identifiable {
@@ -369,6 +401,9 @@ struct FirmwareFunctionDiffPair: Equatable, Codable, Sendable, Identifiable {
     var subject: FirmwareFunctionBrief?
     var reference: FirmwareFunctionBrief?
     var matchMethod: String?
+    var matchConfidence: String?
+    var similarityScore: Double?
+    var featuresUsed: [String]?
     var evidenceTier: String?
     var notes: String?
     /// Freie Strukturunterschiede (Größe/Blöcke/CFG) — keine Tuning-Aussage.
@@ -421,8 +456,134 @@ struct FirmwareFunctionDiffSummary: Equatable, Codable, Sendable {
     var toolNote: String?
     var summary: FirmwareFunctionDiffCounts?
     var samplePairs: [FirmwareFunctionDiffPair]?
+    var functionMatching: FirmwareFunctionMatchingSummary?
     var analysisLimitations: [String]?
     var notes: [String]?
+}
+
+// MARK: - Phase 2.2C Function Matching / Input Behavior
+
+struct FirmwareFunctionMatchingSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var tool: String?
+    var toolNote: String?
+    var summary: FirmwareFunctionMatchingCounts?
+    var sampleMatches: [FirmwareFunctionMatchSample]?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareFunctionMatchingCounts: Equatable, Codable, Sendable {
+    var matched: Int?
+    var high: Int?
+    var medium: Int?
+    var low: Int?
+    var ambiguous: Int?
+    var unmatched: Int?
+    var pairCount: Int?
+}
+
+struct FirmwareFunctionMatchSample: Equatable, Codable, Sendable, Identifiable {
+    var subject: FirmwareFunctionBrief?
+    var reference: FirmwareFunctionBrief?
+    var similarityScore: Double?
+    var matchConfidence: String?
+    var matchMethod: String?
+    var featuresUsed: [String]?
+    var notes: String?
+
+    var id: String {
+        (subject?.address ?? "") + "|" + (reference?.address ?? "") + "|" + (matchMethod ?? "")
+    }
+}
+
+struct FirmwareInputBehaviorSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var tool: String?
+    var toolNote: String?
+    var summary: FirmwareInputBehaviorCounts?
+    var categories: [String: Int]?
+    var sampleInputFunctions: [FirmwareInputFunctionFinding]?
+    var stateMachineAnalysis: FirmwareStateMachineAnalysisSummary?
+    var evidenceTier: String?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareInputBehaviorCounts: Equatable, Codable, Sendable {
+    var functionCount: Int?
+    var inputRelevantCount: Int?
+    var confirmedCount: Int?
+    var indicativeCount: Int?
+    var speculativeCount: Int?
+    var categoryCount: Int?
+}
+
+struct FirmwareInputFunctionFinding: Equatable, Codable, Sendable, Identifiable {
+    var address: String?
+    var name: String?
+    var categories: [String]?
+    var evidenceTier: String?
+    var score: Double?
+    var evidence: [String]?
+    var basicBlocks: Int?
+    var cfgEdges: Int?
+
+    var id: String { (address ?? "") + "|" + (name ?? "") }
+}
+
+struct FirmwareStateMachineAnalysisSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var stateMachineCount: Int?
+    var totalEstimatedStates: Int?
+    var totalEstimatedTransitions: Int?
+    var evidenceTier: String?
+    var sampleStateMachines: [FirmwareStateMachineFinding]?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareStateMachineFinding: Equatable, Codable, Sendable, Identifiable {
+    var functionAddress: String?
+    var functionName: String?
+    var estimatedStates: Int?
+    var estimatedTransitions: Int?
+    var analysisQuality: String?
+    var uncertainty: String?
+    var evidence: [String]?
+
+    var id: String { (functionAddress ?? "") + "|" + (functionName ?? "") }
+}
+
+struct FirmwareInputBehaviorDiffSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var tool: String?
+    var summary: FirmwareFunctionDiffCounts?
+    var samplePairs: [FirmwareInputBehaviorDiffPair]?
+    var stateMachineDiff: FirmwareStateMachineDiffBrief?
+    var evidenceTier: String?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareInputBehaviorDiffPair: Equatable, Codable, Sendable, Identifiable {
+    var status: String?
+    var subject: FirmwareInputFunctionFinding?
+    var reference: FirmwareInputFunctionFinding?
+    var matchMethod: String?
+    var evidenceTier: String?
+    var notes: String?
+
+    var id: String {
+        (subject?.address ?? reference?.address ?? "") + "|" + (status ?? "")
+    }
+}
+
+struct FirmwareStateMachineDiffBrief: Equatable, Codable, Sendable {
+    var subjectStateMachines: Int?
+    var referenceStateMachines: Int?
+    var delta: Int?
+    var notes: String?
 }
 
 struct FirmwareCallGraphSummary: Equatable, Codable, Sendable {

@@ -44,6 +44,12 @@ from function_analysis import (
     summarize_for_poll as summarize_functions_for_poll,
 )
 from function_diff import compare_function_analyses, summarize_diff_for_poll
+from input_behavior import (
+    analyze_input_behavior,
+    diff_input_behavior,
+    summarize_input_behavior_for_poll,
+    summarize_input_diff_for_poll,
+)
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
 from job_auth import (
@@ -930,7 +936,41 @@ def process_job(job_id: str) -> None:
                 "Kein kompatibler Referenz-Funktionskatalog — FunctionDiff eingeschränkt/NICHT_VERGLEICHBAR."
             )
         result["functionDiff"] = poll_diff
+        # Compact matching block at top-level for newer clients (also nested in functionDiff).
+        if isinstance(poll_diff.get("functionMatching"), dict):
+            result["functionMatching"] = poll_diff["functionMatching"]
         notes.extend(func_diff_full.get("notes") or [])
+
+        # Phase 2.2C: Input Behavior + State Machine (static heuristics).
+        input_full = analyze_input_behavior(func_full, call_graph=cg_full)
+        result["inputBehaviorAnalysis"] = summarize_input_behavior_for_poll(input_full)
+        result["stateMachineAnalysis"] = (
+            result["inputBehaviorAnalysis"].get("stateMachineAnalysis") or {}
+        )
+        notes.extend(input_full.get("notes") or [])
+
+        ref_input = None
+        if isinstance(ref_func, dict) and ref_func.get("ok"):
+            ref_input = analyze_input_behavior(ref_func)
+        input_diff_full = diff_input_behavior(
+            input_full,
+            ref_input,
+            subject_fns=list(func_full.get("functions") or []),
+            reference_fns=list((ref_func or {}).get("functions") or []) if ref_func else [],
+        )
+        result["inputBehaviorDiff"] = summarize_input_diff_for_poll(input_diff_full)
+        notes.extend(input_diff_full.get("notes") or [])
+
+        # Persist full artifacts for authenticated download endpoints.
+        try:
+            ib_path = job_dir / "FIRM.input_behavior.json"
+            ib_path.write_text(json.dumps(input_full, ensure_ascii=False), encoding="utf-8")
+            fd_path = job_dir / "FIRM.function_diff.json"
+            fd_path.write_text(json.dumps(func_diff_full, ensure_ascii=False), encoding="utf-8")
+            ibd_path = job_dir / "FIRM.input_behavior_diff.json"
+            ibd_path.write_text(json.dumps(input_diff_full, ensure_ascii=False), encoding="utf-8")
+        except Exception as art_e:
+            notes.append(f"phase22cArtifactWrite={type(art_e).__name__}")
 
         # Reference metadata for UI (never auto-elevate trust).
         result["referenceMetadata"] = _reference_metadata_from_stock(stock)
@@ -947,13 +987,26 @@ def process_job(job_id: str) -> None:
         limitations.extend(result.get("functionAnalysis", {}).get("analysisLimitations") or [])
         limitations.extend(result.get("functionDiff", {}).get("analysisLimitations") or [])
         limitations.extend(result.get("callGraph", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("inputBehaviorAnalysis", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("inputBehaviorDiff", {}).get("analysisLimitations") or [])
         if stock.get("outcome") == "noReference":
             limitations.append("Keine eindeutig passende Referenzfirmware für Funktionsvergleich.")
-        result["analysisLimitations"] = limitations
+        # Deduplicate while preserving order
+        seen_lim: set[str] = set()
+        uniq_lim: list[str] = []
+        for line in limitations:
+            if line and line not in seen_lim:
+                seen_lim.add(line)
+                uniq_lim.append(line)
+        result["analysisLimitations"] = uniq_lim
         job["phase2"] = {
             "functionsPath": str(func_path) if func_path.is_file() else None,
             "callgraphPath": str(cg_path) if cg_path.is_file() else None,
             "functionDiffSummary": result["functionDiff"].get("summary"),
+            "functionDiffPath": str(job_dir / "FIRM.function_diff.json"),
+            "inputBehaviorPath": str(job_dir / "FIRM.input_behavior.json"),
+            "inputBehaviorDiffPath": str(job_dir / "FIRM.input_behavior_diff.json"),
+            "inputBehaviorSummary": result["inputBehaviorAnalysis"].get("summary"),
         }
     except Exception as e:
         notes.append(f"phase2=error:{type(e).__name__}:{e}")
@@ -1392,6 +1445,16 @@ def download_callgraph(job_id: str, auth: dict[str, Any] = Depends(require_auth)
 def download_function_diff(job_id: str, auth: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
     """Recompute or return full functionDiff (pairs may be large)."""
     job = _load_job_authorized(job_id, auth)
+    cached = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("functionDiffPath"),
+        fallback_name="FIRM.function_diff.json",
+    )
+    if cached and cached.is_file():
+        try:
+            return JSONResponse(json.loads(cached.read_text(encoding="utf-8")))
+        except Exception:
+            pass
     result = job.get("result") or {}
     func_path = _job_artifact_path(
         job,
@@ -1404,6 +1467,55 @@ def download_function_diff(job_id: str, auth: dict[str, Any] = Depends(require_a
     ref_func = _load_stock_function_analysis(stock if isinstance(stock, dict) else None)
     full = compare_function_analyses(func_full, ref_func)
     return JSONResponse(full)
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/input-behavior")
+def download_input_behavior(job_id: str, auth: dict[str, Any] = Depends(require_auth)) -> JSONResponse:
+    """Full inputBehaviorAnalysis artifact (not fully embedded in poll)."""
+    job = _load_job_authorized(job_id, auth)
+    cached = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("inputBehaviorPath"),
+        fallback_name="FIRM.input_behavior.json",
+    )
+    if cached and cached.is_file():
+        try:
+            return JSONResponse(json.loads(cached.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    func_path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("functionsPath"),
+        job.get("functionsPath"),
+        fallback_name="FIRM.functions.json",
+    )
+    func_full = load_function_analysis(func_path)
+    cg_path = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("callgraphPath"),
+        job.get("callgraphPath"),
+        fallback_name="FIRM.callgraph.json",
+    )
+    cg_full = load_call_graph(cg_path)
+    return JSONResponse(analyze_input_behavior(func_full, call_graph=cg_full))
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/input-behavior-diff")
+def download_input_behavior_diff(
+    job_id: str, auth: dict[str, Any] = Depends(require_auth)
+) -> JSONResponse:
+    job = _load_job_authorized(job_id, auth)
+    cached = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("inputBehaviorDiffPath"),
+        fallback_name="FIRM.input_behavior_diff.json",
+    )
+    if cached and cached.is_file():
+        try:
+            return JSONResponse(json.loads(cached.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    raise HTTPException(status_code=404, detail="input behavior diff not available")
 
 
 @APP.get("/v1/firmware/admin/reference-catalogs")

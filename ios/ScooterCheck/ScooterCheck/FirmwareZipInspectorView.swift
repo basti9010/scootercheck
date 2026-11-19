@@ -879,20 +879,32 @@ struct FirmwareZipInspectorView: View {
         let fa = deep.functionAnalysis
         let fd = deep.functionDiff
         let counts = fd?.summary
+        let matching = deep.functionMatching ?? fd?.functionMatching
+        let input = deep.inputBehaviorAnalysis
+        let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
+        let inputDiff = deep.inputBehaviorDiff
         DisclosureGroup("Erweiterte Codeanalyse") {
             Text("Strukturelle Funktionsunterschiede sind kein Nachweis für Tuning oder Manipulation.")
                 .font(.caption2)
                 .foregroundStyle(Theme.warn)
                 .fixedSize(horizontal: false, vertical: true)
 
+            // A) Funktionszuordnung
+            Text("Funktionszuordnung")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.top, 4)
             if let n = fa?.functionCount {
                 metaRow("Funktionen erkannt", "\(n)")
+            }
+            if let matched = matching?.summary?.matched ?? counts?.matched {
+                metaRow("Zugeordnet", "\(matched)")
             }
             if let identical = counts?.identical {
                 metaRow("Identisch", "\(identical)")
             }
             if let changed = counts?.structurallyChanged {
-                metaRow("Verändert", "\(changed)")
+                metaRow("Strukturell verändert", "\(changed)")
             }
             if let added = counts?.added {
                 metaRow("Hinzugefügt", "\(added)")
@@ -901,7 +913,19 @@ struct FirmwareZipInspectorView: View {
                 metaRow("Entfernt", "\(removed)")
             }
             if let uncomp = counts?.uncomparable {
-                metaRow("Nicht vergleichbar", "\(uncomp)")
+                metaRow("Nicht zuordenbar / unklar", "\(uncomp)")
+            }
+            if let amb = matching?.summary?.ambiguous ?? counts?.ambiguous {
+                metaRow("Mehrdeutige Zuordnungen", "\(amb)")
+            }
+            if let high = matching?.summary?.high ?? counts?.matchHigh {
+                metaRow("Matching HIGH", "\(high)")
+            }
+            if let med = matching?.summary?.medium ?? counts?.matchMedium {
+                metaRow("Matching MEDIUM", "\(med)")
+            }
+            if let low = matching?.summary?.low ?? counts?.matchLow {
+                metaRow("Matching LOW", "\(low)")
             }
 
             let refLabel = deep.referenceMetadata?.referenceLabel
@@ -916,15 +940,63 @@ struct FirmwareZipInspectorView: View {
             }
             metaRow("Analysequalität", deep.quality.summary)
 
+            // B) Eingabeverarbeitung
+            if input != nil || sm != nil {
+                Text("Eingabeverarbeitung")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.top, 8)
+                Text("Heuristische Codeeigenschaften — kein Nachweis realen Fahrzeugverhaltens.")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.warn)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let n = input?.summary?.inputRelevantCount {
+                    metaRow("Relevante Funktionen", "\(n)")
+                }
+                if let cats = input?.categories, !cats.isEmpty {
+                    let label = cats.keys.sorted().joined(separator: ", ")
+                    metaRow("Eingabekategorien", label)
+                }
+                if let tier = input?.evidenceTier {
+                    metaRow("Evidenzstufe", tier)
+                }
+                if let smCount = sm?.stateMachineCount {
+                    metaRow("Zustandsautomaten (geschätzt)", "\(smCount)")
+                }
+                if let states = sm?.totalEstimatedStates {
+                    metaRow("Zustände (geschätzt)", "\(states)")
+                }
+                if let trans = sm?.totalEstimatedTransitions {
+                    metaRow("Übergänge (geschätzt)", "\(trans)")
+                }
+                if let delta = inputDiff?.stateMachineDiff?.delta {
+                    metaRow("FSM-Anzahl Δ zur Referenz", "\(delta)")
+                }
+                if let idiff = inputDiff?.summary {
+                    if let c = idiff.structurallyChanged {
+                        metaRow("Input strukturell verändert", "\(c)")
+                    }
+                    if let a = idiff.added {
+                        metaRow("Input hinzugefügt", "\(a)")
+                    }
+                    if let r = idiff.removed {
+                        metaRow("Input entfernt", "\(r)")
+                    }
+                }
+            }
+
             let limits = (deep.analysisLimitations ?? [])
                 + (fa?.analysisLimitations ?? [])
                 + (fd?.analysisLimitations ?? [])
+                + (matching?.analysisLimitations ?? [])
+                + (input?.analysisLimitations ?? [])
+                + (sm?.analysisLimitations ?? [])
             if !limits.isEmpty {
                 Text("Technische Einschränkungen")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.top, 4)
-                ForEach(Array(Set(limits)).prefix(8), id: \.self) { line in
+                ForEach(Array(Set(limits)).prefix(10), id: \.self) { line in
                     Text("• \(line)")
                         .font(.caption2)
                         .foregroundStyle(Theme.textMuted)
@@ -933,11 +1005,8 @@ struct FirmwareZipInspectorView: View {
             }
 
             if let pairs = fd?.samplePairs, !pairs.isEmpty {
-                Text("Funktionsänderungen (Stichprobe)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.top, 6)
-                ForEach(pairs.prefix(12)) { pair in
+                DisclosureGroup("Funktionsänderungen (Stichprobe)") {
+                    ForEach(pairs.prefix(12)) { pair in
                     VStack(alignment: .leading, spacing: 2) {
                         let addr = pair.subject?.address ?? pair.reference?.address ?? "—"
                         let name = pair.subject?.name ?? pair.reference?.name ?? ""
@@ -947,6 +1016,11 @@ struct FirmwareZipInspectorView: View {
                         Text(pair.status?.label ?? "Unbekannt")
                             .font(.caption2)
                             .foregroundStyle(Theme.textSecondary)
+                        if let conf = pair.matchConfidence {
+                            Text("Matching: \(conf)\(pair.matchMethod.map { " · \($0)" } ?? "")")
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textMuted)
+                        }
                         if let notes = pair.notes, !notes.isEmpty {
                             Text(notes)
                                 .font(.caption2)
@@ -965,6 +1039,33 @@ struct FirmwareZipInspectorView: View {
                         }
                     }
                     .padding(.vertical, 2)
+                    }
+                }
+            }
+
+            if let samples = input?.sampleInputFunctions, !samples.isEmpty {
+                DisclosureGroup("Eingabefunktionen (Stichprobe)") {
+                    ForEach(samples.prefix(8)) { item in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(item.address ?? "—") \(item.name ?? "")")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Text((item.categories ?? []).joined(separator: ", "))
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textSecondary)
+                            if let tier = item.evidenceTier {
+                                Text("Evidenzstufe: \(tier)")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            ForEach((item.evidence ?? []).prefix(3), id: \.self) { ev in
+                                Text("• \(ev)")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
                 }
             }
         }

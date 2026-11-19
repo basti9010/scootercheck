@@ -57,6 +57,12 @@ enum FirmwareDeepAnalysisMerger {
         let functionDiff = firstNonNil(parts.map(\.functionDiff))
         let callGraph = firstNonNil(parts.map(\.callGraph))
         let referenceMetadata = firstNonNil(parts.map(\.referenceMetadata))
+        let functionMatching = firstNonNil(parts.map(\.functionMatching))
+            ?? firstNonNil(parts.map { $0.functionDiff?.functionMatching })
+        let inputBehaviorAnalysis = firstNonNil(parts.map(\.inputBehaviorAnalysis))
+        let stateMachineAnalysis = firstNonNil(parts.map(\.stateMachineAnalysis))
+            ?? inputBehaviorAnalysis?.stateMachineAnalysis
+        let inputBehaviorDiff = firstNonNil(parts.map(\.inputBehaviorDiff))
         let limitations = Array(Set(parts.compactMap(\.analysisLimitations).flatMap { $0 }))
 
         var result = FirmwareDeepAnalysisResult(
@@ -92,7 +98,11 @@ enum FirmwareDeepAnalysisMerger {
             functionDiff: functionDiff,
             callGraph: callGraph,
             referenceMetadata: referenceMetadata,
-            analysisLimitations: limitations.isEmpty ? nil : limitations
+            analysisLimitations: limitations.isEmpty ? nil : limitations,
+            functionMatching: functionMatching,
+            inputBehaviorAnalysis: inputBehaviorAnalysis,
+            stateMachineAnalysis: stateMachineAnalysis,
+            inputBehaviorDiff: inputBehaviorDiff
         )
         if result.classifiedFindings == nil {
             result.classifiedFindings = FirmwareEvidenceClassifier.classify(from: result)
@@ -107,6 +117,8 @@ enum FirmwareDeepAnalysisMerger {
         let phase2Hit = (result.functionAnalysis?.functionCount ?? 0) > 0
             || (result.functionDiff?.summary?.subjectFunctionCount ?? 0) > 0
             || (result.callGraph?.edgeCount ?? 0) > 0
+            || (result.inputBehaviorAnalysis?.summary?.inputRelevantCount ?? 0) > 0
+            || (result.functionMatching?.summary?.matched ?? 0) > 0
         let meaningful = !result.speedLimits.isEmpty
             || !result.modeTransitions.isEmpty
             || !result.comboSummaries.isEmpty
@@ -158,6 +170,10 @@ enum FirmwareDeepAnalysisMerger {
         if out.callGraph == nil { out.callGraph = base.callGraph }
         if out.referenceMetadata == nil { out.referenceMetadata = base.referenceMetadata }
         if out.analysisLimitations == nil { out.analysisLimitations = base.analysisLimitations }
+        if out.functionMatching == nil { out.functionMatching = base.functionMatching }
+        if out.inputBehaviorAnalysis == nil { out.inputBehaviorAnalysis = base.inputBehaviorAnalysis }
+        if out.stateMachineAnalysis == nil { out.stateMachineAnalysis = base.stateMachineAnalysis }
+        if out.inputBehaviorDiff == nil { out.inputBehaviorDiff = base.inputBehaviorDiff }
         if out.yaraMatches.isEmpty, !base.yaraMatches.isEmpty {
             out.yaraMatches = base.yaraMatches
         }

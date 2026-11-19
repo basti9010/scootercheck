@@ -29,6 +29,8 @@ DEPLOY_PY_FILES=(
   stock_diff.py
   function_analysis.py
   function_diff.py
+  function_matcher.py
+  input_behavior.py
   llm_verify.py
   job_auth.py
   reference_catalog.py
@@ -37,6 +39,8 @@ DEPLOY_PY_FILES=(
   test_plaintext_detect.py
   test_stock_diff.py
   test_function_diff.py
+  test_function_matcher.py
+  test_input_behavior.py
   test_job_auth.py
   test_firmware_identify.py
   test_auto_function_detection.py
