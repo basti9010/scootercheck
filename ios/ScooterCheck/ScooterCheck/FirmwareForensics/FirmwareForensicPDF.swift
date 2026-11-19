@@ -228,8 +228,9 @@ enum FirmwareForensicPDF {
                 }
             }
             if let completeness = deep.analysisCompleteness {
-                // ASCII token `completeness=` keeps PDFKit extraction stable across glyph encodings.
-                y = line(ctx, "Analysevollständigkeit: \(completeness) (completeness=\(completeness))", y: y, size: 8)
+                y = line(ctx, "Analysevollständigkeit: \(completeness)", y: y, size: 8)
+                // Standalone ASCII-only line — co-locating with umlauts breaks PDFKit/raw UTF-8 extraction on CI.
+                y = line(ctx, "completeness=\(completeness)", y: y, size: 7)
             }
             for lim in (deep.analysisLimitations ?? []).prefix(6) {
                 y = ensure(ctx, y: y, need: 16)
@@ -362,7 +363,8 @@ enum FirmwareForensicPDF {
                     y = line(ctx, "Kategorien: \(label)", y: y, size: 8)
                 }
                 if let completeness = deep.analysisCompleteness {
-                    y = line(ctx, "Analysevollständigkeit: \(completeness) (completeness=\(completeness))", y: y, size: 8)
+                    y = line(ctx, "Analysevollständigkeit: \(completeness)", y: y, size: 8)
+                    y = line(ctx, "completeness=\(completeness)", y: y, size: 7)
                 }
                 if let cov = deep.firmwareAnalysisCoverage {
                     y = line(
