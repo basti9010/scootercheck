@@ -876,201 +876,196 @@ struct FirmwareZipInspectorView: View {
 
     @ViewBuilder
     private func advancedCodeAnalysisSection(_ deep: FirmwareDeepAnalysisResult) -> some View {
-        let fa = deep.functionAnalysis
-        let fd = deep.functionDiff
-        let counts = fd?.summary
-        let matching = deep.functionMatching ?? fd?.functionMatching
-        let input = deep.inputBehaviorAnalysis
-        let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
-        let inputDiff = deep.inputBehaviorDiff
         DisclosureGroup("Erweiterte Codeanalyse") {
             Text("Strukturelle Funktionsunterschiede sind kein Nachweis für Tuning oder Manipulation.")
                 .font(.caption2)
                 .foregroundStyle(Theme.warn)
                 .fixedSize(horizontal: false, vertical: true)
+            functionMatchingSummaryBlock(deep)
+            inputBehaviorSummaryBlock(deep)
+            advancedAnalysisLimitationsBlock(deep)
+            functionDiffSampleBlock(deep.functionDiff?.samplePairs)
+            inputFunctionSampleBlock(deep.inputBehaviorAnalysis?.sampleInputFunctions)
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.top, 4)
+    }
 
-            // A) Funktionszuordnung
-            Text("Funktionszuordnung")
+    @ViewBuilder
+    private func functionMatchingSummaryBlock(_ deep: FirmwareDeepAnalysisResult) -> some View {
+        let fa = deep.functionAnalysis
+        let counts = deep.functionDiff?.summary
+        let matching = deep.functionMatching ?? deep.functionDiff?.functionMatching
+        Text("Funktionszuordnung")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Theme.textPrimary)
+            .padding(.top, 4)
+        if let n = fa?.functionCount { metaRow("Funktionen erkannt", "\(n)") }
+        if let matched = matching?.summary?.matched ?? counts?.matched {
+            metaRow("Zugeordnet", "\(matched)")
+        }
+        if let identical = counts?.identical { metaRow("Identisch", "\(identical)") }
+        if let changed = counts?.structurallyChanged { metaRow("Strukturell verändert", "\(changed)") }
+        if let added = counts?.added { metaRow("Hinzugefügt", "\(added)") }
+        if let removed = counts?.removed { metaRow("Entfernt", "\(removed)") }
+        if let uncomp = counts?.uncomparable { metaRow("Nicht zuordenbar / unklar", "\(uncomp)") }
+        if let amb = matching?.summary?.ambiguous ?? counts?.ambiguous {
+            metaRow("Mehrdeutige Zuordnungen", "\(amb)")
+        }
+        if let high = matching?.summary?.high ?? counts?.matchHigh { metaRow("Matching HIGH", "\(high)") }
+        if let med = matching?.summary?.medium ?? counts?.matchMedium { metaRow("Matching MEDIUM", "\(med)") }
+        if let low = matching?.summary?.low ?? counts?.matchLow { metaRow("Matching LOW", "\(low)") }
+        metaRow(
+            "Referenzfirmware",
+            deep.referenceMetadata?.referenceLabel ?? deep.stockDiff?.referenceLabel ?? "—"
+        )
+        if let trust = deep.referenceMetadata?.referenceTrust ?? deep.stockDiff?.referenceTrust {
+            metaRow("Referenz-Vertrauen", trust)
+        }
+        if let proc = fa?.processor { metaRow("Architektur", proc) }
+        metaRow("Analysequalität", deep.quality.summary)
+    }
+
+    @ViewBuilder
+    private func inputBehaviorSummaryBlock(_ deep: FirmwareDeepAnalysisResult) -> some View {
+        let input = deep.inputBehaviorAnalysis
+        let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
+        let inputDiff = deep.inputBehaviorDiff
+        if input != nil || sm != nil {
+            Text("Eingabeverarbeitung")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
-                .padding(.top, 4)
-            if let n = fa?.functionCount {
-                metaRow("Funktionen erkannt", "\(n)")
+                .padding(.top, 8)
+            Text("Heuristische Codeeigenschaften — kein Nachweis realen Fahrzeugverhaltens.")
+                .font(.caption2)
+                .foregroundStyle(Theme.warn)
+                .fixedSize(horizontal: false, vertical: true)
+            if let n = input?.summary?.inputRelevantCount {
+                metaRow("Relevante Funktionen", "\(n)")
             }
-            if let matched = matching?.summary?.matched ?? counts?.matched {
-                metaRow("Zugeordnet", "\(matched)")
+            if let cats = input?.categories, !cats.isEmpty {
+                metaRow("Eingabekategorien", cats.keys.sorted().joined(separator: ", "))
             }
-            if let identical = counts?.identical {
-                metaRow("Identisch", "\(identical)")
+            if let tier = input?.evidenceTier { metaRow("Evidenzstufe", tier) }
+            if let smCount = sm?.stateMachineCount {
+                metaRow("Zustandsautomaten (geschätzt)", "\(smCount)")
             }
-            if let changed = counts?.structurallyChanged {
-                metaRow("Strukturell verändert", "\(changed)")
+            if let states = sm?.totalEstimatedStates { metaRow("Zustände (geschätzt)", "\(states)") }
+            if let trans = sm?.totalEstimatedTransitions {
+                metaRow("Übergänge (geschätzt)", "\(trans)")
             }
-            if let added = counts?.added {
-                metaRow("Hinzugefügt", "\(added)")
+            if let delta = inputDiff?.stateMachineDiff?.delta {
+                metaRow("FSM-Anzahl Δ zur Referenz", "\(delta)")
             }
-            if let removed = counts?.removed {
-                metaRow("Entfernt", "\(removed)")
+            if let c = inputDiff?.summary?.structurallyChanged {
+                metaRow("Input strukturell verändert", "\(c)")
             }
-            if let uncomp = counts?.uncomparable {
-                metaRow("Nicht zuordenbar / unklar", "\(uncomp)")
-            }
-            if let amb = matching?.summary?.ambiguous ?? counts?.ambiguous {
-                metaRow("Mehrdeutige Zuordnungen", "\(amb)")
-            }
-            if let high = matching?.summary?.high ?? counts?.matchHigh {
-                metaRow("Matching HIGH", "\(high)")
-            }
-            if let med = matching?.summary?.medium ?? counts?.matchMedium {
-                metaRow("Matching MEDIUM", "\(med)")
-            }
-            if let low = matching?.summary?.low ?? counts?.matchLow {
-                metaRow("Matching LOW", "\(low)")
-            }
+            if let a = inputDiff?.summary?.added { metaRow("Input hinzugefügt", "\(a)") }
+            if let r = inputDiff?.summary?.removed { metaRow("Input entfernt", "\(r)") }
+        }
+    }
 
-            let refLabel = deep.referenceMetadata?.referenceLabel
-                ?? deep.stockDiff?.referenceLabel
-                ?? "—"
-            metaRow("Referenzfirmware", refLabel)
-            if let trust = deep.referenceMetadata?.referenceTrust ?? deep.stockDiff?.referenceTrust {
-                metaRow("Referenz-Vertrauen", trust)
-            }
-            if let proc = fa?.processor {
-                metaRow("Architektur", proc)
-            }
-            metaRow("Analysequalität", deep.quality.summary)
-
-            // B) Eingabeverarbeitung
-            if input != nil || sm != nil {
-                Text("Eingabeverarbeitung")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.top, 8)
-                Text("Heuristische Codeeigenschaften — kein Nachweis realen Fahrzeugverhaltens.")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.warn)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let n = input?.summary?.inputRelevantCount {
-                    metaRow("Relevante Funktionen", "\(n)")
-                }
-                if let cats = input?.categories, !cats.isEmpty {
-                    let label = cats.keys.sorted().joined(separator: ", ")
-                    metaRow("Eingabekategorien", label)
-                }
-                if let tier = input?.evidenceTier {
-                    metaRow("Evidenzstufe", tier)
-                }
-                if let smCount = sm?.stateMachineCount {
-                    metaRow("Zustandsautomaten (geschätzt)", "\(smCount)")
-                }
-                if let states = sm?.totalEstimatedStates {
-                    metaRow("Zustände (geschätzt)", "\(states)")
-                }
-                if let trans = sm?.totalEstimatedTransitions {
-                    metaRow("Übergänge (geschätzt)", "\(trans)")
-                }
-                if let delta = inputDiff?.stateMachineDiff?.delta {
-                    metaRow("FSM-Anzahl Δ zur Referenz", "\(delta)")
-                }
-                if let idiff = inputDiff?.summary {
-                    if let c = idiff.structurallyChanged {
-                        metaRow("Input strukturell verändert", "\(c)")
-                    }
-                    if let a = idiff.added {
-                        metaRow("Input hinzugefügt", "\(a)")
-                    }
-                    if let r = idiff.removed {
-                        metaRow("Input entfernt", "\(r)")
-                    }
-                }
-            }
-
-            let limits = (deep.analysisLimitations ?? [])
-                + (fa?.analysisLimitations ?? [])
-                + (fd?.analysisLimitations ?? [])
+    @ViewBuilder
+    private func advancedAnalysisLimitationsBlock(_ deep: FirmwareDeepAnalysisResult) -> some View {
+        let matching = deep.functionMatching ?? deep.functionDiff?.functionMatching
+        let input = deep.inputBehaviorAnalysis
+        let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
+        let limits = Array(Set(
+            (deep.analysisLimitations ?? [])
+                + (deep.functionAnalysis?.analysisLimitations ?? [])
+                + (deep.functionDiff?.analysisLimitations ?? [])
                 + (matching?.analysisLimitations ?? [])
                 + (input?.analysisLimitations ?? [])
                 + (sm?.analysisLimitations ?? [])
-            if !limits.isEmpty {
-                Text("Technische Einschränkungen")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .padding(.top, 4)
-                ForEach(Array(Set(limits)).prefix(10), id: \.self) { line in
-                    Text("• \(line)")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+        )).prefix(10)
+        if !limits.isEmpty {
+            Text("Technische Einschränkungen")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.top, 4)
+            ForEach(Array(limits), id: \.self) { line in
+                Text("• \(line)")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func functionDiffSampleBlock(_ pairs: [FirmwareFunctionDiffPair]?) -> some View {
+        if let pairs, !pairs.isEmpty {
+            DisclosureGroup("Funktionsänderungen (Stichprobe)") {
+                ForEach(pairs.prefix(12)) { pair in
+                    functionDiffPairRow(pair)
                 }
             }
+        }
+    }
 
-            if let pairs = fd?.samplePairs, !pairs.isEmpty {
-                DisclosureGroup("Funktionsänderungen (Stichprobe)") {
-                    ForEach(pairs.prefix(12)) { pair in
+    @ViewBuilder
+    private func functionDiffPairRow(_ pair: FirmwareFunctionDiffPair) -> some View {
+        let addr = pair.subject?.address ?? pair.reference?.address ?? "—"
+        let name = pair.subject?.name ?? pair.reference?.name ?? ""
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(addr) \(name)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text(pair.status?.label ?? "Unbekannt")
+                .font(.caption2)
+                .foregroundStyle(Theme.textSecondary)
+            if let conf = pair.matchConfidence {
+                Text("Matching: \(conf)\(pair.matchMethod.map { " · \($0)" } ?? "")")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            if let notes = pair.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let tier = pair.evidenceTier {
+                Text("Evidenzstufe: \(tier)")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+            if let diffs = pair.differences, !diffs.isEmpty {
+                Text("Struktur: \(diffs.keys.sorted().joined(separator: ", "))")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.textMuted)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func inputFunctionSampleBlock(_ samples: [FirmwareInputFunctionFinding]?) -> some View {
+        if let samples, !samples.isEmpty {
+            DisclosureGroup("Eingabefunktionen (Stichprobe)") {
+                ForEach(samples.prefix(8)) { item in
                     VStack(alignment: .leading, spacing: 2) {
-                        let addr = pair.subject?.address ?? pair.reference?.address ?? "—"
-                        let name = pair.subject?.name ?? pair.reference?.name ?? ""
-                        Text("\(addr) \(name)")
+                        Text("\(item.address ?? "—") \(item.name ?? "")")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Theme.textPrimary)
-                        Text(pair.status?.label ?? "Unbekannt")
+                        Text((item.categories ?? []).joined(separator: ", "))
                             .font(.caption2)
                             .foregroundStyle(Theme.textSecondary)
-                        if let conf = pair.matchConfidence {
-                            Text("Matching: \(conf)\(pair.matchMethod.map { " · \($0)" } ?? "")")
-                                .font(.caption2)
-                                .foregroundStyle(Theme.textMuted)
-                        }
-                        if let notes = pair.notes, !notes.isEmpty {
-                            Text(notes)
-                                .font(.caption2)
-                                .foregroundStyle(Theme.textMuted)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if let tier = pair.evidenceTier {
+                        if let tier = item.evidenceTier {
                             Text("Evidenzstufe: \(tier)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
                         }
-                        if let diffs = pair.differences, !diffs.isEmpty {
-                            Text("Struktur: \(diffs.keys.sorted().joined(separator: ", "))")
+                        ForEach((item.evidence ?? []).prefix(3), id: \.self) { ev in
+                            Text("• \(ev)")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textMuted)
                         }
                     }
                     .padding(.vertical, 2)
-                    }
-                }
-            }
-
-            if let samples = input?.sampleInputFunctions, !samples.isEmpty {
-                DisclosureGroup("Eingabefunktionen (Stichprobe)") {
-                    ForEach(samples.prefix(8)) { item in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(item.address ?? "—") \(item.name ?? "")")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(Theme.textPrimary)
-                            Text((item.categories ?? []).joined(separator: ", "))
-                                .font(.caption2)
-                                .foregroundStyle(Theme.textSecondary)
-                            if let tier = item.evidenceTier {
-                                Text("Evidenzstufe: \(tier)")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.textMuted)
-                            }
-                            ForEach((item.evidence ?? []).prefix(3), id: \.self) { ev in
-                                Text("• \(ev)")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.textMuted)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
                 }
             }
         }
-        .foregroundStyle(Theme.accent)
-        .padding(.top, 4)
     }
 
     private func makeSyntheticReading(from ctx: FirmwareVehicleContext?) -> IntegrityReading? {
