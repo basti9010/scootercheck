@@ -1229,6 +1229,102 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(af.sampleInputHandlers?.first?.weakCandidate, true)
     }
 
+    func testPhase232ActivationForensicsResultLimitsDecode() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-19T14:00:00Z",
+          "sources": ["serverDecompile"],
+          "subjectSHA256": "abc",
+          "models": [],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "t"},
+          "yaraMatches": [],
+          "r2StringsSample": [],
+          "activationForensics": {
+            "ok": true,
+            "phase": "2.3.2",
+            "summary": {"functionsExamined": 181, "inputHandlerCount": 21},
+            "resultLimits": {
+              "handlers": {
+                "totalFunctionsAnalyzed": 181,
+                "totalCandidatesDetected": 21,
+                "returnedCandidates": 21,
+                "omittedCandidates": 0,
+                "resultTruncated": false,
+                "configuredLimit": 100,
+                "analysisComplete": true
+              },
+              "conditionalLogic": {
+                "totalFunctionsAnalyzed": 181,
+                "totalCandidatesDetected": 104,
+                "returnedCandidates": 80,
+                "omittedCandidates": 24,
+                "resultTruncated": true,
+                "truncationReason": "MAX_CONDITIONAL",
+                "configuredLimit": 80,
+                "analysisComplete": true
+              },
+              "evidenceGraph": {
+                "totalFunctionsAnalyzed": 21,
+                "totalCandidatesDetected": 58,
+                "returnedCandidates": 58,
+                "omittedCandidates": 0,
+                "resultTruncated": false,
+                "configuredLimit": 600,
+                "analysisComplete": true,
+                "totalGraphNodes": 39,
+                "totalGraphEdges": 19,
+                "returnedGraphNodes": 39,
+                "returnedGraphEdges": 19
+              }
+            },
+            "semanticDataFlow": {
+              "ok": true,
+              "functionsAnalyzed": 181,
+              "exportedFunctions": 120,
+              "derivedFunctions": 45,
+              "partialFunctions": 7,
+              "unavailableFunctions": 9,
+              "dataflowCoveragePercent": 66.3,
+              "provenanceCounts": {
+                "GHIDRA_EXPORTED": 120,
+                "MNEMONIC_DERIVED": 45,
+                "PARTIAL": 7,
+                "NOT_AVAILABLE": 9
+              },
+              "qualityOk": 173,
+              "qualityPartial": 7,
+              "qualityMissing": 1,
+              "source": "dataflow_export"
+            },
+            "evidenceTier": "INDICATIVE",
+            "analysisLimitations": ["kein Nachweis realen Fahrzeugverhaltens"]
+          }
+        }
+        """.data(using: .utf8)!
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .iso8601
+        let deep = try dec.decode(FirmwareDeepAnalysisResult.self, from: json)
+        let af = try XCTUnwrap(deep.activationForensics)
+        XCTAssertEqual(af.phase, "2.3.2")
+        let cond = try XCTUnwrap(af.resultLimits?.conditionalLogic)
+        XCTAssertEqual(cond.resultTruncated, true)
+        XCTAssertEqual(cond.omittedCandidates, 24)
+        XCTAssertEqual(cond.truncationReason, "MAX_CONDITIONAL")
+        XCTAssertEqual(af.resultLimits?.handlers?.resultTruncated, false)
+        XCTAssertEqual(af.resultLimits?.evidenceGraph?.totalGraphNodes, 39)
+        XCTAssertEqual(af.semanticDataFlow?.dataflowCoveragePercent, 66.3)
+        XCTAssertEqual(af.semanticDataFlow?.exportedFunctions, 120)
+        XCTAssertEqual(af.semanticDataFlow?.provenanceCounts?["GHIDRA_EXPORTED"], 120)
+        XCTAssertEqual(af.semanticDataFlow?.partialFunctions, 7)
+    }
+
     func testPhase22H2KeychainSaveResultContract() {
         // saveToken returns Bool so AuthSessionStore can avoid wiping UserDefaults on failure.
         let ok = AuthKeychainStore.saveToken("unit-test-token-not-a-real-jwt")

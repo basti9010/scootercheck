@@ -1,0 +1,110 @@
+Picked up _JAVA_OPTIONS: -Xmx2500m
+Picked up _JAVA_OPTIONS: -Xmx2500m
+Picked up _JAVA_OPTIONS: -Xmx2500m
+Picked up _JAVA_OPTIONS: -Xmx2500m
+openjdk version "25.0.5.0.3" 2026-10-24
+OpenJDK Runtime Environment (build 25.0.5.0.3+1-3-26.04.1-Ubuntu)
+OpenJDK 64-Bit Server VM (build 25.0.5.0.3+1-3-26.04.1-Ubuntu, mixed mode)
+INFO  Using log config file: jar:file:/opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /root/.config/ghidra/ghidra_12.2_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /root/.config/ghidra/ghidra_12.2_PUBLIC/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1612 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Loaded 120 trusted CA certificate(s) from /etc/ssl/certs/ca-certificates.crt (UnixSystemTrustKeyStoreUtil)  
+INFO  Loaded 120 trusted CA certificates from the OS trust store. (DefaultTrustManagerFactory)  
+INFO  Loaded 120 trusted CA certificates from the Java default trust store. (DefaultTrustManagerFactory)  
+INFO  Headless startup complete (5329 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 224 extension points (115 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/Swift/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/8051/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /tmp/phase232-ghidra-71245/scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: /tmp/phase232-ghidra-71245/proj/g3_run1/ScooterCheckG3R1 (HeadlessAnalyzer)  
+INFO  Creating project: /tmp/phase232-ghidra-71245/proj/g3_run1/ScooterCheckG3R1 (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: /tmp/phase232-ghidra-71245/proj/g3_run1/ScooterCheckG3R1 (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///tmp/phase232-ghidra-71245/in/g3_vcu_1.5.13.bin (HeadlessAnalyzer)  
+INFO  Successfully applied "-loader-baseAddr" to "Base Address" (old: "null", new: "0x08000000") (ProgramLoader)  
+INFO  Using Loader: Raw Binary (ProgramLoader)  
+INFO  Using Language/Compiler: ARM:LE:32:Cortex:default (ProgramLoader)  
+INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib/x86_64-linux-gnu/jni, /usr/lib/x86_64-linux-gnu, /usr/lib/jni] (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: SeedCortexMEntryPoints.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /tmp/phase232-ghidra-71245/scripts/SeedCortexMEntryPoints.java (HeadlessAnalyzer)  
+INFO  SeedCortexMEntryPoints.java> SeedCortexMEntryPoints: base=08000000 created=27 fromCalls=16 fromLiterals=2 skipped=38 spOk=true resetOk=true notes=block@08000000:ivt-ok,imageSize=56820:full,sp=0x20006e00:ok,skipWeakIvt@16,skipWeakIvt@17,skipWeakIvt@18,skipWeakIvt@19,skipWeakIvt@20,skipWeakIvt@21,skipWeakIvt@22,skipWeakIvt@23,skipWeakIvt@24,skipWeakIvt@25,skipWeakIvt@26,skipWeakIvt@27,skipWeakIvt@28,skipWeakIvt@29,skipWeakIvt@30,skipWeakIvt@31,skipWeakIvt@32,skipWeakIvt@33,skipWeakIvt@34,skipWeakIvt@35,skipWeakIvt@36,skipWeakIvt@37,skipWeakIvt@38,skipWeakIvt@39,skipWeakIvt@40,skipWeakIvt@41,skipWeakIvt@42,skipWeakIvt@43,skipWeakIvt@44,skipWeakIvt@45,skipWeakIvt@46,skipWeakIvt@47,literalThumb@0800cfe8,literalThumb@0800b9dc,literalScan=2 (GhidraScript)  
+INFO  ANALYZING all memory and code: file:///tmp/phase232-ghidra-71245/in/g3_vcu_1.5.13.bin (HeadlessAnalyzer)  
+INFO  Packed database cache: /var/tmp/root-ghidra/packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
+INFO  No functions detected that make variadic function calls with format strings containing format specifiers (FormatStringAnalyzer)  
+INFO  -----------------------------------------------------
+    ARM Constant Reference Analyzer            1.306 secs
+    ARM Symbol                                 0.002 secs
+    ASCII Strings                              0.356 secs
+    Apply Data Archives                        0.791 secs
+    Call Convention ID                         0.010 secs
+    Call-Fixup Installer                       0.007 secs
+    Create Address Tables                      0.052 secs
+    Create Function                            0.133 secs
+    Data Reference                             0.001 secs
+    Decompiler Switch Analysis                 2.820 secs
+    Demangler GNU                              0.026 secs
+    Disassemble                                0.743 secs
+    Disassemble Entry Points                   0.003 secs
+    Embedded Media                             0.011 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.023 secs
+    Function Start Pre Search                  0.018 secs
+    Function Start Search                      0.163 secs
+    Function Start Search After Code           0.180 secs
+    Function Start Search After Data           0.005 secs
+    Function Start Search delayed - One Time   0.035 secs
+    Non-Returning Functions - Discovered       0.069 secs
+    Reference                                  0.045 secs
+    Shared Return Calls                        0.038 secs
+    Source Language Support                    0.004 secs
+    Stack                                      0.650 secs
+    Subroutine References                      0.061 secs
+    Variadic Function Signature Override       0.039 secs
+-----------------------------------------------------
+     Total Time   7 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///tmp/phase232-ghidra-71245/in/g3_vcu_1.5.13.bin (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: ExportFunctionAnalysis.java '/tmp/phase232-ghidra-71245/out/g3_run1/FIRM.functions.json'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /tmp/phase232-ghidra-71245/scripts/ExportFunctionAnalysis.java (HeadlessAnalyzer)  
+INFO  ExportFunctionAnalysis.java> ExportFunctionAnalysis: 220 functions -> /tmp/phase232-ghidra-71245/out/g3_run1/FIRM.functions.json (GhidraScript)  
+INFO  REPORT: Execute script: ExportCallGraph.java '/tmp/phase232-ghidra-71245/out/g3_run1/FIRM.callgraph.json'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /tmp/phase232-ghidra-71245/scripts/ExportCallGraph.java (HeadlessAnalyzer)  
+INFO  ExportCallGraph.java> ExportCallGraph: 2994 edges (direct=1022 internal=1317 unresolved=0) -> /tmp/phase232-ghidra-71245/out/g3_run1/FIRM.callgraph.json (GhidraScript)  
+INFO  REPORT: Execute script: ExportDataFlowSummary.java '/tmp/phase232-ghidra-71245/out/g3_run1/FIRM.dataflow.json'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /tmp/phase232-ghidra-71245/scripts/ExportDataFlowSummary.java (HeadlessAnalyzer)  
+INFO  ExportDataFlowSummary.java> ExportDataFlowSummary: 220 functions -> /tmp/phase232-ghidra-71245/out/g3_run1/FIRM.dataflow.json (GhidraScript)  
+INFO  ANALYZING changes made by post scripts: file:///tmp/phase232-ghidra-71245/in/g3_vcu_1.5.13.bin (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///tmp/phase232-ghidra-71245/in/g3_vcu_1.5.13.bin (HeadlessAnalyzer)  
+INFO  /g3_vcu_1.5.13.bin: file created (root) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /g3_vcu_1.5.13.bin (ScooterCheckG3R1:/g3_vcu_1.5.13.bin) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  

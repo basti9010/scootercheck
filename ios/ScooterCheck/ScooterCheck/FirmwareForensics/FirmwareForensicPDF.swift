@@ -455,7 +455,8 @@ enum FirmwareForensicPDF {
                     || af.conditionalLogicQuality != nil
                     || af.semanticDataFlow != nil
                     || af.evidenceGraphQuality != nil
-                    || af.inputDetectionQuality != nil {
+                    || af.inputDetectionQuality != nil
+                    || af.resultLimits != nil {
                     y = gap(y)
                     y = line(
                         ctx,
@@ -494,12 +495,34 @@ enum FirmwareForensicPDF {
                         }
                     }
                     if let sdf = af.semanticDataFlow, sdf.ok != false {
-                        y = line(
-                            ctx,
-                            "Datenfluss: fn=\(sdf.functionsAnalyzed ?? 0) reads=\(sdf.withMemoryReads ?? 0) writes=\(sdf.withMemoryWrites ?? 0) branch=\(sdf.withConditionals ?? 0) calls=\(sdf.withCalls ?? 0) ok=\(sdf.qualityOk ?? 0) partial=\(sdf.qualityPartial ?? 0) missing=\(sdf.qualityMissing ?? 0) src=\(sdf.source ?? "—")",
-                            y: y,
-                            size: 7
-                        )
+                        var sdfLine = "Datenfluss: fn=\(sdf.functionsAnalyzed ?? 0) reads=\(sdf.withMemoryReads ?? 0) writes=\(sdf.withMemoryWrites ?? 0) branch=\(sdf.withConditionals ?? 0) calls=\(sdf.withCalls ?? 0) ok=\(sdf.qualityOk ?? 0) partial=\(sdf.qualityPartial ?? 0) missing=\(sdf.qualityMissing ?? 0) src=\(sdf.source ?? "—")"
+                        if let pct = sdf.dataflowCoveragePercent {
+                            sdfLine += String(format: " coverage=%.1f%%", pct)
+                        }
+                        if let exp = sdf.exportedFunctions {
+                            sdfLine += " exported=\(exp)"
+                        }
+                        if let drv = sdf.derivedFunctions {
+                            sdfLine += " derived=\(drv)"
+                        }
+                        y = line(ctx, sdfLine, y: y, size: 7)
+                    }
+                    if let limits = af.resultLimits {
+                        for (label, bucket) in [
+                            ("Handler", limits.handlers),
+                            ("Bedingte Logik", limits.conditionalLogic),
+                            ("Evidence-Graph", limits.evidenceGraph),
+                        ] {
+                            guard let bucket, bucket.resultTruncated == true else { continue }
+                            var limLine = "Ergebnis begrenzt (\(label)): omitted=\(bucket.omittedCandidates ?? 0)"
+                            if let reason = bucket.truncationReason { limLine += " reason=\(reason)" }
+                            if let cfg = bucket.configuredLimit { limLine += " limit=\(cfg)" }
+                            if label == "Evidence-Graph",
+                               let n = bucket.totalGraphNodes, let e = bucket.totalGraphEdges {
+                                limLine += " graphNodes=\(n) graphEdges=\(e)"
+                            }
+                            y = line(ctx, limLine, y: y, size: 7)
+                        }
                     }
                     if let gq = af.evidenceGraphQuality {
                         y = line(

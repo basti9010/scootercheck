@@ -1124,11 +1124,34 @@ struct FirmwareActivationForensicsSummary: Equatable, Codable, Sendable {
     var activationEvidenceDistribution: FirmwareActivationEvidenceDistribution?
     var inputDetectionQuality: FirmwareActivationInputDetectionQuality?
     var semanticDataFlow: FirmwareActivationSemanticDataFlow?
+    /// Phase 2.3.2 — Transparenz bei Kürzung von Handler-, Logik- und Graph-Ergebnissen.
+    var resultLimits: FirmwareActivationResultLimits?
     var referenceComparison: FirmwareActivationReferenceComparison?
     var prioritization: FirmwareActivationPrioritization?
     var evidenceTier: String?
     var analysisLimitations: [String]?
     var notes: [String]?
+}
+
+struct FirmwareActivationResultLimits: Equatable, Codable, Sendable {
+    var handlers: FirmwareActivationResultLimitBucket?
+    var conditionalLogic: FirmwareActivationResultLimitBucket?
+    var evidenceGraph: FirmwareActivationResultLimitBucket?
+}
+
+struct FirmwareActivationResultLimitBucket: Equatable, Codable, Sendable {
+    var totalFunctionsAnalyzed: Int?
+    var totalCandidatesDetected: Int?
+    var returnedCandidates: Int?
+    var omittedCandidates: Int?
+    var resultTruncated: Bool?
+    var truncationReason: String?
+    var configuredLimit: Int?
+    var analysisComplete: Bool?
+    var totalGraphNodes: Int?
+    var totalGraphEdges: Int?
+    var returnedGraphNodes: Int?
+    var returnedGraphEdges: Int?
 }
 
 struct FirmwareActivationForensicsCounts: Equatable, Codable, Sendable {
@@ -1209,6 +1232,13 @@ struct FirmwareActivationSemanticDataFlow: Equatable, Codable, Sendable {
     var fromDataflowExport: Int?
     /// Anzahl nur abgeleiteter Funktionen (nicht Bool).
     var derivedOnly: Int?
+    /// Phase 2.3.2 — Anteil Funktionen mit Ghidra-Dataflow-Export (%).
+    var dataflowCoveragePercent: Double?
+    var exportedFunctions: Int?
+    var derivedFunctions: Int?
+    var partialFunctions: Int?
+    var unavailableFunctions: Int?
+    var provenanceCounts: [String: Int]?
     var source: String?
 }
 

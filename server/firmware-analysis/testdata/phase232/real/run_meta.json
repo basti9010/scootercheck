@@ -1,0 +1,61 @@
+{
+  "phase": "2.3.2",
+  "ghidraHome": "/opt/ghidra/ghidra_12.2_PUBLIC",
+  "ghidraVersion": "12.2",
+  "java": "25.0.5",
+  "processor": "ARM:LE:32:Cortex",
+  "analysisProfile": {
+    "analysisProfileVersion": "2.2G.1",
+    "analyzerId": "ghidra-export-function-analysis",
+    "analyzerCompat": "2",
+    "ghidraVersion": null,
+    "processorArchitecture": "ARM:LE:32:Cortex",
+    "requestedLoaderBase": "0x08000000",
+    "thumbMode": true,
+    "loader": "BinaryLoader",
+    "compilerSpec": "default",
+    "enabledPreScripts": [
+      "SeedCortexMEntryPoints.java"
+    ],
+    "enabledPostScripts": [
+      "ExportAllDecompiled.java",
+      "ExportSpeedXrefs.java",
+      "ExportLimitFunctions.java",
+      "ExportFunctionAnalysis.java",
+      "ExportCallGraph.java"
+    ],
+    "autoAnalysisOptions": {
+      "autoIdentifyFirmware": true,
+      "seedCortexMEntryPoints": true
+    },
+    "maximumFunctions": 2500,
+    "analysisTimeoutSec": 600,
+    "memoryLimit": "2g",
+    "fingerprintVersion": "2",
+    "callGraphSchemaVersion": 2,
+    "featuresVersion": 1,
+    "runtimeConfig": {
+      "ghidraVersion": null,
+      "analysisTimeoutSec": 600,
+      "memoryLimit": "2g"
+    },
+    "analysisProfileHash": "c0f507820a1457a1af98c2a66352db531f2f4ad1bcf72bc32c58e307e3f41de7"
+  },
+  "firmwares": {
+    "f3_vcu_1.5.8": {
+      "sha256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "functions": 181
+    },
+    "g3_vcu_1.5.13": {
+      "sha256": "1f1e05eb79ab0bebdd0c016345f9cd9c25364bc1e7e46162414fba1f2093b108",
+      "functions": 220
+    }
+  },
+  "reproducibility": {
+    "f3_dataflow_sha256": "038d7cf559f70f1119a0f15b5a4063f9f446f60e28c04f064d77733e13b3b076",
+    "f3_functions_sha256": "bda5aa50e65013081032690d30b2a29ef64043ac8a91d35533a97a3ce5ad6663",
+    "runs": 2,
+    "match": true
+  },
+  "note": "Community stock references \u2014 not OEM-verified. Isolated /tmp headless runs."
+}

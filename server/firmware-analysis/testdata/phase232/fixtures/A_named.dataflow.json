@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "schemaVersion": 1,
+  "processor": "ARM:LE:32:Cortex",
+  "functionCount": 3,
+  "functions": [
+    {
+      "address": "0x08001000",
+      "name": "btn_input_handler",
+      "parameterCount": 1,
+      "memoryReads": 2,
+      "memoryWrites": 2,
+      "compareOps": 1,
+      "conditionalBranches": 2,
+      "callCount": 0,
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001080",
+      "name": "gpio_exti_isr",
+      "parameterCount": 0,
+      "memoryReads": 1,
+      "memoryWrites": 1,
+      "compareOps": 1,
+      "conditionalBranches": 1,
+      "callCount": 0,
+      "quality": "ok"
+    }
+  ]
+}
