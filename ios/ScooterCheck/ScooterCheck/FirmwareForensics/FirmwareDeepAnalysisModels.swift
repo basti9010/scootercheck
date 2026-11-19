@@ -1218,6 +1218,21 @@ struct FirmwareActivationInputDetectionQuality: Equatable, Codable, Sendable {
     var note: String?
 }
 
+/// Phase 2.3.3 — Abdeckungs- und Vertrauensmetriken aus Ghidra-Dataflow-Export.
+struct FirmwareActivationDataflowQualityMetrics: Equatable, Codable, Sendable {
+    var totalFunctions: Int?
+    var dataflowExportCoverage: Double?
+    var parameterRecoveryCoverage: Double?
+    var memoryAccessCoverage: Double?
+    var dataReferenceCoverage: Double?
+    var unresolvedDataflowCount: Int?
+    var semanticConfidenceDistribution: [String: Int]?
+    var exportedOkCount: Int?
+    var parameterKnownCount: Int?
+    var memoryAccessCount: Int?
+    var dataReferenceCount: Int?
+}
+
 struct FirmwareActivationSemanticDataFlow: Equatable, Codable, Sendable {
     var ok: Bool?
     var functionsAnalyzed: Int?
@@ -1239,6 +1254,8 @@ struct FirmwareActivationSemanticDataFlow: Equatable, Codable, Sendable {
     var partialFunctions: Int?
     var unavailableFunctions: Int?
     var provenanceCounts: [String: Int]?
+    /// Phase 2.3.3 — nested unter semanticDataFlow (Poll-Summary).
+    var dataflowQualityMetrics: FirmwareActivationDataflowQualityMetrics?
     var source: String?
 }
 

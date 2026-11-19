@@ -52,6 +52,7 @@ from input_behavior import (
 )
 from activation_forensics import (
     run_activation_forensics,
+    slice_findings_for_page,
     summarize_activation_forensics_for_poll,
 )
 from analysis_profile import build_analysis_profile, summarize_profile_for_poll
@@ -1838,9 +1839,16 @@ def download_input_behavior_diff(
 
 @APP.get("/v1/firmware/jobs/{job_id}/activation-forensics")
 def download_activation_forensics(
-    job_id: str, auth: dict[str, Any] = Depends(require_auth)
+    job_id: str,
+    auth: dict[str, Any] = Depends(require_auth),
+    offset: int = 0,
+    limit: int | None = None,
 ) -> JSONResponse:
-    """Full Phase 2.3 activation-forensics artifact (JWT/job ownership enforced)."""
+    """Full Phase 2.3 activation-forensics artifact (JWT/job ownership enforced).
+
+    Optional query ``offset`` / ``limit`` slice ``inputHandlerFindings`` and
+    conditional ``findings`` in the JSON response; the on-disk artifact is unchanged.
+    """
     job = _load_job_authorized(job_id, auth)
     cached = _job_artifact_path(
         job,
@@ -1849,7 +1857,27 @@ def download_activation_forensics(
     )
     if cached and cached.is_file():
         try:
-            return JSONResponse(json.loads(cached.read_text(encoding="utf-8")))
+            payload = json.loads(cached.read_text(encoding="utf-8"))
+            if limit is not None:
+                page_lim = max(1, int(limit))
+                handlers, h_meta = slice_findings_for_page(
+                    payload.get("inputHandlerFindings"), offset=offset, limit=page_lim
+                )
+                cond = payload.get("conditionalLogicFindings") or {}
+                cond_findings, c_meta = slice_findings_for_page(
+                    cond.get("findings"), offset=offset, limit=page_lim
+                )
+                payload = {**payload}
+                payload["inputHandlerFindings"] = handlers
+                cond_out = dict(cond)
+                cond_out["findings"] = cond_findings
+                payload["conditionalLogicFindings"] = cond_out
+                payload["responsePagination"] = {
+                    "inputHandlers": h_meta,
+                    "conditionalLogic": c_meta,
+                    "note": "Disk artifact retains full lists; pagination applies to this response only.",
+                }
+            return JSONResponse(payload)
         except Exception:
             pass
     raise HTTPException(status_code=404, detail="activation forensics not available")

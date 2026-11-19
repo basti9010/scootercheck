@@ -1,0 +1,217 @@
+{
+  "ok": true,
+  "schemaVersion": 1,
+  "functionCount": 14,
+  "functions": [
+    {
+      "address": "0x8001000",
+      "name": "btn_input_handler",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001080",
+      "name": "gpio_exti_isr",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001100",
+      "name": "indicator_process",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001180",
+      "name": "hazard_lamp_update",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001200",
+      "name": "ble_gatt_on_write",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001280",
+      "name": "uart_rx_event",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001300",
+      "name": "event_queue_dispatch",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001380",
+      "name": "mode_state_set",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001400",
+      "name": "FUN_8001400",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001480",
+      "name": "FUN_8001480",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001500",
+      "name": "FUN_8001500",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001580",
+      "name": "process_input_frame",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001600",
+      "name": "feature_gate_check",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    },
+    {
+      "address": "0x8001680",
+      "name": "can_rx_decode",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "partial export slice"
+      ]
+    }
+  ]
+}

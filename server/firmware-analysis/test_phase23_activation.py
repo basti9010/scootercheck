@@ -51,7 +51,7 @@ class Phase23ActivationForensicsTests(unittest.TestCase):
 
     def test_engine_ok_and_limitations(self) -> None:
         self.assertTrue(self.full["ok"])
-        self.assertIn(self.full["phase"], {"2.3", "2.3.1", "2.3.2"})
+        self.assertIn(self.full["phase"], {"2.3", "2.3.1", "2.3.2", "2.3.3"})
         lim = " ".join(self.full.get("analysisLimitations") or [])
         self.assertIn("kein nachweis realen fahrzeugverhaltens", lim.lower())
         self.assertIn("keine rekonstruktion", lim.lower())

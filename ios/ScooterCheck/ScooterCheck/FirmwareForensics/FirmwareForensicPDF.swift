@@ -468,7 +468,13 @@ enum FirmwareForensicPDF {
                     if let dist = af.activationEvidenceDistribution {
                         y = line(
                             ctx,
-                            "Evidenzverteilung: STATIC=\(dist.staticConfirmedCount ?? 0) INDIC=\(dist.indicativeCount ?? 0) SPEC=\(dist.speculativeCount ?? 0) UNK=\(dist.unknownCount ?? 0) ambig=\(dist.ambiguousCount ?? 0) tier=\(dist.overallEvidenceTier ?? "—")",
+                            "Technisch bestätigt (STATIC_CONFIRMED)=\(dist.staticConfirmedCount ?? 0) — nur Codeeigenschaften, kein Fahrzeugnachweis",
+                            y: y,
+                            size: 7
+                        )
+                        y = line(
+                            ctx,
+                            "Indikative Hinweise=\(dist.indicativeCount ?? 0) · Spekulativ=\(dist.speculativeCount ?? 0) · Unbekannt=\(dist.unknownCount ?? 0) · mehrdeutig=\(dist.ambiguousCount ?? 0) · Stufe=\(dist.overallEvidenceTier ?? "—")",
                             y: y,
                             size: 7
                         )
@@ -505,7 +511,42 @@ enum FirmwareForensicPDF {
                         if let drv = sdf.derivedFunctions {
                             sdfLine += " derived=\(drv)"
                         }
+                        if let unav = sdf.unavailableFunctions, unav > 0 {
+                            sdfLine += " unavailable=\(unav)"
+                        }
                         y = line(ctx, sdfLine, y: y, size: 7)
+                        if let qm = sdf.dataflowQualityMetrics {
+                            var qmLine = "Dataflow-Qualität:"
+                            if let v = qm.dataflowExportCoverage {
+                                qmLine += String(format: " export=%.1f%%", v)
+                            }
+                            if let v = qm.parameterRecoveryCoverage {
+                                qmLine += String(format: " params=%.1f%%", v)
+                            }
+                            if let v = qm.memoryAccessCoverage {
+                                qmLine += String(format: " mem=%.1f%%", v)
+                            }
+                            if let v = qm.dataReferenceCoverage {
+                                qmLine += String(format: " refs=%.1f%%", v)
+                            }
+                            if let n = qm.unresolvedDataflowCount {
+                                qmLine += " unresolved=\(n)"
+                            }
+                            y = line(ctx, qmLine, y: y, size: 7)
+                            if let dist = qm.semanticConfidenceDistribution, !dist.isEmpty {
+                                let prov = dist.sorted { $0.key < $1.key }
+                                    .map { "\($0.key)=\($0.value)" }
+                                    .joined(separator: " ")
+                                y = line(ctx, "Provenance-Verteilung: \(prov)", y: y, size: 7)
+                            }
+                        }
+                    } else if af.semanticDataFlow != nil {
+                        y = line(
+                            ctx,
+                            "Datenflussanalyse: nicht ausgewertet oder nicht verfügbar.",
+                            y: y,
+                            size: 7
+                        )
                     }
                     if let limits = af.resultLimits {
                         for (label, bucket) in [
@@ -513,7 +554,11 @@ enum FirmwareForensicPDF {
                             ("Bedingte Logik", limits.conditionalLogic),
                             ("Evidence-Graph", limits.evidenceGraph),
                         ] {
-                            guard let bucket, bucket.resultTruncated == true else { continue }
+                            guard let bucket else { continue }
+                            if bucket.analysisComplete == false {
+                                y = line(ctx, "Ergebnisgrenzen (\(label)): Analyse unvollständig", y: y, size: 7)
+                            }
+                            guard bucket.resultTruncated == true else { continue }
                             var limLine = "Ergebnis begrenzt (\(label)): omitted=\(bucket.omittedCandidates ?? 0)"
                             if let reason = bucket.truncationReason { limLine += " reason=\(reason)" }
                             if let cfg = bucket.configuredLimit { limLine += " limit=\(cfg)" }

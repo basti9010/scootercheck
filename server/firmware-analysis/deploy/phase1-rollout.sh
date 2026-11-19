@@ -60,6 +60,9 @@ DEPLOY_PY_FILES=(
   test_phase231_semantic.py
   test_phase232_validation.py
   test_phase232_jwt_dataflow.py
+  test_phase233_quality.py
+  test_phase233_jwt_artifacts.py
+  test_phase233_ghidra_export_gt.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py
@@ -82,6 +85,7 @@ DEPLOY_PY_FILES=(
   docs/phase23-activation-forensics.md
   docs/phase231-semantic-validation.md
   docs/phase232-ghidra-validation.md
+  docs/phase233-quality.md
   .env.example
 )
 

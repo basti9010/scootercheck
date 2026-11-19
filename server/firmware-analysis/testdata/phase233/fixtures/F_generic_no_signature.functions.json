@@ -1,0 +1,1058 @@
+{
+  "ok": true,
+  "schemaVersion": 1,
+  "featuresVersion": 2,
+  "processor": "ARM:LE:32:Cortex",
+  "functionCount": 42,
+  "truncated": false,
+  "functions": [
+    {
+      "address": "0x8001000",
+      "name": "FUN_8001000",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [
+        "0x40021000"
+      ],
+      "strings": [
+        "button"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_00",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001080",
+      "name": "FUN_8001080",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [
+        "0x40021000"
+      ],
+      "strings": [
+        "gpio"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_01",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001100",
+      "name": "FUN_8001100",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001"
+      ],
+      "constants": [],
+      "strings": [
+        "indicator"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_02",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001180",
+      "name": "FUN_8001180",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [
+        "hazard"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_03",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001200",
+      "name": "FUN_8001200",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [],
+      "strings": [
+        "ble",
+        "gatt"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_04",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001280",
+      "name": "FUN_8001280",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [],
+      "strings": [
+        "uart",
+        "rx"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_05",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001300",
+      "name": "FUN_8001300",
+      "size": 64,
+      "basicBlocks": 2,
+      "cfgEdges": 4,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001"
+      ],
+      "constants": [],
+      "strings": [
+        "event",
+        "queue"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "cmp",
+        "beq",
+        "bne",
+        "str",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 2,
+      "fingerprint": "fp_fn_06",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001380",
+      "name": "FUN_8001380",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [
+        "state"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_07",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001400",
+      "name": "FUN_8001400",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [],
+      "strings": [
+        "state",
+        "mode"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_08",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001480",
+      "name": "FUN_8001480",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001"
+      ],
+      "constants": [],
+      "strings": [
+        "process_input"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_09",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001500",
+      "name": "FUN_8001500",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [
+        "msg_handler"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_11",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001580",
+      "name": "FUN_8001580",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [],
+      "strings": [
+        "input"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_13",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001600",
+      "name": "FUN_8001600",
+      "size": 64,
+      "basicBlocks": 2,
+      "cfgEdges": 4,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001"
+      ],
+      "constants": [],
+      "strings": [
+        "feature",
+        "gate"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "cmp",
+        "beq",
+        "bne",
+        "str",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 2,
+      "fingerprint": "fp_fn_14",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001680",
+      "name": "FUN_8001680",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [
+        "0x40021000"
+      ],
+      "strings": [
+        "can"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_15",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001700",
+      "name": "FUN_8001700",
+      "size": 64,
+      "basicBlocks": 2,
+      "cfgEdges": 4,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "cmp",
+        "beq",
+        "bne",
+        "str",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 2,
+      "fingerprint": "fp_fn_16",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001780",
+      "name": "FUN_8001780",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [
+        "0x40021000"
+      ],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_17",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001800",
+      "name": "FUN_8001800",
+      "size": 60,
+      "basicBlocks": 2,
+      "cfgEdges": 3,
+      "calls": [],
+      "calledBy": [
+        "0x800f000"
+      ],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "push",
+        "ldr",
+        "cmp",
+        "beq",
+        "str",
+        "pop",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_18",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex",
+      "parameterCount": 2
+    },
+    {
+      "address": "0x8001880",
+      "name": "FUN_8001880",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001"
+      ],
+      "constants": [],
+      "strings": [
+        "handler"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_19",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001900",
+      "name": "FUN_8001900",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001",
+        "0x800f002"
+      ],
+      "constants": [
+        "0x40021000"
+      ],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_20",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001980",
+      "name": "FUN_8001980",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_10",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001a00",
+      "name": "FUN_8001A00",
+      "size": 36,
+      "basicBlocks": 1,
+      "cfgEdges": 0,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ret"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_12",
+      "quality": "unsupported_arch",
+      "processor": "x86:LE:32:default"
+    },
+    {
+      "address": "0x8001a80",
+      "name": "FUN_8001A80",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_21",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001b00",
+      "name": "FUN_8001B00",
+      "size": 72,
+      "basicBlocks": 3,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "cmp",
+        "bgt",
+        "cmp",
+        "beq"
+      ],
+      "branchMnemonicCount": 5,
+      "fingerprint": "fp_fn_22",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001b80",
+      "name": "FUN_8001B80",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_23",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001c00",
+      "name": "FUN_8001C00",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_24",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001c80",
+      "name": "FUN_8001C80",
+      "size": 72,
+      "basicBlocks": 3,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "cmp",
+        "bgt",
+        "cmp",
+        "beq"
+      ],
+      "branchMnemonicCount": 5,
+      "fingerprint": "fp_fn_25",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001d00",
+      "name": "FUN_8001D00",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_26",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001d80",
+      "name": "FUN_8001D80",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_27",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001e00",
+      "name": "FUN_8001E00",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_28",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001e80",
+      "name": "FUN_8001E80",
+      "size": 72,
+      "basicBlocks": 3,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "cmp",
+        "bgt",
+        "cmp",
+        "beq"
+      ],
+      "branchMnemonicCount": 5,
+      "fingerprint": "fp_fn_29",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001f00",
+      "name": "FUN_8001F00",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_30",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8001f80",
+      "name": "FUN_8001F80",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_31",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002000",
+      "name": "FUN_8002000",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_32",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002080",
+      "name": "FUN_8002080",
+      "size": 72,
+      "basicBlocks": 3,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "cmp",
+        "bgt",
+        "cmp",
+        "beq"
+      ],
+      "branchMnemonicCount": 5,
+      "fingerprint": "fp_fn_33",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002100",
+      "name": "FUN_8002100",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_34",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002180",
+      "name": "FUN_8002180",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_35",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002200",
+      "name": "FUN_8002200",
+      "size": 72,
+      "basicBlocks": 3,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "cmp",
+        "blt",
+        "cmp",
+        "bgt",
+        "cmp",
+        "beq"
+      ],
+      "branchMnemonicCount": 5,
+      "fingerprint": "fp_fn_36",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002280",
+      "name": "FUN_8002280",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_37",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002300",
+      "name": "FUN_8002300",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "ldr",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_38",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002380",
+      "name": "FUN_8002380",
+      "size": 48,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "add",
+        "mul",
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_fn_39",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002400",
+      "name": "FUN_8002400",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [
+        "0x800f000",
+        "0x800f001"
+      ],
+      "constants": [],
+      "strings": [],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_40",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    },
+    {
+      "address": "0x8002480",
+      "name": "FUN_8002480",
+      "size": 52,
+      "basicBlocks": 1,
+      "cfgEdges": 2,
+      "calls": [],
+      "calledBy": [],
+      "constants": [],
+      "strings": [
+        "input"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_fn_41",
+      "quality": "ok",
+      "processor": "ARM:LE:32:Cortex"
+    }
+  ]
+}

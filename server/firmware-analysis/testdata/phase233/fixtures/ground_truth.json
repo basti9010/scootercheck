@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.3",
+  "disclaimer": "Kontrollierte Fixtures \u2014 keine realen Aktivierungsmechanismen.",
+  "addressShiftD": "0x1000",
+  "variants": {
+    "A_named": {
+      "file": "A_named.functions.json"
+    },
+    "B_generic": {
+      "file": "B_generic.functions.json"
+    },
+    "C_no_strings": {
+      "file": "C_no_strings.functions.json"
+    },
+    "D_shifted": {
+      "file": "D_shifted.functions.json"
+    },
+    "E_anon_meta": {
+      "file": "E_anon_meta.functions.json"
+    },
+    "F_generic_no_signature": {
+      "file": "F_generic_no_signature.functions.json"
+    },
+    "G_partial_dataflow": {
+      "file": "G_partial_dataflow.functions.json"
+    }
+  },
+  "cases": [
+    {
+      "id": "fn_00",
+      "logicalName": "btn_input_handler",
+      "addressA": "0x8001000",
+      "addressD": "0x8002000",
+      "expectDetect": true,
+      "category": "button_input"
+    },
+    {
+      "id": "fn_01",
+      "logicalName": "gpio_exti_isr",
+      "addressA": "0x8001080",
+      "addressD": "0x8002080",
+      "expectDetect": true,
+      "category": "gpio_input"
+    },
+    {
+      "id": "fn_02",
+      "logicalName": "indicator_process",
+      "addressA": "0x8001100",
+      "addressD": "0x8002100",
+      "expectDetect": true,
+      "category": "indicator_input"
+    },
+    {
+      "id": "fn_03",
+      "logicalName": "hazard_lamp_update",
+      "addressA": "0x8001180",
+      "addressD": "0x8002180",
+      "expectDetect": true,
+      "category": "hazard_indicator_input"
+    },
+    {
+      "id": "fn_04",
+      "logicalName": "ble_gatt_on_write",
+      "addressA": "0x8001200",
+      "addressD": "0x8002200",
+      "expectDetect": true,
+      "category": "ble_input"
+    },
+    {
+      "id": "fn_05",
+      "logicalName": "uart_rx_event",
+      "addressA": "0x8001280",
+      "addressD": "0x8002280",
+      "expectDetect": true,
+      "category": "uart_input"
+    },
+    {
+      "id": "fn_06",
+      "logicalName": "event_queue_dispatch",
+      "addressA": "0x8001300",
+      "addressD": "0x8002300",
+      "expectDetect": true,
+      "category": "event_queue"
+    },
+    {
+      "id": "fn_07",
+      "logicalName": "mode_state_set",
+      "addressA": "0x8001380",
+      "addressD": "0x8002380",
+      "expectDetect": true,
+      "category": "state_update"
+    },
+    {
+      "id": "fn_08",
+      "logicalName": null,
+      "addressA": "0x8001400",
+      "addressD": "0x8002400",
+      "expectDetect": true,
+      "category": "input_callback"
+    },
+    {
+      "id": "fn_09",
+      "logicalName": null,
+      "addressA": "0x8001480",
+      "addressD": "0x8002480",
+      "expectDetect": true,
+      "category": "input_callback"
+    },
+    {
+      "id": "fn_11",
+      "logicalName": null,
+      "addressA": "0x8001500",
+      "addressD": "0x8002500",
+      "expectDetect": true,
+      "category": "input_callback"
+    },
+    {
+      "id": "fn_13",
+      "logicalName": "process_input_frame",
+      "addressA": "0x8001580",
+      "addressD": "0x8002580",
+      "expectDetect": true,
+      "category": "input_callback"
+    },
+    {
+      "id": "fn_14",
+      "logicalName": "feature_gate_check",
+      "addressA": "0x8001600",
+      "addressD": "0x8002600",
+      "expectDetect": true,
+      "category": "conditional_feature_gate"
+    },
+    {
+      "id": "fn_15",
+      "logicalName": "can_rx_decode",
+      "addressA": "0x8001680",
+      "addressD": "0x8002680",
+      "expectDetect": true,
+      "category": "uart_input"
+    },
+    {
+      "id": "fn_16",
+      "logicalName": null,
+      "addressA": "0x8001700",
+      "addressD": "0x8002700",
+      "expectDetect": true,
+      "category": "event_queue"
+    },
+    {
+      "id": "fn_17",
+      "logicalName": "button_debounce",
+      "addressA": "0x8001780",
+      "addressD": "0x8002780",
+      "expectDetect": true,
+      "category": "button_input"
+    },
+    {
+      "id": "fn_18",
+      "logicalName": null,
+      "addressA": "0x8001800",
+      "addressD": "0x8002800",
+      "expectDetect": true,
+      "category": "input_callback"
+    },
+    {
+      "id": "fn_19",
+      "logicalName": null,
+      "addressA": "0x8001880",
+      "addressD": "0x8002880",
+      "expectDetect": true,
+      "category": "input_callback"
+    },
+    {
+      "id": "fn_20",
+      "logicalName": "adc_sample_isr",
+      "addressA": "0x8001900",
+      "addressD": "0x8002900",
+      "expectDetect": true,
+      "category": "gpio_input"
+    },
+    {
+      "id": "fn_10",
+      "logicalName": "memcpy_like_helper",
+      "addressA": "0x8001980",
+      "addressD": "0x8002980",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_12",
+      "logicalName": "x86_stub_ignored",
+      "addressA": "0x8001a00",
+      "addressD": "0x8002a00",
+      "expectDetect": false,
+      "category": "negative_arch"
+    },
+    {
+      "id": "fn_21",
+      "logicalName": "math_kernel",
+      "addressA": "0x8001a80",
+      "addressD": "0x8002a80",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_22",
+      "logicalName": null,
+      "addressA": "0x8001b00",
+      "addressD": "0x8002b00",
+      "expectDetect": false,
+      "category": "negative_dense_branch"
+    },
+    {
+      "id": "fn_23",
+      "logicalName": null,
+      "addressA": "0x8001b80",
+      "addressD": "0x8002b80",
+      "expectDetect": false,
+      "category": "negative_memory_only"
+    },
+    {
+      "id": "fn_24",
+      "logicalName": "crc16_update",
+      "addressA": "0x8001c00",
+      "addressD": "0x8002c00",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_25",
+      "logicalName": null,
+      "addressA": "0x8001c80",
+      "addressD": "0x8002c80",
+      "expectDetect": false,
+      "category": "negative_dense_branch"
+    },
+    {
+      "id": "fn_26",
+      "logicalName": "delay_loop",
+      "addressA": "0x8001d00",
+      "addressD": "0x8002d00",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_27",
+      "logicalName": null,
+      "addressA": "0x8001d80",
+      "addressD": "0x8002d80",
+      "expectDetect": false,
+      "category": "negative_memory_only"
+    },
+    {
+      "id": "fn_28",
+      "logicalName": "nop_sled",
+      "addressA": "0x8001e00",
+      "addressD": "0x8002e00",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_29",
+      "logicalName": null,
+      "addressA": "0x8001e80",
+      "addressD": "0x8002e80",
+      "expectDetect": false,
+      "category": "negative_dense_branch"
+    },
+    {
+      "id": "fn_30",
+      "logicalName": "hash_mix",
+      "addressA": "0x8001f00",
+      "addressD": "0x8002f00",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_31",
+      "logicalName": null,
+      "addressA": "0x8001f80",
+      "addressD": "0x8002f80",
+      "expectDetect": false,
+      "category": "negative_memory_only"
+    },
+    {
+      "id": "fn_32",
+      "logicalName": "float_div",
+      "addressA": "0x8002000",
+      "addressD": "0x8003000",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_33",
+      "logicalName": null,
+      "addressA": "0x8002080",
+      "addressD": "0x8003080",
+      "expectDetect": false,
+      "category": "negative_dense_branch"
+    },
+    {
+      "id": "fn_34",
+      "logicalName": "memcpy_block",
+      "addressA": "0x8002100",
+      "addressD": "0x8003100",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_35",
+      "logicalName": null,
+      "addressA": "0x8002180",
+      "addressD": "0x8003180",
+      "expectDetect": false,
+      "category": "negative_memory_only"
+    },
+    {
+      "id": "fn_36",
+      "logicalName": "sort_compare",
+      "addressA": "0x8002200",
+      "addressD": "0x8003200",
+      "expectDetect": false,
+      "category": "negative_dense_branch"
+    },
+    {
+      "id": "fn_37",
+      "logicalName": "idle_wfi",
+      "addressA": "0x8002280",
+      "addressD": "0x8003280",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_38",
+      "logicalName": null,
+      "addressA": "0x8002300",
+      "addressD": "0x8003300",
+      "expectDetect": false,
+      "category": "negative_memory_only"
+    },
+    {
+      "id": "fn_39",
+      "logicalName": "table_lookup",
+      "addressA": "0x8002380",
+      "addressD": "0x8003380",
+      "expectDetect": false,
+      "category": "negative_compute"
+    },
+    {
+      "id": "fn_40",
+      "logicalName": null,
+      "addressA": "0x8002400",
+      "addressD": "0x8003400",
+      "expectDetect": false,
+      "category": "ambiguous_weak",
+      "expectAmbiguous": true
+    },
+    {
+      "id": "fn_41",
+      "logicalName": "maybe_input",
+      "addressA": "0x8002480",
+      "addressD": "0x8003480",
+      "expectDetect": false,
+      "category": "ambiguous_weak",
+      "expectAmbiguous": true
+    }
+  ],
+  "expectCounts": {
+    "positives": 19,
+    "negatives": 23,
+    "total": 42
+  }
+}
