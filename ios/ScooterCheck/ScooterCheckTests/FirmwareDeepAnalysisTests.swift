@@ -921,16 +921,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         let head = String(data: pdf.prefix(8), encoding: .ascii) ?? ""
         XCTAssertTrue(head.hasPrefix("%PDF-"), "PDF magic missing: \(head)")
 
-        // PDF text operators embed strings; search raw bytes for key forensic fields.
-        let blob = String(decoding: pdf, as: UTF8.self)
-        XCTAssertTrue(blob.contains("2.2G.1") || blob.contains("Analyseprofil"), "profile missing in PDF stream")
-        XCTAssertTrue(blob.contains("communityLibrary") || blob.contains("community"), "trust status missing")
-        XCTAssertTrue(blob.contains("kein Manipulationsnachweis") || blob.contains("Manipulationsnachweis"))
-        XCTAssertTrue(blob.contains("6b7d6ec0") || blob.contains(deep.subjectSHA256 ?? "nomatch"))
-        XCTAssertTrue(blob.contains("PARTIAL") || blob.contains("Analysevollständigkeit") || blob.contains("Vollständigkeit"))
-        XCTAssertTrue(blob.contains("Statische Analyse") || blob.contains("Einschränkung") || blob.contains("Fahrzeugtest"))
-
-        // Phase 2.2H.2: open with PDFKit and verify page geometry (not magic-only).
+        // Phase 2.2H.2: open with PDFKit — extract text via page.string (not raw PDF bytes).
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("phase22h2-forensic.pdf")
         try pdf.write(to: tmp)
@@ -939,6 +930,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             return
         }
         XCTAssertGreaterThanOrEqual(doc.pageCount, 1, "expected ≥1 PDF page")
+        var extracted = ""
         for i in 0..<doc.pageCount {
             guard let page = doc.page(at: i) else {
                 XCTFail("missing page \(i)")
@@ -947,13 +939,25 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             let bounds = page.bounds(for: .mediaBox)
             XCTAssertGreaterThan(bounds.width, 100)
             XCTAssertGreaterThan(bounds.height, 100)
-            // Thumbnail render proves page content is drawable (layout smoke).
             let thumb = page.thumbnail(of: CGSize(width: 120, height: 160), for: .mediaBox)
             XCTAssertGreaterThan(thumb.size.width, 0)
+            extracted += page.string ?? ""
         }
 
+        XCTAssertTrue(extracted.contains("2.2G.1") || extracted.contains("Analyseprofil"), "profile missing: \(extracted.prefix(200))")
+        XCTAssertTrue(
+            extracted.contains("communityLibrary") || extracted.contains("community") || extracted.contains("Community"),
+            "trust status missing"
+        )
+        XCTAssertTrue(extracted.contains("Manipulationsnachweis") || extracted.contains("kein Manipulationsnachweis"))
+        XCTAssertTrue(extracted.contains("6b7d6ec0") || extracted.contains(deep.subjectSHA256 ?? "nomatch"))
+        XCTAssertTrue(extracted.contains("PARTIAL") || extracted.contains("Analysevollständigkeit"))
+        XCTAssertTrue(extracted.contains("Statische Analyse") || extracted.contains("Fahrzeugtest"))
+
         let jsonData = try FirmwareForensicPDF.jsonData(report)
-        let decoded = try JSONDecoder().decode(FirmwareForensicReport.self, from: jsonData)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(FirmwareForensicReport.self, from: jsonData)
         XCTAssertEqual(decoded.deepAnalysis?.subjectSHA256, deep.subjectSHA256)
         XCTAssertEqual(decoded.deepAnalysis?.analysisProfileHash, deep.analysisProfileHash)
         XCTAssertEqual(decoded.deepAnalysis?.referenceMetadata?.referenceTrust, "communityLibrary")
@@ -963,6 +967,100 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertNotEqual(decoded.deepAnalysis?.referenceMetadata?.referenceTrust, "oemVerified")
         XCTAssertNotEqual(decoded.deepAnalysis?.referenceMetadata?.verificationStatus, "oem")
         XCTAssertEqual(decoded.deepAnalysis?.analysisCompleteness, "PARTIAL")
+        XCTAssertEqual(decoded.deepAnalysis?.analysisProfile?.ghidraVersion, "12.2_PUBLIC")
+        XCTAssertFalse(extracted.lowercased().contains("oem verified"), "PDF must not elevate community trust")
+    }
+
+    func testPhase22H2MultipagePDFLayoutSmoke() throws {
+        var deep = makeDeep(stock: nil, sources: [.serverDecompile])
+        deep.subjectSHA256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        deep.analysisProfileHash = "c0f507820a1457a1af98c2a66352db531f2f4ad1bcf72bc32c58e307e3f41de7"
+        deep.analysisProfile = FirmwareAnalysisProfile(
+            analysisProfileVersion: "2.2G.1",
+            analysisProfileHash: deep.analysisProfileHash,
+            analyzerCompat: "2",
+            ghidraVersion: "12.2",
+            processorArchitecture: "ARM:LE:32:Cortex",
+            requestedLoaderBase: "0x08000000",
+            seedCortexMEntryPoints: true
+        )
+        deep.analysisCompleteness = "PARTIAL"
+        deep.analysisLimitations = (0..<40).map {
+            "Einschränkung \($0): Statische Analyse — kein Fahrzeugtest. Langer Text mit Umlauten äöü und SHA \(deep.subjectSHA256 ?? "")."
+        }
+        deep.referenceMetadata = FirmwareReferenceMetadata(
+            referenceLabel: "community long-label test",
+            referenceTrust: "communityLibrary",
+            verificationStatus: "community"
+        )
+        let digest = FirmwareFileDigest(
+            md5: "d41d8cd98f00b204e9800998ecf8427e",
+            sha256: deep.subjectSHA256 ?? "x",
+            byteCount: 4096,
+            shannonEntropy: 5.1
+        )
+        let report = FirmwareForensicReport(
+            id: "phase22h2-multipage",
+            analyzedAt: Date(timeIntervalSince1970: 1_700_000_100),
+            originalFileName: "long_limits.dec.bin",
+            containerKind: .bareBinary,
+            archiveByteCount: 4096,
+            archiveDigest: digest,
+            meta: FirmwarePackageMeta(
+                schemaVersion: 1,
+                displayName: "Long PDF Fixture",
+                models: ["test"],
+                type: "VCU",
+                compatible: [],
+                declaredMd5: nil,
+                declaredEncrypted: false,
+                rawInfoJSON: nil
+            ),
+            entries: [],
+            primaryFirmwarePath: "long_limits.dec.bin",
+            crypto: plaintextCrypto(),
+            binary: FirmwareBinaryAnalysis(
+                performed: true,
+                unavailableReason: nil,
+                architecture: .armCortexMLikely,
+                vectorTableLikely: true,
+                resetHandlerHint: "0x08000101",
+                stringsSample: [],
+                codeDataNotes: []
+            ),
+            evidence: [],
+            comparison: nil,
+            verdict: .gray,
+            verdictRationale: "Mehrseitiger Layout-Smoke-Test.",
+            limits: deep.analysisLimitations ?? [],
+            vehicleContext: nil,
+            vehicleLinkNotes: [],
+            summary: "Phase 2.2H.2 multipage PDF",
+            deepAnalysis: deep,
+            serverArtifacts: nil
+        )
+        let pdf = FirmwareForensicPDF.render(report)
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("phase22h2-multipage.pdf")
+        try pdf.write(to: tmp)
+        guard let doc = PDFDocument(url: tmp) else {
+            XCTFail("multipage PDFDocument open failed")
+            return
+        }
+        XCTAssertGreaterThanOrEqual(doc.pageCount, 2, "long limitations should force ≥2 pages")
+        var text = ""
+        for i in 0..<doc.pageCount {
+            guard let page = doc.page(at: i) else { continue }
+            let bounds = page.bounds(for: .mediaBox)
+            XCTAssertGreaterThan(bounds.width, 100)
+            XCTAssertGreaterThan(bounds.height, 100)
+            let thumb = page.thumbnail(of: CGSize(width: 90, height: 120), for: .mediaBox)
+            XCTAssertFalse(thumb.size.equalTo(.zero))
+            text += page.string ?? ""
+        }
+        XCTAssertTrue(text.contains("c0f50782") || text.contains("Analyseprofil"))
+        XCTAssertTrue(text.contains("communityLibrary") || text.contains("Community"))
+        XCTAssertTrue(text.contains("äöü") || text.contains("Umlauten") || text.contains("Einschränkung"))
+        // Automated layout: pages have drawable content; full visual overlap check remains manual.
     }
 
     func testPhase22H2LoginRequiredWithoutBearer() {
@@ -974,5 +1072,18 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         )
         XCTAssertTrue(client.isConfigured)
         XCTAssertFalse(client.hasBearerJWT)
+    }
+
+    func testPhase22H2KeychainSaveResultContract() {
+        // saveToken returns Bool so AuthSessionStore can avoid wiping UserDefaults on failure.
+        let ok = AuthKeychainStore.saveToken("unit-test-token-not-a-real-jwt")
+        if ok {
+            XCTAssertEqual(AuthKeychainStore.loadToken(), "unit-test-token-not-a-real-jwt")
+            AuthKeychainStore.deleteToken()
+            XCTAssertNil(AuthKeychainStore.loadToken())
+        } else {
+            // Simulator/CI without Keychain entitlement may refuse; contract still holds.
+            XCTAssertNil(AuthKeychainStore.loadToken())
+        }
     }
 }

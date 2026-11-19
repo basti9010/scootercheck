@@ -88,6 +88,48 @@ class AnalysisProfileTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(status, "INCOMPATIBLE")
 
+    def test_phase22h2_semantic_hash_matrix(self) -> None:
+        """Runtime soft fields vs semantic hard fields (release validation)."""
+        base = ap.build_analysis_profile(ghidra_version="12.2", timeout_sec=600, memory_limit="2g")
+        same_soft = ap.build_analysis_profile(ghidra_version="11.3.2", timeout_sec=1200, memory_limit="8g")
+        self.assertEqual(base["analysisProfileHash"], same_soft["analysisProfileHash"])
+        ok, status, reasons = ap.profiles_compatible(base, same_soft)
+        self.assertTrue(ok)
+        self.assertEqual(status, "COMPATIBLE")
+        self.assertTrue(any("soft" in r for r in reasons))
+
+        diff_loader = ap.build_analysis_profile(loader_base="0x00000000", ghidra_version="12.2")
+        self.assertNotEqual(base["analysisProfileHash"], diff_loader["analysisProfileHash"])
+        ok2, st2, _ = ap.profiles_compatible(base, diff_loader)
+        self.assertFalse(ok2)
+        self.assertEqual(st2, "INCOMPATIBLE")
+
+        diff_proc = ap.build_analysis_profile(processor="ARM:LE:32:v8", ghidra_version="12.2")
+        self.assertNotEqual(base["analysisProfileHash"], diff_proc["analysisProfileHash"])
+
+        no_seed = ap.build_analysis_profile(seed_ivt=False, ghidra_version="12.2")
+        self.assertNotEqual(base["analysisProfileHash"], no_seed["analysisProfileHash"])
+
+        # Fingerprint / callgraph version bumps are semantic.
+        bumped = dict(base)
+        bumped["fingerprintVersion"] = "999"
+        bumped["analysisProfileHash"] = ap.profile_hash(bumped)
+        ok3, st3, _ = ap.profiles_compatible(base, bumped)
+        self.assertFalse(ok3)
+        self.assertEqual(st3, "INCOMPATIBLE")
+
+        cg = dict(base)
+        cg["callGraphSchemaVersion"] = 999
+        cg["analysisProfileHash"] = ap.profile_hash(cg)
+        ok4, st4, _ = ap.profiles_compatible(base, cg)
+        self.assertFalse(ok4)
+        self.assertEqual(st4, "INCOMPATIBLE")
+
+        # Legacy catalog without profile hash remains partial-ok.
+        ok5, st5, _ = ap.profiles_compatible(base, {"analyzerCompat": "2"})
+        self.assertTrue(ok5)
+        self.assertEqual(st5, "LEGACY_PARTIAL")
+
 
 class ReproducibilityNormalizeTests(unittest.TestCase):
     def test_order_independent_hash(self) -> None:

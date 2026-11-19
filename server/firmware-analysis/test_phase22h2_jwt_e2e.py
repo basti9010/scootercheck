@@ -188,6 +188,41 @@ class Phase22H2JwtE2ETests(unittest.TestCase):
         self.assertTrue(body.get("authSecurityOk"))
         self.assertEqual(body.get("authSecurityWarnings"), [])
 
+    def test_job_survives_expired_jwt_and_relogin(self) -> None:
+        """Server job ownership is stable on sub; expired JWT does not delete the job."""
+        job_id = self._upload(self.token_a, "persist.bin")
+        expired = _issue(self.secret, sub="user-a", exp_delta=timedelta(hours=-1))
+        r_exp = self.client.get(
+            f"/v1/firmware/jobs/{job_id}",
+            headers={"Authorization": f"Bearer {expired}"},
+        )
+        self.assertEqual(r_exp.status_code, 401)
+        # Job still on disk with same owner.
+        job = self.app_mod.load_job(job_id)
+        self.assertIsNotNone(job)
+        self.assertEqual(job.get("ownerPrincipal"), "user:user-a")
+        # Fresh JWT for same sub restores access (simulates re-login / new client session).
+        fresh = _issue(self.secret, sub="user-a")
+        r_ok = self.client.get(
+            f"/v1/firmware/jobs/{job_id}",
+            headers={"Authorization": f"Bearer {fresh}"},
+        )
+        self.assertEqual(r_ok.status_code, 200)
+        # Different sub still denied.
+        r_b = self.client.get(
+            f"/v1/firmware/jobs/{job_id}",
+            headers={"Authorization": f"Bearer {self.token_b}"},
+        )
+        self.assertEqual(r_b.status_code, 404)
+
+    def test_admin_token_can_read_user_job(self) -> None:
+        job_id = self._upload(self.token_a, "admin-read.bin")
+        r = self.client.get(
+            f"/v1/firmware/jobs/{job_id}",
+            headers={"X-ScooterCheck-Token": self.env["ADMIN_API_TOKEN"]},
+        )
+        self.assertEqual(r.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

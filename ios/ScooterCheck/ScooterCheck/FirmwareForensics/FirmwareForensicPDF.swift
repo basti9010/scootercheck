@@ -209,6 +209,30 @@ enum FirmwareForensicPDF {
             } else {
                 y = line(ctx, "Referenzfirmware: keine Stock-Diff-Daten", y: y, size: 8)
             }
+            if let refMeta = deep.referenceMetadata {
+                y = line(
+                    ctx,
+                    "Referenzkatalog-Metadaten: label=\(refMeta.referenceLabel ?? "—") · trust=\(refMeta.referenceTrust ?? "—") · verification=\(refMeta.verificationStatus ?? "—")",
+                    y: y,
+                    size: 8
+                )
+                if (refMeta.referenceTrust ?? "").localizedCaseInsensitiveContains("community")
+                    || (refMeta.verificationStatus ?? "").localizedCaseInsensitiveContains("community") {
+                    y = line(
+                        ctx,
+                        "Hinweis: Community-Referenz — keine verifizierte Herstellerfirmware.",
+                        y: y,
+                        size: 7
+                    )
+                }
+            }
+            if let completeness = deep.analysisCompleteness {
+                y = line(ctx, "Analysevollständigkeit: \(completeness)", y: y, size: 8)
+            }
+            for lim in (deep.analysisLimitations ?? []).prefix(6) {
+                y = ensure(ctx, y: y, need: 16)
+                y = line(ctx, "• \(lim)", y: y, size: 7)
+            }
 
             y = gap(y)
             y = line(ctx, "Status Analyseschritte:", y: y, size: 9, bold: true)

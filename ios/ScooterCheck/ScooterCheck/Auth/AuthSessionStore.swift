@@ -22,10 +22,12 @@ final class AuthSessionStore: ObservableObject {
             token = keychain
         } else if let legacy = UserDefaults.standard.string(forKey: legacyTokenKey),
                   !legacy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            // One-shot migration: UserDefaults → Keychain, then wipe plaintext.
+            // One-shot migration: only wipe UserDefaults after Keychain save succeeds.
             token = legacy
-            AuthKeychainStore.saveToken(legacy)
-            UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+            if AuthKeychainStore.saveToken(legacy) {
+                UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+            }
+            // If Keychain save fails, keep legacy UserDefaults so the session is not lost.
         }
     }
 
@@ -94,8 +96,9 @@ final class AuthSessionStore: ObservableObject {
     private func apply(_ response: AuthResponse) {
         token = response.accessToken
         user = response.user
-        AuthKeychainStore.saveToken(response.accessToken)
-        UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+        if AuthKeychainStore.saveToken(response.accessToken) {
+            UserDefaults.standard.removeObject(forKey: legacyTokenKey)
+        }
         lastError = nil
     }
 
