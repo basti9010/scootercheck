@@ -59,6 +59,7 @@ from job_auth import (
     is_admin,
     ownership_fields_for_new_job,
     require_job_access,
+    trust_api_token_client_id,
 )
 from limit_slice import analyze as limit_slice_analyze, merge_into_result as merge_limit_slice
 from llm_enrich import (
@@ -196,18 +197,14 @@ def require_auth(
 ) -> dict[str, Any]:
     """Accept active ScooterCheck JWT and/or shared X-ScooterCheck-Token.
 
-    Shared API tokens are not unique owners — pass X-ScooterCheck-Client-Id to
-    bind jobs to a client principal. Without it, only admin can later access.
+    Phase 2.2H.1: Bearer JWT is preferred over shared API token when both are sent
+    (JWT is the cryptographic user identity). Shared API tokens authenticate the
+    request but do not bind job ownership to X-ScooterCheck-Client-Id unless
+    TRUST_API_TOKEN_CLIENT_ID=1 (legacy).
     """
     auth: dict[str, Any]
-    if x_scootercheck_token:
-        if ADMIN_API_TOKEN and x_scootercheck_token == ADMIN_API_TOKEN:
-            auth = {"auth": "api_token", "adminToken": True}
-        elif API_TOKEN and x_scootercheck_token == API_TOKEN:
-            auth = {"auth": "api_token", "adminToken": False}
-        else:
-            raise HTTPException(status_code=401, detail="missing or invalid credentials")
-    elif authorization and authorization.lower().startswith("bearer "):
+    # Prefer JWT identity when present (stable sub claim).
+    if authorization and authorization.lower().startswith("bearer "):
         token = authorization.split(" ", 1)[1].strip()
         if not JWT_SECRET:
             raise HTTPException(status_code=401, detail="JWT auth not configured on firmware worker")
@@ -226,6 +223,13 @@ def require_auth(
             "email": payload.get("email"),
             "role": payload.get("role"),
         }
+    elif x_scootercheck_token:
+        if ADMIN_API_TOKEN and x_scootercheck_token == ADMIN_API_TOKEN:
+            auth = {"auth": "api_token", "adminToken": True}
+        elif API_TOKEN and x_scootercheck_token == API_TOKEN:
+            auth = {"auth": "api_token", "adminToken": False}
+        else:
+            raise HTTPException(status_code=401, detail="missing or invalid credentials")
     elif not API_TOKEN and not ADMIN_API_TOKEN and not JWT_SECRET:
         # Dev mode: open if nothing configured (still bind localhost in prod).
         auth = {"auth": "open"}
@@ -1251,6 +1255,7 @@ def health() -> dict[str, Any]:
         "apiTokenConfigured": bool(API_TOKEN),
         "adminApiTokenConfigured": bool(ADMIN_API_TOKEN),
         "apiTokenGrantsAdmin": api_token_grants_admin(),
+        "trustApiTokenClientId": trust_api_token_client_id(),
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,
         "llmConfigured": llm_configured(),

@@ -1,19 +1,21 @@
-"""Job ownership / authorization for firmware-analysis API (Phase 2.1 / 2.2B).
+"""Job ownership / authorization for firmware-analysis API (Phase 2.1 / 2.2B / 2.2H.1).
 
 Rules:
-- JWT jobs are owned by `user:<sub>` (stable).
-- Shared API tokens alone are NOT a unique owner; require X-ScooterCheck-Client-Id.
-- Admins: JWT role=admin, or API token when admin grant is enabled.
-- Client-Id is an ownership binder only — never proof of identity.
+- JWT jobs are owned by `user:<sub>` (stable, preferred identity).
+- Shared API_TOKEN alone is NOT a unique owner.
+- Phase 2.2H.1: X-ScooterCheck-Client-Id is metadata only by default and MUST NOT
+  grant job ownership for shared API_TOKEN (spoofable). Set
+  TRUST_API_TOKEN_CLIENT_ID=1 only for temporary legacy compat.
+- Admins: JWT role=admin, or ADMIN_API_TOKEN, or (opt-in) API_TOKEN when grants=1.
 - Legacy jobs without ownerPrincipal: JWT may access if createdByUserId/email matches;
   otherwise deny (no open access via job id alone).
 - Unauthorized → 404 (no job metadata leak).
 
-Migration (API_TOKEN_GRANTS_ADMIN):
-- Phase 2.2H default is "0" (shared API_TOKEN is NOT admin).
-- Ops that still need shared-token admin must set API_TOKEN_GRANTS_ADMIN=1 explicitly
-  OR use ADMIN_API_TOKEN / JWT role=admin.
-- Staging and new deploys should keep API_TOKEN_GRANTS_ADMIN=0.
+Migration:
+- App should authenticate with Bearer JWT for user-owned firmware jobs.
+- Shared API_TOKEN may still authenticate requests but cannot claim client-id ownership
+  unless TRUST_API_TOKEN_CLIENT_ID=1.
+- API_TOKEN_GRANTS_ADMIN default remains "0".
 """
 from __future__ import annotations
 
@@ -35,6 +37,14 @@ def api_token_grants_admin() -> bool:
     return _env_truthy("API_TOKEN_GRANTS_ADMIN", "0")
 
 
+def trust_api_token_client_id() -> bool:
+    """Legacy opt-in: bind jobs to X-ScooterCheck-Client-Id under shared API_TOKEN.
+
+    Default false — client ids are spoofable by anyone who knows the shared token.
+    """
+    return _env_truthy("TRUST_API_TOKEN_CLIENT_ID", "0")
+
+
 def is_admin(auth: dict[str, Any]) -> bool:
     if auth.get("role") == "admin":
         return True
@@ -54,6 +64,9 @@ def resolve_owner_principal(auth: dict[str, Any]) -> str | None:
             return f"user:{uid}"
         return None
     if kind == "api_token":
+        # Phase 2.2H.1: do not treat client-id as cryptographic identity.
+        if not trust_api_token_client_id():
+            return None
         client = str(auth.get("clientId") or "").strip()
         if client and _CLIENT_ID_RE.match(client):
             return f"apitoken-client:{client}"
@@ -117,7 +130,9 @@ def can_access_job(job: dict[str, Any], auth: dict[str, Any]) -> bool:
         return False
     if kind == "api_token":
         # Without stored ownerPrincipal, shared token must not open arbitrary legacy jobs.
-        # Matching client id on legacy jobs that stored createdByClientId is allowed.
+        # Matching client id on legacy jobs is only allowed under explicit legacy trust.
+        if not trust_api_token_client_id():
+            return False
         client = str(auth.get("clientId") or "").strip()
         legacy_client = str(job.get("createdByClientId") or "").strip()
         if client and legacy_client and client == legacy_client:

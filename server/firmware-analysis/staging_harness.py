@@ -39,6 +39,7 @@ def staging_env(
         "API_TOKEN": api_token,
         "ADMIN_API_TOKEN": admin_token,
         "API_TOKEN_GRANTS_ADMIN": "0",
+        "TRUST_API_TOKEN_CLIENT_ID": "0",
         "JWT_SECRET": jwt_secret,
         "JWT_ALGORITHM": "HS256",
         "ENABLE_GHIDRA": "1" if enable_ghidra else "0",

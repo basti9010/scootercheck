@@ -57,6 +57,7 @@ class ApiAuthSecurityTests(unittest.TestCase):
             "API_TOKEN": "shared-test-token",
             "ADMIN_API_TOKEN": "admin-only-token",
             "API_TOKEN_GRANTS_ADMIN": "0",
+            "TRUST_API_TOKEN_CLIENT_ID": "0",
             "JWT_SECRET": "unit-test-jwt-secret",
             "JWT_ALGORITHM": "HS256",
             "ENABLE_GHIDRA": "0",
@@ -183,6 +184,38 @@ class ApiAuthSecurityTests(unittest.TestCase):
                 },
             )
         self.assertEqual(r.status_code, 404)
+
+    def test_known_victim_client_id_denied_without_trust(self) -> None:
+        """Shared token + victim Client-Id must not open apitoken-client jobs (2.2H.1)."""
+        job = _job(
+            jobId="job-victim",
+            ownerPrincipal="apitoken-client:victim-device",
+            createdByClientId="victim-device",
+        )
+        with mock.patch.object(self.app_mod, "load_job", return_value=job):
+            r = self.client.get(
+                "/v1/firmware/jobs/job-victim",
+                headers={
+                    "X-ScooterCheck-Token": "shared-test-token",
+                    "X-ScooterCheck-Client-Id": "victim-device",
+                },
+            )
+        self.assertEqual(r.status_code, 404)
+
+    def test_jwt_preferred_over_shared_token_for_identity(self) -> None:
+        """When Bearer JWT and shared token are both sent, JWT identity wins."""
+        job = _job(jobId="job-jwt", ownerPrincipal="user:owner1", createdByUserId="owner1")
+        token = _issue(self._env["JWT_SECRET"], sub="owner1", role="user")
+        with mock.patch.object(self.app_mod, "load_job", return_value=job):
+            r = self.client.get(
+                "/v1/firmware/jobs/job-jwt",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-ScooterCheck-Token": "shared-test-token",
+                    "X-ScooterCheck-Client-Id": "spoofed",
+                },
+            )
+        self.assertEqual(r.status_code, 200)
 
     def test_legacy_job_email_match(self) -> None:
         job = _job(jobId="legacy-1", createdBy="owner1@example.test", createdByUserId=None)
