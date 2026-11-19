@@ -1,6 +1,11 @@
-"""Versioned Ghidra analysis profile (Phase 2.2G).
+"""Versioned Ghidra analysis profile (Phase 2.2G / 2.2H.2).
 
 Canonical, secret-free configuration used for reproducibility and catalog compat.
+
+Phase 2.2H.2: ``analysisProfileHash`` covers only *semantic* analysis parameters.
+Runtime / resource fields (timeout, heap, detected Ghidra install string) live in
+``runtimeConfig`` and must not flip the catalog-compat hash when the analysis
+semantics are identical.
 """
 from __future__ import annotations
 
@@ -22,6 +27,24 @@ DEFAULT_LOADER_BASE = "0x08000000"
 DEFAULT_MAX_FUNCTIONS = 2500
 DEFAULT_TIMEOUT_SEC = 600
 DEFAULT_JAVA_XMX = "2g"
+
+# Fields that affect *how long / where* analysis runs, not the semantic fingerprint.
+RUNTIME_SOFT_KEYS = frozenset({"analysisTimeoutSec", "memoryLimit", "ghidraVersion"})
+# Volatile / derived keys never enter the hash.
+NON_HASH_KEYS = frozenset(
+    {
+        "analysisProfileHash",
+        "analyzedAt",
+        "jobId",
+        "notes",
+        "elapsedSec",
+        "wallClock",
+        "runtimeConfig",
+        "ghidraExecuted",
+        "note",
+        *RUNTIME_SOFT_KEYS,
+    }
+)
 
 
 def _env_bool(name: str, default: bool = True) -> bool:
@@ -95,11 +118,17 @@ def build_analysis_profile(
         "ExportFunctionAnalysis.java",
         "ExportCallGraph.java",
     ]
+    timeout = (
+        timeout_sec if timeout_sec is not None else _env_int("GHIDRA_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC)
+    )
+    mem = memory_limit or os.environ.get("GHIDRA_JAVA_XMX") or DEFAULT_JAVA_XMX
+    ghidra_ver = ghidra_version or detect_ghidra_version()
     profile: dict[str, Any] = {
         "analysisProfileVersion": ANALYSIS_PROFILE_VERSION,
         "analyzerId": ANALYZER_ID,
         "analyzerCompat": ANALYZER_COMPAT,
-        "ghidraVersion": ghidra_version or detect_ghidra_version(),
+        # Still exposed at top-level for poll/UI compatibility; excluded from hash.
+        "ghidraVersion": ghidra_ver,
         "processorArchitecture": processor or os.environ.get("GHIDRA_PROCESSOR") or DEFAULT_PROCESSOR,
         "requestedLoaderBase": loader_base
         or os.environ.get("GHIDRA_BASE_ADDR")
@@ -116,33 +145,24 @@ def build_analysis_profile(
         "maximumFunctions": max_functions
         if max_functions is not None
         else _env_int("GHIDRA_MAX_FUNCTIONS", DEFAULT_MAX_FUNCTIONS),
-        "analysisTimeoutSec": timeout_sec
-        if timeout_sec is not None
-        else _env_int("GHIDRA_TIMEOUT_SEC", DEFAULT_TIMEOUT_SEC),
-        "memoryLimit": memory_limit or os.environ.get("GHIDRA_JAVA_XMX") or DEFAULT_JAVA_XMX,
+        "analysisTimeoutSec": timeout,
+        "memoryLimit": mem,
         "fingerprintVersion": FINGERPRINT_VERSION,
         "callGraphSchemaVersion": CALLGRAPH_SCHEMA_VERSION,
         "featuresVersion": FEATURES_VERSION,
+        "runtimeConfig": {
+            "ghidraVersion": ghidra_ver,
+            "analysisTimeoutSec": timeout,
+            "memoryLimit": mem,
+        },
     }
     profile["analysisProfileHash"] = profile_hash(profile)
     return profile
 
 
 def profile_canonical_bytes(profile: dict[str, Any]) -> bytes:
-    """Canonical JSON without hash / volatile fields."""
-    payload = {
-        k: v
-        for k, v in profile.items()
-        if k
-        not in {
-            "analysisProfileHash",
-            "analyzedAt",
-            "jobId",
-            "notes",
-            "elapsedSec",
-            "wallClock",
-        }
-    }
+    """Canonical JSON of *semantic* fields only (no runtime / volatile keys)."""
+    payload = {k: v for k, v in profile.items() if k not in NON_HASH_KEYS}
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
@@ -150,6 +170,13 @@ def profile_canonical_bytes(profile: dict[str, Any]) -> bytes:
 
 def profile_hash(profile: dict[str, Any]) -> str:
     return hashlib.sha256(profile_canonical_bytes(profile)).hexdigest()
+
+
+def semantic_profile_hash(profile: dict[str, Any] | None) -> str | None:
+    """Recompute semantic hash from a (possibly legacy) profile payload."""
+    if not profile:
+        return None
+    return profile_hash(profile)
 
 
 def profiles_compatible(
@@ -179,35 +206,75 @@ def profiles_compatible(
         # Older catalogs may omit fingerprintVersion
         if reference.get("fingerprintVersion") is not None and subject.get("fingerprintVersion") is not None:
             reasons.append("fingerprintVersion mismatch")
+
+    # Prefer semantic re-hash so legacy payloads that embedded ghidraVersion in the
+    # stored hash still compare as compatible when core params match.
+    sub_sem = semantic_profile_hash(subject)
+    ref_sem = semantic_profile_hash(reference)
     sub_hash = subject.get("analysisProfileHash")
     ref_hash = reference.get("analysisProfileHash")
-    if sub_hash and ref_hash and sub_hash != ref_hash:
-        # Soft factors that may differ without breaking fingerprints
-        soft_keys = {"analysisTimeoutSec", "memoryLimit", "ghidraVersion"}
-        sub_core = {k: v for k, v in subject.items() if k not in soft_keys | {"analysisProfileHash"}}
-        ref_core = {k: v for k, v in reference.items() if k not in soft_keys | {"analysisProfileHash"}}
-        if profile_hash(sub_core) != profile_hash(ref_core):
-            reasons.append("analysisProfileHash mismatch (core parameters differ)")
-        else:
-            reasons.append("soft profile fields differ (timeout/memory/ghidraVersion) — still comparable")
 
-    if any("mismatch" in r and "soft" not in r for r in reasons):
+    stored_hash_drift = False
+    soft_runtime_drift = False
+    ref_is_full = bool(
+        reference.get("analysisProfileHash")
+        or reference.get("analysisProfileVersion")
+        or reference.get("analyzerId")
+        or reference.get("enabledPreScripts")
+    )
+    if sub_sem and ref_sem and sub_sem == ref_sem and ref_is_full:
+        # Runtime soft fields may still differ — surface for operators.
+        for key in sorted(RUNTIME_SOFT_KEYS):
+            sv = subject.get(key)
+            rv = reference.get(key)
+            if sv != rv and (sv is not None or rv is not None):
+                soft_runtime_drift = True
+                reasons.append(
+                    f"soft profile field {key} differs ({sv!r} vs {rv!r}) — still comparable"
+                )
+                break
+        if sub_hash and ref_hash and sub_hash != ref_hash:
+            stored_hash_drift = True
+            reasons.append(
+                "stored analysisProfileHash strings differ but semantic core matches "
+                "(Phase 2.2H.2 hash excludes runtime soft fields)"
+            )
+    elif sub_hash and ref_hash and sub_hash != ref_hash:
+        # Both sides claim a stored hash — re-check semantic core before hard-fail.
+        if sub_sem and ref_sem and sub_sem == ref_sem:
+            stored_hash_drift = True
+            reasons.append(
+                "stored analysisProfileHash strings differ but semantic core matches "
+                "(Phase 2.2H.2 hash excludes runtime soft fields)"
+            )
+        else:
+            reasons.append("analysisProfileHash mismatch (core parameters differ)")
+    elif not ref_is_full:
+        reasons.append("reference catalog lacks analysisProfile — legacy partial")
+    elif sub_sem and ref_sem and sub_sem != ref_sem:
+        reasons.append("analysisProfileHash mismatch (core parameters differ)")
+
+    if any("mismatch" in r and "soft" not in r and "stored" not in r for r in reasons):
         return False, "INCOMPATIBLE", reasons
-    if any("legacy" in r.lower() or "soft" in r for r in reasons) or not ref_hash:
+    if any("legacy" in r.lower() for r in reasons) or not ref_hash or stored_hash_drift:
         if not ref_hash:
             reasons.append("reference lacks analysisProfileHash — legacy partial")
         return True, "LEGACY_PARTIAL", reasons
+    if soft_runtime_drift:
+        # Semantic hash identical; runtime soft drift is informational only.
+        return True, "COMPATIBLE", reasons or ["profiles match (runtime soft fields differ)"]
     return True, "COMPATIBLE", reasons or ["profiles match"]
 
 
 def summarize_profile_for_poll(profile: dict[str, Any] | None) -> dict[str, Any] | None:
     if not profile:
         return None
+    runtime = profile.get("runtimeConfig") if isinstance(profile.get("runtimeConfig"), dict) else {}
     return {
         "analysisProfileVersion": profile.get("analysisProfileVersion"),
         "analysisProfileHash": profile.get("analysisProfileHash"),
         "analyzerCompat": profile.get("analyzerCompat"),
-        "ghidraVersion": profile.get("ghidraVersion"),
+        "ghidraVersion": profile.get("ghidraVersion") or runtime.get("ghidraVersion"),
         "processorArchitecture": profile.get("processorArchitecture"),
         "requestedLoaderBase": profile.get("requestedLoaderBase"),
         "enabledPreScripts": profile.get("enabledPreScripts"),
@@ -217,4 +284,10 @@ def summarize_profile_for_poll(profile: dict[str, Any] | None) -> dict[str, Any]
         "seedCortexMEntryPoints": (profile.get("autoAnalysisOptions") or {}).get(
             "seedCortexMEntryPoints"
         ),
+        "runtimeConfig": {
+            "ghidraVersion": profile.get("ghidraVersion") or runtime.get("ghidraVersion"),
+            "analysisTimeoutSec": profile.get("analysisTimeoutSec")
+            or runtime.get("analysisTimeoutSec"),
+            "memoryLimit": profile.get("memoryLimit") or runtime.get("memoryLimit"),
+        },
     }

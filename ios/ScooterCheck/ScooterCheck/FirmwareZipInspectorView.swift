@@ -1480,6 +1480,11 @@ struct FirmwareZipInspectorView: View {
             serverStatusText = "Keine Server-URL in den Einstellungen."
             return
         }
+        guard client.hasBearerJWT else {
+            serverStatusText = "Bitte anmelden — Firmware-Jobs brauchen einen JWT (nicht nur Client-Id)."
+            errorText = FirmwareServerAnalysisError.loginRequired.localizedDescription
+            return
+        }
         isServerBusy = true
         serverProgress = 2
         serverStatusText = "Datei wird hochgeladen…"

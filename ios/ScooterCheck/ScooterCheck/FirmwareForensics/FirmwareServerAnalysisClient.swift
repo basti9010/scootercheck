@@ -10,6 +10,7 @@ protocol FirmwareServerAnalysisClienting: Sendable {
 
 enum FirmwareServerAnalysisError: Error, LocalizedError {
     case notConfigured
+    case loginRequired
     case badURL
     case httpStatus(Int, String)
     case decode(Error)
@@ -17,6 +18,8 @@ enum FirmwareServerAnalysisError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured: return "Kein Analyse-Server konfiguriert."
+        case .loginRequired:
+            return "Anmeldung erforderlich: Firmware-Jobs benötigen einen gültigen Bearer-JWT (Keychain). Client-Id allein reicht nicht mehr."
         case .badURL: return "Ungültige Server-URL."
         case .httpStatus(let c, let b):
             let hint = Self.humanizeHTTPBody(b)
@@ -108,8 +111,18 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return !(baseURL.scheme?.isEmpty ?? true) && !(baseURL.host?.isEmpty ?? true)
     }
 
+    /// Phase 2.2H.2: user-owned jobs require a Bearer JWT (TRUST_API_TOKEN_CLIENT_ID=0).
+    var hasBearerJWT: Bool {
+        !(bearerToken?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
     func submit(_ request: FirmwareAnalysisJobRequest, archiveData: Data) async throws -> FirmwareAnalysisJobStatus {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        // Prefer JWT ownership. Shared API token without JWT cannot claim Client-Id ownership
+        // under secure defaults — refuse early so the UI can prompt for login.
+        if !hasBearerJWT {
+            throw FirmwareServerAnalysisError.loginRequired
+        }
         let endpoint = baseURL.appendingPathComponent("v1/firmware/jobs")
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
@@ -140,6 +153,9 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
 
     func poll(jobId: String) async throws -> FirmwareAnalysisJobStatus {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        if !hasBearerJWT {
+            throw FirmwareServerAnalysisError.loginRequired
+        }
         let endpoint = baseURL
             .appendingPathComponent("v1/firmware/jobs")
             .appendingPathComponent(jobId)
@@ -274,6 +290,9 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
 
     func decompilePreview(jobId: String, maxChars: Int = 12_000) async throws -> FirmwareDecompilePreview {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        if !hasBearerJWT {
+            throw FirmwareServerAnalysisError.loginRequired
+        }
         var comps = URLComponents(
             url: baseURL
                 .appendingPathComponent("v1/firmware/jobs")
@@ -295,6 +314,9 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
     /// Download decrypted firmware bytes for forensic export (PDF pack).
     func downloadPlaintext(jobId: String) async throws -> Data {
         guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        if !hasBearerJWT {
+            throw FirmwareServerAnalysisError.loginRequired
+        }
         let endpoint = baseURL
             .appendingPathComponent("v1/firmware/jobs")
             .appendingPathComponent(jobId)

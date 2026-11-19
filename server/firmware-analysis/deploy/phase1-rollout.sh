@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# ScooterCheck firmware-analysis rollout (Phase 1 → 2.2H) to Hetzner.
+# ScooterCheck firmware-analysis rollout (Phase 1 → 2.2H.2) to Hetzner.
 #
 # Default: DRY-RUN (no remote writes, no restart).
 # Real deploy: CONFIRM_PROD_DEPLOY=YES ./deploy/phase1-rollout.sh
 #
 # Never deletes or modifies /var/lib/scootercheck (jobs, decrypted, stock-fw, catalogs).
-# Phase 2.2H: ensure remote .env has API_TOKEN_GRANTS_ADMIN=0 and ADMIN_API_TOKEN set
+# Phase 2.2H.2: ensure remote .env has:
+#   API_TOKEN_GRANTS_ADMIN=0
+#   TRUST_API_TOKEN_CLIENT_ID=0
+#   ADMIN_API_TOKEN set
+#   JWT_SECRET set (same as ScooterCheck auth)
 # before any real restart (manual ops step — this script does not rotate secrets).
 set -euo pipefail
 
@@ -49,6 +53,7 @@ DEPLOY_PY_FILES=(
   test_phase22g.py
   test_phase22h_e2e.py
   test_phase22h1_validation.py
+  test_phase22h2_jwt_e2e.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py
@@ -67,6 +72,7 @@ DEPLOY_PY_FILES=(
   test_ghidra_export_fixtures.py
   firmware_identify.py
   README.md
+  docs/phase22h2-release.md
   .env.example
 )
 

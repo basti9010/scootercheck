@@ -102,6 +102,9 @@ class ApiAuthSecurityTests(unittest.TestCase):
         self.assertTrue(body.get("apiTokenConfigured"))
         self.assertTrue(body.get("adminApiTokenConfigured"))
         self.assertFalse(body.get("apiTokenGrantsAdmin"))
+        self.assertFalse(body.get("trustApiTokenClientId"))
+        self.assertTrue(body.get("authSecurityOk"))
+        self.assertEqual(body.get("authSecurityWarnings"), [])
 
     def test_invalid_jwt_rejected(self) -> None:
         r = self.client.get(

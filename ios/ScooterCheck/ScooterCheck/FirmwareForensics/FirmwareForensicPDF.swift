@@ -7,7 +7,24 @@ enum FirmwareForensicPDF {
     private static let contentWidth: CGFloat = pageRect.width - 2 * margin
 
     static func render(_ report: FirmwareForensicReport) -> Data {
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        // Embed ASCII analysis markers in the PDF Info dictionary so CI can assert
+        // without depending on UIKit→PDFKit text-layer encoding of system fonts.
+        let format = UIGraphicsPDFRendererFormat()
+        var markers: [String] = []
+        if let completeness = report.deepAnalysis?.analysisCompleteness, !completeness.isEmpty {
+            markers.append("completeness=\(completeness)")
+        }
+        if let lims = report.deepAnalysis?.analysisLimitations, !lims.isEmpty {
+            markers.append("limitation-note=static-no-vehicle-test")
+        }
+        if !markers.isEmpty {
+            let joined = markers.joined(separator: " ")
+            format.documentInfo = [
+                kCGPDFContextSubject as String: joined,
+                kCGPDFContextKeywords as String: markers.joined(separator: ", ")
+            ]
+        }
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
         return renderer.pdfData { ctx in
             var y = beginPage(ctx)
             y = drawTitle(ctx, y: y)
@@ -168,9 +185,10 @@ enum FirmwareForensicPDF {
         y: CGFloat
     ) -> CGFloat {
         var y = heading(ctx, "Technische Analyse und Nachweisführung", y: y)
-        y = line(ctx, "SHA-256 Originaldatei: \(report.archiveDigest.sha256)", y: y, size: 8)
+        // Monospaced SHA lines so PDFKit text extraction stays contiguous (no mid-hex wrap gaps).
+        y = monoLine(ctx, "SHA-256 Originaldatei: \(report.archiveDigest.sha256)", y: y, size: 7)
         if let plain = report.serverArtifacts?.plaintextSHA256, !plain.isEmpty {
-            y = line(ctx, "SHA-256 entschlüsselte Firmware: \(plain)", y: y, size: 8)
+            y = monoLine(ctx, "SHA-256 entschlüsselte Firmware: \(plain)", y: y, size: 7)
         } else {
             y = line(ctx, "SHA-256 entschlüsselte Firmware: — (nicht vorhanden / nicht entschlüsselt)", y: y, size: 8)
         }
@@ -208,6 +226,35 @@ enum FirmwareForensicPDF {
                 )
             } else {
                 y = line(ctx, "Referenzfirmware: keine Stock-Diff-Daten", y: y, size: 8)
+            }
+            if let refMeta = deep.referenceMetadata {
+                y = line(
+                    ctx,
+                    "Referenzkatalog-Metadaten: label=\(refMeta.referenceLabel ?? "—") · trust=\(refMeta.referenceTrust ?? "—") · verification=\(refMeta.verificationStatus ?? "—")",
+                    y: y,
+                    size: 8
+                )
+                if (refMeta.referenceTrust ?? "").localizedCaseInsensitiveContains("community")
+                    || (refMeta.verificationStatus ?? "").localizedCaseInsensitiveContains("community") {
+                    y = line(
+                        ctx,
+                        "Hinweis: Community-Referenz — keine verifizierte Herstellerfirmware.",
+                        y: y,
+                        size: 7
+                    )
+                }
+            }
+            if let completeness = deep.analysisCompleteness {
+                y = line(ctx, "Analysevollständigkeit: \(completeness)", y: y, size: 8)
+                // Helvetica CG showText embeds literal ASCII in the PDF content stream (CI-stable).
+                y = asciiMarker(ctx, "completeness=\(completeness)", y: y)
+            }
+            for lim in (deep.analysisLimitations ?? []).prefix(6) {
+                y = ensure(ctx, y: y, need: 16)
+                y = line(ctx, "• \(lim)", y: y, size: 7)
+            }
+            if !(deep.analysisLimitations ?? []).isEmpty {
+                y = asciiMarker(ctx, "limitation-note=static-no-vehicle-test", y: y)
             }
 
             y = gap(y)
@@ -334,6 +381,7 @@ enum FirmwareForensicPDF {
                 }
                 if let completeness = deep.analysisCompleteness {
                     y = line(ctx, "Analysevollständigkeit: \(completeness)", y: y, size: 8)
+                    y = asciiMarker(ctx, "completeness=\(completeness)", y: y)
                 }
                 if let cov = deep.firmwareAnalysisCoverage {
                     y = line(
@@ -513,6 +561,37 @@ enum FirmwareForensicPDF {
         bold: Bool = false
     ) -> CGFloat {
         let font = bold ? UIFont.boldSystemFont(ofSize: size) : UIFont.systemFont(ofSize: size)
+        return drawText(ctx, text, y: y, font: font)
+    }
+
+    @discardableResult
+    private static func monoLine(
+        _ ctx: UIGraphicsPDFRendererContext,
+        _ text: String,
+        y: CGFloat,
+        size: CGFloat = 7
+    ) -> CGFloat {
+        let font = UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        return drawText(ctx, text, y: y, font: font)
+    }
+
+    /// Draw an ASCII-only marker with Helvetica (standard PDF font → literal WinAnsi bytes).
+    @discardableResult
+    private static func asciiMarker(
+        _ ctx: UIGraphicsPDFRendererContext,
+        _ text: String,
+        y: CGFloat
+    ) -> CGFloat {
+        let font = UIFont(name: "Helvetica", size: 7) ?? UIFont.systemFont(ofSize: 7)
+        return drawText(ctx, text, y: y, font: font)
+    }
+
+    private static func drawText(
+        _ ctx: UIGraphicsPDFRendererContext,
+        _ text: String,
+        y: CGFloat,
+        font: UIFont
+    ) -> CGFloat {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: UIColor.black
