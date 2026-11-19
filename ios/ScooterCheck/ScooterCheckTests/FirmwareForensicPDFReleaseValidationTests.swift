@@ -3,7 +3,7 @@ import PDFKit
 import UIKit
 @testable import ScooterCheck
 
-/// Final release — six synthetic PDFKit reports + page previews for CI artifacts.
+/// Final release acceptance — six synthetic PDFKit reports + page previews for CI artifacts.
 ///
 /// Files are written under a stable subdirectory of the process temporary directory
 /// (`release-validation-pdf/`) and also attached via `XCTAttachment` so GitHub Actions
