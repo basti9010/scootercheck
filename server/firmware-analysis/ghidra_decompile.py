@@ -8,6 +8,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from analysis_profile import build_analysis_profile, summarize_profile_for_poll
+
 
 def ghidra_configured() -> bool:
     return bool(_headless_bin())
@@ -84,6 +86,24 @@ def run_ghidra_decompile(
         os.environ.get("GHIDRA_SEED_IVT", "1").strip() not in ("0", "false", "False")
     )
 
+    profile = build_analysis_profile(
+        processor=processor,
+        loader_base=base_addr,
+        seed_ivt=do_seed,
+        timeout_sec=timeout_sec,
+    )
+    # Keep profile in sync if identify changed processor/base
+    profile["processorArchitecture"] = processor
+    profile["requestedLoaderBase"] = base_addr
+    profile["autoAnalysisOptions"] = {
+        **(profile.get("autoAnalysisOptions") or {}),
+        "seedCortexMEntryPoints": do_seed,
+    }
+    profile["enabledPreScripts"] = ["SeedCortexMEntryPoints.java"] if do_seed else []
+    from analysis_profile import profile_hash as _ph
+
+    profile["analysisProfileHash"] = _ph(profile)
+
     output_c.parent.mkdir(parents=True, exist_ok=True)
     if speed_json is None:
         speed_json = output_c.with_suffix(".speeds.json")
@@ -143,6 +163,22 @@ def run_ghidra_decompile(
         )
         # Extra headless timeout buffer for Phase-2 exports (still capped by caller).
         timeout_sec = max(timeout_sec, int(os.environ.get("GHIDRA_TIMEOUT_SEC", str(timeout_sec)) or timeout_sec))
+        env = os.environ.copy()
+        env["GHIDRA_BASE_ADDR"] = str(base_addr)
+        env["SCOOTERCHECK_LOADER_BASE"] = str(base_addr)
+        env["GHIDRA_MAX_FUNCTIONS"] = str(profile.get("maximumFunctions") or 2500)
+        if profile.get("memoryLimit"):
+            env.setdefault("_JAVA_OPTIONS", f"-Xmx{profile['memoryLimit']}")
+        # Persist profile next to exports for reproducibility audits
+        try:
+            import json as _json
+
+            profile_path = functions_json.with_suffix(".analysis_profile.json")
+            profile_path.write_text(
+                _json.dumps(profile, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+            )
+        except Exception:
+            profile_path = None
         try:
             proc = subprocess.run(
                 cmd,
@@ -150,6 +186,7 @@ def run_ghidra_decompile(
                 text=True,
                 timeout=timeout_sec,
                 check=False,
+                env=env,
             )
         except subprocess.TimeoutExpired:
             return False, "ghidra timed out"
@@ -161,7 +198,13 @@ def run_ghidra_decompile(
             return False, f"ghidra exit {proc.returncode}: {log_tail}"
         if not output_c.exists() or output_c.stat().st_size == 0:
             return False, f"ghidra produced empty decompile: {log_tail}"
-        notes = [f"decompiled {output_c.stat().st_size} bytes", f"processor={processor}", f"base={base_addr}"]
+        notes = [
+            f"decompiled {output_c.stat().st_size} bytes",
+            f"processor={processor}",
+            f"base={base_addr}",
+            f"analysisProfileHash={profile.get('analysisProfileHash', '')[:16]}",
+            f"seedIvt={1 if do_seed else 0}",
+        ]
         notes.extend(identify_notes)
         if speed_json.exists() and speed_json.stat().st_size > 0:
             notes.append(f"speedXrefs {speed_json.stat().st_size}B")
@@ -170,12 +213,27 @@ def run_ghidra_decompile(
         # Phase-2 exports are best-effort: missing files must not fail the whole decompile.
         if functions_json.exists() and functions_json.stat().st_size > 0:
             notes.append(f"functions.json {functions_json.stat().st_size}B")
+            # Embed profile into functions export if possible (non-fatal)
+            try:
+                import json as _json
+
+                fa = _json.loads(functions_json.read_text(encoding="utf-8"))
+                if isinstance(fa, dict):
+                    fa["analysisProfile"] = summarize_profile_for_poll(profile)
+                    fa["requestedLoaderBase"] = fa.get("requestedLoaderBase") or base_addr
+                    functions_json.write_text(
+                        _json.dumps(fa, ensure_ascii=False) + "\n", encoding="utf-8"
+                    )
+            except Exception:
+                pass
         else:
             notes.append("functions.json=missing-or-empty")
         if callgraph_json.exists() and callgraph_json.stat().st_size > 0:
             notes.append(f"callgraph.json {callgraph_json.stat().st_size}B")
         else:
             notes.append("callgraph.json=missing-or-empty")
+        if profile_path is not None:
+            notes.append(f"analysisProfile={profile_path.name}")
         return True, ", ".join(notes)
 
 

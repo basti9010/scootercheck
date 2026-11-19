@@ -249,6 +249,29 @@ enum FirmwareForensicPDF {
                 }
             }
 
+            // Phase 2.2G: Analyseprofil
+            if let profile = deep.analysisProfile {
+                y = gap(y)
+                y = line(ctx, "Analyseprofil (Ghidra):", y: y, size: 9, bold: true)
+                y = line(
+                    ctx,
+                    "Version=\(profile.analysisProfileVersion ?? "—") · Hash=\(String((deep.analysisProfileHash ?? profile.analysisProfileHash ?? "—").prefix(16)))… · Ghidra=\(profile.ghidraVersion ?? "—") · SeedIVT=\(profile.seedCortexMEntryPoints == true ? "ja" : "nein")",
+                    y: y,
+                    size: 8
+                )
+                if let layout = deep.ghidraAddressLayout {
+                    y = line(
+                        ctx,
+                        "LoaderBase=\(layout.requestedLoaderBase ?? "—") · ImageBase=\(layout.actualImageBase ?? "—") · BlockStart=\(layout.memoryBlockStart ?? "—") · Reset=\(layout.resetHandlerAddress ?? "—")",
+                        y: y,
+                        size: 7
+                    )
+                }
+                if let conf = deep.firmwareArchitectureConfidence {
+                    y = line(ctx, "Architektur-Konfidenz: \(conf)", y: y, size: 8)
+                }
+            }
+
             // Phase 2.2F: Callgraph-Qualität
             let cgq = deep.callGraphQuality ?? deep.callGraph?.callGraphQuality
             if cgq != nil || deep.callGraph != nil {

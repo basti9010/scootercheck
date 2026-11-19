@@ -982,6 +982,35 @@ struct FirmwareZipInspectorView: View {
         if let proc = fa?.processor { rows.append(.meta("Architektur", proc)) }
         rows.append(.meta("Analysequalität", deep.quality.summary))
 
+        // Phase 2.2G: Analyseprofil / Reproduzierbarkeit
+        if deep.analysisProfile != nil || deep.analysisProfileHash != nil || deep.ghidraAddressLayout != nil {
+            rows.append(.title("Analyseprofil", top: 8))
+            if let v = deep.analysisProfile?.analysisProfileVersion {
+                rows.append(.meta("Profilversion", v))
+            }
+            if let h = deep.analysisProfileHash ?? deep.analysisProfile?.analysisProfileHash {
+                rows.append(.meta("Profilhash", String(h.prefix(16)) + "…"))
+            }
+            if let gv = deep.analysisProfile?.ghidraVersion {
+                rows.append(.meta("Ghidra-Version", gv))
+            }
+            if let seed = deep.analysisProfile?.seedCortexMEntryPoints {
+                rows.append(.meta("SeedCortexMEntryPoints", seed ? "ja" : "nein"))
+            }
+            if let layout = deep.ghidraAddressLayout {
+                if let r = layout.requestedLoaderBase { rows.append(.meta("requestedLoaderBase", r)) }
+                if let a = layout.actualImageBase { rows.append(.meta("actualImageBase", a)) }
+                if let m = layout.memoryBlockStart { rows.append(.meta("memoryBlockStart", m)) }
+                if let rh = layout.resetHandlerAddress { rows.append(.meta("resetHandler", rh)) }
+            }
+            if let repro = deep.ghidraReproducibility {
+                rows.append(.meta(
+                    "Reproduzierbarkeit",
+                    repro.reproducible == true ? "semantisch reproduzierbar" : "Abweichungen / nicht geprüft"
+                ))
+            }
+        }
+
         // Phase 2.2F: Callgraph-Qualität
         let cgq = deep.callGraphQuality ?? deep.callGraph?.callGraphQuality
         if cgq != nil || deep.callGraph != nil {
@@ -1010,6 +1039,13 @@ struct FirmwareZipInspectorView: View {
                 rows.append(.meta("Architektur", arch))
             } else {
                 rows.append(.meta("Architektur", "unbekannt / nicht erzwungen"))
+            }
+            let archConf = deep.firmwareArchitectureConfidence ?? cont.architectureConfidence
+            if let archConf {
+                rows.append(.meta("Architektur-Konfidenz", archConf))
+            }
+            if let allowed = cont.ghidraImportAllowed {
+                rows.append(.meta("Ghidra-Import freigegeben", allowed ? "ja" : "nein"))
             }
             if let base = cont.baseAddr { rows.append(.meta("Ladeadresse (Kandidat)", base)) }
             rows.append(.meta("Image extrahierbar", cont.imageExtractable == true ? "ja" : "nein"))
