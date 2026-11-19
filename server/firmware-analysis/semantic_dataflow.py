@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 1
-PHASE = "2.3.2"
+PHASE = "2.3.3"
 
 PROVENANCE_GHIDRA_EXPORTED = "GHIDRA_EXPORTED"
 PROVENANCE_MNEMONIC_DERIVED = "MNEMONIC_DERIVED"
@@ -455,6 +455,79 @@ def _derive_from_function(
     }
 
 
+def compute_dataflow_quality_metrics(sdf_full: dict[str, Any]) -> dict[str, Any]:
+    """Phase 2.3.3 — coverage / confidence metrics from a full semantic dataflow result."""
+    records = list(sdf_full.get("functions") or [])
+    if not isinstance(records, list):
+        records = []
+    records = [r for r in records if isinstance(r, dict)]
+    total = len(records)
+    if total == 0:
+        return {
+            "totalFunctions": 0,
+            "dataflowExportCoverage": 0.0,
+            "parameterRecoveryCoverage": 0.0,
+            "memoryAccessCoverage": 0.0,
+            "dataReferenceCoverage": 0.0,
+            "unresolvedDataflowCount": 0,
+            "semanticConfidenceDistribution": {
+                PROVENANCE_GHIDRA_EXPORTED: 0,
+                PROVENANCE_MNEMONIC_DERIVED: 0,
+                PROVENANCE_PARTIAL: 0,
+                PROVENANCE_NOT_AVAILABLE: 0,
+            },
+        }
+
+    exported_ok = sum(
+        1
+        for r in records
+        if r.get("provenance") == PROVENANCE_GHIDRA_EXPORTED and str(r.get("quality") or "").lower() == "ok"
+    )
+    # parameterCount null = unknown; 0 = Ghidra recovered zero params (not invented, but may be incomplete).
+    with_params = sum(1 for r in records if r.get("parameterCount") is not None)
+    with_params_nonzero = sum(
+        1 for r in records if r.get("parameterCount") is not None and int(r.get("parameterCount") or 0) > 0
+    )
+    with_mem = sum(
+        1 for r in records if int(r.get("memoryReads") or 0) > 0 or int(r.get("memoryWrites") or 0) > 0
+    )
+    with_refs = sum(1 for r in records if int(r.get("dataReferenceCount") or 0) > 0)
+    unresolved = sum(
+        1
+        for r in records
+        if str(r.get("quality") or "").lower() == "missing"
+        or r.get("provenance") in (PROVENANCE_PARTIAL, PROVENANCE_NOT_AVAILABLE)
+    )
+    dist = {
+        PROVENANCE_GHIDRA_EXPORTED: sum(1 for r in records if r.get("provenance") == PROVENANCE_GHIDRA_EXPORTED),
+        PROVENANCE_MNEMONIC_DERIVED: sum(
+            1 for r in records if r.get("provenance") == PROVENANCE_MNEMONIC_DERIVED
+        ),
+        PROVENANCE_PARTIAL: sum(1 for r in records if r.get("provenance") == PROVENANCE_PARTIAL),
+        PROVENANCE_NOT_AVAILABLE: sum(1 for r in records if r.get("provenance") == PROVENANCE_NOT_AVAILABLE),
+    }
+    pct = lambda n: (n / total * 100.0) if total else 0.0
+    return {
+        "totalFunctions": total,
+        "dataflowExportCoverage": pct(exported_ok),
+        "parameterRecoveryCoverage": pct(with_params),
+        "parameterNonZeroCoverage": pct(with_params_nonzero),
+        "memoryAccessCoverage": pct(with_mem),
+        "dataReferenceCoverage": pct(with_refs),
+        "unresolvedDataflowCount": unresolved,
+        "semanticConfidenceDistribution": dist,
+        "exportedOkCount": exported_ok,
+        "parameterKnownCount": with_params,
+        "parameterNonZeroCount": with_params_nonzero,
+        "memoryAccessCount": with_mem,
+        "dataReferenceCount": with_refs,
+        "note": (
+            "parameterRecoveryCoverage zählt auch parameterCount=0 als bekannt "
+            "(nicht null); parameterNonZeroCoverage misst >0."
+        ),
+    }
+
+
 def analyze_semantic_dataflow(
     function_analysis: dict[str, Any] | None,
     dataflow_export: dict[str, Any] | None = None,
@@ -601,9 +674,17 @@ def analyze_semantic_dataflow(
         "truncated": truncated,
         "maxFunctions": max_fns,
     }
+    quality_metrics = compute_dataflow_quality_metrics(
+        {"functions": records, "summary": summary}
+    )
+    summary["dataflowQualityMetrics"] = quality_metrics
     notes.append(
         f"semanticDataflow=ok functions={len(records)} "
         f"ok={quality_ok} partial={quality_partial} missing={quality_missing}"
+    )
+    notes.append(
+        f"dataflowExportCoverage={quality_metrics.get('dataflowExportCoverage'):.2f}% "
+        f"unresolved={quality_metrics.get('unresolvedDataflowCount')}"
     )
 
     processor = None
@@ -653,6 +734,7 @@ def summarize_semantic_dataflow_for_poll(full: dict[str, Any]) -> dict[str, Any]
             "dataflowCoveragePercent": summary.get("dataflowCoveragePercent"),
             "provenanceCounts": summary.get("provenanceCounts"),
             "truncated": summary.get("truncated"),
+            "dataflowQualityMetrics": summary.get("dataflowQualityMetrics"),
         },
         "sampleFunctions": [
             {

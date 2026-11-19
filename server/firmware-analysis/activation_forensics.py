@@ -36,7 +36,7 @@ except Exception:  # pragma: no cover
     analyze_semantic_dataflow = None  # type: ignore
 
 SCHEMA_VERSION = 2
-PHASE = "2.3.2"
+PHASE = "2.3.3"
 MAX_FUNCTIONS = 2500
 MAX_HANDLERS = 100
 MAX_CONDITIONAL = 80
@@ -125,6 +125,39 @@ BASE_LIMITATIONS = [
     "Community-Referenzen sind keine verifizierte Herstellerfirmware.",
     "Gesamt-Evidenz spiegelt die Verteilung der Einzelfunde wider — ein starker Einzelfund bestätigt nicht alle Ergebnisse.",
 ]
+
+
+def slice_findings_for_page(
+    findings: list[dict[str, Any]] | None,
+    *,
+    offset: int = 0,
+    limit: int = 50,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Return a page of findings plus pagination metadata (full list unchanged on disk)."""
+    items = list(findings or [])
+    off = max(0, int(offset or 0))
+    lim = max(1, int(limit or 50))
+    page = items[off : off + lim]
+    omitted = max(0, len(items) - off - len(page))
+    meta = {
+        "offset": off,
+        "limit": lim,
+        "totalFindings": len(items),
+        "returnedFindings": len(page),
+        "omittedFindings": omitted,
+        "hasMore": off + len(page) < len(items),
+    }
+    return page, meta
+
+
+def paginate_findings(
+    items: list[dict[str, Any]] | None,
+    offset: int = 0,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Convenience wrapper — page payload with ``findings`` key."""
+    page, meta = slice_findings_for_page(items, offset=offset, limit=limit)
+    return {"findings": page, "pagination": meta}
 
 
 def _result_limits(
@@ -306,10 +339,24 @@ def _structural_input_strength(sig: dict[str, Any]) -> tuple[int, int, list[str]
     if sig["mmioHint"] and sig["hasConditionalLogic"] and sig["calledByCount"] >= 1:
         strong += 1
         details.append("mmio_input_path")
-    # Explicit parameter + compare/branch (signature-aware dataflow).
-    if (sig.get("parameterCount") or 0) >= 1 and sig["compareOps"] >= 1 and sig["conditionalBranches"] >= 1:
+    # Explicit parameter + compare/branch/store (signature-aware dataflow).
+    if (
+        (sig.get("parameterCount") or 0) >= 1
+        and sig["compareOps"] >= 1
+        and sig["conditionalBranches"] >= 1
+        and sig["storeOps"] >= 1
+    ):
         strong += 1
         details.append("parameter_gated")
+    # Event-queue-like dispatch pattern (name-independent).
+    if (
+        sig["calledByCount"] >= 2
+        and sig["storeOps"] >= 1
+        and sig["compareOps"] >= 2
+        and sig["loadOps"] >= 1
+    ):
+        strong += 1
+        details.append("event_queue_like")
     # Supporting (weak) structural co-signals — never sufficient alone.
     if (
         sig["loadOps"] >= 2
@@ -381,6 +428,13 @@ def _independent_feature_score(
         methods.append("parameter_conditional")
         evidence.append(f"parameterCount={sig.get('parameterCount')}")
         name_only = False
+    if "event_queue_like" in details:
+        score += 0.65
+        methods.append("event_queue_structural")
+        evidence.append(
+            f"calledBy={sig['calledByCount']} stores={sig['storeOps']} compares={sig['compareOps']}"
+        )
+        name_only = False
     # Dense branch-only without other signals: weak, do not classify as input alone.
     if sig["compareOps"] >= 3 and sig["conditionalBranches"] >= 4 and strong == 0 and weak <= 1:
         methods.append("dense_conditional_only")
@@ -418,19 +472,21 @@ def classify_activation_handler(
     structural_only = False
     if not categories:
         strong, weak, details = _structural_input_strength(sig)
-        # Require ≥1 strong signal AND ≥1 additional co-signal; name-independent path needs MMIO or fan-in≥3.
-        has_linkage = (
-            "mmio_input_path" in details
-            or "fan_in_isr_like" in details
-            or sig.get("calledByCount", 0) >= 3
-            or sig.get("mmioHint")
+        structural_patterns = frozenset(
+            {"fan_in_isr_like", "mmio_input_path", "parameter_gated", "event_queue_like"}
         )
-        if strong >= 1 and (strong + weak) >= 2 and has_linkage:
+        matched = [d for d in details if d in structural_patterns]
+        primary = [d for d in matched if d != "event_queue_like"]
+        pattern_ok = bool(primary) or (
+            "event_queue_like" in matched and weak >= 1 and (strong + weak) >= 2
+        )
+        # ≥1 strong structural pattern plus co-signal; event-queue alone needs weak support.
+        if strong >= 1 and pattern_ok and (strong + weak) >= 2:
             structural_only = True
             categories.append("input_callback")
             methods.append("structural_multi_signal")
             evidence.append(
-                f"strongStructural={strong} weakStructural={weak} details={','.join(details)}"
+                f"strongStructural={strong} weakStructural={weak} patterns={','.join(matched)}"
             )
             score += 0.5
         else:
@@ -1430,6 +1486,7 @@ def run_activation_forensics(
             "derivedOnly": sdf_sum.get("derivedFunctions", sdf_sum.get("derivedOnly")),
             "provenanceCounts": sdf_sum.get("provenanceCounts"),
             "dataflowCoveragePercent": sdf_sum.get("dataflowCoveragePercent"),
+            "dataflowQualityMetrics": sdf_sum.get("dataflowQualityMetrics"),
             "source": (
                 "dataflow_export"
                 if sdf_sum.get("exportedFunctions", sdf_sum.get("fromDataflowExport"))
@@ -1524,6 +1581,7 @@ def evaluate_detection_quality(
     f1 = None
     if precision is not None and recall is not None and (precision + recall) > 0:
         f1 = 2 * precision * recall / (precision + recall)
+    specificity = (tn / (tn + fp)) if (tn + fp) else None
     return {
         "truePositives": tp,
         "trueNegatives": tn,
@@ -1532,6 +1590,7 @@ def evaluate_detection_quality(
         "precision": round(precision, 4) if precision is not None else None,
         "recall": round(recall, 4) if recall is not None else None,
         "f1Score": round(f1, 4) if f1 is not None else None,
+        "specificity": round(specificity, 4) if specificity is not None else None,
         "ambiguousFindings": ambiguous,
         "unknownFindings": sum(1 for f in findings if f.get("evidenceTier") == UNKNOWN),
         "disclaimer": (

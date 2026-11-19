@@ -95,6 +95,9 @@ on:
       - cursor/firmware-phase-22h1-validation-b100
       - cursor/firmware-phase-22h2-release-b100
       - cursor/firmware-phase-23-activation-b100
+      - cursor/firmware-phase-231-semantic-b100
+      - cursor/firmware-phase-232-ghidra-validation-b100
+      - cursor/firmware-phase-233-quality-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

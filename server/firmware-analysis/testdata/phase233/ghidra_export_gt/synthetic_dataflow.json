@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "functionCount": 10,
+  "functions": [
+    {
+      "address": "0x8010000",
+      "name": "thumb_entry",
+      "parameterCount": 1,
+      "memoryReads": 2,
+      "memoryWrites": 1,
+      "compareOps": 1,
+      "conditionalBranches": 1,
+      "callCount": 0,
+      "dataReferenceCount": 2,
+      "quality": "ok"
+    },
+    {
+      "address": "0x8010020",
+      "name": "FUN_deadbeef",
+      "parameterCount": null,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "ok"
+    },
+    {
+      "address": "0x8010040",
+      "name": "mem_rw_helper",
+      "parameterCount": 0,
+      "memoryReads": 3,
+      "memoryWrites": 2,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 1,
+      "quality": "ok"
+    },
+    {
+      "address": "0x8010060",
+      "name": "call_hub",
+      "parameterCount": 2,
+      "memoryReads": 1,
+      "memoryWrites": 0,
+      "compareOps": 1,
+      "conditionalBranches": 2,
+      "callCount": 4,
+      "dataReferenceCount": 1,
+      "quality": "ok"
+    },
+    {
+      "address": "0x8010080",
+      "name": "branch_dispatch",
+      "parameterCount": 1,
+      "memoryReads": 1,
+      "memoryWrites": 0,
+      "compareOps": 1,
+      "conditionalBranches": 5,
+      "callCount": 2,
+      "dataReferenceCount": 1,
+      "quality": "ok"
+    },
+    {
+      "address": "0x80100a0",
+      "name": "ret_thunk",
+      "parameterCount": 0,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 1,
+      "quality": "ok"
+    },
+    {
+      "address": "0x80100c0",
+      "name": "global_ref_init",
+      "parameterCount": 0,
+      "memoryReads": 2,
+      "memoryWrites": 3,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 2,
+      "quality": "ok"
+    },
+    {
+      "address": "0x80100e0",
+      "name": "local_only",
+      "parameterCount": 1,
+      "memoryReads": 1,
+      "memoryWrites": 1,
+      "compareOps": 0,
+      "conditionalBranches": 0,
+      "callCount": 0,
+      "dataReferenceCount": 1,
+      "quality": "ok"
+    },
+    {
+      "address": "0x8010100",
+      "name": "incomplete_sig",
+      "parameterCount": null,
+      "memoryReads": 1,
+      "memoryWrites": 0,
+      "compareOps": 1,
+      "conditionalBranches": 1,
+      "callCount": 0,
+      "dataReferenceCount": 0,
+      "quality": "partial",
+      "limitations": [
+        "signature unknown"
+      ]
+    },
+    {
+      "address": "0x8010120",
+      "name": "indirect_caller",
+      "parameterCount": 0,
+      "memoryReads": 0,
+      "memoryWrites": 0,
+      "compareOps": 1,
+      "conditionalBranches": 1,
+      "callCount": 1,
+      "dataReferenceCount": 1,
+      "quality": "ok"
+    }
+  ]
+}

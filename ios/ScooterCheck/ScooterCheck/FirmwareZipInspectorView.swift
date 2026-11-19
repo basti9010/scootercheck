@@ -1274,26 +1274,58 @@ struct FirmwareZipInspectorView: View {
                     sdf.qualityMissing.map { "fehlend: \($0)" },
                 ].compactMap { $0 }
                 if !qParts.isEmpty {
-                    rows.append(.meta("Datenfluss-Qualität", qParts.joined(separator: " · ")))
+                    rows.append(.meta("Export-Qualitätsklassen", qParts.joined(separator: " · ")))
+                }
+                if let pct = sdf.dataflowCoveragePercent {
+                    rows.append(.meta(
+                        "Dataflow-Abdeckung",
+                        String(format: "%.1f%%", pct)
+                    ))
+                }
+                if let qm = sdf.dataflowQualityMetrics {
+                    for line in firmwareActivationDataflowQualityMetaLines(qm) {
+                        rows.append(.meta(line.label, line.value))
+                    }
+                }
+                if let unavail = sdf.unavailableFunctions, unavail > 0 {
+                    rows.append(.meta("Dataflow nicht verfügbar", "\(unavail) Funktion(en)"))
                 }
                 if let src = sdf.source, !src.isEmpty {
                     rows.append(.meta("Quelle", src))
                 }
+            } else if af.semanticDataFlow != nil {
+                rows.append(.title("Datenflussanalyse", top: 6))
+                rows.append(.warn("Datenflussanalyse nicht ausgewertet oder für dieses Paket nicht verfügbar."))
+            }
+
+            let trust = af.referenceComparison?.referenceTrust
+            if let trust, !trust.isEmpty {
+                rows.append(.meta("Referenzvertrauen", trust))
+            }
+            if af.referenceComparison?.referenceIsCommunity == true {
+                rows.append(.warn("Community-Referenz — keine verifizierte Herstellerfirmware."))
             }
 
             if af.activationEvidenceDistribution != nil || af.evidenceGraphQuality != nil
                 || af.activationEvidenceGraph != nil || af.resultLimits != nil {
                 rows.append(.title("Evidenzqualität", top: 6))
                 if let dist = af.activationEvidenceDistribution {
-                    let parts = [
-                        dist.staticConfirmedCount.map { "STATIC: \($0)" },
-                        dist.indicativeCount.map { "INDIC: \($0)" },
-                        dist.speculativeCount.map { "SPEC: \($0)" },
-                        dist.unknownCount.map { "UNK: \($0)" },
-                        dist.ambiguousCount.map { "ambig: \($0)" },
-                    ].compactMap { $0 }
-                    if !parts.isEmpty {
-                        rows.append(.meta("Verteilung Handler", parts.joined(separator: " · ")))
+                    rows.append(.title("Technisch bestätigte Codeeigenschaften", top: 4))
+                    rows.append(.meta("STATIC_CONFIRMED", "\(dist.staticConfirmedCount ?? 0)"))
+                    rows.append(.warn(
+                        "Bestätigt nur statische Codeeigenschaften — kein Nachweis realen Fahrzeugverhaltens."
+                    ))
+                    rows.append(.title("Indikative Hinweise", top: 4))
+                    rows.append(.meta("INDICATIVE", "\(dist.indicativeCount ?? 0)"))
+                    rows.append(.title("Spekulative Hinweise", top: 4))
+                    rows.append(.meta("SPECULATIVE", "\(dist.speculativeCount ?? 0)"))
+                    rows.append(.title("Unbekannte Ergebnisse", top: 4))
+                    rows.append(.meta("UNKNOWN", "\(dist.unknownCount ?? 0)"))
+                    if let amb = dist.ambiguousCount, amb > 0 {
+                        rows.append(.meta("mehrdeutig", "\(amb)"))
+                    }
+                    if let tier = dist.overallEvidenceTier, !tier.isEmpty {
+                        rows.append(.meta("Gesamtstufe", tier))
                     }
                     if let summary = dist.overallEvidenceSummary, !summary.isEmpty {
                         rows.append(.meta("Gesamteinschätzung", summary))
@@ -1321,13 +1353,12 @@ struct FirmwareZipInspectorView: View {
                         rows.append(.meta("Kantenqualität", edgeParts.joined(separator: " · ")))
                     }
                 }
+                for line in firmwareActivationResultLimitMetaLines(af.resultLimits) {
+                    rows.append(.meta(line.label, line.value))
+                }
                 for warn in firmwareActivationResultLimitWarnings(af.resultLimits) {
                     rows.append(.warn(warn))
                 }
-            }
-
-            if af.referenceComparison?.referenceIsCommunity == true {
-                rows.append(.warn("Community-Referenz — keine verifizierte Herstellerfirmware."))
             }
             for p in (af.prioritization?.top ?? []).prefix(3) {
                 rows.append(.meta(
@@ -1903,6 +1934,75 @@ struct FirmwareZipInspectorView: View {
         shareItems = [url]
         showShare = true
     }
+}
+
+private struct FirmwareActivationLabelValue: Equatable {
+    var label: String
+    var value: String
+}
+
+private func firmwareActivationProvenanceLabel(_ key: String) -> String {
+    switch key {
+    case "GHIDRA_EXPORTED": return "Ghidra-Export"
+    case "MNEMONIC_DERIVED": return "abgeleitet"
+    case "PARTIAL": return "teilweise"
+    case "NOT_AVAILABLE": return "nicht verfügbar"
+    default: return key
+    }
+}
+
+private func firmwareActivationDataflowQualityMetaLines(
+    _ qm: FirmwareActivationDataflowQualityMetrics
+) -> [FirmwareActivationLabelValue] {
+    var lines: [FirmwareActivationLabelValue] = []
+    func pct(_ key: String, _ v: Double?) {
+        guard let v else { return }
+        lines.append(FirmwareActivationLabelValue(label: key, value: String(format: "%.1f%%", v)))
+    }
+    pct("Export-Abdeckung", qm.dataflowExportCoverage)
+    pct("Parameter-Wiederherstellung", qm.parameterRecoveryCoverage)
+    pct("Speicherzugriffe", qm.memoryAccessCoverage)
+    pct("Datenreferenzen", qm.dataReferenceCoverage)
+    if let n = qm.unresolvedDataflowCount {
+        lines.append(FirmwareActivationLabelValue(label: "offene Dataflows", value: "\(n)"))
+    }
+    if let dist = qm.semanticConfidenceDistribution, !dist.isEmpty {
+        let label = dist.filter { $0.value > 0 }
+            .sorted { $0.key < $1.key }
+            .map { "\(firmwareActivationProvenanceLabel($0.key)): \($0.value)" }
+            .joined(separator: " · ")
+        if !label.isEmpty {
+            lines.append(FirmwareActivationLabelValue(label: "Provenance-Verteilung", value: label))
+        }
+    }
+    return lines
+}
+
+private func firmwareActivationResultLimitMetaLines(
+    _ limits: FirmwareActivationResultLimits?
+) -> [FirmwareActivationLabelValue] {
+    guard let limits else { return [] }
+    var lines: [FirmwareActivationLabelValue] = []
+    func append(_ area: String, _ bucket: FirmwareActivationResultLimitBucket?) {
+        guard let bucket else { return }
+        if bucket.analysisComplete == false {
+            lines.append(FirmwareActivationLabelValue(
+                label: "\(area) — Analyse",
+                value: "unvollständig"
+            ))
+        }
+        if bucket.resultTruncated != true, let ret = bucket.returnedCandidates,
+           let total = bucket.totalCandidatesDetected, total > ret {
+            lines.append(FirmwareActivationLabelValue(
+                label: "\(area) — Kandidaten",
+                value: "\(ret) von \(total) zurückgegeben"
+            ))
+        }
+    }
+    append("Handler", limits.handlers)
+    append("Bedingte Logik", limits.conditionalLogic)
+    append("Evidence-Graph", limits.evidenceGraph)
+    return lines
 }
 
 private func firmwareActivationConditionalQualityLabel(_ key: String) -> String {

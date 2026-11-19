@@ -1,4 +1,5 @@
 import XCTest
+// Phase 2.3.3 CI retrigger (macOS runner capacity miss on 449b7ea)
 import PDFKit
 @testable import ScooterCheck
 
@@ -1323,6 +1324,67 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(af.semanticDataFlow?.exportedFunctions, 120)
         XCTAssertEqual(af.semanticDataFlow?.provenanceCounts?["GHIDRA_EXPORTED"], 120)
         XCTAssertEqual(af.semanticDataFlow?.partialFunctions, 7)
+    }
+
+    func testPhase233DataflowQualityMetricsDecode() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-19T16:00:00Z",
+          "sources": ["serverDecompile"],
+          "subjectSHA256": "abc",
+          "models": [],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "t"},
+          "yaraMatches": [],
+          "r2StringsSample": [],
+          "activationForensics": {
+            "ok": true,
+            "phase": "2.3.3",
+            "summary": {"functionsExamined": 50, "inputHandlerCount": 5},
+            "referenceComparison": {"referenceTrust": "communityLibrary", "referenceIsCommunity": true},
+            "semanticDataFlow": {
+              "ok": true,
+              "functionsAnalyzed": 50,
+              "dataflowCoveragePercent": 72.0,
+              "source": "dataflow_export",
+              "dataflowQualityMetrics": {
+                "totalFunctions": 50,
+                "dataflowExportCoverage": 66.0,
+                "parameterRecoveryCoverage": 40.0,
+                "memoryAccessCoverage": 88.0,
+                "dataReferenceCoverage": 55.0,
+                "unresolvedDataflowCount": 3,
+                "semanticConfidenceDistribution": {
+                  "GHIDRA_EXPORTED": 33,
+                  "MNEMONIC_DERIVED": 12,
+                  "PARTIAL": 3,
+                  "NOT_AVAILABLE": 2
+                }
+              }
+            },
+            "evidenceTier": "INDICATIVE"
+          }
+        }
+        """.data(using: .utf8)!
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .iso8601
+        let deep = try dec.decode(FirmwareDeepAnalysisResult.self, from: json)
+        let qm = try XCTUnwrap(deep.activationForensics?.semanticDataFlow?.dataflowQualityMetrics)
+        XCTAssertEqual(qm.totalFunctions, 50)
+        XCTAssertEqual(qm.dataflowExportCoverage, 66.0)
+        XCTAssertEqual(qm.parameterRecoveryCoverage, 40.0)
+        XCTAssertEqual(qm.memoryAccessCoverage, 88.0)
+        XCTAssertEqual(qm.dataReferenceCoverage, 55.0)
+        XCTAssertEqual(qm.unresolvedDataflowCount, 3)
+        XCTAssertEqual(qm.semanticConfidenceDistribution?["GHIDRA_EXPORTED"], 33)
+        XCTAssertEqual(qm.semanticConfidenceDistribution?["NOT_AVAILABLE"], 2)
+        XCTAssertEqual(deep.activationForensics?.referenceComparison?.referenceTrust, "communityLibrary")
     }
 
     func testPhase22H2KeychainSaveResultContract() {
