@@ -10,7 +10,7 @@
 
 ## Release commit
 
-`cfca9b1e59b4883b9b01f826a81395ec2335963a` on `cursor/firmware-phase-234-release-hardening-b100`
+`2777c7d` (tip of `cursor/firmware-phase-234-release-hardening-b100`; verify with `git rev-parse`)
 
 ```bash
 git rev-parse cursor/firmware-phase-234-release-hardening-b100
