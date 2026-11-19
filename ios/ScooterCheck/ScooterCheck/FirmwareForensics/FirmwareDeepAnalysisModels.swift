@@ -511,6 +511,9 @@ struct FirmwareFunctionMatchingCounts: Equatable, Codable, Sendable {
     var ambiguous: Int?
     var unmatched: Int?
     var pairCount: Int?
+    /// Phase 2.2E: soft cap overflow — incomplete matching when true.
+    var truncated: Bool?
+    var maxFunctions: Int?
 }
 
 struct FirmwareFunctionMatchSample: Equatable, Codable, Sendable, Identifiable {
@@ -542,6 +545,8 @@ struct FirmwareInputBehaviorSummary: Equatable, Codable, Sendable {
 
 struct FirmwareInputBehaviorCounts: Equatable, Codable, Sendable {
     var functionCount: Int?
+    var analyzedFunctionCount: Int?
+    var truncated: Bool?
     var inputRelevantCount: Int?
     var confirmedCount: Int?
     var indicativeCount: Int?
