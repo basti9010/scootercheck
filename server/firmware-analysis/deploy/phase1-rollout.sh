@@ -43,8 +43,13 @@ DEPLOY_PY_FILES=(
   test_input_behavior.py
   test_phase22d_quality.py
   test_phase22e.py
+  test_phase22f.py
   reference_inventory.py
   analysis_completeness.py
+  callgraph_quality.py
+  ble_container.py
+  catalog_batch.py
+  fsm_runtime.py
   test_job_auth.py
   test_firmware_identify.py
   test_auto_function_detection.py

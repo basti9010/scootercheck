@@ -62,6 +62,14 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var referenceCatalogCoverage: FirmwareReferenceCatalogCoverage? = nil
     var functionMatchingCoverage: FirmwareFunctionMatchingCoverage? = nil
     var stateMachineValidation: FirmwareStateMachineValidation? = nil
+    /// Phase 2.2F: call-graph quality breakdown (optional).
+    var callGraphQuality: FirmwareCallGraphQuality? = nil
+    /// Phase 2.2F: BLE/firmware container identification (optional).
+    var firmwareContainerAnalysis: FirmwareContainerAnalysis? = nil
+    /// Phase 2.2F: isolated reference-catalog batch summary (optional; admin).
+    var referenceCatalogBatch: FirmwareReferenceCatalogBatchSummary? = nil
+    /// Phase 2.2F: controlled Unicorn FSM runtime suite (optional; not vehicle proof).
+    var runtimeStateMachineValidation: FirmwareRuntimeStateMachineValidation? = nil
 
     static let currentSchemaVersion = 1
 
@@ -83,6 +91,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case functionMatching, inputBehaviorAnalysis, stateMachineAnalysis, inputBehaviorDiff
         case analysisCompleteness, firmwareAnalysisCoverage, referenceCatalogCoverage
         case functionMatchingCoverage, stateMachineValidation
+        case callGraphQuality, firmwareContainerAnalysis, referenceCatalogBatch
+        case runtimeStateMachineValidation
     }
 
     init(from decoder: Decoder) throws {
@@ -126,6 +136,14 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         functionMatchingCoverage = try c.decodeIfPresent(FirmwareFunctionMatchingCoverage.self, forKey: .functionMatchingCoverage)
         stateMachineValidation = try c.decodeIfPresent(FirmwareStateMachineValidation.self, forKey: .stateMachineValidation)
             ?? stateMachineAnalysis?.stateMachineValidation
+        callGraphQuality = try c.decodeIfPresent(FirmwareCallGraphQuality.self, forKey: .callGraphQuality)
+            ?? callGraph?.callGraphQuality
+        firmwareContainerAnalysis = try c.decodeIfPresent(FirmwareContainerAnalysis.self, forKey: .firmwareContainerAnalysis)
+        referenceCatalogBatch = try c.decodeIfPresent(FirmwareReferenceCatalogBatchSummary.self, forKey: .referenceCatalogBatch)
+        runtimeStateMachineValidation = try c.decodeIfPresent(
+            FirmwareRuntimeStateMachineValidation.self,
+            forKey: .runtimeStateMachineValidation
+        )
     }
 
     init(
@@ -164,7 +182,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         firmwareAnalysisCoverage: FirmwareAnalysisCoverage? = nil,
         referenceCatalogCoverage: FirmwareReferenceCatalogCoverage? = nil,
         functionMatchingCoverage: FirmwareFunctionMatchingCoverage? = nil,
-        stateMachineValidation: FirmwareStateMachineValidation? = nil
+        stateMachineValidation: FirmwareStateMachineValidation? = nil,
+        callGraphQuality: FirmwareCallGraphQuality? = nil,
+        firmwareContainerAnalysis: FirmwareContainerAnalysis? = nil,
+        referenceCatalogBatch: FirmwareReferenceCatalogBatchSummary? = nil,
+        runtimeStateMachineValidation: FirmwareRuntimeStateMachineValidation? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -203,6 +225,10 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.functionMatchingCoverage = functionMatchingCoverage
         self.stateMachineValidation = stateMachineValidation
             ?? self.stateMachineAnalysis?.stateMachineValidation
+        self.callGraphQuality = callGraphQuality ?? self.callGraph?.callGraphQuality
+        self.firmwareContainerAnalysis = firmwareContainerAnalysis
+        self.referenceCatalogBatch = referenceCatalogBatch
+        self.runtimeStateMachineValidation = runtimeStateMachineValidation
     }
 
     func encode(to encoder: Encoder) throws {
@@ -243,6 +269,10 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encodeIfPresent(referenceCatalogCoverage, forKey: .referenceCatalogCoverage)
         try c.encodeIfPresent(functionMatchingCoverage, forKey: .functionMatchingCoverage)
         try c.encodeIfPresent(stateMachineValidation, forKey: .stateMachineValidation)
+        try c.encodeIfPresent(callGraphQuality, forKey: .callGraphQuality)
+        try c.encodeIfPresent(firmwareContainerAnalysis, forKey: .firmwareContainerAnalysis)
+        try c.encodeIfPresent(referenceCatalogBatch, forKey: .referenceCatalogBatch)
+        try c.encodeIfPresent(runtimeStateMachineValidation, forKey: .runtimeStateMachineValidation)
     }
 }
 
@@ -605,6 +635,69 @@ struct FirmwareStateMachineValidation: Equatable, Codable, Sendable {
     var staticStructure: Int?
     var controlledTransitionEvidence: Int?
     var dynamicRuntimeVerified: Bool?
+    var runtimeSuite: FirmwareRuntimeStateMachineValidation?
+    var notes: [String]?
+}
+
+struct FirmwareCallGraphQuality: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var directCalls: Int?
+    var indirectCalls: Int?
+    var internalBranches: Int?
+    var tailCalls: Int?
+    var unresolvedCalls: Int?
+    var unknownControlFlow: Int?
+    var edgeCount: Int?
+    var source: String?
+    var notes: [String]?
+    var analysisLimitations: [String]?
+}
+
+struct FirmwareContainerComponent: Equatable, Codable, Sendable, Identifiable {
+    var role: String?
+    var origin: String?
+    var offset: Int?
+    var size: Int?
+    var sha256: String?
+    var format: String?
+    var architecture: String?
+    var detectionConfidence: String?
+
+    var id: String { (origin ?? role ?? "") + "|" + (sha256 ?? "\(offset ?? 0)") }
+}
+
+struct FirmwareContainerAnalysis: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var status: String?
+    var format: String?
+    var containerRecognized: Bool?
+    var architecture: String?
+    var baseAddr: String?
+    var imageExtractable: Bool?
+    var confidence: String?
+    var components: [FirmwareContainerComponent]?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareReferenceCatalogBatchSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var batchRoot: String?
+    var resultCount: Int?
+    var productiveCatalogsModified: Bool?
+    var analyzerCompat: String?
+    var ghidraVersion: String?
+    var notes: [String]?
+    var analysisLimitations: [String]?
+}
+
+struct FirmwareRuntimeStateMachineValidation: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var dynamicRuntimeVerified: Bool?
+    var runtimeTransitionsObserved: Int?
+    var programCount: Int?
+    var evidenceTier: String?
+    var analysisLimitations: [String]?
     var notes: [String]?
 }
 
@@ -684,6 +777,7 @@ struct FirmwareCallGraphSummary: Equatable, Codable, Sendable {
     var heuristicCount: Int?
     var unresolvedCount: Int?
     var truncated: Bool?
+    var callGraphQuality: FirmwareCallGraphQuality?
     var notes: [String]?
     var analysisLimitations: [String]?
 }

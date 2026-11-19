@@ -228,6 +228,52 @@ def assess_analyzability(
         # Large BLE images often lack classic Cortex-M IVT at offset 0.
         ctl = str((ref or {}).get("controllerType") or "").upper()
         reasons.append("no_cortex_m_ivt_at_offset_0")
+        # Phase 2.2F: try RAW4TFT / BLE container identification before UNKNOWN.
+        try:
+            from ble_container import identify_ble_container
+
+            ble = identify_ble_container(blob, original_name=path.name)
+        except Exception:
+            ble = None
+        if ble and ble.get("containerRecognized"):
+            limitations.extend(list(ble.get("analysisLimitations") or []))
+            reasons.append(f"ble_container={ble.get('format')}:{ble.get('status')}")
+            arch = ble.get("architecture")
+            base = ble.get("baseAddr")
+            if ble.get("imageExtractable") and arch:
+                return _status(
+                    READY_FOR_ANALYSIS,
+                    sha=sha,
+                    size=size,
+                    format="RAW4TFT",
+                    architecture=arch,
+                    base_addr=base,
+                    ivt=bool((ble.get("ivt") or {}).get("likely")),
+                    entropy=ent,
+                    plain=plain,
+                    plain_reason=plain_reason,
+                    reasons=reasons,
+                    limitations=limitations
+                    + [
+                        "BLE-Container erkannt — Analyse ggf. auf extrahiertem Payload.",
+                        "Architektur/BaseAddr sind Kandidaten, nicht erzwungen aus Dateiname.",
+                    ],
+                    preferred_ghidra=False,
+                )
+            return _status(
+                ARCHITECTURE_UNKNOWN if not arch else READY_FOR_ANALYSIS,
+                sha=sha,
+                size=size,
+                format="RAW4TFT",
+                architecture=arch,
+                base_addr=base,
+                ivt=bool((ble.get("ivt") or {}).get("likely")),
+                entropy=ent,
+                plain=plain,
+                plain_reason=plain_reason,
+                reasons=reasons,
+                limitations=limitations,
+            )
         if ctl == "BLE" or size > 200_000:
             limitations.append(
                 "Kein Cortex-M-IVT am Dateianfang — Architektur unbekannt oder anderes Layout "

@@ -62,6 +62,27 @@ def identify_firmware_image(path: Path | bytes, *, hint_base: int | None = None)
                 break
 
     if best is None:
+        # Phase 2.2F: BLE/RAW4TFT container probe before giving up.
+        try:
+            from ble_container import identify_ble_container
+
+            ble = identify_ble_container(data, original_name=source if source != "bytes" else None)
+        except Exception:
+            ble = None
+        if ble and ble.get("containerRecognized"):
+            return {
+                "ok": bool(ble.get("imageExtractable")),
+                "confidence": ble.get("confidence") or "medium",
+                "architectureUnknown": bool(ble.get("architectureUnknown")),
+                "processor": ble.get("architecture") or DEFAULT_PROCESSOR,
+                "baseAddr": ble.get("baseAddr") or DEFAULT_BASE,
+                "thumbLikely": bool((ble.get("ivt") or {}).get("likely")),
+                "entryPoints": [],
+                "containerAnalysis": ble,
+                "trials": trials,
+                "notes": notes + list(ble.get("notes") or []),
+                "analysisLimitations": list(ble.get("analysisLimitations") or []),
+            }
         return {
             "ok": False,
             "confidence": "low",

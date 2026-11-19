@@ -127,9 +127,10 @@ def load_call_graph(path: Path | None) -> dict[str, Any]:
     static_n = sum(1 for e in edges if isinstance(e, dict) and e.get("evidence") == "static")
     heur_n = int(data.get("heuristicCount") or 0)
     unr_n = int(data.get("unresolvedCount") or 0)
-    return {
+    out = {
         "ok": True,
         "schemaVersion": int(data.get("schemaVersion") or 1),
+        "featuresVersion": data.get("featuresVersion"),
         "edges": edges,
         "edgeCount": int(data.get("edgeCount") or len(edges)),
         "functionCount": data.get("functionCount"),
@@ -137,15 +138,24 @@ def load_call_graph(path: Path | None) -> dict[str, Any]:
         "heuristicCount": heur_n,
         "unresolvedCount": unr_n,
         "truncated": bool(data.get("truncated")),
+        "callGraphQuality": data.get("callGraphQuality"),
         "notes": [f"callGraph=ok edges={len(edges)}"],
         "analysisLimitations": limitations,
         "dotPath": str(path).replace(".json", ".dot") if path.with_suffix(".dot").exists() or Path(str(path).replace(".json", ".dot")).exists() else None,
     }
+    try:
+        from callgraph_quality import enrich_call_graph
+
+        out = enrich_call_graph(out)
+    except Exception:
+        pass
+    return out
 
 
 def summarize_call_graph_for_poll(full: dict[str, Any]) -> dict[str, Any]:
     edges = full.get("edges") or []
     sample = edges[:30] if isinstance(edges, list) else []
+    quality = full.get("callGraphQuality") or {}
     return {
         "ok": bool(full.get("ok")),
         "schemaVersion": full.get("schemaVersion", 1),
@@ -154,7 +164,20 @@ def summarize_call_graph_for_poll(full: dict[str, Any]) -> dict[str, Any]:
         "heuristicCount": full.get("heuristicCount"),
         "unresolvedCount": full.get("unresolvedCount"),
         "truncated": bool(full.get("truncated")),
+        "callGraphQuality": {
+            "directCalls": quality.get("directCalls"),
+            "indirectCalls": quality.get("indirectCalls"),
+            "internalBranches": quality.get("internalBranches"),
+            "tailCalls": quality.get("tailCalls"),
+            "unresolvedCalls": quality.get("unresolvedCalls"),
+            "unknownControlFlow": quality.get("unknownControlFlow"),
+            "source": quality.get("source"),
+            "notes": quality.get("notes"),
+        }
+        if quality
+        else None,
         "notes": list(full.get("notes") or []),
-        "analysisLimitations": list(full.get("analysisLimitations") or []),
+        "analysisLimitations": list(full.get("analysisLimitations") or [])
+        + list(quality.get("analysisLimitations") or []),
         "sampleEdges": sample,
     }
