@@ -451,6 +451,70 @@ enum FirmwareForensicPDF {
                         size: 7
                     )
                 }
+                if af.activationEvidenceDistribution != nil
+                    || af.conditionalLogicQuality != nil
+                    || af.semanticDataFlow != nil
+                    || af.evidenceGraphQuality != nil
+                    || af.inputDetectionQuality != nil {
+                    y = gap(y)
+                    y = line(
+                        ctx,
+                        "Semantische Analyse der Eingabeverarbeitung:",
+                        y: y,
+                        size: 9,
+                        bold: true
+                    )
+                    if let dist = af.activationEvidenceDistribution {
+                        y = line(
+                            ctx,
+                            "Evidenzverteilung: STATIC=\(dist.staticConfirmedCount ?? 0) INDIC=\(dist.indicativeCount ?? 0) SPEC=\(dist.speculativeCount ?? 0) UNK=\(dist.unknownCount ?? 0) ambig=\(dist.ambiguousCount ?? 0) tier=\(dist.overallEvidenceTier ?? "—")",
+                            y: y,
+                            size: 7
+                        )
+                        if let summary = dist.overallEvidenceSummary, !summary.isEmpty {
+                            y = line(ctx, summary, y: y, size: 7)
+                        }
+                    }
+                    if let qc = af.conditionalLogicQuality, !qc.isEmpty {
+                        let label = qc.filter { $0.value > 0 }
+                            .sorted { $0.key < $1.key }
+                            .map { "\($0.key)=\($0.value)" }
+                            .joined(separator: ", ")
+                        y = line(ctx, "Bedingte Logik (Klassen): \(label)", y: y, size: 7)
+                    }
+                    if let idq = af.inputDetectionQuality {
+                        y = line(
+                            ctx,
+                            "Input-Erkennung: benannt=\(idq.namedHandlers ?? 0) generisch=\(idq.genericNamedHandlers ?? 0) struktur+=\(idq.structuralMultiSignal ?? 0) nurName/String=\(idq.nameOrStringOnly ?? 0)",
+                            y: y,
+                            size: 7
+                        )
+                        if let note = idq.note, !note.isEmpty {
+                            y = line(ctx, note, y: y, size: 7)
+                        }
+                    }
+                    if let sdf = af.semanticDataFlow, sdf.ok != false {
+                        y = line(
+                            ctx,
+                            "Datenfluss: fn=\(sdf.functionsAnalyzed ?? 0) reads=\(sdf.withMemoryReads ?? 0) writes=\(sdf.withMemoryWrites ?? 0) branch=\(sdf.withConditionals ?? 0) calls=\(sdf.withCalls ?? 0) ok=\(sdf.qualityOk ?? 0) partial=\(sdf.qualityPartial ?? 0) missing=\(sdf.qualityMissing ?? 0) src=\(sdf.source ?? "—")",
+                            y: y,
+                            size: 7
+                        )
+                    }
+                    if let gq = af.evidenceGraphQuality {
+                        y = line(
+                            ctx,
+                            "Graph-Kanten: confirmed=\(gq.confirmedEdgeCount ?? 0) indicative=\(gq.indicativeEdgeCount ?? 0) speculative=\(gq.speculativeEdgeCount ?? 0) unresolved=\(gq.unresolvedEdgeCount ?? 0)",
+                            y: y,
+                            size: 7
+                        )
+                    }
+                    let distLim = af.activationEvidenceDistribution?.limitations ?? []
+                    for lim in distLim.prefix(3) {
+                        y = ensure(ctx, y: y, need: 14)
+                        y = line(ctx, "• \(lim)", y: y, size: 7)
+                    }
+                }
                 for h in (af.sampleInputHandlers ?? []).prefix(5) {
                     y = ensure(ctx, y: y, need: 14)
                     let cats = (h.inputCategories ?? []).joined(separator: ",")
@@ -465,7 +529,8 @@ enum FirmwareForensicPDF {
                     y = ensure(ctx, y: y, need: 14)
                     y = line(ctx, "• \(lim)", y: y, size: 7)
                 }
-                y = asciiMarker(ctx, "activation-forensics=phase-2.3", y: y)
+                let phaseMarker = af.phase ?? "2.3"
+                y = asciiMarker(ctx, "activation-forensics=phase-\(phaseMarker)", y: y)
             }
 
             // Phase 2.2C/F: Eingabeverarbeitung + FSM

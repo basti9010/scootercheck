@@ -1,16 +1,17 @@
-"""Phase 2.3 — Activation Forensics (hidden input mechanism detection).
+"""Phase 2.3 / 2.3.1 — Activation Forensics (hidden input mechanism detection).
 
-Builds on existing Ghidra exports, Input Behavior, Function Matching/Diff,
-Callgraph, and FSM analysis. Documents *technical code properties* only.
+Builds on Ghidra exports, Input Behavior, Function Matching/Diff, Callgraph,
+FSM analysis, and Phase 2.3.1 semantic data-flow features.
 
 Hard rules
 ----------
 * Never invent function meanings or vehicle behavior claims.
 * Never reconstruct or emit usable activation / unlock sequences.
 * Never brute-force or auto-test real vehicles.
-* STATIC_CONFIRMED = concrete static code property observed — NOT a vehicle proof.
+* STATIC_CONFIRMED = concrete static code property — NOT a vehicle proof.
 * Community references must not be labeled as OEM-verified.
 * High analysis priority is NOT a manipulation proof.
+* Overall evidence must reflect the *distribution* of findings (Phase 2.3.1).
 """
 from __future__ import annotations
 
@@ -29,8 +30,13 @@ from input_behavior import (
     diff_input_behavior,
 )
 
-SCHEMA_VERSION = 1
-PHASE = "2.3"
+try:
+    from semantic_dataflow import analyze_semantic_dataflow
+except Exception:  # pragma: no cover
+    analyze_semantic_dataflow = None  # type: ignore
+
+SCHEMA_VERSION = 2
+PHASE = "2.3.1"
 MAX_FUNCTIONS = 2500
 MAX_HANDLERS = 100
 MAX_CONDITIONAL = 80
@@ -40,13 +46,18 @@ MAX_GRAPH_EDGES = 400
 MAX_PRIORITY = 80
 ANALYSIS_TIMEOUT_SEC = float(__import__("os").environ.get("ACTIVATION_FORENSICS_TIMEOUT_SEC", "45") or "45")
 
-# Forensic evidence tiers (API-facing; map from input_behavior tiers).
 STATIC_CONFIRMED = "STATIC_CONFIRMED"
 INDICATIVE = "INDICATIVE"
 SPECULATIVE = "SPECULATIVE"
 UNKNOWN = "UNKNOWN"
 
-# Input categories (technical; not vehicle claims).
+# Conditional-logic quality classes (Phase 2.3.1)
+CONDITIONAL_LOGIC_ONLY = "CONDITIONAL_LOGIC_ONLY"
+INPUT_RELATED_CONDITIONAL_LOGIC = "INPUT_RELATED_CONDITIONAL_LOGIC"
+STATE_RELATED_CONDITIONAL_LOGIC = "STATE_RELATED_CONDITIONAL_LOGIC"
+FEATURE_GATE_CANDIDATE = "FEATURE_GATE_CANDIDATE"
+NOT_CLASSIFIABLE = "NOT_CLASSIFIABLE"
+
 INPUT_CATEGORIES = (
     "button_input",
     "gpio_input",
@@ -60,7 +71,6 @@ INPUT_CATEGORIES = (
     "conditional_feature_gate",
 )
 
-# Map legacy input_behavior categories → Phase 2.3 categories.
 _LEGACY_CAT_MAP: dict[str, str] = {
     "button_or_key": "button_input",
     "gpio_event": "gpio_input",
@@ -71,7 +81,6 @@ _LEGACY_CAT_MAP: dict[str, str] = {
     "input_callback": "input_callback",
 }
 
-# Extra name/string hints for indicator / hazard / feature-gate (supplementary only).
 _EXTRA_NAME_HINTS: dict[str, tuple[str, ...]] = {
     "indicator_input": ("indicator", "blinker", "turn_sig", "turnsig", "direction_lamp", "dir_lamp"),
     "hazard_indicator_input": ("hazard", "warnblink", "warn_blink", "haz_lamp", "emergency_flasher"),
@@ -84,41 +93,17 @@ _EXTRA_STRING_HINTS: dict[str, tuple[str, ...]] = {
     "conditional_feature_gate": ("feature", "gate", "enable"),
 }
 
-# Branch / compare mnemonics for conditional logic (Thumb/ARM common).
 _BRANCH_MNEMONICS = frozenset(
     {
-        "b",
-        "beq",
-        "bne",
-        "blt",
-        "bgt",
-        "ble",
-        "bge",
-        "bcs",
-        "bcc",
-        "bmi",
-        "bpl",
-        "bvs",
-        "bvc",
-        "bhi",
-        "bls",
-        "cbz",
-        "cbnz",
-        "tbb",
-        "tbh",
-        "it",
-        "ite",
-        "itt",
-        "itee",
-        "itet",
-        "itte",
-        "itti",
+        "b", "beq", "bne", "blt", "bgt", "ble", "bge", "bcs", "bcc", "bmi", "bpl",
+        "bvs", "bvc", "bhi", "bls", "cbz", "cbnz", "tbb", "tbh",
+        "it", "ite", "itt", "itee", "itet", "itte", "itti",
     }
 )
 _COMPARE_MNEMONICS = frozenset({"cmp", "cmn", "tst", "teq"})
 _STORE_MNEMONICS = frozenset({"str", "strb", "strh", "strd", "stm", "push"})
+_LOAD_MNEMONICS = frozenset({"ldr", "ldrb", "ldrh", "ldrd", "ldm", "pop"})
 
-# Graph relation kinds.
 REL_CALLS = "CALLS"
 REL_REFERENCES = "REFERENCES"
 REL_PROCESSES_INPUT = "PROCESSES_INPUT"
@@ -133,16 +118,17 @@ BASE_LIMITATIONS = [
     "Nicht jede undokumentierte Funktion ist eine Tuningfunktion; nicht jede Änderung ist Manipulation.",
     "Hohe Analysepriorität ist kein Manipulationsnachweis.",
     "Community-Referenzen sind keine verifizierte Herstellerfirmware.",
+    "Gesamt-Evidenz spiegelt die Verteilung der Einzelfunde wider — ein starker Einzelfund bestätigt nicht alle Ergebnisse.",
 ]
 
 
 def _map_tier(legacy: str | None) -> str:
     t = (legacy or "").strip().lower()
-    if t in (EVIDENCE_CONFIRMED, "confirmed", "confirmed_static"):
+    if t in (EVIDENCE_CONFIRMED, "confirmed", "confirmed_static", "static_confirmed"):
         return STATIC_CONFIRMED
-    if t == EVIDENCE_INDICATIVE or t == "indicative":
+    if t in (EVIDENCE_INDICATIVE, "indicative"):
         return INDICATIVE
-    if t == EVIDENCE_SPECULATIVE or t == "speculative":
+    if t in (EVIDENCE_SPECULATIVE, "speculative"):
         return SPECULATIVE
     return UNKNOWN
 
@@ -184,8 +170,54 @@ def _strings_lower(f: dict[str, Any]) -> list[str]:
     return [str(s).lower() for s in raw if s is not None]
 
 
+def _mmio_hint(f: dict[str, Any]) -> bool:
+    """STM32-ish peripheral window 0x40000000–0x5FFFFFFF in constants."""
+    for c in f.get("constants") or []:
+        s = str(c).lower().replace("0x", "")
+        try:
+            v = int(s, 16) if s else -1
+        except ValueError:
+            continue
+        if 0x40000000 <= v <= 0x5FFFFFFF:
+            return True
+    return False
+
+
+def _structural_signals(f: dict[str, Any], df: dict[str, Any] | None) -> dict[str, Any]:
+    mnems = _mnemonics(f)
+    compares = sum(1 for m in mnems if m in _COMPARE_MNEMONICS)
+    branches = sum(1 for m in mnems if m in _BRANCH_MNEMONICS) or int(f.get("branchMnemonicCount") or 0)
+    stores = sum(1 for m in mnems if any(m.startswith(p) for p in ("str", "stm", "push")))
+    loads = sum(1 for m in mnems if any(m.startswith(p) for p in ("ldr", "ldm", "pop")))
+    bb = int(f.get("basicBlocks") or 0)
+    edges = int(f.get("cfgEdges") or 0)
+    calls = len(f.get("calls") or [])
+    called_by = len(f.get("calledBy") or [])
+
+    if isinstance(df, dict):
+        compares = max(compares, int(df.get("compareOps") or 0))
+        branches = max(branches, int(df.get("conditionalBranches") or 0))
+        stores = max(stores, int(df.get("memoryWrites") or 0))
+        loads = max(loads, int(df.get("memoryReads") or 0))
+        calls = max(calls, int(df.get("callCount") or 0))
+
+    return {
+        "compareOps": compares,
+        "conditionalBranches": branches,
+        "storeOps": stores,
+        "loadOps": loads,
+        "basicBlocks": bb,
+        "cfgEdges": edges,
+        "callCount": calls,
+        "calledByCount": called_by,
+        "hasConditionalLogic": bool(compares >= 1 and (branches >= 1 or (bb >= 2 and edges >= 2))),
+        "hasStateStorePattern": bool(stores >= 1 and (compares >= 1 or branches >= 1)),
+        "mmioHint": _mmio_hint(f),
+        "parameterCount": (df or {}).get("parameterCount") if isinstance(df, dict) else f.get("parameterCount"),
+    }
+
+
 def _extra_categories(f: dict[str, Any]) -> list[tuple[str, str, str]]:
-    """Return list of (category, method, evidence_note)."""
     hits: list[tuple[str, str, str]] = []
     name_l = _name(f).lower()
     strs = _strings_lower(f)
@@ -202,26 +234,6 @@ def _extra_categories(f: dict[str, Any]) -> list[tuple[str, str, str]]:
     return hits
 
 
-def _conditional_features(f: dict[str, Any]) -> dict[str, Any]:
-    mnems = _mnemonics(f)
-    branches = sum(1 for m in mnems if m in _BRANCH_MNEMONICS)
-    compares = sum(1 for m in mnems if m in _COMPARE_MNEMONICS)
-    stores = sum(1 for m in mnems if m in _STORE_MNEMONICS)
-    bb = int(f.get("basicBlocks") or 0)
-    edges = int(f.get("cfgEdges") or 0)
-    # Prefer explicit mnemonic counts; fall back to CFG density.
-    branch_count = branches or int(f.get("branchMnemonicCount") or 0)
-    return {
-        "compareOps": compares,
-        "conditionalBranches": branch_count,
-        "storeOps": stores,
-        "basicBlocks": bb,
-        "cfgEdges": edges,
-        "hasConditionalLogic": bool(compares >= 1 and (branch_count >= 1 or edges >= bb >= 2)),
-        "hasStateStorePattern": bool(stores >= 1 and (compares >= 1 or branch_count >= 1)),
-    }
-
-
 def _map_categories(legacy_cats: list[str], extras: list[str]) -> list[str]:
     out: list[str] = []
     for c in legacy_cats:
@@ -234,88 +246,278 @@ def _map_categories(legacy_cats: list[str], extras: list[str]) -> list[str]:
     return out
 
 
-def classify_activation_handler(f: dict[str, Any]) -> dict[str, Any] | None:
-    """Classify one Ghidra function export into an input-handler finding."""
-    scored = classify_input_function(f)
-    extras = _extra_categories(f)
-    cond = _conditional_features(f)
+def _structural_input_strength(sig: dict[str, Any]) -> tuple[int, int, list[str]]:
+    """Return (strong, weak, detail tags). Load+branch alone is not enough."""
+    strong = 0
+    weak = 0
+    details: list[str] = []
+    # ISR / callback-like fan-in with memory + conditional control flow.
+    if sig["calledByCount"] >= 3 and sig["hasConditionalLogic"] and sig["loadOps"] >= 1:
+        strong += 1
+        details.append("fan_in_isr_like")
+    # Peripheral MMIO window + at least one caller + conditional.
+    if sig["mmioHint"] and sig["hasConditionalLogic"] and sig["calledByCount"] >= 1:
+        strong += 1
+        details.append("mmio_input_path")
+    # Explicit parameter + compare/branch (signature-aware dataflow).
+    if (sig.get("parameterCount") or 0) >= 1 and sig["compareOps"] >= 1 and sig["conditionalBranches"] >= 1:
+        strong += 1
+        details.append("parameter_gated")
+    # Supporting (weak) structural co-signals — never sufficient alone.
+    if (
+        sig["loadOps"] >= 2
+        and sig["storeOps"] >= 1
+        and sig["compareOps"] >= 2
+        and sig["hasConditionalLogic"]
+    ):
+        weak += 1
+        details.append("load_store_conditional")
+    if sig["calledByCount"] >= 2 and sig["hasStateStorePattern"] and sig["hasConditionalLogic"]:
+        weak += 1
+        details.append("callback_state_update")
+    if sig["loadOps"] >= 1 and sig["hasConditionalLogic"]:
+        weak += 1
+        details.append("dataflow_load_conditional")
+    return strong, weak, details
 
-    categories: list[str] = []
+
+def _independent_feature_score(
+    *,
+    scored: dict[str, Any] | None,
+    extras: list[tuple[str, str, str]],
+    sig: dict[str, Any],
+    generic: bool,
+) -> tuple[float, list[str], list[str], bool]:
+    """Weighted independent features. Name/string alone cannot yield STATIC_CONFIRMED."""
+    score = 0.0
     methods: list[str] = []
     evidence: list[str] = []
-    legacy_tier = None
-    score = 0.0
+    name_only = True
 
     if scored:
-        categories = _map_categories(list(scored.get("categories") or []), [])
         methods.append("input_behavior_classify")
-        evidence.extend(list(scored.get("evidence") or [])[:8])
-        legacy_tier = scored.get("evidenceTier")
-        score = float(scored.get("score") or 0)
+        evidence.extend(list(scored.get("evidence") or [])[:6])
+        score += float(scored.get("score") or 0)
+        name_only = False
 
-    for cat, method, note in extras:
-        if cat not in categories:
-            categories.append(cat)
+    for _cat, method, note in extras:
         methods.append(method)
         evidence.append(note)
-        score += 0.35 if method == "name_hint" else 0.25
-        if legacy_tier is None:
-            legacy_tier = EVIDENCE_INDICATIVE
+        # Cap name/string contribution.
+        score += 0.25 if method == "name_hint" else 0.2
 
-    # Conditional feature gate from CFG without name/string (weaker).
-    if cond["hasConditionalLogic"] and cond["hasStateStorePattern"] and not categories:
-        # Alone: speculative conditional gate candidate — not enough for a handler.
-        pass
-    elif cond["hasConditionalLogic"] and categories:
-        if "conditional_feature_gate" not in categories and (
-            "state_update" in categories or "input_callback" in categories or "event_queue" in categories
-        ):
-            categories.append("conditional_feature_gate")
-            methods.append("conditional_cfg")
+    strong, weak, details = _structural_input_strength(sig)
+    if "dataflow_load_conditional" in details:
+        score += 0.35
+        methods.append("dataflow_load_conditional")
+        evidence.append(
+            f"loads={sig['loadOps']} compares={sig['compareOps']} branches={sig['conditionalBranches']}"
+        )
+        name_only = False
+    if sig["hasStateStorePattern"]:
+        score += 0.25
+        methods.append("state_store_pattern")
+        evidence.append(f"stores={sig['storeOps']}")
+        name_only = False
+    if "mmio_input_path" in details:
+        score += 0.9
+        methods.append("mmio_constant_hint")
+        evidence.append("peripheral-window constant co-located with conditional logic + caller")
+        name_only = False
+    if "fan_in_isr_like" in details or sig["calledByCount"] >= 2:
+        score += 0.45 if "fan_in_isr_like" in details else 0.2
+        methods.append("callback_fan_in")
+        evidence.append(f"calledBy={sig['calledByCount']}")
+        name_only = False
+    if "parameter_gated" in details:
+        score += 0.7
+        methods.append("parameter_conditional")
+        evidence.append(f"parameterCount={sig.get('parameterCount')}")
+        name_only = False
+    # Dense branch-only without other signals: weak, do not classify as input alone.
+    if sig["compareOps"] >= 3 and sig["conditionalBranches"] >= 4 and strong == 0 and weak <= 1:
+        methods.append("dense_conditional_only")
+        evidence.append("dense compares/branches without input-linkage signals")
+
+    if generic:
+        methods.append("generic_name")
+        evidence.append("generic Ghidra name — classification must not rely on name alone")
+
+    return score, sorted(set(methods)), evidence, name_only
+
+
+def classify_activation_handler(
+    f: dict[str, Any],
+    *,
+    dataflow_fn: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    scored = classify_input_function(f)
+    extras = _extra_categories(f)
+    sig = _structural_signals(f, dataflow_fn)
+    generic = is_generic_name(_name(f))
+
+    categories: list[str] = []
+    if scored:
+        categories = _map_categories(list(scored.get("categories") or []), [])
+    for cat, _, _ in extras:
+        if cat not in categories:
+            categories.append(cat)
+
+    score, methods, evidence, name_only = _independent_feature_score(
+        scored=scored, extras=extras, sig=sig, generic=generic
+    )
+
+    # Name-independent structural input candidate (no category from names/strings/IB).
+    structural_only = False
+    if not categories:
+        strong, weak, details = _structural_input_strength(sig)
+        # Require ≥1 strong signal AND ≥1 additional co-signal (strong or weak).
+        if strong >= 1 and (strong + weak) >= 2:
+            structural_only = True
+            categories.append("input_callback")
+            methods.append("structural_multi_signal")
             evidence.append(
-                f"conditionalBranches={cond['conditionalBranches']} compares={cond['compareOps']} stores={cond['storeOps']}"
+                f"strongStructural={strong} weakStructural={weak} details={','.join(details)}"
             )
-            score += 0.2
+            score += 0.5
+        else:
+            # Do not promote load+branch / dense-branch noise to a handler.
+            return None
+
+    # Feature gate: never from branches alone; structural-only callback ≠ gate.
+    gate_class = classify_conditional_quality(
+        sig, categories, structural_only_callback=structural_only
+    )
+    if gate_class == FEATURE_GATE_CANDIDATE and not structural_only:
+        if "conditional_feature_gate" not in categories:
+            categories.append("conditional_feature_gate")
+            methods.append("feature_gate_candidate")
+            evidence.append("semantic input + state-related conditional + store pattern")
+            score += 0.3
+    elif "conditional_feature_gate" in categories and gate_class != FEATURE_GATE_CANDIDATE:
+        # Downgrade name/string-only feature_gate without structural support.
+        if gate_class in (CONDITIONAL_LOGIC_ONLY, NOT_CLASSIFIABLE, STATE_RELATED_CONDITIONAL_LOGIC) and not scored:
+            if not any(m in methods for m in ("feature_gate_candidate", "input_behavior_classify")):
+                categories = [c for c in categories if c != "conditional_feature_gate"]
 
     if not categories:
         return None
 
-    # Elevate only when concrete structural properties exist.
+    # Evidence tier rules (2.3.1): name/string alone → SPECULATIVE; need multi-signal for INDICATIVE.
+    legacy_tier = scored.get("evidenceTier") if scored else None
     tier = _map_tier(legacy_tier)
-    if cond["hasConditionalLogic"] and any(
-        c in categories for c in ("button_input", "gpio_input", "ble_input", "uart_input", "event_queue")
-    ):
-        if tier == SPECULATIVE:
+    independent = [m for m in methods if m not in ("name_hint", "string_hint", "generic_name")]
+    if structural_only:
+        # Structural-only FUN_* candidates stay speculative / weak unless many strong signals.
+        strong, _weak, _d = _structural_input_strength(sig)
+        tier = INDICATIVE if strong >= 2 else SPECULATIVE
+    elif name_only or (not independent and extras and not scored):
+        tier = SPECULATIVE
+    elif scored and scored.get("evidenceTier") in (EVIDENCE_CONFIRMED, "confirmed", "confirmed_static"):
+        # Only keep STATIC_CONFIRMED if not solely name-driven OR has structural co-signal.
+        if independent:
+            tier = STATIC_CONFIRMED
+        else:
             tier = INDICATIVE
-        evidence.append("conditional_logic_co_located_with_input_category")
-    if scored and scored.get("evidenceTier") in (EVIDENCE_CONFIRMED, "confirmed", "confirmed_static"):
-        tier = STATIC_CONFIRMED
-
-    # Name-only extras without structural support stay speculative.
-    if not scored and all(m in ("name_hint", "string_hint") for m in methods):
+    elif len(independent) >= 2 or (scored and independent):
+        if tier in (UNKNOWN, SPECULATIVE):
+            tier = INDICATIVE
+    else:
         if tier == STATIC_CONFIRMED:
             tier = INDICATIVE
-        if not cond["hasConditionalLogic"]:
+        if not scored and not independent:
             tier = SPECULATIVE
+
+    # Dense conditional-only must not become handler without categories from stronger signals.
+    if "dense_conditional_only" in methods and not scored and not extras and not structural_only:
+        return None
 
     return {
         "functionId": _addr(f) or _name(f) or "unknown",
         "address": _addr(f) or None,
         "name": _name(f) or None,
-        "genericName": is_generic_name(_name(f)),
+        "genericName": generic,
         "inputCategories": categories,
-        "detectionMethods": sorted(set(methods)),
-        "technicalFindings": evidence[:12],
+        "detectionMethods": methods,
+        "technicalFindings": evidence[:14],
         "confidence": round(min(score, 5.0), 3),
         "evidenceTier": tier,
-        "conditionalLogic": cond,
-        "basicBlocks": int(f.get("basicBlocks") or 0),
-        "cfgEdges": int(f.get("cfgEdges") or 0),
+        "weakCandidate": bool(structural_only and tier == SPECULATIVE),
+        "structuralOnly": structural_only,
+        "conditionalLogic": {
+            "compareOps": sig["compareOps"],
+            "conditionalBranches": sig["conditionalBranches"],
+            "storeOps": sig["storeOps"],
+            "loadOps": sig["loadOps"],
+            "basicBlocks": sig["basicBlocks"],
+            "cfgEdges": sig["cfgEdges"],
+            "hasConditionalLogic": sig["hasConditionalLogic"],
+            "hasStateStorePattern": sig["hasStateStorePattern"],
+            "qualityClass": gate_class,
+        },
+        "featureWeights": {
+            "structuralSignals": len(independent),
+            "nameOrStringHints": sum(1 for m in methods if m in ("name_hint", "string_hint")),
+            "mmioHint": sig["mmioHint"],
+            "calledByCount": sig["calledByCount"],
+            "structuralOnly": structural_only,
+        },
+        "basicBlocks": sig["basicBlocks"],
+        "cfgEdges": sig["cfgEdges"],
         "fingerprint": f.get("fingerprint"),
         "limitations": [
             "STATIC_CONFIRMED bezieht sich auf Codeeigenschaften, nicht auf Fahrzeugverhalten.",
+            "Namen/Strings allein erzeugen keinen sicheren Nachweis.",
+            "Strukturelle FUN_*-Kandidaten sind schwache Hinweise ohne semantische Namen/Strings.",
         ],
     }
+
+
+def classify_conditional_quality(
+    sig: dict[str, Any],
+    categories: list[str],
+    *,
+    structural_only_callback: bool = False,
+) -> str:
+    """Phase 2.3.1 conditional classification — branches alone ≠ feature gate."""
+    if not sig.get("hasConditionalLogic"):
+        return NOT_CLASSIFIABLE
+    semantic_input = any(
+        c in categories
+        for c in (
+            "button_input",
+            "gpio_input",
+            "indicator_input",
+            "hazard_indicator_input",
+            "ble_input",
+            "uart_input",
+            "event_queue",
+        )
+    )
+    callback_input = "input_callback" in categories and not structural_only_callback
+    input_related = semantic_input or callback_input
+    state_related = "state_update" in categories or bool(sig.get("hasStateStorePattern"))
+    # Feature gate needs semantic/non-structural input linkage + state store + compares.
+    if (
+        semantic_input
+        and state_related
+        and sig.get("compareOps", 0) >= 1
+        and sig.get("storeOps", 0) >= 1
+    ):
+        return FEATURE_GATE_CANDIDATE
+    if (
+        callback_input
+        and state_related
+        and sig.get("compareOps", 0) >= 2
+        and sig.get("storeOps", 0) >= 1
+        and not structural_only_callback
+    ):
+        return FEATURE_GATE_CANDIDATE
+    if input_related or (structural_only_callback and "input_callback" in categories):
+        return INPUT_RELATED_CONDITIONAL_LOGIC
+    if state_related and sig.get("compareOps", 0) >= 1:
+        return STATE_RELATED_CONDITIONAL_LOGIC
+    return CONDITIONAL_LOGIC_ONLY
 
 
 def detect_undocumented_logic(
@@ -324,17 +526,13 @@ def detect_undocumented_logic(
     function_diff: dict[str, Any] | None = None,
     input_handlers: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Flag undocumented / unmatched / structurally changed input-related logic."""
     limitations = [
         "Nicht jede undokumentierte Funktion ist eine Tuningfunktion.",
         "Nicht jede strukturelle Änderung ist eine Manipulation.",
         "Nicht jede bedingte Verzweigung ist eine Aktivierungsbedingung.",
     ]
     findings: list[dict[str, Any]] = []
-    handler_addrs = {
-        str(h.get("address") or "") for h in (input_handlers or []) if h.get("address")
-    }
-
+    handler_addrs = {str(h.get("address") or "") for h in (input_handlers or []) if h.get("address")}
     generic_count = sum(1 for f in subject_fns if is_generic_name(_name(f)))
     findings.append(
         {
@@ -345,34 +543,33 @@ def detect_undocumented_logic(
             "note": "Generische Namen (FUN_*) sind bei Ghidra-Exporten normal.",
         }
     )
-
     pairs = list((function_diff or {}).get("pairs") or []) if isinstance(function_diff, dict) else []
     added = [p for p in pairs if str(p.get("status") or "") in ("HINZUGEFUEGT", "ADDED", "added")]
     changed = [
-        p
-        for p in pairs
-        if str(p.get("status") or "") in ("STRUKTURELL_VERAENDERT", "STRUCTURALLY_CHANGED", "changed")
+        p for p in pairs if str(p.get("status") or "") in ("STRUKTURELL_VERAENDERT", "STRUCTURALLY_CHANGED", "changed")
     ]
     unmatched = [
-        p
-        for p in pairs
-        if str(p.get("status") or "") in ("NICHT_VERGLEICHBAR", "UNMATCHED", "ambiguous")
+        p for p in pairs if str(p.get("status") or "") in ("NICHT_VERGLEICHBAR", "UNMATCHED", "ambiguous")
     ]
-
     for p in (added + changed)[:MAX_UNDOCUMENTED]:
         addr = str(
             (p.get("subject") or {}).get("address")
             if isinstance(p.get("subject"), dict)
-            else p.get("subjectAddress")
-            or p.get("address")
-            or ""
+            else p.get("subjectAddress") or p.get("address") or ""
         )
         status = str(p.get("status") or "")
         is_input = addr in handler_addrs
         findings.append(
             {
-                "kind": "structurally_changed_input" if is_input and "VERAENDERT" in status.upper()
-                else ("added_function" if "HINZU" in status.upper() or status.lower() == "added" else "structural_change"),
+                "kind": (
+                    "structurally_changed_input"
+                    if is_input and "VERAENDERT" in status.upper()
+                    else (
+                        "added_function"
+                        if "HINZU" in status.upper() or status.lower() == "added"
+                        else "structural_change"
+                    )
+                ),
                 "address": addr or None,
                 "name": (
                     (p.get("subject") or {}).get("name")
@@ -382,15 +579,11 @@ def detect_undocumented_logic(
                 "diffStatus": status,
                 "inputRelated": is_input,
                 "evidenceTier": INDICATIVE if is_input else SPECULATIVE,
-                "technicalFindings": [
-                    f"functionDiff.status={status}",
-                    f"inputRelated={is_input}",
-                ],
+                "technicalFindings": [f"functionDiff.status={status}", f"inputRelated={is_input}"],
                 "matchingConfidence": p.get("confidence") or p.get("matchConfidence"),
                 "limitations": limitations[:2],
             }
         )
-
     return {
         "ok": True,
         "summary": {
@@ -411,52 +604,69 @@ def analyze_conditional_logic(
     subject_fns: list[dict[str, Any]],
     *,
     input_handlers: list[dict[str, Any]] | None = None,
+    dataflow_by_addr: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Document conditional / state-dependent control flow (no sequence reconstruction)."""
-    handler_by_addr = {
-        str(h.get("address") or ""): h for h in (input_handlers or []) if h.get("address")
-    }
+    handler_by_addr = {str(h.get("address") or ""): h for h in (input_handlers or []) if h.get("address")}
     findings: list[dict[str, Any]] = []
+    class_counts = {
+        CONDITIONAL_LOGIC_ONLY: 0,
+        INPUT_RELATED_CONDITIONAL_LOGIC: 0,
+        STATE_RELATED_CONDITIONAL_LOGIC: 0,
+        FEATURE_GATE_CANDIDATE: 0,
+        NOT_CLASSIFIABLE: 0,
+    }
     for f in subject_fns[:MAX_FUNCTIONS]:
-        cond = _conditional_features(f)
-        if not cond["hasConditionalLogic"]:
-            continue
         addr = _addr(f)
+        df = (dataflow_by_addr or {}).get(addr)
+        sig = _structural_signals(f, df)
+        if not sig["hasConditionalLogic"]:
+            continue
         linked = handler_by_addr.get(addr)
         cats = list(linked.get("inputCategories") or []) if linked else []
-        tier = INDICATIVE if linked else SPECULATIVE
-        if cond["compareOps"] >= 1 and cond["conditionalBranches"] >= 1:
-            if linked and linked.get("evidenceTier") == STATIC_CONFIRMED:
-                tier = STATIC_CONFIRMED
+        structural_only = bool(linked.get("structuralOnly")) if linked else False
+        qclass = classify_conditional_quality(
+            sig, cats, structural_only_callback=structural_only
+        )
+        class_counts[qclass] = class_counts.get(qclass, 0) + 1
+        if qclass == FEATURE_GATE_CANDIDATE:
+            tier = INDICATIVE
+        elif qclass in (INPUT_RELATED_CONDITIONAL_LOGIC, STATE_RELATED_CONDITIONAL_LOGIC):
+            tier = INDICATIVE if linked and not structural_only else SPECULATIVE
+        else:
+            tier = SPECULATIVE
         findings.append(
             {
                 "functionId": addr or _name(f) or "unknown",
                 "address": addr or None,
                 "name": _name(f) or None,
                 "inputCategories": cats,
-                "compareOps": cond["compareOps"],
-                "conditionalBranches": cond["conditionalBranches"],
-                "storeOps": cond["storeOps"],
-                "stateUpdatePattern": cond["hasStateStorePattern"],
-                "basicBlocks": cond["basicBlocks"],
-                "cfgEdges": cond["cfgEdges"],
+                "qualityClass": qclass,
+                "structuralOnly": structural_only,
+                "compareOps": sig["compareOps"],
+                "conditionalBranches": sig["conditionalBranches"],
+                "storeOps": sig["storeOps"],
+                "loadOps": sig["loadOps"],
+                "stateUpdatePattern": sig["hasStateStorePattern"],
+                "basicBlocks": sig["basicBlocks"],
+                "cfgEdges": sig["cfgEdges"],
                 "evidenceTier": tier,
                 "technicalFindings": [
-                    f"compares={cond['compareOps']}",
-                    f"branches={cond['conditionalBranches']}",
-                    f"stores={cond['storeOps']}",
+                    f"qualityClass={qclass}",
+                    f"compares={sig['compareOps']}",
+                    f"branches={sig['conditionalBranches']}",
+                    f"stores={sig['storeOps']}",
                 ],
                 "limitations": [
                     "Kontrollflussmerkmale belegen keine Aktivierungsbedingung am Fahrzeug.",
-                    "Keine Rekonstruktion von Eingabesequenzen.",
+                    "Vergleiche+Branches allein ergeben kein Feature Gate.",
                 ],
             }
         )
     findings.sort(
         key=lambda x: (
+            0 if x.get("qualityClass") == FEATURE_GATE_CANDIDATE else 1,
             0 if x.get("inputCategories") else 1,
             -int(x.get("conditionalBranches") or 0),
-            -int(x.get("compareOps") or 0),
         )
     )
     findings = findings[:MAX_CONDITIONAL]
@@ -466,11 +676,15 @@ def analyze_conditional_logic(
             "functionsWithConditionalLogic": len(findings),
             "inputLinked": sum(1 for x in findings if x.get("inputCategories")),
             "stateStorePatterns": sum(1 for x in findings if x.get("stateUpdatePattern")),
+            "qualityClasses": class_counts,
+            "featureGateCandidates": class_counts.get(FEATURE_GATE_CANDIDATE, 0),
+            "conditionalLogicOnly": class_counts.get(CONDITIONAL_LOGIC_ONLY, 0),
         },
         "findings": findings,
         "evidenceTier": INDICATIVE if findings else UNKNOWN,
         "analysisLimitations": [
             "Bedingte Verzweigungen allein sind keine Aktivierungslogik.",
+            "FEATURE_GATE_CANDIDATE erfordert eingabe- und zustandsbezogene Signale.",
             "Keine Ausgabe von Vergleichswerten als Umgehungsanleitung.",
         ],
     }
@@ -483,11 +697,27 @@ def build_evidence_graph(
     undocumented: dict[str, Any] | None,
     state_machines: dict[str, Any] | None,
     function_diff: dict[str, Any] | None,
+    call_graph: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Compact evidence graph — technical relationships only."""
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
     seen_nodes: set[str] = set()
+    seen_edges: set[tuple[str, str, str]] = set()
+    edge_tier_counts = {
+        "confirmedEdgeCount": 0,
+        "indicativeEdgeCount": 0,
+        "speculativeEdgeCount": 0,
+        "unresolvedEdgeCount": 0,
+    }
+
+    call_pairs: set[tuple[str, str]] = set()
+    for e in list((call_graph or {}).get("edges") or [])[:5000]:
+        if not isinstance(e, dict):
+            continue
+        a = str(e.get("from") or e.get("src") or "").strip()
+        b = str(e.get("to") or e.get("dst") or "").strip()
+        if a and b:
+            call_pairs.add((a, b))
 
     def add_node(nid: str, ntype: str, **meta: Any) -> None:
         if nid in seen_nodes or len(nodes) >= MAX_GRAPH_NODES:
@@ -495,11 +725,16 @@ def build_evidence_graph(
         seen_nodes.add(nid)
         nodes.append({"id": nid, "type": ntype, **meta})
 
-    def add_edge(src: str, dst: str, kind: str, *, evidence: str, confirmed: bool) -> None:
+    def add_edge(src: str, dst: str, kind: str, *, evidence: str, tier: str, confirmed: bool) -> None:
         if len(edges) >= MAX_GRAPH_EDGES:
             return
         if src not in seen_nodes or dst not in seen_nodes:
+            edge_tier_counts["unresolvedEdgeCount"] += 1
             return
+        key = (src, dst, kind)
+        if key in seen_edges:
+            return
+        seen_edges.add(key)
         edges.append(
             {
                 "from": src,
@@ -507,34 +742,39 @@ def build_evidence_graph(
                 "relation": kind,
                 "technicalFinding": evidence,
                 "confirmed": confirmed,
-                "evidenceTier": STATIC_CONFIRMED if confirmed else INDICATIVE,
+                "evidenceTier": tier,
             }
         )
+        if tier == STATIC_CONFIRMED or confirmed:
+            edge_tier_counts["confirmedEdgeCount"] += 1
+        elif tier == INDICATIVE:
+            edge_tier_counts["indicativeEdgeCount"] += 1
+        elif tier == SPECULATIVE:
+            edge_tier_counts["speculativeEdgeCount"] += 1
+        else:
+            edge_tier_counts["unresolvedEdgeCount"] += 1
 
     for h in handlers[:MAX_HANDLERS]:
         addr = str(h.get("address") or h.get("functionId") or "")
         if not addr:
             continue
         nid = f"fn:{addr}"
-        add_node(
-            nid,
-            "firmware_function",
-            address=addr,
-            name=h.get("name"),
-            evidenceTier=h.get("evidenceTier"),
-        )
-        for cat in h.get("inputCategories") or []:
-            cid = f"cat:{cat}"
-            add_node(cid, "input_category", category=cat)
-            add_edge(
-                nid,
-                cid,
-                REL_PROCESSES_INPUT,
-                evidence="; ".join((h.get("technicalFindings") or [])[:3]) or "category_classified",
-                confirmed=h.get("evidenceTier") == STATIC_CONFIRMED,
-            )
+        add_node(nid, "firmware_function", address=addr, name=h.get("name"), evidenceTier=h.get("evidenceTier"))
+        # PROCESSES_INPUT only with sufficient input evidence.
+        if h.get("evidenceTier") in (STATIC_CONFIRMED, INDICATIVE) and (h.get("inputCategories") or []):
+            for cat in h.get("inputCategories") or []:
+                cid = f"cat:{cat}"
+                add_node(cid, "input_category", category=cat)
+                add_edge(
+                    nid,
+                    cid,
+                    REL_PROCESSES_INPUT,
+                    evidence="; ".join((h.get("technicalFindings") or [])[:3]) or "classified_input",
+                    tier=str(h.get("evidenceTier") or INDICATIVE),
+                    confirmed=h.get("evidenceTier") == STATIC_CONFIRMED,
+                )
         cond = h.get("conditionalLogic") or {}
-        if cond.get("hasStateStorePattern"):
+        if cond.get("hasStateStorePattern") and cond.get("storeOps", 0) >= 1:
             sid = f"state:{addr}"
             add_node(sid, "state_variable_candidate", address=addr, verified=False)
             add_edge(
@@ -542,8 +782,15 @@ def build_evidence_graph(
                 sid,
                 REL_UPDATES_STATE,
                 evidence=f"stores={cond.get('storeOps')} compares={cond.get('compareOps')}",
+                tier=INDICATIVE,
                 confirmed=False,
             )
+
+    # CALLS only with callgraph evidence.
+    for a, b in list(call_pairs)[:200]:
+        sa, sb = f"fn:{a}", f"fn:{b}"
+        if sa in seen_nodes and sb in seen_nodes:
+            add_edge(sa, sb, REL_CALLS, evidence="callgraph_edge", tier=STATIC_CONFIRMED, confirmed=True)
 
     for sm in list((state_machines or {}).get("sampleStateMachines") or [])[:20]:
         addr = str(sm.get("functionAddress") or sm.get("address") or "")
@@ -555,7 +802,7 @@ def build_evidence_graph(
             "state_machine_candidate",
             address=addr,
             analysisQuality=sm.get("analysisQuality"),
-            stateCount=sm.get("stateCount"),  # may be null — do not invent
+            stateCount=sm.get("stateCount"),
             evidenceTier=sm.get("analysisQuality") or SPECULATIVE,
         )
         fnid = f"fn:{addr}"
@@ -566,6 +813,7 @@ def build_evidence_graph(
             smid,
             REL_BELONGS_TO_GROUP,
             evidence="fsm_candidate_from_static_structure",
+            tier=SPECULATIVE,
             confirmed=False,
         )
 
@@ -581,17 +829,13 @@ def build_evidence_graph(
             continue
         sn, rn = f"fn:{saddr}", f"ref:{raddr}"
         add_node(sn, "firmware_function", address=saddr, name=sub.get("name") or p.get("subjectName"))
-        add_node(
-            rn,
-            "reference_function",
-            address=raddr,
-            name=ref.get("name") or p.get("referenceName"),
-        )
+        add_node(rn, "reference_function", address=raddr, name=ref.get("name") or p.get("referenceName"))
         add_edge(
             sn,
             rn,
             REL_STRUCTURALLY_DIFFERS,
             evidence=f"functionDiff={status}",
+            tier=STATIC_CONFIRMED,
             confirmed=True,
         )
 
@@ -602,8 +846,14 @@ def build_evidence_graph(
         "edgeCount": len(edges),
         "nodes": nodes,
         "edges": edges,
+        "quality": {
+            "nodeCount": len(nodes),
+            "edgeCount": len(edges),
+            **edge_tier_counts,
+        },
         "analysisLimitations": [
             "Graph dokumentiert technische Zusammenhänge, keine Umgehungssequenzen.",
+            "CALLS nur bei Callgraph-Beleg; PROCESSES_INPUT nur bei ausreichender Input-Evidenz.",
             "Unbestätigte Kanten sind als confirmed=false markiert.",
         ],
     }
@@ -616,11 +866,13 @@ def prioritize_functions(
     undocumented: dict[str, Any] | None = None,
     matching: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Rank forensic attention — priority ≠ manipulation proof."""
     cond_addrs = {
         str(x.get("address") or "")
         for x in list((conditional or {}).get("findings") or [])
-        if x.get("address")
+        if x.get("address") and x.get("qualityClass") in (
+            FEATURE_GATE_CANDIDATE,
+            INPUT_RELATED_CONDITIONAL_LOGIC,
+        )
     }
     undoc_addrs = {
         str(x.get("address") or "")
@@ -640,7 +892,7 @@ def prioritize_functions(
             reasons.append("indicative_input_handler")
         if addr in cond_addrs:
             score += 0.8
-            reasons.append("conditional_logic")
+            reasons.append("conditional_logic_quality")
         if addr in undoc_addrs:
             score += 1.2
             reasons.append("input_related_diff_vs_reference")
@@ -674,7 +926,6 @@ def integrate_fsm(
     *,
     runtime_validation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Link input handlers ↔ FSM candidates with existing evidence tiers."""
     sm = state_machine_analysis if isinstance(state_machine_analysis, dict) else {}
     samples = list(sm.get("sampleStateMachines") or sm.get("stateMachines") or [])
     handler_addrs = {str(h.get("address") or "") for h in handlers}
@@ -682,7 +933,6 @@ def integrate_fsm(
     for s in samples[:24]:
         addr = str(s.get("functionAddress") or s.get("address") or "")
         quality = str(s.get("analysisQuality") or s.get("evidenceTier") or "STATIC_CANDIDATE")
-        # Map FSM qualities; never invent state counts.
         state_count = s.get("stateCount")
         if state_count is None:
             state_count = s.get("estimatedStates") if s.get("stateCountVerified") else None
@@ -692,14 +942,10 @@ def integrate_fsm(
                 "functionName": s.get("functionName") or s.get("name"),
                 "linkedToInputHandler": addr in handler_addrs,
                 "fsmEvidenceTier": quality,
-                "stateCount": state_count,  # null when unknown
-                "transitionCount": s.get("transitionCount")
-                if s.get("transitionCountVerified")
-                else None,
+                "stateCount": state_count,
+                "transitionCount": s.get("transitionCount") if s.get("transitionCountVerified") else None,
                 "stateCountVerified": bool(s.get("stateCountVerified")),
-                "dynamicRuntimeVerified": bool(
-                    (runtime_validation or {}).get("dynamicRuntimeVerified")
-                )
+                "dynamicRuntimeVerified": bool((runtime_validation or {}).get("dynamicRuntimeVerified"))
                 if addr and (runtime_validation or {}).get("dynamicRuntimeVerified")
                 else False,
                 "technicalFindings": list(s.get("evidence") or [])[:6],
@@ -726,13 +972,12 @@ def compare_with_reference(
     subject_sha256: str | None,
     reference_sha256: str | None,
     analysis_profile: dict[str, Any] | None,
-    profile_compat: tuple[bool, str, list[str]] | list[Any] | None,
+    profile_compat: Any = None,
     reference_trust: str | None,
     function_diff: dict[str, Any] | None,
     input_diff: dict[str, Any] | None,
     handlers: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Original vs subject comparison focused on input-related functions."""
     trust = (reference_trust or "unknown").strip()
     oem = "oem" in trust.lower() or "manufacturer" in trust.lower() or "verified" in trust.lower()
     community = "community" in trust.lower()
@@ -744,7 +989,6 @@ def compare_with_reference(
         compat_status = str(profile_compat[1])
         if len(profile_compat) >= 3 and isinstance(profile_compat[2], list):
             compat_reasons = [str(x) for x in profile_compat[2]]
-
     fd_summary = (function_diff or {}).get("summary") if isinstance(function_diff, dict) else {}
     ib_summary = (input_diff or {}).get("summary") if isinstance(input_diff, dict) else {}
     changed_input = []
@@ -752,30 +996,21 @@ def compare_with_reference(
         changed_input.append(
             {
                 "subjectAddress": p.get("subjectAddress")
-                or (p.get("subject") or {}).get("address")
-                if isinstance(p.get("subject"), dict)
-                else p.get("address"),
+                or ((p.get("subject") or {}).get("address") if isinstance(p.get("subject"), dict) else p.get("address")),
                 "referenceAddress": p.get("referenceAddress")
-                or (p.get("reference") or {}).get("address")
-                if isinstance(p.get("reference"), dict)
-                else None,
+                or ((p.get("reference") or {}).get("address") if isinstance(p.get("reference"), dict) else None),
                 "status": p.get("status"),
                 "matchingConfidence": p.get("confidence") or p.get("matchConfidence"),
                 "technicalRationale": p.get("note") or p.get("reason") or p.get("status"),
             }
         )
-
     return {
         "ok": True,
         "subjectSHA256": subject_sha256,
         "referenceSHA256": reference_sha256,
         "analysisProfileVersion": (analysis_profile or {}).get("analysisProfileVersion"),
         "analysisProfileHash": (analysis_profile or {}).get("analysisProfileHash"),
-        "profileCompatibility": {
-            "ok": compat_ok,
-            "status": compat_status,
-            "reasons": compat_reasons,
-        },
+        "profileCompatibility": {"ok": compat_ok, "status": compat_status, "reasons": compat_reasons},
         "referenceTrust": trust,
         "referenceIsCommunity": community,
         "referenceIsOemVerified": bool(oem and not community),
@@ -799,16 +1034,88 @@ def compare_with_reference(
     }
 
 
+def aggregate_evidence(handlers: list[dict[str, Any]], conditional: dict[str, Any] | None) -> dict[str, Any]:
+    """Phase 2.3.1 — distribution-aware evidence summary (not max-tier wash)."""
+    counts = {
+        "staticConfirmedCount": 0,
+        "indicativeCount": 0,
+        "speculativeCount": 0,
+        "unknownCount": 0,
+        "ambiguousCount": 0,
+    }
+    strongest = None
+    rank = {STATIC_CONFIRMED: 0, INDICATIVE: 1, SPECULATIVE: 2, UNKNOWN: 3}
+    for h in handlers:
+        t = str(h.get("evidenceTier") or UNKNOWN)
+        if t == STATIC_CONFIRMED:
+            counts["staticConfirmedCount"] += 1
+        elif t == INDICATIVE:
+            counts["indicativeCount"] += 1
+        elif t == SPECULATIVE:
+            counts["speculativeCount"] += 1
+        else:
+            counts["unknownCount"] += 1
+        if (h.get("featureWeights") or {}).get("nameOrStringHints") and not (
+            (h.get("featureWeights") or {}).get("structuralSignals")
+        ):
+            counts["ambiguousCount"] += 1
+        if strongest is None or rank.get(t, 9) < rank.get(str(strongest.get("evidenceTier")), 9):
+            strongest = {
+                "address": h.get("address"),
+                "name": h.get("name"),
+                "evidenceTier": t,
+                "inputCategories": h.get("inputCategories"),
+            }
+
+    total = sum(counts[k] for k in ("staticConfirmedCount", "indicativeCount", "speculativeCount", "unknownCount"))
+    if total == 0:
+        overall = UNKNOWN
+        summary = "Keine Input-Handler-Kandidaten."
+    elif counts["staticConfirmedCount"] and counts["staticConfirmedCount"] == total:
+        overall = STATIC_CONFIRMED
+        summary = "Alle Handler mit STATIC_CONFIRMED Codeeigenschaften (nicht Fahrzeugbeweis)."
+    elif counts["staticConfirmedCount"]:
+        overall = INDICATIVE
+        summary = (
+            f"Gemischte Evidenz: {counts['staticConfirmedCount']} static-confirmed, "
+            f"{counts['indicativeCount']} indicative, {counts['speculativeCount']} speculative — "
+            "Gesamtbewertung INDICATIVE (kein pauschales STATIC_CONFIRMED)."
+        )
+    elif counts["indicativeCount"] >= counts["speculativeCount"]:
+        overall = INDICATIVE
+        summary = "Überwiegend indikative strukturelle Hinweise."
+    else:
+        overall = SPECULATIVE
+        summary = "Überwiegend spekulative / schwache Hinweise."
+
+    return {
+        **counts,
+        "overallEvidenceSummary": summary,
+        "overallEvidenceTier": overall,
+        "strongestIndividualFinding": strongest,
+        "analysisCoverage": {
+            "handlerCount": total,
+            "conditionalFindingCount": (conditional or {}).get("summary", {}).get("functionsWithConditionalLogic"),
+            "featureGateCandidates": (conditional or {}).get("summary", {}).get("featureGateCandidates"),
+            "conditionalLogicOnly": (conditional or {}).get("summary", {}).get("conditionalLogicOnly"),
+        },
+        "limitations": [
+            "Ein einzelner STATIC_CONFIRMED-Befund bestätigt nicht die Gesamtanalyse.",
+            "STATIC_CONFIRMED ≠ Nachweis realen Fahrzeugverhaltens.",
+        ],
+    }
+
+
 def summarize_activation_forensics_for_poll(full: dict[str, Any]) -> dict[str, Any]:
-    """Compact poll payload — full detail via artifact download."""
     if not isinstance(full, dict):
         return {"ok": False}
     summary = full.get("summary") or {}
     handlers = list(full.get("inputHandlerFindings") or [])[:12]
+    dist = full.get("activationEvidenceDistribution") or {}
     return {
         "ok": bool(full.get("ok")),
         "schemaVersion": full.get("schemaVersion", SCHEMA_VERSION),
-        "phase": PHASE,
+        "phase": full.get("phase", PHASE),
         "summary": {
             "functionsExamined": summary.get("functionsExamined"),
             "inputHandlerCount": summary.get("inputHandlerCount"),
@@ -828,6 +1135,9 @@ def summarize_activation_forensics_for_poll(full: dict[str, Any]) -> dict[str, A
                 "inputCategories": h.get("inputCategories"),
                 "evidenceTier": h.get("evidenceTier"),
                 "confidence": h.get("confidence"),
+                "genericName": h.get("genericName"),
+                "weakCandidate": h.get("weakCandidate"),
+                "structuralOnly": h.get("structuralOnly"),
             }
             for h in handlers
         ],
@@ -835,9 +1145,8 @@ def summarize_activation_forensics_for_poll(full: dict[str, Any]) -> dict[str, A
             "summary": (full.get("undocumentedLogic") or {}).get("summary"),
             "evidenceTier": (full.get("undocumentedLogic") or {}).get("evidenceTier"),
         },
-        "conditionalLogicFindings": {
-            "summary": (full.get("conditionalLogicFindings") or {}).get("summary"),
-        },
+        "conditionalLogicFindings": {"summary": (full.get("conditionalLogicFindings") or {}).get("summary")},
+        "conditionalLogicQuality": (full.get("conditionalLogicFindings") or {}).get("summary", {}).get("qualityClasses"),
         "fsmIntegration": {
             "fsmCandidateCount": (full.get("fsmIntegration") or {}).get("fsmCandidateCount"),
             "inputLinkedFsmCount": (full.get("fsmIntegration") or {}).get("inputLinkedFsmCount"),
@@ -846,19 +1155,26 @@ def summarize_activation_forensics_for_poll(full: dict[str, Any]) -> dict[str, A
             "nodeCount": (full.get("activationEvidenceGraph") or {}).get("nodeCount"),
             "edgeCount": (full.get("activationEvidenceGraph") or {}).get("edgeCount"),
         },
+        "evidenceGraphQuality": (full.get("activationEvidenceGraph") or {}).get("quality"),
+        "activationEvidenceDistribution": {
+            "staticConfirmedCount": dist.get("staticConfirmedCount"),
+            "indicativeCount": dist.get("indicativeCount"),
+            "speculativeCount": dist.get("speculativeCount"),
+            "unknownCount": dist.get("unknownCount"),
+            "ambiguousCount": dist.get("ambiguousCount"),
+            "overallEvidenceTier": dist.get("overallEvidenceTier"),
+            "overallEvidenceSummary": dist.get("overallEvidenceSummary"),
+            "strongestIndividualFinding": dist.get("strongestIndividualFinding"),
+        },
+        "inputDetectionQuality": full.get("inputDetectionQuality"),
+        "semanticDataFlow": full.get("semanticDataFlowSummary"),
         "referenceComparison": {
             "referenceTrust": (full.get("referenceComparison") or {}).get("referenceTrust"),
-            "referenceIsCommunity": (full.get("referenceComparison") or {}).get(
-                "referenceIsCommunity"
-            ),
-            "profileCompatibility": (full.get("referenceComparison") or {}).get(
-                "profileCompatibility"
-            ),
+            "referenceIsCommunity": (full.get("referenceComparison") or {}).get("referenceIsCommunity"),
+            "profileCompatibility": (full.get("referenceComparison") or {}).get("profileCompatibility"),
         },
-        "prioritization": {
-            "top": list((full.get("prioritization") or {}).get("prioritizedFunctions") or [])[:8],
-        },
-        "evidenceTier": full.get("evidenceTier"),
+        "prioritization": {"top": list((full.get("prioritization") or {}).get("prioritizedFunctions") or [])[:8]},
+        "evidenceTier": dist.get("overallEvidenceTier") or full.get("evidenceTier"),
         "analysisLimitations": full.get("analysisLimitations"),
         "notes": full.get("notes"),
     }
@@ -877,15 +1193,26 @@ def run_activation_forensics(
     reference_sha256: str | None = None,
     reference_trust: str | None = None,
     runtime_validation: dict[str, Any] | None = None,
+    dataflow_export: dict[str, Any] | None = None,
     deadline_sec: float | None = None,
+    negative_control: bool = False,
 ) -> dict[str, Any]:
-    """Main Phase 2.3 entry — reuses existing analyses when provided."""
     t0 = time.monotonic()
     limit = deadline_sec if deadline_sec is not None else ANALYSIS_TIMEOUT_SEC
     limitations = list(BASE_LIMITATIONS)
     notes: list[str] = [f"phase={PHASE}"]
+    if negative_control:
+        notes.append("analysisMode=negative_control_reference")
+        limitations.append(
+            "Kontrollprüfung an Referenzfirmware — Community-Herkunft bleibt sichtbar; kein OEM-Automatismus."
+        )
 
-    if not function_analysis or not function_analysis.get("ok"):
+    # Accept exports that omit ok=true but have functions (real Ghidra dumps).
+    fa = function_analysis
+    if isinstance(fa, dict) and fa.get("functions") and "ok" not in fa:
+        fa = {**fa, "ok": True}
+
+    if not fa or not fa.get("ok"):
         return {
             "ok": False,
             "schemaVersion": SCHEMA_VERSION,
@@ -894,16 +1221,30 @@ def run_activation_forensics(
             "undocumentedLogic": {"ok": False, "findings": []},
             "conditionalLogicFindings": {"ok": False, "findings": []},
             "activationEvidenceGraph": {"ok": False, "nodes": [], "edges": []},
+            "activationEvidenceDistribution": aggregate_evidence([], None),
             "analysisLimitations": limitations + ["Funktionsexport fehlt/ungültig."],
             "notes": notes + ["activationForensics=missing_export"],
             "evidenceTier": UNKNOWN,
         }
 
-    subject_fns = _fns(function_analysis)
-    # Reuse or compute input behavior.
+    subject_fns = _fns(fa)
     ib = input_behavior if isinstance(input_behavior, dict) and input_behavior.get("ok") else None
     if ib is None:
-        ib = analyze_input_behavior(function_analysis, call_graph=call_graph)
+        ib = analyze_input_behavior(fa, call_graph=call_graph)
+
+    # Semantic dataflow (optional export or derived).
+    sdf = None
+    dataflow_by_addr: dict[str, dict[str, Any]] = {}
+    if analyze_semantic_dataflow is not None:
+        try:
+            sdf = analyze_semantic_dataflow(fa, dataflow_export=dataflow_export, call_graph=call_graph)
+            for row in list((sdf or {}).get("functions") or []):
+                a = str(row.get("address") or "")
+                if a:
+                    dataflow_by_addr[a] = row
+            notes.extend((sdf or {}).get("notes") or [])
+        except Exception as e:
+            notes.append(f"semanticDataFlow={type(e).__name__}")
 
     handlers: list[dict[str, Any]] = []
     for f in subject_fns[:MAX_FUNCTIONS]:
@@ -911,14 +1252,12 @@ def run_activation_forensics(
             notes.append("activationForensics=timeout_partial")
             limitations.append("Analyse vorzeitig beendet (Timeout) — Teilergebnis.")
             break
-        h = classify_activation_handler(f)
+        h = classify_activation_handler(f, dataflow_fn=dataflow_by_addr.get(_addr(f)))
         if h:
             handlers.append(h)
     handlers.sort(
         key=lambda x: (
-            {"STATIC_CONFIRMED": 0, "INDICATIVE": 1, "SPECULATIVE": 2, "UNKNOWN": 3}.get(
-                str(x.get("evidenceTier")), 9
-            ),
+            {STATIC_CONFIRMED: 0, INDICATIVE: 1, SPECULATIVE: 2, UNKNOWN: 3}.get(str(x.get("evidenceTier")), 9),
             -float(x.get("confidence") or 0),
         )
     )
@@ -929,12 +1268,9 @@ def run_activation_forensics(
         for c in h.get("inputCategories") or []:
             category_counts[c] = category_counts.get(c, 0) + 1
 
-    undoc = detect_undocumented_logic(
-        subject_fns, function_diff=function_diff, input_handlers=handlers
-    )
-    cond = analyze_conditional_logic(subject_fns, input_handlers=handlers)
+    undoc = detect_undocumented_logic(subject_fns, function_diff=function_diff, input_handlers=handlers)
+    cond = analyze_conditional_logic(subject_fns, input_handlers=handlers, dataflow_by_addr=dataflow_by_addr)
     sm_raw = ib.get("stateMachineAnalysis") if isinstance(ib, dict) else None
-    # Ensure state machines exist even if IB skipped them.
     if not sm_raw or not sm_raw.get("ok"):
         sm_raw = analyze_state_machines(subject_fns, ib.get("inputFunctions") if ib else [])
     fsm = integrate_fsm(sm_raw, handlers, runtime_validation=runtime_validation)
@@ -944,11 +1280,10 @@ def run_activation_forensics(
         undocumented=undoc,
         state_machines=sm_raw,
         function_diff=function_diff,
+        call_graph=call_graph,
     )
     matching = (function_diff or {}).get("functionMatching") if isinstance(function_diff, dict) else None
-    prio = prioritize_functions(
-        handlers, conditional=cond, undocumented=undoc, matching=matching
-    )
+    prio = prioritize_functions(handlers, conditional=cond, undocumented=undoc, matching=matching)
     ref_cmp = compare_with_reference(
         subject_sha256=subject_sha256,
         reference_sha256=reference_sha256,
@@ -959,17 +1294,43 @@ def run_activation_forensics(
         input_diff=input_behavior_diff,
         handlers=handlers,
     )
+    dist = aggregate_evidence(handlers, cond)
 
-    # Overall tier
-    tiers = [str(h.get("evidenceTier")) for h in handlers]
-    if STATIC_CONFIRMED in tiers:
-        overall = STATIC_CONFIRMED
-    elif INDICATIVE in tiers:
-        overall = INDICATIVE
-    elif SPECULATIVE in tiers:
-        overall = SPECULATIVE
-    else:
-        overall = UNKNOWN
+    # Detection quality snapshot (fixture metrics filled by tests).
+    input_detection_quality = {
+        "genericNamedHandlers": sum(1 for h in handlers if h.get("genericName")),
+        "namedHandlers": sum(1 for h in handlers if not h.get("genericName")),
+        "structuralMultiSignal": sum(
+            1 for h in handlers if "structural_multi_signal" in (h.get("detectionMethods") or [])
+        ),
+        "nameOrStringOnly": dist.get("ambiguousCount"),
+        "note": "Keine Precision/Recall für reale Firmware ohne unabhängige Ground Truth.",
+    }
+
+    semantic_summary = None
+    if isinstance(sdf, dict):
+        sdf_sum = sdf.get("summary") or {}
+        semantic_summary = {
+            "ok": sdf.get("ok"),
+            "functionsAnalyzed": sdf_sum.get("functionCount"),
+            "withMemoryReads": sdf_sum.get("withMemoryReads"),
+            "withMemoryWrites": sdf_sum.get("withMemoryWrites"),
+            "withConditionals": sdf_sum.get("withConditionals"),
+            "withCalls": sdf_sum.get("withCalls"),
+            "qualityOk": sdf_sum.get("qualityOk"),
+            "qualityPartial": sdf_sum.get("qualityPartial"),
+            "qualityMissing": sdf_sum.get("qualityMissing"),
+            "fromDataflowExport": sdf_sum.get("fromDataflowExport"),
+            "derivedOnly": sdf_sum.get("derivedOnly"),
+            "source": (
+                "dataflow_export"
+                if sdf_sum.get("fromDataflowExport")
+                else ("derived" if sdf_sum.get("derivedOnly") else None)
+            ),
+        }
+        for lim in list(sdf.get("analysisLimitations") or [])[:4]:
+            if lim not in limitations:
+                limitations.append(lim)
 
     elapsed = round(time.monotonic() - t0, 3)
     for lim in list(ib.get("analysisLimitations") or [])[:4]:
@@ -985,13 +1346,12 @@ def run_activation_forensics(
             "inputHandlerCount": len(handlers),
             "categories": {k: v for k, v in category_counts.items() if v},
             "undocumentedFindingCount": (undoc.get("summary") or {}).get("findingCount"),
-            "conditionalLogicCount": (cond.get("summary") or {}).get(
-                "functionsWithConditionalLogic"
-            ),
+            "conditionalLogicCount": (cond.get("summary") or {}).get("functionsWithConditionalLogic"),
             "fsmLinkedCount": fsm.get("inputLinkedFsmCount"),
             "graphNodeCount": graph.get("nodeCount"),
             "graphEdgeCount": graph.get("edgeCount"),
             "elapsedSec": elapsed,
+            "negativeControl": negative_control,
         },
         "categoryCounts": category_counts,
         "inputHandlerFindings": handlers,
@@ -999,17 +1359,15 @@ def run_activation_forensics(
         "conditionalLogicFindings": cond,
         "fsmIntegration": fsm,
         "activationEvidenceGraph": graph,
+        "activationEvidenceDistribution": dist,
+        "inputDetectionQuality": input_detection_quality,
+        "semanticDataFlowSummary": semantic_summary,
         "prioritization": prio,
         "referenceComparison": ref_cmp,
-        "evidenceTier": overall,
+        "evidenceTier": dist.get("overallEvidenceTier") or UNKNOWN,
         "analysisLimitations": limitations,
         "notes": notes,
     }
-
-
-# ---------------------------------------------------------------------------
-# Ground-truth quality metrics (controlled fixtures only)
-# ---------------------------------------------------------------------------
 
 
 def evaluate_detection_quality(
@@ -1018,11 +1376,6 @@ def evaluate_detection_quality(
     *,
     category_key: str = "inputCategories",
 ) -> dict[str, Any]:
-    """Compute TP/FP/FN/precision/recall for controlled fixtures.
-
-    ground_truth items: {address|name, categories: [...], expectDetect: bool}
-    Metrics MUST NOT be marketed as real-scooter accuracy.
-    """
     gt_pos = [g for g in ground_truth if g.get("expectDetect", True)]
     gt_neg = [g for g in ground_truth if not g.get("expectDetect", True)]
 
@@ -1030,9 +1383,7 @@ def evaluate_detection_quality(
         return str(x.get("address") or x.get("name") or x.get("functionId") or "").lower()
 
     found_keys = {_key(f) for f in findings}
-    tp = 0
-    fn = 0
-    ambiguous = 0
+    tp = fn = ambiguous = 0
     for g in gt_pos:
         k = _key(g)
         if k in found_keys:
@@ -1046,12 +1397,10 @@ def evaluate_detection_quality(
     for g in gt_neg:
         if _key(g) in found_keys:
             fp += 1
-    # Also count findings not in GT as FP when GT is exhaustive.
     gt_keys = {_key(g) for g in ground_truth}
     for f in findings:
         if _key(f) and _key(f) not in gt_keys:
             fp += 1
-
     precision = (tp / (tp + fp)) if (tp + fp) else None
     recall = (tp / (tp + fn)) if (tp + fn) else None
     return {

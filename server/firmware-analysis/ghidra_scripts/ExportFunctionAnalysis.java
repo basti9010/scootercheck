@@ -108,9 +108,10 @@ public class ExportFunctionAnalysis extends GhidraScript {
         StringBuilder sb = new StringBuilder(256 * 1024);
         sb.append("{\n");
         sb.append("  \"schemaVersion\": 1,\n");
-        // featuresVersion documents optional fields (branchMnemonicCount) without
+        // featuresVersion documents optional fields (branchMnemonicCount,
+        // parameterCount / memory* / compareOpCount / dataReferenceCount) without
         // changing fingerprint semantics (analyzerCompat stays "2").
-        sb.append("  \"featuresVersion\": 2,\n");
+        sb.append("  \"featuresVersion\": 3,\n");
         sb.append("  \"program\": ").append(jsonString(currentProgram.getName())).append(",\n");
         sb.append("  \"processor\": ").append(jsonString(processor)).append(",\n");
         // Phase 2.2G: distinguish requested loader base vs Ghidra ImageBase vs memory block.
@@ -207,6 +208,28 @@ public class ExportFunctionAnalysis extends GhidraScript {
                 collectRefs(fn, listing, constants, strings);
                 List<String> mnemonics = collectMnemonics(fn, listing);
                 int branchMnemonics = countBranchMnemonics(mnemonics);
+                // Phase 2.3.1: optional compact data-flow hints (do not affect fingerprint).
+                int parameterCount = 0;
+                try {
+                    parameterCount = fn.getParameterCount();
+                } catch (Exception ignored) {
+                    parameterCount = 0;
+                }
+                int[] memRW = countMemoryReadWrites(fn, listing, rm);
+                int memoryReadCount = memRW[0];
+                int memoryWriteCount = memRW[1];
+                int dataReferenceCount = memRW[2];
+                int compareOpCount = countCompareMnemonics(mnemonics);
+                if (memoryReadCount == 0 && memoryWriteCount == 0) {
+                    int[] fromMnem = countLoadStoreMnemonics(mnemonics);
+                    if (fromMnem[0] > 0 || fromMnem[1] > 0) {
+                        memoryReadCount = fromMnem[0];
+                        memoryWriteCount = fromMnem[1];
+                        if (dataReferenceCount == 0) {
+                            dataReferenceCount = memoryReadCount + memoryWriteCount;
+                        }
+                    }
+                }
 
                 Collections.sort(calls);
                 Collections.sort(calledBy);
@@ -233,6 +256,12 @@ public class ExportFunctionAnalysis extends GhidraScript {
                 sb.append("      \"mnemonics\": ").append(jsonStringArray(mnemonics)).append(",\n");
                 // Phase 2.2C: optional structural hints (do not affect fingerprint).
                 sb.append("      \"branchMnemonicCount\": ").append(branchMnemonics).append(",\n");
+                // Phase 2.3.1: optional data-flow hints (do not affect fingerprint).
+                sb.append("      \"parameterCount\": ").append(parameterCount).append(",\n");
+                sb.append("      \"memoryReadCount\": ").append(memoryReadCount).append(",\n");
+                sb.append("      \"memoryWriteCount\": ").append(memoryWriteCount).append(",\n");
+                sb.append("      \"compareOpCount\": ").append(compareOpCount).append(",\n");
+                sb.append("      \"dataReferenceCount\": ").append(dataReferenceCount).append(",\n");
                 sb.append("      \"fingerprint\": ").append(jsonString(fingerprint)).append(",\n");
                 sb.append("      \"confidence\": ").append(jsonString(confidence)).append(",\n");
                 sb.append("      \"processor\": ").append(jsonString(processor)).append(",\n");
@@ -354,6 +383,93 @@ public class ExportFunctionAnalysis extends GhidraScript {
             }
         }
         return n;
+    }
+
+    private static String normMnem(String m) {
+        if (m == null || m.isEmpty()) {
+            return "";
+        }
+        String low = m.toLowerCase(Locale.ROOT);
+        int dot = low.indexOf('.');
+        if (dot > 0) {
+            low = low.substring(0, dot);
+        }
+        return low;
+    }
+
+    private static int countCompareMnemonics(List<String> mnemonics) {
+        int n = 0;
+        for (String m : mnemonics) {
+            String low = normMnem(m);
+            if (low.equals("cmp") || low.equals("cmn") || low.equals("tst") || low.equals("teq")) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static int[] countLoadStoreMnemonics(List<String> mnemonics) {
+        int loads = 0;
+        int stores = 0;
+        for (String m : mnemonics) {
+            String low = normMnem(m);
+            if (low.startsWith("ldr") || low.startsWith("ldm") || low.equals("pop")
+                || low.startsWith("ldrex")) {
+                loads++;
+            }
+            if (low.startsWith("str") || low.startsWith("stm") || low.equals("push")
+                || low.startsWith("strex")) {
+                stores++;
+            }
+        }
+        return new int[] { loads, stores };
+    }
+
+    /**
+     * Count data references FROM instructions in the function that look like
+     * memory reads/writes via RefType. Returns {reads, writes, dataRefs}.
+     */
+    private int[] countMemoryReadWrites(Function fn, Listing listing, ReferenceManager rm) {
+        int reads = 0;
+        int writes = 0;
+        int dataRefs = 0;
+        try {
+            Address min = fn.getBody().getMinAddress();
+            Address max = fn.getBody().getMaxAddress();
+            Instruction instr = listing.getInstructionAt(min);
+            int scanned = 0;
+            while (instr != null && scanned < 400) {
+                if (instr.getAddress().compareTo(max) > 0) {
+                    break;
+                }
+                if (fn.getBody() != null && !fn.getBody().contains(instr.getAddress())) {
+                    break;
+                }
+                Reference[] refs = rm.getReferencesFrom(instr.getAddress());
+                if (refs != null) {
+                    for (Reference ref : refs) {
+                        if (ref == null) {
+                            continue;
+                        }
+                        RefType rt = ref.getReferenceType();
+                        if (rt == null || !rt.isData()) {
+                            continue;
+                        }
+                        dataRefs++;
+                        if (rt.isRead()) {
+                            reads++;
+                        }
+                        if (rt.isWrite()) {
+                            writes++;
+                        }
+                    }
+                }
+                instr = instr.getNext();
+                scanned++;
+            }
+        } catch (Exception ignored) {
+        }
+        return new int[] { reads, writes, dataRefs };
     }
 
     private static String fingerprint(

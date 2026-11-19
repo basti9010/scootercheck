@@ -1100,8 +1100,9 @@ def process_job(job_id: str) -> None:
         result["inputBehaviorDiff"] = summarize_input_diff_for_poll(input_diff_full)
         notes.extend(input_diff_full.get("notes") or [])
 
-        # Phase 2.3: Activation Forensics (hidden input mechanisms — static only).
+        # Phase 2.3 / 2.3.1: Activation Forensics (hidden input mechanisms — static only).
         activation_full = None
+        dataflow_full = None
         try:
             from analysis_profile import profiles_compatible
 
@@ -1121,6 +1122,32 @@ def process_job(job_id: str) -> None:
                     compat = profiles_compatible(profile_obj, catalog_meta.get("analysisProfile"))
                 except Exception:
                     compat = None
+            # Phase 2.3.1: optional compact dataflow export (never dump into poll).
+            df_export = None
+            try:
+                from semantic_dataflow import analyze_semantic_dataflow, load_dataflow_export
+
+                df_path = None
+                for cand in (
+                    job_dir / "FIRM.dataflow.json",
+                    Path(str(func_path)).with_name(
+                        Path(str(func_path)).name.replace(".functions.json", ".dataflow.json")
+                    )
+                    if func_path
+                    else None,
+                ):
+                    if cand is not None and Path(cand).is_file():
+                        df_path = Path(cand)
+                        break
+                df_export = load_dataflow_export(df_path) if df_path else None
+                dataflow_full = analyze_semantic_dataflow(
+                    func_full, dataflow_export=df_export, call_graph=cg_full
+                )
+            except Exception as df_e:
+                notes.append(f"phase231Dataflow={type(df_e).__name__}")
+                dataflow_full = None
+                df_export = None
+
             activation_full = run_activation_forensics(
                 func_full,
                 call_graph=cg_full,
@@ -1133,6 +1160,7 @@ def process_job(job_id: str) -> None:
                 reference_sha256=ref_sha,
                 reference_trust=ref_trust,
                 runtime_validation=result.get("runtimeStateMachineValidation"),
+                dataflow_export=df_export,
             )
             result["activationForensics"] = summarize_activation_forensics_for_poll(activation_full)
             result["undocumentedLogic"] = (result["activationForensics"] or {}).get("undocumentedLogic")
@@ -1147,12 +1175,26 @@ def process_job(job_id: str) -> None:
             result["activationEvidenceGraph"] = (result["activationForensics"] or {}).get(
                 "activationEvidenceGraph"
             )
+            # Optional Phase 2.3.1 poll fields (compact).
+            result["semanticDataFlow"] = (result["activationForensics"] or {}).get("semanticDataFlow")
+            result["inputDetectionQuality"] = (result["activationForensics"] or {}).get(
+                "inputDetectionQuality"
+            )
+            result["conditionalLogicQuality"] = (result["activationForensics"] or {}).get(
+                "conditionalLogicQuality"
+            )
+            result["activationEvidenceDistribution"] = (result["activationForensics"] or {}).get(
+                "activationEvidenceDistribution"
+            )
+            result["evidenceGraphQuality"] = (result["activationForensics"] or {}).get(
+                "evidenceGraphQuality"
+            )
             notes.extend(activation_full.get("notes") or [])
         except Exception as act_e:
             notes.append(f"phase23Activation={type(act_e).__name__}")
             result["activationForensics"] = {
                 "ok": False,
-                "phase": "2.3",
+                "phase": "2.3.1",
                 "notes": [f"activation forensics skipped: {type(act_e).__name__}"],
             }
             activation_full = None
@@ -1169,6 +1211,11 @@ def process_job(job_id: str) -> None:
                 af_path = job_dir / "FIRM.activation_forensics.json"
                 af_path.write_text(
                     json.dumps(activation_full, ensure_ascii=False), encoding="utf-8"
+                )
+            if dataflow_full is not None:
+                sdf_path = job_dir / "FIRM.semantic_dataflow.json"
+                sdf_path.write_text(
+                    json.dumps(dataflow_full, ensure_ascii=False), encoding="utf-8"
                 )
         except Exception as art_e:
             notes.append(f"phase22cArtifactWrite={type(art_e).__name__}")
@@ -1241,6 +1288,7 @@ def process_job(job_id: str) -> None:
             "inputBehaviorSummary": result["inputBehaviorAnalysis"].get("summary"),
             "activationForensicsPath": str(job_dir / "FIRM.activation_forensics.json"),
             "activationForensicsSummary": (result.get("activationForensics") or {}).get("summary"),
+            "semanticDataflowPath": str(job_dir / "FIRM.semantic_dataflow.json"),
             "analysisCompleteness": result.get("analysisCompleteness"),
         }
     except Exception as e:
@@ -1798,6 +1846,25 @@ def download_activation_forensics(
         except Exception:
             pass
     raise HTTPException(status_code=404, detail="activation forensics not available")
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/semantic-dataflow")
+def download_semantic_dataflow(
+    job_id: str, auth: dict[str, Any] = Depends(require_auth)
+) -> JSONResponse:
+    """Full Phase 2.3.1 semantic data-flow artifact (JWT/job ownership enforced)."""
+    job = _load_job_authorized(job_id, auth)
+    cached = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("semanticDataflowPath"),
+        fallback_name="FIRM.semantic_dataflow.json",
+    )
+    if cached and cached.is_file():
+        try:
+            return JSONResponse(json.loads(cached.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    raise HTTPException(status_code=404, detail="semantic dataflow not available")
 
 
 @APP.get("/v1/firmware/admin/reference-catalogs")

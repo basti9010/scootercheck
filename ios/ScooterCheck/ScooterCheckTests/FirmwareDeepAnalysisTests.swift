@@ -1105,7 +1105,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
     }
 
     func testPhase23ActivationForensicsDecode() throws {
-        let json = """
+        let json23 = """
         {
           "schemaVersion": 1,
           "producedAt": "2026-11-19T12:00:00Z",
@@ -1136,13 +1136,97 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         """.data(using: .utf8)!
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
-        let deep = try dec.decode(FirmwareDeepAnalysisResult.self, from: json)
-        XCTAssertEqual(deep.activationForensics?.phase, "2.3")
-        XCTAssertEqual(deep.activationForensics?.summary?.inputHandlerCount, 8)
-        XCTAssertEqual(deep.activationForensics?.sampleInputHandlers?.first?.address, "0x08001000")
-        XCTAssertTrue((deep.activationForensics?.analysisLimitations ?? []).contains {
+        let deep23 = try dec.decode(FirmwareDeepAnalysisResult.self, from: json23)
+        XCTAssertEqual(deep23.activationForensics?.phase, "2.3")
+        XCTAssertEqual(deep23.activationForensics?.summary?.inputHandlerCount, 8)
+        XCTAssertEqual(deep23.activationForensics?.sampleInputHandlers?.first?.address, "0x08001000")
+        XCTAssertTrue((deep23.activationForensics?.analysisLimitations ?? []).contains {
             $0.localizedCaseInsensitiveContains("Fahrzeugverhaltens")
         })
+
+        let json231 = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-19T12:00:00Z",
+          "sources": ["serverDecompile"],
+          "subjectSHA256": "abc",
+          "models": [],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "t"},
+          "yaraMatches": [],
+          "r2StringsSample": [],
+          "activationForensics": {
+            "ok": true,
+            "phase": "2.3.1",
+            "summary": {"functionsExamined": 20, "inputHandlerCount": 6},
+            "conditionalLogicQuality": {
+              "CONDITIONAL_LOGIC_ONLY": 2,
+              "FEATURE_GATE_CANDIDATE": 1
+            },
+            "activationEvidenceDistribution": {
+              "staticConfirmedCount": 1,
+              "indicativeCount": 3,
+              "speculativeCount": 1,
+              "unknownCount": 0,
+              "ambiguousCount": 1,
+              "overallEvidenceTier": "INDICATIVE",
+              "overallEvidenceSummary": "Gemischte Evidenz",
+              "limitations": ["STATIC_CONFIRMED != Nachweis realen Fahrzeugverhaltens."]
+            },
+            "semanticDataFlow": {
+              "ok": true,
+              "functionsAnalyzed": 12,
+              "withMemoryReads": 10,
+              "withMemoryWrites": 4,
+              "qualityOk": 6,
+              "qualityPartial": 3,
+              "qualityMissing": 3,
+              "source": "derived"
+            },
+            "inputDetectionQuality": {
+              "namedHandlers": 4,
+              "genericNamedHandlers": 2,
+              "note": "Keine Ground Truth"
+            },
+            "evidenceGraphQuality": {
+              "nodeCount": 8,
+              "edgeCount": 11,
+              "confirmedEdgeCount": 3,
+              "indicativeEdgeCount": 5,
+              "speculativeEdgeCount": 2,
+              "unresolvedEdgeCount": 1
+            },
+            "sampleInputHandlers": [
+              {
+                "address": "0x08002000",
+                "name": "FUN_08002000",
+                "genericName": true,
+                "weakCandidate": true,
+                "evidenceTier": "SPECULATIVE"
+              }
+            ],
+            "evidenceTier": "INDICATIVE",
+            "analysisLimitations": ["kein Nachweis realen Fahrzeugverhaltens"]
+          }
+        }
+        """.data(using: .utf8)!
+        let deep231 = try dec.decode(FirmwareDeepAnalysisResult.self, from: json231)
+        let af = try XCTUnwrap(deep231.activationForensics)
+        XCTAssertEqual(af.phase, "2.3.1")
+        XCTAssertEqual(af.activationEvidenceDistribution?.indicativeCount, 3)
+        XCTAssertEqual(af.activationEvidenceDistribution?.overallEvidenceTier, "INDICATIVE")
+        XCTAssertEqual(af.conditionalLogicQuality?["FEATURE_GATE_CANDIDATE"], 1)
+        XCTAssertEqual(af.semanticDataFlow?.functionsAnalyzed, 12)
+        XCTAssertEqual(af.semanticDataFlow?.source, "derived")
+        XCTAssertEqual(af.evidenceGraphQuality?.confirmedEdgeCount, 3)
+        XCTAssertEqual(af.inputDetectionQuality?.genericNamedHandlers, 2)
+        XCTAssertEqual(af.sampleInputHandlers?.first?.genericName, true)
+        XCTAssertEqual(af.sampleInputHandlers?.first?.weakCandidate, true)
     }
 
     func testPhase22H2KeychainSaveResultContract() {
