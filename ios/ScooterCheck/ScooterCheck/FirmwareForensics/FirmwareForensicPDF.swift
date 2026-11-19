@@ -267,6 +267,7 @@ enum FirmwareForensicPDF {
                 ("Speed-Signaturen", !deep.speedLimits.isEmpty),
                 ("Function Matching", deep.functionMatching != nil || deep.functionDiff != nil),
                 ("Input Behavior", deep.inputBehaviorAnalysis != nil),
+                ("Activation Forensics", deep.activationForensics != nil),
                 ("Emulation/Angr", deep.sources.contains(.serverEmulation) || deep.sources.contains(.serverAngr)),
                 ("KI", deep.sources.contains(.serverLLM)),
             ]
@@ -363,6 +364,108 @@ enum FirmwareForensicPDF {
                     y = ensure(ctx, y: y, need: 14)
                     y = line(ctx, "• \(lim)", y: y, size: 7)
                 }
+            }
+
+            // Phase 2.3: Forensische Analyse versteckter Eingabemechanismen
+            if let af = deep.activationForensics, af.ok != false {
+                y = gap(y)
+                y = line(
+                    ctx,
+                    "Forensische Analyse versteckter Eingabemechanismen:",
+                    y: y,
+                    size: 9,
+                    bold: true
+                )
+                y = line(
+                    ctx,
+                    "Statische Codeanalyse — kein Fahrzeugtest; keine Aktivierungssequenzen.",
+                    y: y,
+                    size: 7
+                )
+                y = monoLine(
+                    ctx,
+                    "SHA-256 Subject: \(deep.subjectSHA256)",
+                    y: y,
+                    size: 7
+                )
+                if let ref = deep.referenceMetadata?.referenceSHA256, !ref.isEmpty {
+                    y = monoLine(ctx, "SHA-256 Referenz: \(ref)", y: y, size: 7)
+                }
+                if let hash = deep.analysisProfileHash ?? deep.analysisProfile?.analysisProfileHash {
+                    y = monoLine(ctx, "Analyseprofil-Hash: \(hash)", y: y, size: 7)
+                }
+                let trust = af.referenceComparison?.referenceTrust
+                    ?? deep.referenceMetadata?.referenceTrust
+                    ?? "—"
+                y = line(ctx, "Referenzvertrauen: \(trust)", y: y, size: 8)
+                if af.referenceComparison?.referenceIsCommunity == true {
+                    y = line(
+                        ctx,
+                        "Hinweis: Community-Referenz — keine verifizierte Herstellerfirmware.",
+                        y: y,
+                        size: 7
+                    )
+                }
+                y = line(
+                    ctx,
+                    "Funktionen untersucht=\(af.summary?.functionsExamined ?? 0) · Handler=\(af.summary?.inputHandlerCount ?? 0) · Evidenz=\(af.evidenceTier ?? "—")",
+                    y: y,
+                    size: 8
+                )
+                if let cats = af.categoryCounts ?? af.summary?.categories, !cats.isEmpty {
+                    let label = cats.filter { $0.value > 0 }
+                        .map { "\($0.key):\($0.value)" }
+                        .sorted()
+                        .joined(separator: ", ")
+                    y = line(ctx, "Eingabekategorien: \(label)", y: y, size: 8)
+                }
+                if let u = af.undocumentedLogic?.summary {
+                    y = line(
+                        ctx,
+                        "Undokumentiert/Diff: findings=\(u.findingCount ?? 0) inputRelated=\(u.inputRelatedChanges ?? 0) changed=\(u.structurallyChanged ?? 0)",
+                        y: y,
+                        size: 7
+                    )
+                }
+                if let c = af.conditionalLogicFindings?.summary {
+                    y = line(
+                        ctx,
+                        "Bedingte Strukturen=\(c.functionsWithConditionalLogic ?? 0) · stateStore=\(c.stateStorePatterns ?? 0)",
+                        y: y,
+                        size: 7
+                    )
+                }
+                if let fsm = af.fsmIntegration {
+                    y = line(
+                        ctx,
+                        "FSM-Kandidaten=\(fsm.fsmCandidateCount ?? 0) · mit Input verknüpft=\(fsm.inputLinkedFsmCount ?? 0)",
+                        y: y,
+                        size: 7
+                    )
+                }
+                if let g = af.activationEvidenceGraph {
+                    y = line(
+                        ctx,
+                        "Evidence-Graph: nodes=\(g.nodeCount ?? 0) edges=\(g.edgeCount ?? 0)",
+                        y: y,
+                        size: 7
+                    )
+                }
+                for h in (af.sampleInputHandlers ?? []).prefix(5) {
+                    y = ensure(ctx, y: y, need: 14)
+                    let cats = (h.inputCategories ?? []).joined(separator: ",")
+                    y = line(
+                        ctx,
+                        "• \(h.address ?? "?") \(h.name ?? "") [\(cats)] \(h.evidenceTier ?? "")",
+                        y: y,
+                        size: 7
+                    )
+                }
+                for lim in (af.analysisLimitations ?? []).prefix(4) {
+                    y = ensure(ctx, y: y, need: 14)
+                    y = line(ctx, "• \(lim)", y: y, size: 7)
+                }
+                y = asciiMarker(ctx, "activation-forensics=phase-2.3", y: y)
             }
 
             // Phase 2.2C/F: Eingabeverarbeitung + FSM

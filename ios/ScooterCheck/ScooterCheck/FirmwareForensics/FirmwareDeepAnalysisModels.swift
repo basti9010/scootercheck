@@ -77,6 +77,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var firmwareArchitectureConfidence: String? = nil
     var runtimeValidationDetails: FirmwareRuntimeValidationDetails? = nil
     var ghidraReproducibility: FirmwareGhidraReproducibility? = nil
+    /// Phase 2.3: Activation Forensics — versteckte Eingabemechanismen (optional).
+    var activationForensics: FirmwareActivationForensicsSummary? = nil
 
     static let currentSchemaVersion = 1
 
@@ -102,6 +104,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case runtimeStateMachineValidation
         case analysisProfile, analysisProfileHash, ghidraAddressLayout
         case firmwareArchitectureConfidence, runtimeValidationDetails, ghidraReproducibility
+        case activationForensics
     }
 
     init(from decoder: Decoder) throws {
@@ -157,6 +160,10 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         analysisProfileHash = try c.decodeIfPresent(String.self, forKey: .analysisProfileHash)
             ?? analysisProfile?.analysisProfileHash
         ghidraAddressLayout = try c.decodeIfPresent(FirmwareGhidraAddressLayout.self, forKey: .ghidraAddressLayout)
+        activationForensics = try c.decodeIfPresent(
+            FirmwareActivationForensicsSummary.self,
+            forKey: .activationForensics
+        )
         firmwareArchitectureConfidence = try c.decodeIfPresent(String.self, forKey: .firmwareArchitectureConfidence)
             ?? firmwareContainerAnalysis?.architectureConfidence
         runtimeValidationDetails = try c.decodeIfPresent(
@@ -212,7 +219,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         ghidraAddressLayout: FirmwareGhidraAddressLayout? = nil,
         firmwareArchitectureConfidence: String? = nil,
         runtimeValidationDetails: FirmwareRuntimeValidationDetails? = nil,
-        ghidraReproducibility: FirmwareGhidraReproducibility? = nil
+        ghidraReproducibility: FirmwareGhidraReproducibility? = nil,
+        activationForensics: FirmwareActivationForensicsSummary? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -262,6 +270,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
             ?? firmwareContainerAnalysis?.architectureConfidence
         self.runtimeValidationDetails = runtimeValidationDetails
         self.ghidraReproducibility = ghidraReproducibility
+        self.activationForensics = activationForensics
     }
 
     func encode(to encoder: Encoder) throws {
@@ -312,6 +321,7 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encodeIfPresent(firmwareArchitectureConfidence, forKey: .firmwareArchitectureConfidence)
         try c.encodeIfPresent(runtimeValidationDetails, forKey: .runtimeValidationDetails)
         try c.encodeIfPresent(ghidraReproducibility, forKey: .ghidraReproducibility)
+        try c.encodeIfPresent(activationForensics, forKey: .activationForensics)
     }
 }
 
@@ -1093,6 +1103,110 @@ struct FirmwareLlmKeyStatus: Equatable, Codable, Sendable {
     var usable: Bool?
     var kind: String?
     var hint: String?
+}
+
+// MARK: - Phase 2.3 Activation Forensics
+
+struct FirmwareActivationForensicsSummary: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var schemaVersion: Int?
+    var phase: String?
+    var summary: FirmwareActivationForensicsCounts?
+    var categoryCounts: [String: Int]?
+    var sampleInputHandlers: [FirmwareActivationHandlerFinding]?
+    var undocumentedLogic: FirmwareActivationUndocumentedSummary?
+    var conditionalLogicFindings: FirmwareActivationConditionalSummary?
+    var fsmIntegration: FirmwareActivationFSMIntegration?
+    var activationEvidenceGraph: FirmwareActivationEvidenceGraphSummary?
+    var referenceComparison: FirmwareActivationReferenceComparison?
+    var prioritization: FirmwareActivationPrioritization?
+    var evidenceTier: String?
+    var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareActivationForensicsCounts: Equatable, Codable, Sendable {
+    var functionsExamined: Int?
+    var inputHandlerCount: Int?
+    var categories: [String: Int]?
+    var undocumentedFindingCount: Int?
+    var conditionalLogicCount: Int?
+    var fsmLinkedCount: Int?
+    var graphNodeCount: Int?
+    var graphEdgeCount: Int?
+    var elapsedSec: Double?
+}
+
+struct FirmwareActivationHandlerFinding: Equatable, Codable, Sendable, Identifiable {
+    var address: String?
+    var name: String?
+    var inputCategories: [String]?
+    var evidenceTier: String?
+    var confidence: Double?
+    var technicalFindings: [String]?
+    var detectionMethods: [String]?
+
+    var id: String { (address ?? "") + "|" + (name ?? "") }
+}
+
+struct FirmwareActivationUndocumentedSummary: Equatable, Codable, Sendable {
+    var summary: FirmwareActivationUndocumentedCounts?
+    var evidenceTier: String?
+}
+
+struct FirmwareActivationUndocumentedCounts: Equatable, Codable, Sendable {
+    var genericNamedFunctions: Int?
+    var addedVsReference: Int?
+    var structurallyChanged: Int?
+    var notReliablyMatched: Int?
+    var inputRelatedChanges: Int?
+    var findingCount: Int?
+}
+
+struct FirmwareActivationConditionalSummary: Equatable, Codable, Sendable {
+    var summary: FirmwareActivationConditionalCounts?
+}
+
+struct FirmwareActivationConditionalCounts: Equatable, Codable, Sendable {
+    var functionsWithConditionalLogic: Int?
+    var inputLinked: Int?
+    var stateStorePatterns: Int?
+}
+
+struct FirmwareActivationFSMIntegration: Equatable, Codable, Sendable {
+    var fsmCandidateCount: Int?
+    var inputLinkedFsmCount: Int?
+}
+
+struct FirmwareActivationEvidenceGraphSummary: Equatable, Codable, Sendable {
+    var nodeCount: Int?
+    var edgeCount: Int?
+}
+
+struct FirmwareActivationReferenceComparison: Equatable, Codable, Sendable {
+    var referenceTrust: String?
+    var referenceIsCommunity: Bool?
+    var profileCompatibility: FirmwareActivationProfileCompat?
+}
+
+struct FirmwareActivationProfileCompat: Equatable, Codable, Sendable {
+    var ok: Bool?
+    var status: String?
+}
+
+struct FirmwareActivationPrioritization: Equatable, Codable, Sendable {
+    var top: [FirmwareActivationPriorityItem]?
+}
+
+struct FirmwareActivationPriorityItem: Equatable, Codable, Sendable, Identifiable {
+    var address: String?
+    var name: String?
+    var priorityScore: Double?
+    var inputCategories: [String]?
+    var evidenceTier: String?
+    var note: String?
+
+    var id: String { (address ?? "") + "|" + (name ?? "") }
 }
 
 /// Antwort von `GET /health` des Firmware-Workers (ohne Secrets).

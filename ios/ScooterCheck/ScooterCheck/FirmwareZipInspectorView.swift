@@ -1173,6 +1173,66 @@ struct FirmwareZipInspectorView: View {
             if let a = inputDiff?.summary?.added { rows.append(.meta("Input hinzugefügt", "\(a)")) }
             if let r = inputDiff?.summary?.removed { rows.append(.meta("Input entfernt", "\(r)")) }
         }
+
+        // Phase 2.3 — Versteckte Eingabemechanismen (Activation Forensics)
+        if let af = deep.activationForensics, af.ok != false {
+            rows.append(.title("Versteckte Eingabemechanismen", top: 8))
+            rows.append(.warn(
+                "Statische Codeanalyse — kein Nachweis realen Fahrzeugverhaltens; "
+                    + "keine Aktivierungssequenzen."
+            ))
+            if let n = af.summary?.functionsExamined {
+                rows.append(.meta("Untersuchte Funktionen", "\(n)"))
+            }
+            if let n = af.summary?.inputHandlerCount {
+                rows.append(.meta("Mögliche Input-Handler", "\(n)"))
+            }
+            if let cats = af.categoryCounts ?? af.summary?.categories, !cats.isEmpty {
+                let label = cats.filter { $0.value > 0 }.keys.sorted().joined(separator: ", ")
+                if !label.isEmpty {
+                    rows.append(.meta("Eingabekategorien", label))
+                }
+            }
+            if let tier = af.evidenceTier {
+                rows.append(.meta("Evidenzstufe", tier))
+            }
+            if let u = af.undocumentedLogic?.summary?.findingCount {
+                rows.append(.meta("Undokumentierte / Diff-Befunde", "\(u)"))
+            }
+            if let c = af.conditionalLogicFindings?.summary?.functionsWithConditionalLogic {
+                rows.append(.meta("Bedingte Programmstrukturen", "\(c)"))
+            }
+            if let fsm = af.fsmIntegration?.fsmCandidateCount {
+                rows.append(.meta("Zustandsautomaten-Kandidaten", "\(fsm)"))
+            }
+            if let linked = af.fsmIntegration?.inputLinkedFsmCount {
+                rows.append(.meta("FSM ↔ Input verknüpft", "\(linked)"))
+            }
+            if let nodes = af.activationEvidenceGraph?.nodeCount,
+               let edges = af.activationEvidenceGraph?.edgeCount {
+                rows.append(.meta("Evidence-Graph", "\(nodes) Knoten / \(edges) Kanten"))
+            }
+            if af.referenceComparison?.referenceIsCommunity == true {
+                rows.append(.warn("Community-Referenz — keine verifizierte Herstellerfirmware."))
+            }
+            for h in (af.sampleInputHandlers ?? []).prefix(6) {
+                let cats = (h.inputCategories ?? []).joined(separator: ",")
+                let title = h.name ?? h.address ?? "Funktion"
+                rows.append(.meta(
+                    title,
+                    "\(cats) · \(h.evidenceTier ?? "—")"
+                ))
+            }
+            for p in (af.prioritization?.top ?? []).prefix(3) {
+                rows.append(.meta(
+                    "Priorität \(p.priorityScore.map { String(format: "%.1f", $0) } ?? "—")",
+                    "\(p.name ?? p.address ?? "—") — kein Manipulationsnachweis"
+                ))
+            }
+            for lim in (af.analysisLimitations ?? []).prefix(3) {
+                rows.append(.warn(lim))
+            }
+        }
         return rows
     }
 
@@ -1187,6 +1247,7 @@ struct FirmwareZipInspectorView: View {
         all.append(contentsOf: deep.functionDiff?.analysisLimitations ?? [])
         all.append(contentsOf: matching?.analysisLimitations ?? [])
         all.append(contentsOf: input?.analysisLimitations ?? [])
+        all.append(contentsOf: deep.activationForensics?.analysisLimitations ?? [])
         all.append(contentsOf: sm?.analysisLimitations ?? [])
         all.append(contentsOf: cgq?.analysisLimitations ?? [])
         all.append(contentsOf: deep.firmwareContainerAnalysis?.analysisLimitations ?? [])

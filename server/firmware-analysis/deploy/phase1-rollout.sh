@@ -37,6 +37,7 @@ DEPLOY_PY_FILES=(
   function_diff.py
   function_matcher.py
   input_behavior.py
+  activation_forensics.py
   llm_verify.py
   job_auth.py
   reference_catalog.py
@@ -54,6 +55,7 @@ DEPLOY_PY_FILES=(
   test_phase22h_e2e.py
   test_phase22h1_validation.py
   test_phase22h2_jwt_e2e.py
+  test_phase23_activation.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py
@@ -73,6 +75,7 @@ DEPLOY_PY_FILES=(
   firmware_identify.py
   README.md
   docs/phase22h2-release.md
+  docs/phase23-activation-forensics.md
   .env.example
 )
 

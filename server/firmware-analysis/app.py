@@ -50,6 +50,10 @@ from input_behavior import (
     summarize_input_behavior_for_poll,
     summarize_input_diff_for_poll,
 )
+from activation_forensics import (
+    run_activation_forensics,
+    summarize_activation_forensics_for_poll,
+)
 from analysis_profile import build_analysis_profile, summarize_profile_for_poll
 from ghidra_decompile import ghidra_configured, load_speed_xrefs, run_ghidra_decompile
 from input_probe import analyze as input_probe_analyze, merge_into_result as merge_input_probe
@@ -1096,6 +1100,63 @@ def process_job(job_id: str) -> None:
         result["inputBehaviorDiff"] = summarize_input_diff_for_poll(input_diff_full)
         notes.extend(input_diff_full.get("notes") or [])
 
+        # Phase 2.3: Activation Forensics (hidden input mechanisms — static only).
+        activation_full = None
+        try:
+            from analysis_profile import profiles_compatible
+
+            subj_sha = None
+            if isinstance(result.get("plaintextSHA256"), str):
+                subj_sha = result.get("plaintextSHA256")
+            elif isinstance(result.get("sha256"), str):
+                subj_sha = result.get("sha256")
+            ref_sha = stock.get("referenceSHA256") if isinstance(stock, dict) else None
+            ref_trust = stock.get("referenceTrust") if isinstance(stock, dict) else None
+            if isinstance(catalog_meta, dict) and catalog_meta.get("referenceTrust"):
+                ref_trust = catalog_meta.get("referenceTrust")
+            profile_obj = result.get("analysisProfile") if isinstance(result.get("analysisProfile"), dict) else None
+            compat = None
+            if isinstance(catalog_meta, dict) and catalog_meta.get("analysisProfile"):
+                try:
+                    compat = profiles_compatible(profile_obj, catalog_meta.get("analysisProfile"))
+                except Exception:
+                    compat = None
+            activation_full = run_activation_forensics(
+                func_full,
+                call_graph=cg_full,
+                function_diff=func_diff_full,
+                input_behavior=input_full,
+                input_behavior_diff=input_diff_full,
+                analysis_profile=profile_obj,
+                profile_compat=compat,
+                subject_sha256=subj_sha,
+                reference_sha256=ref_sha,
+                reference_trust=ref_trust,
+                runtime_validation=result.get("runtimeStateMachineValidation"),
+            )
+            result["activationForensics"] = summarize_activation_forensics_for_poll(activation_full)
+            result["undocumentedLogic"] = (result["activationForensics"] or {}).get("undocumentedLogic")
+            result["inputHandlerFindings"] = {
+                "count": (result["activationForensics"].get("summary") or {}).get("inputHandlerCount"),
+                "sample": result["activationForensics"].get("sampleInputHandlers"),
+                "categoryCounts": result["activationForensics"].get("categoryCounts"),
+            }
+            result["conditionalLogicFindings"] = (result["activationForensics"] or {}).get(
+                "conditionalLogicFindings"
+            )
+            result["activationEvidenceGraph"] = (result["activationForensics"] or {}).get(
+                "activationEvidenceGraph"
+            )
+            notes.extend(activation_full.get("notes") or [])
+        except Exception as act_e:
+            notes.append(f"phase23Activation={type(act_e).__name__}")
+            result["activationForensics"] = {
+                "ok": False,
+                "phase": "2.3",
+                "notes": [f"activation forensics skipped: {type(act_e).__name__}"],
+            }
+            activation_full = None
+
         # Persist full artifacts for authenticated download endpoints.
         try:
             ib_path = job_dir / "FIRM.input_behavior.json"
@@ -1104,6 +1165,11 @@ def process_job(job_id: str) -> None:
             fd_path.write_text(json.dumps(func_diff_full, ensure_ascii=False), encoding="utf-8")
             ibd_path = job_dir / "FIRM.input_behavior_diff.json"
             ibd_path.write_text(json.dumps(input_diff_full, ensure_ascii=False), encoding="utf-8")
+            if activation_full is not None:
+                af_path = job_dir / "FIRM.activation_forensics.json"
+                af_path.write_text(
+                    json.dumps(activation_full, ensure_ascii=False), encoding="utf-8"
+                )
         except Exception as art_e:
             notes.append(f"phase22cArtifactWrite={type(art_e).__name__}")
 
@@ -1154,6 +1220,7 @@ def process_job(job_id: str) -> None:
         limitations.extend(result.get("callGraph", {}).get("analysisLimitations") or [])
         limitations.extend(result.get("inputBehaviorAnalysis", {}).get("analysisLimitations") or [])
         limitations.extend(result.get("inputBehaviorDiff", {}).get("analysisLimitations") or [])
+        limitations.extend(result.get("activationForensics", {}).get("analysisLimitations") or [])
         if stock.get("outcome") == "noReference":
             limitations.append("Keine eindeutig passende Referenzfirmware für Funktionsvergleich.")
         # Deduplicate while preserving order
@@ -1172,6 +1239,8 @@ def process_job(job_id: str) -> None:
             "inputBehaviorPath": str(job_dir / "FIRM.input_behavior.json"),
             "inputBehaviorDiffPath": str(job_dir / "FIRM.input_behavior_diff.json"),
             "inputBehaviorSummary": result["inputBehaviorAnalysis"].get("summary"),
+            "activationForensicsPath": str(job_dir / "FIRM.activation_forensics.json"),
+            "activationForensicsSummary": (result.get("activationForensics") or {}).get("summary"),
             "analysisCompleteness": result.get("analysisCompleteness"),
         }
     except Exception as e:
@@ -1710,6 +1779,25 @@ def download_input_behavior_diff(
         except Exception:
             pass
     raise HTTPException(status_code=404, detail="input behavior diff not available")
+
+
+@APP.get("/v1/firmware/jobs/{job_id}/activation-forensics")
+def download_activation_forensics(
+    job_id: str, auth: dict[str, Any] = Depends(require_auth)
+) -> JSONResponse:
+    """Full Phase 2.3 activation-forensics artifact (JWT/job ownership enforced)."""
+    job = _load_job_authorized(job_id, auth)
+    cached = _job_artifact_path(
+        job,
+        (job.get("phase2") or {}).get("activationForensicsPath"),
+        fallback_name="FIRM.activation_forensics.json",
+    )
+    if cached and cached.is_file():
+        try:
+            return JSONResponse(json.loads(cached.read_text(encoding="utf-8")))
+        except Exception:
+            pass
+    raise HTTPException(status_code=404, detail="activation forensics not available")
 
 
 @APP.get("/v1/firmware/admin/reference-catalogs")

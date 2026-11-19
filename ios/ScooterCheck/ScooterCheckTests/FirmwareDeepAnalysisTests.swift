@@ -1104,6 +1104,47 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertFalse(client.hasBearerJWT)
     }
 
+    func testPhase23ActivationForensicsDecode() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-19T12:00:00Z",
+          "sources": ["serverDecompile"],
+          "subjectSHA256": "abc",
+          "models": [],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "t"},
+          "yaraMatches": [],
+          "r2StringsSample": [],
+          "activationForensics": {
+            "ok": true,
+            "phase": "2.3",
+            "summary": {"functionsExamined": 14, "inputHandlerCount": 8},
+            "categoryCounts": {"button_input": 1, "ble_input": 1},
+            "sampleInputHandlers": [
+              {"address": "0x08001000", "name": "btn_input_handler", "inputCategories": ["button_input"], "evidenceTier": "INDICATIVE"}
+            ],
+            "evidenceTier": "INDICATIVE",
+            "analysisLimitations": ["kein Nachweis realen Fahrzeugverhaltens"]
+          }
+        }
+        """.data(using: .utf8)!
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .iso8601
+        let deep = try dec.decode(FirmwareDeepAnalysisResult.self, from: json)
+        XCTAssertEqual(deep.activationForensics?.phase, "2.3")
+        XCTAssertEqual(deep.activationForensics?.summary?.inputHandlerCount, 8)
+        XCTAssertEqual(deep.activationForensics?.sampleInputHandlers?.first?.address, "0x08001000")
+        XCTAssertTrue((deep.activationForensics?.analysisLimitations ?? []).contains {
+            $0.localizedCaseInsensitiveContains("Fahrzeugverhaltens")
+        })
+    }
+
     func testPhase22H2KeychainSaveResultContract() {
         // saveToken returns Bool so AuthSessionStore can avoid wiping UserDefaults on failure.
         let ok = AuthKeychainStore.saveToken("unit-test-token-not-a-real-jwt")

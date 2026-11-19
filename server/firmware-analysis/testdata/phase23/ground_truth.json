@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3",
+  "disclaimer": "Controlled harmless synthetic fixtures only. Not real tuning activation mechanisms. Metrics are fixture-only.",
+  "cases": [
+    {
+      "id": "01_button_handler",
+      "expectDetect": true,
+      "address": "0x08001000",
+      "name": "btn_input_handler",
+      "categories": ["button_input"],
+      "notes": "Simple button handler with name + conditional store"
+    },
+    {
+      "id": "02_gpio_event",
+      "expectDetect": true,
+      "address": "0x08001080",
+      "name": "gpio_exti_isr",
+      "categories": ["gpio_input"],
+      "notes": "GPIO/EXTI-style handler"
+    },
+    {
+      "id": "03_indicator",
+      "expectDetect": true,
+      "address": "0x08001100",
+      "name": "indicator_process",
+      "categories": ["indicator_input"],
+      "notes": "Generic indicator processing — not a vehicle unlock sequence"
+    },
+    {
+      "id": "04_hazard",
+      "expectDetect": true,
+      "address": "0x08001180",
+      "name": "hazard_lamp_update",
+      "categories": ["hazard_indicator_input"],
+      "notes": "Hazard/warnblink naming only — technical category"
+    },
+    {
+      "id": "05_ble_handler",
+      "expectDetect": true,
+      "address": "0x08001200",
+      "name": "ble_gatt_on_write",
+      "categories": ["ble_input"],
+      "notes": "BLE message handler"
+    },
+    {
+      "id": "06_uart_event",
+      "expectDetect": true,
+      "address": "0x08001280",
+      "name": "uart_rx_event",
+      "categories": ["uart_input"],
+      "notes": "UART RX event"
+    },
+    {
+      "id": "07_event_queue",
+      "expectDetect": true,
+      "address": "0x08001300",
+      "name": "event_queue_dispatch",
+      "categories": ["event_queue"],
+      "notes": "Event queue dispatch"
+    },
+    {
+      "id": "08_state_store",
+      "expectDetect": true,
+      "address": "0x08001380",
+      "name": "mode_state_set",
+      "categories": ["state_update"],
+      "notes": "State storage helper"
+    },
+    {
+      "id": "09_state_branch",
+      "expectDetect": true,
+      "address": "0x08001400",
+      "name": "FUN_08001400",
+      "categories": ["state_update", "conditional_feature_gate"],
+      "notes": "Generic-named state-dependent branch with strings"
+    },
+    {
+      "id": "10_undocumented_extra",
+      "expectDetect": true,
+      "address": "0x08001480",
+      "name": "FUN_08001480",
+      "categories": ["input_callback"],
+      "notes": "Undocumented extra input callback vs reference"
+    },
+    {
+      "id": "11_helper_no_input",
+      "expectDetect": false,
+      "address": "0x08001500",
+      "name": "memcpy_like_helper",
+      "categories": [],
+      "notes": "Normal helper — must not be classified as input handler"
+    },
+    {
+      "id": "12_ambiguous",
+      "expectDetect": true,
+      "address": "0x08001580",
+      "name": "FUN_08001580",
+      "categories": ["event_queue"],
+      "notes": "Ambiguous generic function with weak event string"
+    },
+    {
+      "id": "13_unsupported_arch_note",
+      "expectDetect": false,
+      "address": "0x08001600",
+      "name": "x86_stub_ignored",
+      "categories": [],
+      "notes": "Marked unsupported architecture in quality field — expect no strong detect"
+    },
+    {
+      "id": "14_incomplete_ref_subject",
+      "expectDetect": true,
+      "address": "0x08001680",
+      "name": "process_input_frame",
+      "categories": ["input_callback"],
+      "notes": "Subject side when reference catalog incomplete"
+    }
+  ]
+}
