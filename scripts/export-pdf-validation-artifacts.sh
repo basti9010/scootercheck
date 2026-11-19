@@ -24,22 +24,46 @@ echo "  simulator=$DEST"
 echo "  out=$OUT"
 echo "  hint=${HINT_PATH:-<none>}"
 
+same_dir() {
+  local a="$1" b="$2"
+  [[ -d "$a" && -d "$b" ]] || return 1
+  [[ "$(cd "$a" && pwd -P)" == "$(cd "$b" && pwd -P)" ]]
+}
+
+copy_into_out() {
+  local src="$1"
+  local dest="$2"
+  # macOS `cp` exits 1 when source and destination are the same inode.
+  if [[ -e "$dest" ]] && [[ "$src" -ef "$dest" ]]; then
+    return 0
+  fi
+  cp -f "$src" "$dest"
+}
+
 copy_tree_if_present() {
   local src="$1"
   if [[ -d "$src" ]]; then
     local pdf_here
     pdf_here="$(find "$src" -maxdepth 1 -type f -name '*.pdf' 2>/dev/null | wc -l | tr -d ' ')"
     echo "  found artifact tree: $src (pdfs_here=$pdf_here)"
+    if same_dir "$src" "$OUT"; then
+      echo "  already at host out — skip self-copy"
+      return 0
+    fi
     shopt -s nullglob
     for pdf in "$src"/*.pdf; do
-      cp -f "$pdf" "$OUT/"
+      copy_into_out "$pdf" "$OUT/$(basename "$pdf")"
     done
     if [[ -d "$src/previews" ]]; then
       mkdir -p "$OUT/previews"
-      cp -f "$src/previews"/*.png "$OUT/previews/" 2>/dev/null || true
+      for png in "$src/previews"/*.png; do
+        copy_into_out "$png" "$OUT/previews/$(basename "$png")"
+      done
     fi
     for f in validation-summary.json validation-path.txt; do
-      [[ -f "$src/$f" ]] && cp -f "$src/$f" "$OUT/"
+      if [[ -f "$src/$f" ]]; then
+        copy_into_out "$src/$f" "$OUT/$f"
+      fi
     done
     shopt -u nullglob
   fi
@@ -51,7 +75,7 @@ copy_named_pdfs_under() {
   local name
   for name in "${EXPECTED_PDFS[@]}"; do
     while IFS= read -r -d '' pdf; do
-      cp -f "$pdf" "$OUT/$name"
+      copy_into_out "$pdf" "$OUT/$name"
     done < <(find "$root" -type f -name "$name" -print0 2>/dev/null || true)
   done
   while IFS= read -r -d '' dir; do
@@ -155,19 +179,19 @@ PY
       done
       # Avoid clobbering already-correct named PDFs with anonymous attachment blobs.
       if [[ ! -f "$OUT/$dest_name" ]] || echo "$lower" | grep -Eq 'short-report|full-report|long-values|many-findings|truncated-results|incomplete-analysis'; then
-        cp -f "$f" "$OUT/$dest_name"
+        copy_into_out "$f" "$OUT/$dest_name"
       fi
       continue
     fi
     case "$lower" in
       *.png|*page-*.png*)
-        cp -f "$f" "$OUT/previews/" 2>/dev/null || true
+        copy_into_out "$f" "$OUT/previews/$(basename "$f")" 2>/dev/null || true
         ;;
       *validation-summary*)
-        cp -f "$f" "$OUT/validation-summary.json" 2>/dev/null || true
+        copy_into_out "$f" "$OUT/validation-summary.json" 2>/dev/null || true
         ;;
       *validation-path*)
-        cp -f "$f" "$OUT/validation-path.txt" 2>/dev/null || true
+        copy_into_out "$f" "$OUT/validation-path.txt" 2>/dev/null || true
         ;;
     esac
   done < <(find "$XCRESULT" "$ATT_OUT" -type f -print0 2>/dev/null || true)
