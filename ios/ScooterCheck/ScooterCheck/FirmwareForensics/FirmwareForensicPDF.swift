@@ -168,9 +168,10 @@ enum FirmwareForensicPDF {
         y: CGFloat
     ) -> CGFloat {
         var y = heading(ctx, "Technische Analyse und Nachweisführung", y: y)
-        y = line(ctx, "SHA-256 Originaldatei: \(report.archiveDigest.sha256)", y: y, size: 8)
+        // Monospaced SHA lines so PDFKit text extraction stays contiguous (no mid-hex wrap gaps).
+        y = monoLine(ctx, "SHA-256 Originaldatei: \(report.archiveDigest.sha256)", y: y, size: 7)
         if let plain = report.serverArtifacts?.plaintextSHA256, !plain.isEmpty {
-            y = line(ctx, "SHA-256 entschlüsselte Firmware: \(plain)", y: y, size: 8)
+            y = monoLine(ctx, "SHA-256 entschlüsselte Firmware: \(plain)", y: y, size: 7)
         } else {
             y = line(ctx, "SHA-256 entschlüsselte Firmware: — (nicht vorhanden / nicht entschlüsselt)", y: y, size: 8)
         }
@@ -537,6 +538,26 @@ enum FirmwareForensicPDF {
         bold: Bool = false
     ) -> CGFloat {
         let font = bold ? UIFont.boldSystemFont(ofSize: size) : UIFont.systemFont(ofSize: size)
+        return drawText(ctx, text, y: y, font: font)
+    }
+
+    @discardableResult
+    private static func monoLine(
+        _ ctx: UIGraphicsPDFRendererContext,
+        _ text: String,
+        y: CGFloat,
+        size: CGFloat = 7
+    ) -> CGFloat {
+        let font = UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        return drawText(ctx, text, y: y, font: font)
+    }
+
+    private static func drawText(
+        _ ctx: UIGraphicsPDFRendererContext,
+        _ text: String,
+        y: CGFloat,
+        font: UIFont
+    ) -> CGFloat {
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: UIColor.black

@@ -944,13 +944,20 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             extracted += page.string ?? ""
         }
 
+        let compact = extracted.filter { !$0.isWhitespace }
+        let rawCompact = String(decoding: pdf, as: UTF8.self).filter { !$0.isWhitespace }
         XCTAssertTrue(extracted.contains("2.2G.1") || extracted.contains("Analyseprofil"), "profile missing: \(extracted.prefix(200))")
         XCTAssertTrue(
             extracted.contains("communityLibrary") || extracted.contains("community") || extracted.contains("Community"),
             "trust status missing"
         )
         XCTAssertTrue(extracted.contains("Manipulationsnachweis") || extracted.contains("kein Manipulationsnachweis"))
-        XCTAssertTrue(extracted.contains("6b7d6ec0") || extracted.contains(deep.subjectSHA256 ?? "nomatch"))
+        // Long hex may wrap in the PDF text layer — compare whitespace-stripped extraction and raw stream.
+        let sha = deep.subjectSHA256 ?? "nomatch"
+        XCTAssertTrue(
+            compact.contains("6b7d6ec0") || compact.contains(sha) || rawCompact.contains("6b7d6ec0") || rawCompact.contains(sha),
+            "SHA-256 missing from PDF text layer / stream"
+        )
         XCTAssertTrue(extracted.contains("PARTIAL") || extracted.contains("Analysevollständigkeit"))
         XCTAssertTrue(extracted.contains("Statische Analyse") || extracted.contains("Fahrzeugtest"))
 
