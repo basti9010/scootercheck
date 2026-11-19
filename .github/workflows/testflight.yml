@@ -89,6 +89,7 @@ on:
       - cursor/firmware-phase-22c-b100
       - cursor/firmware-phase-22d-b100
       - cursor/firmware-phase-22e-b100
+      - cursor/firmware-phase-22f-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

@@ -982,6 +982,50 @@ struct FirmwareZipInspectorView: View {
         if let proc = fa?.processor { rows.append(.meta("Architektur", proc)) }
         rows.append(.meta("Analysequalität", deep.quality.summary))
 
+        // Phase 2.2F: Callgraph-Qualität
+        let cgq = deep.callGraphQuality ?? deep.callGraph?.callGraphQuality
+        if cgq != nil || deep.callGraph != nil {
+            rows.append(.title("Callgraph-Qualität", top: 8))
+            if let n = deep.callGraph?.edgeCount { rows.append(.meta("Kanten gesamt", "\(n)")) }
+            if let n = cgq?.directCalls { rows.append(.meta("Direkte Funktionsaufrufe", "\(n)")) }
+            if let n = cgq?.indirectCalls { rows.append(.meta("Indirekte Aufrufe", "\(n)")) }
+            if let n = cgq?.internalBranches { rows.append(.meta("Interne Sprünge", "\(n)")) }
+            if let n = cgq?.tailCalls { rows.append(.meta("Tail-Calls", "\(n)")) }
+            if let n = cgq?.unresolvedCalls ?? deep.callGraph?.unresolvedCount {
+                rows.append(.meta("Nicht aufgelöste Aufrufe", "\(n)"))
+            }
+            if let n = cgq?.unknownControlFlow {
+                rows.append(.meta("Unbekannte Kontrollflussreferenzen", "\(n)"))
+            }
+            rows.append(.warn("Interne Sprünge zählen nicht als ungeklärte Funktionsaufrufe."))
+        }
+
+        // Phase 2.2F: Firmwarecontainer
+        if let cont = deep.firmwareContainerAnalysis {
+            rows.append(.title("Firmwarecontainer", top: 8))
+            if let fmt = cont.format { rows.append(.meta("Containerformat", fmt)) }
+            if let st = cont.status { rows.append(.meta("Erkannter Firmwaretyp / Status", st)) }
+            rows.append(.meta("Container erkannt", cont.containerRecognized == true ? "ja" : "nein"))
+            if let arch = cont.architecture {
+                rows.append(.meta("Architektur", arch))
+            } else {
+                rows.append(.meta("Architektur", "unbekannt / nicht erzwungen"))
+            }
+            if let base = cont.baseAddr { rows.append(.meta("Ladeadresse (Kandidat)", base)) }
+            rows.append(.meta("Image extrahierbar", cont.imageExtractable == true ? "ja" : "nein"))
+            if let comps = cont.components, !comps.isEmpty {
+                for c in comps.prefix(4) {
+                    let off = c.offset.map { String(format: "0x%X", $0) } ?? "—"
+                    let size = c.size.map { "\($0)" } ?? "—"
+                    rows.append(.meta(
+                        c.origin ?? c.role ?? "Komponente",
+                        "offset=\(off) size=\(size) sha=\((c.sha256 ?? "—").prefix(12))…"
+                    ))
+                }
+            }
+            if let conf = cont.confidence { rows.append(.meta("Analysequalität", conf)) }
+        }
+
         // Phase 2.2E: Analysevollständigkeit
         if deep.analysisCompleteness != nil || deep.firmwareAnalysisCoverage != nil {
             rows.append(.title("Analysevollständigkeit", top: 8))
@@ -1006,22 +1050,36 @@ struct FirmwareZipInspectorView: View {
                 }
             }
             if let cat = deep.referenceCatalogCoverage {
-                rows.append(.meta("Referenzkatalog", cat.present == true ? "vorhanden" : "fehlt"))
-                if let st = cat.completenessStatus { rows.append(.meta("Katalog-Vollständigkeit", st)) }
-                if let t = cat.referenceTrust { rows.append(.meta("Referenz-Vertrauen", t)) }
+                rows.append(.title("Referenzkatalog", top: 8))
+                rows.append(.meta("Verfügbarkeit", cat.present == true ? "vorhanden" : "fehlt"))
+                if let st = cat.completenessStatus { rows.append(.meta("Analysevollständigkeit", st)) }
+                if let gv = cat.ghidraVersion { rows.append(.meta("Ghidra-Version", gv)) }
+                if let ac = cat.analyzerCompat { rows.append(.meta("Analyzer-Version", ac)) }
+                if let t = cat.referenceTrust { rows.append(.meta("Vertrauensstatus", t)) }
                 if let p = cat.processor { rows.append(.meta("Katalog-Architektur", p)) }
             } else if let meta = deep.referenceMetadata {
+                rows.append(.title("Referenzkatalog", top: 8))
                 let present = meta.functionCatalog?.present == true
-                rows.append(.meta("Referenzkatalog", present ? "vorhanden" : "fehlt"))
-                if let t = meta.referenceTrust { rows.append(.meta("Referenz-Vertrauen", t)) }
+                rows.append(.meta("Verfügbarkeit", present ? "vorhanden" : "fehlt"))
+                if let t = meta.referenceTrust { rows.append(.meta("Vertrauensstatus", t)) }
+            }
+
+            if let batch = deep.referenceCatalogBatch {
+                rows.append(.meta(
+                    "Test-Batch",
+                    batch.productiveCatalogsModified == true
+                        ? "WARNUNG: Produktivkataloge verändert"
+                        : "isoliert (Produktiv unverändert)"
+                ))
             }
         }
 
         let input = deep.inputBehaviorAnalysis
         let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
         let inputDiff = deep.inputBehaviorDiff
-        if input != nil || sm != nil {
-            rows.append(.title("Eingabeverarbeitung", top: 8))
+        let runtime = deep.runtimeStateMachineValidation
+        if input != nil || sm != nil || runtime != nil {
+            rows.append(.title("Eingabeverarbeitung / FSM-Validierung", top: 8))
             rows.append(.warn("Heuristische Codeeigenschaften — kein Nachweis realen Fahrzeugverhaltens."))
             if let n = input?.summary?.inputRelevantCount {
                 rows.append(.meta("Relevante Funktionen", "\(n)"))
@@ -1029,24 +1087,34 @@ struct FirmwareZipInspectorView: View {
             if let cats = input?.categories, !cats.isEmpty {
                 rows.append(.meta("Eingabekategorien", cats.keys.sorted().joined(separator: ", ")))
             }
-            if let tier = input?.evidenceTier { rows.append(.meta("Evidenzstufe", tier)) }
+            if let tier = input?.evidenceTier { rows.append(.meta("Evidenzstufe (statisch)", tier)) }
             if let smCount = sm?.stateMachineCount {
-                rows.append(.meta("FSM-Kandidaten", "\(smCount)"))
+                rows.append(.meta("Statische FSM-Hinweise / Kandidaten", "\(smCount)"))
             }
             if let cand = sm?.candidateCount {
-                rows.append(.meta("STATE_MACHINE_CANDIDATE", "\(cand)"))
+                rows.append(.meta("STATIC_CANDIDATE", "\(cand)"))
             }
             if let structured = sm?.structureIdentifiedCount {
-                rows.append(.meta("STATE_STRUCTURE_IDENTIFIED", "\(structured)"))
+                rows.append(.meta("STATIC_STRUCTURE_IDENTIFIED", "\(structured)"))
             }
             if let tr = sm?.transitionsIdentifiedCount {
-                rows.append(.meta("STATE_TRANSITIONS_IDENTIFIED", "\(tr)"))
+                rows.append(.meta("Identifizierte Zustandsstrukturen / Übergänge", "\(tr)"))
             }
             let validation = deep.stateMachineValidation ?? sm?.stateMachineValidation
-            if validation?.dynamicRuntimeVerified == true {
-                rows.append(.meta("Laufzeitverifikation", "ja"))
-            } else if sm != nil {
-                rows.append(.meta("Laufzeitverifikation", "nein (nur statisch)"))
+            let runtimeObserved = runtime?.dynamicRuntimeVerified == true
+                || validation?.dynamicRuntimeVerified == true
+            if runtimeObserved {
+                rows.append(.meta("Kontrollierte Laufzeitvalidierung", "ja (Unicorn-Suite)"))
+                if let n = runtime?.runtimeTransitionsObserved ?? validation?.controlledTransitionEvidence {
+                    rows.append(.meta("Beobachtete Übergänge (Suite)", "\(n)"))
+                }
+                if let tier = runtime?.evidenceTier {
+                    rows.append(.meta("RUNTIME_TRANSITION_OBSERVED", tier))
+                }
+                rows.append(.warn("Unicorn-Test ≠ realer Fahrzeugtest."))
+            } else if sm != nil || runtime != nil {
+                rows.append(.meta("Kontrollierte Laufzeitvalidierung", "nein / nicht verifiziert"))
+                rows.append(.meta("Evidenz", "NOT_VERIFIABLE ohne Emulationsdaten"))
             }
             // Never invent state counts — only show verified numbers when present.
             if let states = sm?.totalEstimatedStates {
@@ -1076,6 +1144,7 @@ struct FirmwareZipInspectorView: View {
         let matching = deep.functionMatching ?? deep.functionDiff?.functionMatching
         let input = deep.inputBehaviorAnalysis
         let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
+        let cgq = deep.callGraphQuality ?? deep.callGraph?.callGraphQuality
         var all: [String] = []
         all.append(contentsOf: deep.analysisLimitations ?? [])
         all.append(contentsOf: deep.functionAnalysis?.analysisLimitations ?? [])
@@ -1083,11 +1152,14 @@ struct FirmwareZipInspectorView: View {
         all.append(contentsOf: matching?.analysisLimitations ?? [])
         all.append(contentsOf: input?.analysisLimitations ?? [])
         all.append(contentsOf: sm?.analysisLimitations ?? [])
+        all.append(contentsOf: cgq?.analysisLimitations ?? [])
+        all.append(contentsOf: deep.firmwareContainerAnalysis?.analysisLimitations ?? [])
+        all.append(contentsOf: deep.runtimeStateMachineValidation?.analysisLimitations ?? [])
         var seen = Set<String>()
         var unique: [String] = []
         for line in all where !line.isEmpty && seen.insert(line).inserted {
             unique.append(line)
-            if unique.count >= 10 { break }
+            if unique.count >= 12 { break }
         }
         return unique
     }

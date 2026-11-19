@@ -689,6 +689,35 @@ def process_job(job_id: str) -> None:
     notes.append(f"plaintextSHA256={plain_sha}")
     notes.append(f"plaintextBytes={len(plaintext)}")
 
+    # Phase 2.2F: optional firmware container analysis (e.g. RAW4TFT BLE).
+    try:
+        from ble_container import identify_ble_container
+        from firmware_identify import identify_firmware_image
+
+        container = identify_ble_container(
+            plaintext, original_name=job.get("originalFileName") or "upload"
+        )
+        identity = identify_firmware_image(plaintext)
+        result["firmwareContainerAnalysis"] = {
+            "ok": bool(container.get("ok") or identity.get("ok")),
+            "status": container.get("status") or (
+                "ARCHITECTURE_UNKNOWN" if identity.get("architectureUnknown") else "IDENTIFIED"
+            ),
+            "format": container.get("format"),
+            "containerRecognized": bool(container.get("containerRecognized")),
+            "architecture": container.get("architecture") or identity.get("processor"),
+            "baseAddr": container.get("baseAddr") or identity.get("baseAddr"),
+            "imageExtractable": container.get("imageExtractable"),
+            "components": list(container.get("components") or [])[:8],
+            "confidence": container.get("confidence") or identity.get("confidence"),
+            "analysisLimitations": list(container.get("analysisLimitations") or [])
+            + list(identity.get("analysisLimitations") or []),
+            "notes": list(container.get("notes") or [])[:6],
+        }
+        notes.extend((container.get("notes") or [])[:2])
+    except Exception as cont_e:
+        notes.append(f"phase22fContainer={type(cont_e).__name__}")
+
     safe_name = (meta.originalFileName or "upload").replace("/", "_")
     day = _utc_now().strftime("%Y/%m/%d")
     stored = PLAINTEXT_STORE / day / f"{job_id}_{plain_sha[:12]}_{safe_name}.dec.bin"
@@ -912,6 +941,8 @@ def process_job(job_id: str) -> None:
         cg_full = load_call_graph(cg_path if cg_path.is_file() else None)
         result["functionAnalysis"] = summarize_functions_for_poll(func_full)
         result["callGraph"] = summarize_call_graph_for_poll(cg_full)
+        if isinstance(result["callGraph"].get("callGraphQuality"), dict):
+            result["callGraphQuality"] = result["callGraph"]["callGraphQuality"]
         notes.extend(func_full.get("notes") or [])
         notes.extend(cg_full.get("notes") or [])
 
@@ -941,8 +972,36 @@ def process_job(job_id: str) -> None:
             result["functionMatching"] = poll_diff["functionMatching"]
         notes.extend(func_diff_full.get("notes") or [])
 
-        # Phase 2.2C: Input Behavior + State Machine (static heuristics).
+        # Phase 2.2C/F: Input Behavior + State Machine (static + optional runtime suite).
         input_full = analyze_input_behavior(func_full, call_graph=cg_full)
+        try:
+            from fsm_runtime import merge_runtime_into_state_machines, run_fsm_runtime_suite
+
+            # Controlled synthetic suite only — never real scooter firmware.
+            runtime_suite = run_fsm_runtime_suite()
+            sm = merge_runtime_into_state_machines(
+                input_full.get("stateMachineAnalysis"), runtime_suite
+            )
+            if sm:
+                input_full["stateMachineAnalysis"] = sm
+            result["runtimeStateMachineValidation"] = {
+                "ok": runtime_suite.get("ok"),
+                "dynamicRuntimeVerified": runtime_suite.get("dynamicRuntimeVerified"),
+                "runtimeTransitionsObserved": runtime_suite.get("runtimeTransitionsObserved"),
+                "programCount": runtime_suite.get("programCount"),
+                "evidenceTier": runtime_suite.get("evidenceTier"),
+                "sampleResults": list(runtime_suite.get("results") or [])[:6],
+                "analysisLimitations": runtime_suite.get("analysisLimitations"),
+                "notes": runtime_suite.get("notes"),
+            }
+            notes.extend(runtime_suite.get("notes") or [])
+        except Exception as rt_e:
+            notes.append(f"phase22fRuntime={type(rt_e).__name__}")
+            result["runtimeStateMachineValidation"] = {
+                "ok": False,
+                "dynamicRuntimeVerified": False,
+                "notes": [f"runtime suite skipped: {type(rt_e).__name__}"],
+            }
         result["inputBehaviorAnalysis"] = summarize_input_behavior_for_poll(input_full)
         result["stateMachineAnalysis"] = (
             result["inputBehaviorAnalysis"].get("stateMachineAnalysis") or {}
@@ -1561,6 +1620,19 @@ def admin_reference_inventory(_: dict[str, Any] = Depends(require_admin)) -> JSO
     from reference_inventory import inventory_references
 
     return JSONResponse(inventory_references(include_file_probe=True))
+
+
+@APP.post("/v1/firmware/admin/reference-catalogs/batch-test")
+def admin_reference_catalog_batch_test(
+    limit: int = 3,
+    _: dict[str, Any] = Depends(require_admin),
+) -> JSONResponse:
+    """Isolated catalog batch into STOCK_CATALOG_BATCH_DIR — never productive catalogs."""
+    from catalog_batch import run_catalog_batch
+
+    with _HEAVY_ANALYSIS_LOCK:
+        summary = run_catalog_batch(limit=max(1, min(int(limit or 3), 5)))
+    return JSONResponse(summary)
 
 
 @APP.post("/v1/firmware/admin/reference-catalogs/build")

@@ -63,6 +63,17 @@ enum FirmwareDeepAnalysisMerger {
         let stateMachineAnalysis = firstNonNil(parts.map(\.stateMachineAnalysis))
             ?? inputBehaviorAnalysis?.stateMachineAnalysis
         let inputBehaviorDiff = firstNonNil(parts.map(\.inputBehaviorDiff))
+        let analysisCompleteness = firstNonNil(parts.map(\.analysisCompleteness))
+        let firmwareAnalysisCoverage = firstNonNil(parts.map(\.firmwareAnalysisCoverage))
+        let referenceCatalogCoverage = firstNonNil(parts.map(\.referenceCatalogCoverage))
+        let functionMatchingCoverage = firstNonNil(parts.map(\.functionMatchingCoverage))
+        let stateMachineValidation = firstNonNil(parts.map(\.stateMachineValidation))
+            ?? stateMachineAnalysis?.stateMachineValidation
+        let callGraphQuality = firstNonNil(parts.map(\.callGraphQuality))
+            ?? callGraph?.callGraphQuality
+        let firmwareContainerAnalysis = firstNonNil(parts.map(\.firmwareContainerAnalysis))
+        let referenceCatalogBatch = firstNonNil(parts.map(\.referenceCatalogBatch))
+        let runtimeStateMachineValidation = firstNonNil(parts.map(\.runtimeStateMachineValidation))
         let limitations = Array(Set(parts.compactMap(\.analysisLimitations).flatMap { $0 }))
 
         var result = FirmwareDeepAnalysisResult(
@@ -102,7 +113,16 @@ enum FirmwareDeepAnalysisMerger {
             functionMatching: functionMatching,
             inputBehaviorAnalysis: inputBehaviorAnalysis,
             stateMachineAnalysis: stateMachineAnalysis,
-            inputBehaviorDiff: inputBehaviorDiff
+            inputBehaviorDiff: inputBehaviorDiff,
+            analysisCompleteness: analysisCompleteness,
+            firmwareAnalysisCoverage: firmwareAnalysisCoverage,
+            referenceCatalogCoverage: referenceCatalogCoverage,
+            functionMatchingCoverage: functionMatchingCoverage,
+            stateMachineValidation: stateMachineValidation,
+            callGraphQuality: callGraphQuality,
+            firmwareContainerAnalysis: firmwareContainerAnalysis,
+            referenceCatalogBatch: referenceCatalogBatch,
+            runtimeStateMachineValidation: runtimeStateMachineValidation
         )
         if result.classifiedFindings == nil {
             result.classifiedFindings = FirmwareEvidenceClassifier.classify(from: result)
@@ -117,6 +137,9 @@ enum FirmwareDeepAnalysisMerger {
         let phase2Hit = (result.functionAnalysis?.functionCount ?? 0) > 0
             || (result.functionDiff?.summary?.subjectFunctionCount ?? 0) > 0
             || (result.callGraph?.edgeCount ?? 0) > 0
+            || (result.callGraphQuality?.directCalls ?? 0) > 0
+            || (result.firmwareContainerAnalysis?.ok == true)
+            || (result.runtimeStateMachineValidation?.ok == true)
             || (result.inputBehaviorAnalysis?.summary?.inputRelevantCount ?? 0) > 0
             || (result.functionMatching?.summary?.matched ?? 0) > 0
         let meaningful = !result.speedLimits.isEmpty
@@ -174,6 +197,17 @@ enum FirmwareDeepAnalysisMerger {
         if out.inputBehaviorAnalysis == nil { out.inputBehaviorAnalysis = base.inputBehaviorAnalysis }
         if out.stateMachineAnalysis == nil { out.stateMachineAnalysis = base.stateMachineAnalysis }
         if out.inputBehaviorDiff == nil { out.inputBehaviorDiff = base.inputBehaviorDiff }
+        if out.analysisCompleteness == nil { out.analysisCompleteness = base.analysisCompleteness }
+        if out.firmwareAnalysisCoverage == nil { out.firmwareAnalysisCoverage = base.firmwareAnalysisCoverage }
+        if out.referenceCatalogCoverage == nil { out.referenceCatalogCoverage = base.referenceCatalogCoverage }
+        if out.functionMatchingCoverage == nil { out.functionMatchingCoverage = base.functionMatchingCoverage }
+        if out.stateMachineValidation == nil { out.stateMachineValidation = base.stateMachineValidation }
+        if out.callGraphQuality == nil { out.callGraphQuality = base.callGraphQuality }
+        if out.firmwareContainerAnalysis == nil { out.firmwareContainerAnalysis = base.firmwareContainerAnalysis }
+        if out.referenceCatalogBatch == nil { out.referenceCatalogBatch = base.referenceCatalogBatch }
+        if out.runtimeStateMachineValidation == nil {
+            out.runtimeStateMachineValidation = base.runtimeStateMachineValidation
+        }
         if out.yaraMatches.isEmpty, !base.yaraMatches.isEmpty {
             out.yaraMatches = base.yaraMatches
         }

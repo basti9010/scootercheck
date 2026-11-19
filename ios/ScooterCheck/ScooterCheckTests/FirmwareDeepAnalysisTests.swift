@@ -677,6 +677,80 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         })
         // Legacy clients ignore unknown keys — encoding round-trip keeps phase-1 fields.
         XCTAssertEqual(deep.schemaVersion, 1)
+    }
+
+    func testPhase22FCallgraphContainerRuntimeDecode() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-19T10:00:00Z",
+          "sources": ["serverDecompile", "serverEmulation"],
+          "subjectSHA256": "def",
+          "models": ["f3"],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "ok"},
+          "callGraph": {
+            "ok": true,
+            "edgeCount": 100,
+            "unresolvedCount": 5,
+            "callGraphQuality": {
+              "directCalls": 40,
+              "indirectCalls": 5,
+              "internalBranches": 40,
+              "tailCalls": 5,
+              "unresolvedCalls": 5,
+              "unknownControlFlow": 5
+            }
+          },
+          "callGraphQuality": {
+            "directCalls": 40,
+            "indirectCalls": 5,
+            "internalBranches": 40,
+            "tailCalls": 5,
+            "unresolvedCalls": 5,
+            "unknownControlFlow": 5
+          },
+          "firmwareContainerAnalysis": {
+            "ok": true,
+            "status": "CONTAINER_RECOGNIZED",
+            "format": "RAW4TFT",
+            "containerRecognized": true,
+            "architecture": null,
+            "imageExtractable": true,
+            "components": [
+              {"origin": "RAW4TFT.payload", "offset": 1024, "size": 4096, "sha256": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"}
+            ],
+            "analysisLimitations": ["Keine Architektur allein aus dem Dateinamen."]
+          },
+          "runtimeStateMachineValidation": {
+            "ok": true,
+            "dynamicRuntimeVerified": true,
+            "runtimeTransitionsObserved": 2,
+            "programCount": 6,
+            "evidenceTier": "RUNTIME_TRANSITION_OBSERVED",
+            "analysisLimitations": ["Unicorn-Test ist kein Nachweis realen Fahrzeugverhaltens."]
+          },
+          "analysisLimitations": ["Phase 2.2F"]
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let deep = try decoder.decode(FirmwareDeepAnalysisResult.self, from: json)
+        XCTAssertEqual(deep.callGraphQuality?.directCalls, 40)
+        XCTAssertEqual(deep.callGraphQuality?.internalBranches, 40)
+        XCTAssertEqual(deep.callGraph?.callGraphQuality?.unresolvedCalls, 5)
+        XCTAssertEqual(deep.firmwareContainerAnalysis?.format, "RAW4TFT")
+        XCTAssertEqual(deep.firmwareContainerAnalysis?.components?.first?.offset, 1024)
+        XCTAssertEqual(deep.runtimeStateMachineValidation?.evidenceTier, "RUNTIME_TRANSITION_OBSERVED")
+        XCTAssertTrue(deep.runtimeStateMachineValidation?.dynamicRuntimeVerified == true)
+        XCTAssertTrue((deep.runtimeStateMachineValidation?.analysisLimitations ?? []).contains {
+            $0.localizedCaseInsensitiveContains("Fahrzeug")
+        })
         XCTAssertTrue(deep.speedLimits.isEmpty)
     }
 }

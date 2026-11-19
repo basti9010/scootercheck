@@ -249,10 +249,56 @@ enum FirmwareForensicPDF {
                 }
             }
 
-            // Phase 2.2C: Eingabeverarbeitung
+            // Phase 2.2F: Callgraph-Qualität
+            let cgq = deep.callGraphQuality ?? deep.callGraph?.callGraphQuality
+            if cgq != nil || deep.callGraph != nil {
+                y = gap(y)
+                y = line(ctx, "Callgraph-Qualität (Kontrollflussklassifikation):", y: y, size: 9, bold: true)
+                y = line(
+                    ctx,
+                    "Kanten=\(deep.callGraph?.edgeCount ?? cgq?.edgeCount ?? 0) · direkt=\(cgq?.directCalls ?? 0) · indirekt=\(cgq?.indirectCalls ?? 0) · intern=\(cgq?.internalBranches ?? 0) · tail=\(cgq?.tailCalls ?? 0) · unresolved=\(cgq?.unresolvedCalls ?? deep.callGraph?.unresolvedCount ?? 0) · unknown=\(cgq?.unknownControlFlow ?? 0)",
+                    y: y,
+                    size: 8
+                )
+                y = line(
+                    ctx,
+                    "Hinweis: Interne Sprünge ≠ unresolved Funktionsaufrufe. Statische Strukturanalyse — kein Fahrzeugtest.",
+                    y: y,
+                    size: 7
+                )
+            }
+
+            // Phase 2.2F: Firmwarecontainer
+            if let cont = deep.firmwareContainerAnalysis {
+                y = gap(y)
+                y = line(ctx, "Firmwarecontainer-Metadaten:", y: y, size: 9, bold: true)
+                y = line(
+                    ctx,
+                    "Format=\(cont.format ?? "—") · Status=\(cont.status ?? "—") · Architektur=\(cont.architecture ?? "unbekannt") · extractable=\(cont.imageExtractable == true ? "ja" : "nein")",
+                    y: y,
+                    size: 8
+                )
+                if let comps = cont.components?.prefix(3) {
+                    for c in comps {
+                        y = ensure(ctx, y: y, need: 14)
+                        y = line(
+                            ctx,
+                            "• \(c.origin ?? c.role ?? "comp") offset=\(c.offset.map { String(format: "0x%X", $0) } ?? "—") size=\(c.size ?? 0) sha=\((c.sha256 ?? "").prefix(16))…",
+                            y: y,
+                            size: 7
+                        )
+                    }
+                }
+                for lim in (cont.analysisLimitations ?? []).prefix(3) {
+                    y = ensure(ctx, y: y, need: 14)
+                    y = line(ctx, "• \(lim)", y: y, size: 7)
+                }
+            }
+
+            // Phase 2.2C/F: Eingabeverarbeitung + FSM
             if let ib = deep.inputBehaviorAnalysis {
                 y = gap(y)
-                y = line(ctx, "Eingabeverarbeitung (heuristisch):", y: y, size: 9, bold: true)
+                y = line(ctx, "Eingabeverarbeitung (heuristisch / statisch):", y: y, size: 9, bold: true)
                 y = line(
                     ctx,
                     "Relevante Funktionen=\(ib.summary?.inputRelevantCount ?? 0) · Evidenzstufe=\(ib.evidenceTier ?? "—")",
@@ -303,18 +349,29 @@ enum FirmwareForensicPDF {
                     }()
                     y = line(
                         ctx,
-                        "FSM-Kandidaten=\(sm.stateMachineCount ?? 0) · structure=\(sm.structureIdentifiedCount ?? 0) · transitions=\(sm.transitionsIdentifiedCount ?? 0) · \(statesLabel) · \(transLabel)",
+                        "FSM statisch: Kandidaten=\(sm.stateMachineCount ?? 0) · structure=\(sm.structureIdentifiedCount ?? 0) · transitions=\(sm.transitionsIdentifiedCount ?? 0) · \(statesLabel) · \(transLabel)",
                         y: y,
                         size: 8
                     )
-                    let dyn = (deep.stateMachineValidation ?? sm.stateMachineValidation)?.dynamicRuntimeVerified == true
-                    y = line(
-                        ctx,
-                        "Hinweis: Basic Blocks ≠ Zustände. Dynamische Laufzeitverifikation=\(dyn ? "ja" : "nein"). Keine Aktivierungsfolgen.",
-                        y: y,
-                        size: 7
-                    )
                 }
+                let runtime = deep.runtimeStateMachineValidation
+                let smValidation = deep.stateMachineValidation ?? sm?.stateMachineValidation
+                let dyn = runtime?.dynamicRuntimeVerified == true
+                    || smValidation?.dynamicRuntimeVerified == true
+                y = line(
+                    ctx,
+                    "Laufzeitvalidierung (kontrollierte Unicorn-Suite)=\(dyn ? "beobachtet" : "nein"). "
+                        + "Beobachtete Übergänge=\(runtime?.runtimeTransitionsObserved ?? smValidation?.controlledTransitionEvidence ?? 0). "
+                        + "Unicorn ≠ Fahrzeugtest. Statische Erwartung ≠ Laufzeitnachweis.",
+                    y: y,
+                    size: 7
+                )
+                y = line(
+                    ctx,
+                    "Evidenztrennung: STATISCH | EMULATION (Unicorn) | REALER FAHRZEUGTEST (hier nicht durchgeführt).",
+                    y: y,
+                    size: 7
+                )
                 if let diff = deep.inputBehaviorDiff?.summary {
                     y = line(
                         ctx,
@@ -325,6 +382,10 @@ enum FirmwareForensicPDF {
                 }
                 for lim in (ib.analysisLimitations ?? []).prefix(4) {
                     y = ensure(ctx, y: y, need: 16)
+                    y = line(ctx, "• \(lim)", y: y, size: 7)
+                }
+                for lim in (runtime?.analysisLimitations ?? []).prefix(3) {
+                    y = ensure(ctx, y: y, need: 14)
                     y = line(ctx, "• \(lim)", y: y, size: 7)
                 }
             }
