@@ -1,4 +1,5 @@
 name: TestFlight
+# Retrigger tip distribution after cancelled push run on 055f4d3.
 
 on:
   workflow_dispatch:
