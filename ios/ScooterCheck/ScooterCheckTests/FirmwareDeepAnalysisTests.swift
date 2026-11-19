@@ -1360,6 +1360,11 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
                 "parameterNonZeroCoverage": 22.0,
                 "parameterUnknownCoverage": 50.0,
                 "parameterPartialCoverage": 10.0,
+                "exactParameterAccuracy": 90.0,
+                "acceptedOrAmbiguousRate": 100.0,
+                "unknownParameterRate": 0.0,
+                "partialSignatureRate": 0.0,
+                "recoveredParameterCoverage": 100.0,
                 "memoryAccessCoverage": 88.0,
                 "dataReferenceCoverage": 55.0,
                 "unresolvedDataflowCount": 3,
@@ -1374,7 +1379,8 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
                   "MNEMONIC_DERIVED": 12,
                   "PARTIAL": 3,
                   "NOT_AVAILABLE": 2
-                }
+                },
+                "note": "exact≠accepted — abweichende Parameterzahlen zählen nicht als exakt korrekt."
               }
             },
             "evidenceTier": "INDICATIVE"
@@ -1391,6 +1397,12 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(qm.parameterNonZeroCoverage, 22.0)
         XCTAssertEqual(qm.parameterUnknownCoverage, 50.0)
         XCTAssertEqual(qm.parameterPartialCoverage, 10.0)
+        XCTAssertEqual(qm.exactParameterAccuracy, 90.0)
+        XCTAssertEqual(qm.acceptedOrAmbiguousRate, 100.0)
+        XCTAssertLessThanOrEqual(qm.exactParameterAccuracy ?? 0, qm.acceptedOrAmbiguousRate ?? 0)
+        XCTAssertEqual(qm.unknownParameterRate, 0.0)
+        XCTAssertEqual(qm.partialSignatureRate, 0.0)
+        XCTAssertEqual(qm.recoveredParameterCoverage, 100.0)
         XCTAssertEqual(qm.memoryAccessCoverage, 88.0)
         XCTAssertEqual(qm.dataReferenceCoverage, 55.0)
         XCTAssertEqual(qm.unresolvedDataflowCount, 3)
@@ -1399,6 +1411,7 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(qm.semanticConfidenceDistribution?["GHIDRA_EXPORTED"], 33)
         XCTAssertEqual(qm.semanticConfidenceDistribution?["NOT_AVAILABLE"], 2)
         XCTAssertEqual(deep.activationForensics?.referenceComparison?.referenceTrust, "communityLibrary")
+        XCTAssertTrue((qm.note ?? "").contains("exact"))
     }
 
     func testPhase22H2KeychainSaveResultContract() {

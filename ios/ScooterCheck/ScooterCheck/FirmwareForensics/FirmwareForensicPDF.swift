@@ -539,6 +539,28 @@ enum FirmwareForensicPDF {
                                 qmLine += " unresolved=\(n)"
                             }
                             y = line(ctx, qmLine, y: y, size: 7)
+                            if qm.exactParameterAccuracy != nil || qm.acceptedOrAmbiguousRate != nil {
+                                var gtLine = "Parameter-GT:"
+                                if let v = qm.exactParameterAccuracy {
+                                    gtLine += String(format: " exact=%.1f%%", v)
+                                }
+                                if let v = qm.acceptedOrAmbiguousRate {
+                                    gtLine += String(format: " accepted/ambiguous=%.1f%%", v)
+                                }
+                                if let v = qm.unknownParameterRate ?? qm.parameterUnknownCoverage {
+                                    gtLine += String(format: " unknown=%.1f%%", v)
+                                }
+                                if let v = qm.partialSignatureRate ?? qm.parameterPartialCoverage {
+                                    gtLine += String(format: " partial=%.1f%%", v)
+                                }
+                                y = line(ctx, gtLine, y: y, size: 7)
+                                y = line(
+                                    ctx,
+                                    "Hinweis: exact≠accepted — abweichende Parameterzahlen zählen nicht als exakt korrekt.",
+                                    y: y,
+                                    size: 7
+                                )
+                            }
                             if let n = qm.parameterUnknownCount, n > 0 {
                                 y = line(
                                     ctx,

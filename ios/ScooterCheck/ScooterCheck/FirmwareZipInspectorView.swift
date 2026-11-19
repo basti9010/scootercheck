@@ -1964,10 +1964,18 @@ private func firmwareActivationDataflowQualityMetaLines(
     pct("Parameter > 0", qm.parameterNonZeroCoverage)
     pct("Parameter unbekannt", qm.parameterUnknownCoverage)
     pct("Signatur teilweise", qm.parameterPartialCoverage)
+    pct("Exakte Parameter-Accuracy", qm.exactParameterAccuracy)
+    pct("Akzeptiert/mehrdeutig", qm.acceptedOrAmbiguousRate)
     pct("Speicherzugriffe", qm.memoryAccessCoverage)
     pct("Datenreferenzen", qm.dataReferenceCoverage)
     if let n = qm.unresolvedDataflowCount {
         lines.append(FirmwareActivationLabelValue(label: "offene Dataflows", value: "\(n)"))
+    }
+    if qm.exactParameterAccuracy != nil || qm.acceptedOrAmbiguousRate != nil {
+        lines.append(FirmwareActivationLabelValue(
+            label: "Hinweis Accuracy",
+            value: "exact ≠ accepted — abweichende Parameterzahlen zählen nicht als exakt"
+        ))
     }
     if let n = qm.parameterUnknownCount, n > 0 {
         lines.append(FirmwareActivationLabelValue(

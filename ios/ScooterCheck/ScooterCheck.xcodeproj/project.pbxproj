@@ -173,6 +173,7 @@
 		A100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift */; };
 		A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */; };
 		A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */; };
+		A100000000000000000000E7 /* FirmwareForensicPDFReleaseValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E7 /* FirmwareForensicPDFReleaseValidationTests.swift */; };
 		A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E7 /* FirmwareForensicsHubView.swift */; };
 		A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E8 /* FirmwareComboExtractor.swift */; };
 		A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EB /* FirmwareComboPolicy.swift */; };
@@ -363,6 +364,7 @@
 		B100000000000000000000E9 /* FirmwareReadoutMatchCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelator.swift; sourceTree = "<group>"; };
 		B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000E7 /* FirmwareForensicPDFReleaseValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDFReleaseValidationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -565,6 +567,7 @@
 				B100000000000000000000C1 /* VcuFirmwareVersionTests.swift */,
 				B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */,
 				B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */,
+				B100000000000000000000E7 /* FirmwareForensicPDFReleaseValidationTests.swift */,
 				B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
@@ -870,6 +873,7 @@
 				A100000000000000000000C1 /* VcuFirmwareVersionTests.swift in Sources */,
 				A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */,
 				A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */,
+				A100000000000000000000E7 /* FirmwareForensicPDFReleaseValidationTests.swift in Sources */,
 				A100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,

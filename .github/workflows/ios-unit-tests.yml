@@ -1,5 +1,5 @@
-# Phase 2.3.4 — PR build/unit-test CI (no TestFlight upload).
-# Separates compile+test validation from distribution allowlists.
+# Final release — PR build/unit-test CI (no TestFlight upload / no signing secrets).
+# Separates compile+test+PDFKit validation from distribution allowlists.
 name: iOS Unit Tests
 
 on:
@@ -8,9 +8,6 @@ on:
       - "ios/ScooterCheck/**"
       - ".github/workflows/ios-unit-tests.yml"
   push:
-    branches:
-      - cursor/firmware-phase-234-release-hardening-b100
-      - cursor/firmware-phase-233-quality-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/ios-unit-tests.yml"
@@ -25,6 +22,7 @@ jobs:
     name: ScooterCheck Unit Tests
     runs-on: macos-15
     timeout-minutes: 45
+    # No secrets: fork PRs and untrusted branches stay safe.
     defaults:
       run:
         working-directory: ios/ScooterCheck
@@ -44,7 +42,14 @@ jobs:
           xcodebuild -version
           xcrun --sdk iphonesimulator --show-sdk-version
 
+      - name: Prepare PDF validation output
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/release-validation/pdf/previews"
+          echo "FIRMWARE_PDF_VALIDATION_DIR=$GITHUB_WORKSPACE/release-validation/pdf" >> "$GITHUB_ENV"
+
       - name: Unit tests (ScooterCheckTests)
+        env:
+          FIRMWARE_PDF_VALIDATION_DIR: ${{ github.workspace }}/release-validation/pdf
         run: |
           DEST=$(xcrun simctl list devices available -j | python3 -c '
           import json, sys
@@ -81,4 +86,36 @@ jobs:
             -only-testing:ScooterCheckTests \
             -parallel-testing-enabled NO \
             -maximum-parallel-testing-workers 1 \
+            -resultBundlePath "$GITHUB_WORKSPACE/release-validation/ScooterCheckTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Summarize PDF validation artifacts
+        if: always()
+        run: |
+          OUT="$GITHUB_WORKSPACE/release-validation/pdf"
+          echo "PDF validation dir: $OUT"
+          ls -la "$OUT" || true
+          ls -la "$OUT/previews" || true
+          if [ -f "$OUT/validation-summary.json" ]; then
+            python3 - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("release-validation/pdf/validation-summary.json")
+          data = json.loads(p.read_text())
+          print("reports:", len(data.get("reports") or []))
+          for r in data.get("reports") or []:
+              print(f"  - {r.get('name')}: pages={r.get('pageCount')} ok={r.get('ok')} bytes={r.get('byteCount')}")
+          PY
+          else
+            echo "validation-summary.json missing (test may have failed before export)"
+          fi
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload PDF release-validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-release-validation
+          path: |
+            release-validation/pdf/**
+          if-no-files-found: warn
+          retention-days: 14

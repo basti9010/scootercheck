@@ -1229,6 +1229,14 @@ struct FirmwareActivationDataflowQualityMetrics: Equatable, Codable, Sendable {
     var parameterUnknownCoverage: Double?
     /// Phase 2.3.4 — PARTIAL_SIGNATURE Anteil (%).
     var parameterPartialCoverage: Double?
+    /// Final release — exact GT match rate (%); never conflate with accepted/ambiguous.
+    var exactParameterAccuracy: Double?
+    /// Final release — documented acceptable or ambiguous outcomes (%).
+    var acceptedOrAmbiguousRate: Double?
+    /// Final release aliases for GT reports (unknown / partial / recovered coverage).
+    var unknownParameterRate: Double?
+    var partialSignatureRate: Double?
+    var recoveredParameterCoverage: Double?
     var memoryAccessCoverage: Double?
     var dataReferenceCoverage: Double?
     var unresolvedDataflowCount: Int?

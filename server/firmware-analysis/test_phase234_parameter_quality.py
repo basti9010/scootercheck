@@ -80,10 +80,26 @@ class Phase234ParameterQualityTests(unittest.TestCase):
         report_path = P234 / "param_gt" / "out" / "param_gt_report.json"
         self.assertTrue(report_path.is_file(), "run scripts/run_phase234_param_gt_ghidra.py first")
         report = json.loads(report_path.read_text(encoding="utf-8"))
-        self.assertGreaterEqual(report.get("recoveryAccuracyPercent") or 0, 90.0)
-        stats = report.get("stats") or {}
-        self.assertGreaterEqual(stats.get("tp") or 0, 8)
-        self.assertEqual(stats.get("missing"), 0)
+        # Exact match rate must stay at 90% for the controlled 10-function GT
+        # (opaque_cc recovered 3 instead of expected 2).
+        self.assertEqual(report.get("exactParameterAccuracy"), 90.0)
+        self.assertEqual(report.get("exactCount"), 9)
+        self.assertEqual(report.get("wrongCount"), 1)
+        # Accepted/ambiguous may be higher when allowUnknown is documented.
+        self.assertGreaterEqual(report.get("acceptedOrAmbiguousRate") or 0, 90.0)
+        self.assertLessEqual(report.get("exactParameterAccuracy") or 0, report.get("acceptedOrAmbiguousRate") or 0)
+        # Legacy alias must track exact accuracy — never inflate to 100% when wrong≠0.
+        if "recoveryAccuracyPercent" in report:
+            self.assertEqual(report["recoveryAccuracyPercent"], report["exactParameterAccuracy"])
+        self.assertEqual(report.get("unknownParameterRate"), 0.0)
+        self.assertEqual(report.get("partialSignatureRate"), 0.0)
+        self.assertEqual(report.get("recoveredParameterCoverage"), 100.0)
+        details = report.get("details") or []
+        self.assertEqual(len(details), 10)
+        opaque = next(d for d in details if d.get("id") == "gt_opaque")
+        self.assertEqual(opaque.get("expected"), 2)
+        self.assertEqual(opaque.get("got"), 3)
+        self.assertIn(opaque.get("status"), {"WRONG", "WRONG_ACCEPTED_AMBIGUOUS"})
 
     def test_blind_annotation_packet(self) -> None:
         packet = json.loads(

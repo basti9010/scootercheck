@@ -114,16 +114,23 @@ def main() -> int:
         "fn": 0,
         "unknown": 0,
         "partial": 0,
-        "correct": 0,
+        "exact": 0,
+        "accepted": 0,
         "wrong": 0,
         "missing": 0,
         "details": [],
     }
-    for spec in gt["functions"]:
+    # Prefer address-order match when ELF symbols survive as FUN_* names.
+    ordered = sorted(
+        [f for f in (df.get("functions") or []) if f.get("name") != "reset_handler"],
+        key=lambda x: int(str(x.get("address") or "0"), 16),
+    )
+    for i, spec in enumerate(gt["functions"]):
         name = spec["logicalName"]
         row = by_name.get(name)
+        if row is None and i < len(ordered):
+            row = ordered[i]
         if row is None:
-            # Ghidra may keep symbol names from ELF; try exact else missing
             stats["missing"] += 1
             stats["details"].append({"id": spec["id"], "status": "MISSING", "name": name})
             continue
@@ -131,28 +138,34 @@ def main() -> int:
         quality = row.get("parameterQuality") or "UNKNOWN_PARAMETER_COUNT"
         exp = spec["expectedParameterCount"]
         allow_u = bool(spec.get("allowUnknown"))
+        if quality == "PARTIAL_SIGNATURE":
+            stats["partial"] += 1
         if got is None:
             stats["unknown"] += 1
             if allow_u:
-                stats["correct"] += 1
-                status = "UNKNOWN_OK"
+                stats["accepted"] += 1
+                status = "UNKNOWN_ACCEPTED"
             else:
                 stats["fn"] += 1
                 status = "UNKNOWN_UNEXPECTED"
         elif int(got) == int(exp):
             stats["tp"] += 1
-            stats["correct"] += 1
-            status = "OK"
+            stats["exact"] += 1
+            stats["accepted"] += 1
+            status = "EXACT"
         else:
             stats["wrong"] += 1
             stats["fp"] += 1
-            status = "WRONG"
-        if quality == "PARTIAL_SIGNATURE":
-            stats["partial"] += 1
+            if allow_u:
+                stats["accepted"] += 1
+                status = "WRONG_ACCEPTED_AMBIGUOUS"
+            else:
+                status = "WRONG"
         stats["details"].append(
             {
                 "id": spec["id"],
                 "name": name,
+                "ghidraName": row.get("name"),
                 "expected": exp,
                 "got": got,
                 "quality": quality,
@@ -161,15 +174,37 @@ def main() -> int:
             }
         )
 
-    n = len(gt["functions"])
-    acc = (stats["correct"] / n * 100.0) if n else 0.0
+    n = len(gt["functions"]) or 1
+    exact_acc = stats["exact"] / n * 100.0
+    accepted_rate = stats["accepted"] / n * 100.0
+    unknown_rate = stats["unknown"] / n * 100.0
+    partial_rate = stats["partial"] / n * 100.0
+    recovered = sum(
+        1
+        for d in stats["details"]
+        if d.get("got") is not None
+        and d.get("quality")
+        in ("RECOVERED_PARAMETER_COUNT", "CONFIRMED_ZERO_PARAMETERS", "PARTIAL_SIGNATURE")
+    )
     report = {
         "phase": "2.3.4",
         "ghidraHome": str(headless.parent.parent),
         "image": str(image),
         "runtimeSec": round(dt, 3),
         "functionExportCount": len(df.get("functions") or []),
-        "recoveryAccuracyPercent": acc,
+        "evaluatedCases": n,
+        "exactParameterAccuracy": exact_acc,
+        "acceptedOrAmbiguousRate": accepted_rate,
+        "unknownParameterRate": unknown_rate,
+        "partialSignatureRate": partial_rate,
+        "recoveredParameterCoverage": recovered / n * 100.0,
+        # Legacy alias: never equate with exact accuracy.
+        "recoveryAccuracyPercent": exact_acc,
+        "note": (
+            "exactParameterAccuracy counts only exact matches. "
+            "acceptedOrAmbiguousRate may include documented allowUnknown cases. "
+            "Do not equate accepted rate with exact accuracy."
+        ),
         "stats": {k: v for k, v in stats.items() if k != "details"},
         "details": stats["details"],
     }

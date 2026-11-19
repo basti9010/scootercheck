@@ -1,16 +1,20 @@
 {
-  "phase": "2.3.4",
-  "recoveryAccuracyPercent": 100.0,
-  "stats": {
-    "tp": 9,
-    "fp": 1,
-    "fn": 0,
-    "unknown": 0,
-    "partial": 0,
-    "correct": 10,
-    "wrong": 1,
-    "missing": 0
-  },
+  "phase": "2.3.4-final",
+  "functionExportCount": 11,
+  "evaluatedCases": 10,
+  "exactParameterAccuracy": 90.0,
+  "acceptedOrAmbiguousRate": 100.0,
+  "recoveryAccuracyPercent": 90.0,
+  "unknownParameterRate": 0.0,
+  "partialSignatureRate": 0.0,
+  "recoveredParameterCoverage": 100.0,
+  "exactCount": 9,
+  "acceptedCount": 10,
+  "wrongCount": 1,
+  "unknownCount": 0,
+  "partialCount": 0,
+  "missingCount": 0,
+  "note": "exactParameterAccuracy counts only exact matches. acceptedOrAmbiguousRate may include documented allowUnknown cases. Do not equate accepted rate with exact accuracy.",
   "details": [
     {
       "id": "gt_zero",
@@ -20,8 +24,7 @@
       "expected": 0,
       "got": 0,
       "quality": "CONFIRMED_ZERO_PARAMETERS",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_one",
@@ -31,8 +34,7 @@
       "expected": 1,
       "got": 1,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_two",
@@ -42,8 +44,7 @@
       "expected": 2,
       "got": 2,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_three",
@@ -53,8 +54,7 @@
       "expected": 3,
       "got": 3,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_four",
@@ -64,8 +64,7 @@
       "expected": 4,
       "got": 4,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_mem",
@@ -75,8 +74,7 @@
       "expected": 2,
       "got": 2,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_ret",
@@ -86,8 +84,7 @@
       "expected": 1,
       "got": 1,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_indirect",
@@ -97,8 +94,7 @@
       "expected": 2,
       "got": 2,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_incomplete",
@@ -108,8 +104,7 @@
       "expected": 1,
       "got": 1,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "OK"
+      "status": "EXACT"
     },
     {
       "id": "gt_opaque",
@@ -119,9 +114,7 @@
       "expected": 2,
       "got": 3,
       "quality": "RECOVERED_PARAMETER_COUNT",
-      "signatureSource": "DEFAULT",
-      "status": "WRONG_BUT_ALLOWED_AMBIGUOUS"
+      "status": "WRONG_ACCEPTED_AMBIGUOUS"
     }
-  ],
-  "functionExportCount": 11
+  ]
 }
