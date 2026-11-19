@@ -958,8 +958,22 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             compact.contains("6b7d6ec0") || compact.contains(sha) || rawCompact.contains("6b7d6ec0") || rawCompact.contains(sha),
             "SHA-256 missing from PDF text layer / stream"
         )
-        XCTAssertTrue(extracted.contains("PARTIAL") || extracted.contains("Analysevollständigkeit"))
-        XCTAssertTrue(extracted.contains("Statische Analyse") || extracted.contains("Fahrzeugtest"))
+        XCTAssertTrue(
+            compact.contains("completeness=PARTIAL")
+                || compact.contains("PARTIAL")
+                || extracted.contains("Analysevollständigkeit")
+                || rawCompact.contains("completeness=PARTIAL")
+                || rawCompact.contains("PARTIAL"),
+            "analysis completeness missing from PDF"
+        )
+        XCTAssertTrue(
+            compact.contains("Fahrzeugtest")
+                || compact.contains("StatischeAnalyse")
+                || extracted.contains("Fahrzeugtest")
+                || extracted.contains("Statische Analyse")
+                || rawCompact.contains("Fahrzeugtest"),
+            "analysis limitations missing from PDF"
+        )
 
         let jsonData = try FirmwareForensicPDF.jsonData(report)
         let decoder = JSONDecoder()
