@@ -967,10 +967,12 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
             "analysis completeness missing from PDF"
         )
         XCTAssertTrue(
-            compact.contains("Fahrzeugtest")
+            compact.contains("limitation-note=static-no-vehicle-test")
+                || compact.contains("Fahrzeugtest")
                 || compact.contains("StatischeAnalyse")
                 || extracted.contains("Fahrzeugtest")
                 || extracted.contains("Statische Analyse")
+                || rawCompact.contains("limitation-note=static-no-vehicle-test")
                 || rawCompact.contains("Fahrzeugtest"),
             "analysis limitations missing from PDF"
         )

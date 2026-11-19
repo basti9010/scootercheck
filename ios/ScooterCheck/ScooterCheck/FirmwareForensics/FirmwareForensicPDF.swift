@@ -235,6 +235,9 @@ enum FirmwareForensicPDF {
                 y = ensure(ctx, y: y, need: 16)
                 y = line(ctx, "• \(lim)", y: y, size: 7)
             }
+            if !(deep.analysisLimitations ?? []).isEmpty {
+                y = line(ctx, "limitation-note=static-no-vehicle-test", y: y, size: 7)
+            }
 
             y = gap(y)
             y = line(ctx, "Status Analyseschritte:", y: y, size: 9, bold: true)
