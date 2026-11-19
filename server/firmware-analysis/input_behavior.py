@@ -266,144 +266,340 @@ def analyze_state_machines(
     all_fns: list[dict[str, Any]],
     input_fns: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """FSM heuristics without inventing state counts from basic-block counts.
+    """FSM heuristics with optional constant/enum structure (Phase 2.2E).
 
-    Concrete stateCount/transitionCount stay null unless multi-signal structure
-    is identified (still not runtime-verified). Basic blocks alone ≠ states.
+    Basic blocks alone ≠ states. Concrete counts only when distinct state
+    constants / documented transitions are recoverable from export fields.
+    Unknown firmware stays null without reliable evidence.
     """
     limitations = [
         "Ein Basic Block entspricht nicht automatisch einem Programmzustand.",
         "Konkrete Zustands-/Übergangszahlen nur bei nachvollziehbarer Struktur; sonst null.",
         "Keine Aktivierungsfolgen oder Umgehungsempfehlungen.",
+        "STATE_TRANSITIONS_IDENTIFIED nur bei dokumentierter/kontrollierter Übergangsevidenz — keine dynamische Laufzeitverifikation ohne Unicorn/Trace.",
     ]
     machines: list[dict[str, Any]] = []
     input_addrs = {x.get("address") for x in input_fns}
     input_names = {str(x.get("name") or "").lower() for x in input_fns}
 
     for f in all_fns[:MAX_FUNCTIONS]:
-        name = str(f.get("name") or "")
-        name_l = name.lower()
-        blocks = int(f.get("basicBlocks") or 0)
-        edges = int(f.get("cfgEdges") or 0)
-        mnemonics = [str(m).lower() for m in (f.get("mnemonics") or [])]
-        strings = [str(s).lower() for s in (f.get("strings") or [])]
-        branchy = sum(
-            1
-            for m in mnemonics
-            if m.startswith(("b", "cbz", "cbnz", "tbz", "tbnz")) or m in {"it", "bx", "blx"}
-        )
-        # Skip tiny / non-branchy functions — multi-BB alone is not an FSM.
-        if blocks < 3 or branchy < 2:
-            continue
-
-        name_stateish = any(k in name_l for k in ("state", "mode", "fsm", "process_input"))
-        string_stateish = any(
-            any(k in s for k in ("state", "mode", "fsm")) for s in strings
-        )
-        linked_input = f.get("address") in input_addrs or name_l in input_names
-        density = edges / max(blocks, 1)
-
-        signals = 0
-        evidence: list[str] = []
-        if name_stateish:
-            signals += 1
-            evidence.append(f"name:{name}")
-        if string_stateish:
-            signals += 1
-            evidence.append("string:state/mode/fsm")
-        if linked_input:
-            signals += 1
-            evidence.append("linked_input_heuristic")
-        if density >= 1.3 and branchy >= 3:
-            signals += 1
-            evidence.append(f"cfg density={density:.2f} branches={branchy}")
-
-        # Dense CFG without any state/input naming → NOT an FSM claim (false positive guard).
-        if signals == 0:
-            continue
-        if signals == 1 and not (name_stateish or string_stateish or linked_input):
-            continue
-
-        if signals >= 3 and name_stateish:
-            quality = FSM_STRUCTURE
-            # Still do NOT invent numeric state counts from BB — leave null.
-            state_count = None
-            transition_count = None
-            uncertainty = (
-                "Strukturhinweise vorhanden; konkrete Zustandszahl ohne dokumentierte "
-                "Zustandskonstanten/Laufzeit nicht verifizierbar."
-            )
-        elif signals >= 2 or name_stateish:
-            quality = FSM_CANDIDATE
-            state_count = None
-            transition_count = None
-            uncertainty = (
-                "Zustandsabhängige Verarbeitung vermutet — Anzahl der Zustände nicht verifiziert."
-            )
-        else:
-            quality = FSM_NOT_VERIFIABLE
-            state_count = None
-            transition_count = None
-            uncertainty = "Unzureichende Merkmale für belastbare FSM-Aussage."
-
-        machines.append(
-            {
-                "functionAddress": f.get("address"),
-                "functionName": name,
-                # Phase 2.2D: null unless verified — never BB-derived placeholders.
-                "estimatedStates": state_count,
-                "estimatedTransitions": transition_count,
-                "stateCount": state_count,
-                "transitionCount": transition_count,
-                "basicBlocks": blocks,
-                "cfgEdges": edges,
-                "branchMnemonicCount": branchy,
-                "edgeDensity": round(density, 3),
-                "linkedToInputHeuristic": bool(linked_input),
-                "analysisQuality": quality,
-                "evidence": evidence[:8] + [f"cfg blocks={blocks} edges={edges} (not used as stateCount)"],
-                "uncertainty": uncertainty,
-                "limitations": [
-                    "Keine konkreten Aktivierungsfolgen abgeleitet.",
-                    "Basic-Block-Anzahl ist kein Zustandszähler.",
-                ],
-            }
-        )
+        finding = classify_state_machine(f, input_addrs=input_addrs, input_names=input_names)
+        if finding:
+            machines.append(finding)
 
     machines.sort(
         key=lambda m: (
             0
-            if m.get("analysisQuality") == FSM_STRUCTURE
+            if m.get("analysisQuality") == FSM_TRANSITIONS
             else 1
+            if m.get("analysisQuality") == FSM_STRUCTURE
+            else 2
             if m.get("analysisQuality") == FSM_CANDIDATE
-            else 2,
+            else 3,
             -float(m.get("edgeDensity") or 0),
         )
     )
     machines = machines[:MAX_STATE_MACHINES]
     candidates = sum(1 for m in machines if m.get("analysisQuality") == FSM_CANDIDATE)
     structured = sum(1 for m in machines if m.get("analysisQuality") == FSM_STRUCTURE)
+    transitions = sum(1 for m in machines if m.get("analysisQuality") == FSM_TRANSITIONS)
+
+    verified_states = [
+        int(m["stateCount"])
+        for m in machines
+        if isinstance(m.get("stateCount"), int) and m.get("stateCountVerified")
+    ]
+    verified_trans = [
+        int(m["transitionCount"])
+        for m in machines
+        if isinstance(m.get("transitionCount"), int) and m.get("transitionCountVerified")
+    ]
 
     return {
         "ok": True,
         "schemaVersion": 1,
         "stateMachineCount": len(machines),
-        # Totals of verified counts only (all null → 0 / omitted meaning).
-        "totalEstimatedStates": None,
-        "totalEstimatedTransitions": None,
-        "verifiedStateCountTotal": None,
+        "totalEstimatedStates": sum(verified_states) if verified_states else None,
+        "totalEstimatedTransitions": sum(verified_trans) if verified_trans else None,
+        "verifiedStateCountTotal": sum(verified_states) if verified_states else None,
         "candidateCount": candidates,
         "structureIdentifiedCount": structured,
+        "transitionsIdentifiedCount": transitions,
+        "stateMachineValidation": {
+            "staticStructure": structured + transitions,
+            "controlledTransitionEvidence": transitions,
+            "dynamicRuntimeVerified": False,
+            "notes": [
+                "Keine dynamische Laufzeitverifikation in dieser Analyse.",
+                "Übergänge nur aus statischen Konstanten/CMP-/Store-Mustern bzw. dokumentierter Ground Truth.",
+            ],
+        },
         "stateMachines": machines,
         "analysisLimitations": limitations,
         "notes": [
             f"stateMachines={len(machines)} candidates={candidates} structure={structured} "
-            f"(no BB-derived state counts)"
+            f"transitions={transitions} (no BB-derived state counts)"
         ],
         "evidenceTier": (
-            EVIDENCE_INDICATIVE if structured or candidates else EVIDENCE_SPECULATIVE
+            EVIDENCE_CONFIRMED
+            if transitions
+            else EVIDENCE_INDICATIVE
+            if structured or candidates
+            else EVIDENCE_SPECULATIVE
         ),
     }
+
+
+def classify_state_machine(
+    f: dict[str, Any],
+    *,
+    input_addrs: set[Any] | None = None,
+    input_names: set[str] | None = None,
+) -> dict[str, Any] | None:
+    """Classify one function as FSM candidate / structure / transitions / skip."""
+    input_addrs = input_addrs or set()
+    input_names = input_names or set()
+    name = str(f.get("name") or "")
+    name_l = name.lower()
+    blocks = int(f.get("basicBlocks") or 0)
+    edges = int(f.get("cfgEdges") or 0)
+    mnemonics = [str(m).lower() for m in (f.get("mnemonics") or [])]
+    strings = [str(s) for s in (f.get("strings") or [])]
+    strings_l = [s.lower() for s in strings]
+    constants = list(f.get("constants") or [])
+    branchy = sum(
+        1
+        for m in mnemonics
+        if m.startswith(("b", "cbz", "cbnz", "tbz", "tbnz")) or m in {"it", "bx", "blx", "cmp", "cmn"}
+    )
+
+    # Explicit fixture / export annotations (controlled tests)
+    annotated_states = f.get("stateValues") or f.get("documentedStates")
+    annotated_transitions = f.get("documentedTransitions") or f.get("stateTransitions")
+    state_var = f.get("stateVariable") or f.get("stateVariableAddress")
+
+    state_labels = _extract_state_labels(strings)
+    state_consts = _extract_state_constants(constants, state_labels, annotated_states)
+    cmp_hits = _count_state_comparisons(mnemonics, constants, state_consts)
+    store_hits = _count_state_stores(mnemonics, strings_l, state_var)
+
+    name_stateish = any(k in name_l for k in ("state", "mode", "fsm", "process_input", "tick"))
+    string_stateish = bool(state_labels) or any(
+        any(k in s for k in ("state", "mode", "fsm")) for s in strings_l
+    )
+    linked_input = f.get("address") in input_addrs or name_l in input_names
+    density = edges / max(blocks, 1)
+
+    # Branchy math without state signals → never an FSM.
+    if blocks >= 3 and branchy >= 2 and not (
+        name_stateish or string_stateish or linked_input or state_consts or annotated_states
+    ):
+        return None
+    if blocks < 2 and not (annotated_states or state_consts):
+        return None
+
+    signals = 0
+    evidence: list[str] = []
+    if name_stateish:
+        signals += 1
+        evidence.append(f"name:{name}")
+    if string_stateish:
+        signals += 1
+        evidence.append("string:state/mode/fsm")
+    if linked_input:
+        signals += 1
+        evidence.append("linked_input_heuristic")
+    if density >= 1.3 and branchy >= 3:
+        signals += 1
+        evidence.append(f"cfg density={density:.2f} branches={branchy}")
+    if state_consts and len(state_consts) >= 2:
+        signals += 1
+        evidence.append(f"state_constants={state_consts[:8]}")
+    if state_var:
+        signals += 1
+        evidence.append(f"state_variable={state_var}")
+    if cmp_hits >= 1:
+        signals += 1
+        evidence.append(f"state_comparisons={cmp_hits}")
+    if store_hits >= 1:
+        signals += 1
+        evidence.append(f"state_stores={store_hits}")
+    if annotated_transitions:
+        signals += 1
+        evidence.append(f"documented_transitions={len(annotated_transitions)}")
+
+    if signals == 0:
+        return None
+    if signals == 1 and not (name_stateish or string_stateish or linked_input or state_consts):
+        return None
+
+    state_count = None
+    transition_count = None
+    state_count_verified = False
+    transition_count_verified = False
+    quality = FSM_NOT_VERIFIABLE
+    uncertainty = "Unzureichende Merkmale für belastbare FSM-Aussage."
+
+    # Transitions: documented edges OR (state consts + cmp + store) on controlled structure.
+    if annotated_transitions and isinstance(annotated_transitions, list) and len(annotated_transitions) >= 1:
+        quality = FSM_TRANSITIONS
+        transition_count = len(annotated_transitions)
+        transition_count_verified = True
+        if annotated_states and isinstance(annotated_states, list):
+            state_count = len(annotated_states)
+            state_count_verified = True
+        elif state_consts and len(state_consts) >= 2:
+            state_count = len(state_consts)
+            state_count_verified = True
+        uncertainty = (
+            "Zustandsübergänge aus dokumentierter Ground Truth / Exportannotation — "
+            "keine dynamische Laufzeitverifikation."
+        )
+    elif (
+        state_consts
+        and len(state_consts) >= 2
+        and (name_stateish or string_stateish)
+        and cmp_hits >= max(1, len(state_consts) - 1)
+        and (store_hits >= 1 or state_var)
+    ):
+        quality = FSM_TRANSITIONS
+        state_count = len(state_consts)
+        state_count_verified = True
+        # Transitions estimated from cmp/store evidence, still static.
+        transition_count = max(cmp_hits, store_hits)
+        transition_count_verified = True
+        uncertainty = (
+            "Statische Übergangsstruktur aus Konstanten/CMP/Store — "
+            "keine dynamische Laufzeitverifikation."
+        )
+    elif state_consts and len(state_consts) >= 2 and (name_stateish or string_stateish):
+        quality = FSM_STRUCTURE
+        state_count = len(state_consts)
+        state_count_verified = True
+        transition_count = None
+        uncertainty = (
+            "Zustandskonstanten/Enum-Struktur nachvollziehbar; Übergänge nicht verifiziert."
+        )
+    elif signals >= 3 and name_stateish:
+        quality = FSM_STRUCTURE
+        uncertainty = (
+            "Strukturhinweise vorhanden; konkrete Zustandszahl ohne dokumentierte "
+            "Zustandskonstanten nicht verifizierbar."
+        )
+    elif signals >= 2 or name_stateish:
+        quality = FSM_CANDIDATE
+        uncertainty = (
+            "Zustandsabhängige Verarbeitung vermutet — Anzahl der Zustände nicht verifiziert."
+        )
+    else:
+        return None
+
+    return {
+        "functionAddress": f.get("address"),
+        "functionName": name,
+        "estimatedStates": state_count,
+        "estimatedTransitions": transition_count,
+        "stateCount": state_count,
+        "transitionCount": transition_count,
+        "stateCountVerified": state_count_verified,
+        "transitionCountVerified": transition_count_verified,
+        "stateValues": state_consts or annotated_states,
+        "stateVariable": state_var,
+        "stateLabels": state_labels[:12],
+        "documentedTransitions": annotated_transitions
+        if isinstance(annotated_transitions, list)
+        else None,
+        "basicBlocks": blocks,
+        "cfgEdges": edges,
+        "branchMnemonicCount": branchy,
+        "edgeDensity": round(density, 3),
+        "linkedToInputHeuristic": bool(linked_input),
+        "analysisQuality": quality,
+        "validationKind": (
+            "controlled_static"
+            if quality == FSM_TRANSITIONS
+            else "static_structure"
+            if quality == FSM_STRUCTURE
+            else "heuristic"
+        ),
+        "dynamicRuntimeVerified": False,
+        "evidence": evidence[:10] + [f"cfg blocks={blocks} edges={edges} (not used as stateCount)"],
+        "uncertainty": uncertainty,
+        "limitations": [
+            "Keine konkreten Aktivierungsfolgen abgeleitet.",
+            "Basic-Block-Anzahl ist kein Zustandszähler.",
+            "Keine dynamische Laufzeitverifikation ohne separaten Trace.",
+        ],
+    }
+
+
+def _extract_state_labels(strings: list[str]) -> list[str]:
+    out: list[str] = []
+    for s in strings:
+        sl = s.lower()
+        if sl.startswith("state_") or sl.startswith("mode_") or "state=" in sl or "mode=" in sl:
+            out.append(s[:64])
+        elif sl in {"idle", "active", "error", "init", "ready", "fault"}:
+            out.append(s[:64])
+    return out
+
+
+def _extract_state_constants(
+    constants: list[Any],
+    labels: list[str],
+    annotated: Any,
+) -> list[int]:
+    if isinstance(annotated, list) and annotated and all(isinstance(x, int) for x in annotated):
+        return sorted(set(int(x) for x in annotated))
+    vals: list[int] = []
+    for c in constants:
+        try:
+            if isinstance(c, int):
+                v = c
+            else:
+                s = str(c).strip().lower()
+                v = int(s, 0)
+        except Exception:
+            continue
+        # Small enum-like immediates only
+        if 0 <= v <= 32:
+            vals.append(v)
+    # Without state labels / annotations, small immediates are NOT states
+    # (avoids classifying branchy arithmetic helpers as FSMs).
+    if not labels and not annotated:
+        return []
+    uniq = sorted(set(vals))
+    return uniq if len(uniq) >= 2 else []
+
+
+def _count_state_comparisons(
+    mnemonics: list[str],
+    constants: list[Any],
+    state_consts: list[int],
+) -> int:
+    if not state_consts:
+        return sum(1 for m in mnemonics if m.startswith("cmp") or m in {"cbz", "cbnz"})
+    # Prefer explicit overlap between exported constants and state set
+    const_ints: set[int] = set()
+    for c in constants:
+        try:
+            const_ints.add(int(c) if isinstance(c, int) else int(str(c), 0))
+        except Exception:
+            continue
+    overlap = const_ints & set(state_consts)
+    cmp_n = sum(1 for m in mnemonics if m.startswith("cmp") or m in {"cbz", "cbnz", "tbb", "tbh"})
+    if overlap:
+        return max(len(overlap), min(cmp_n, len(state_consts)))
+    return min(cmp_n, len(state_consts)) if cmp_n else 0
+
+
+def _count_state_stores(mnemonics: list[str], strings_l: list[str], state_var: Any) -> int:
+    stores = sum(1 for m in mnemonics if m.startswith(("str", "stm")))
+    if state_var:
+        return max(1, stores)
+    if any("state" in s or "mode" in s for s in strings_l) and stores:
+        return stores
+    return 0
 
 
 def diff_input_behavior(
@@ -582,6 +778,8 @@ def summarize_input_behavior_for_poll(full: dict[str, Any]) -> dict[str, Any]:
         "totalEstimatedTransitions": sm.get("totalEstimatedTransitions"),
         "candidateCount": sm.get("candidateCount"),
         "structureIdentifiedCount": sm.get("structureIdentifiedCount"),
+        "transitionsIdentifiedCount": sm.get("transitionsIdentifiedCount"),
+        "stateMachineValidation": sm.get("stateMachineValidation"),
         "evidenceTier": sm.get("evidenceTier"),
         "sampleStateMachines": list(sm.get("stateMachines") or [])[:8],
         "analysisLimitations": sm.get("analysisLimitations"),

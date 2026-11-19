@@ -1,0 +1,72 @@
+{
+  "description": "Phase 2.2E controlled FSM fixtures (harmless). Documented before analysis. No scooter unlock/tuning logic.",
+  "cases": {
+    "two_states_one_transition": {
+      "function": "fsm_two_state",
+      "expectedStates": [0, 1],
+      "expectedTransitions": [{"from": 0, "to": 1, "event": "test_event"}],
+      "expectedQuality": ["STATE_TRANSITIONS_IDENTIFIED", "STATE_STRUCTURE_IDENTIFIED"],
+      "notRelevant": ["branchy_math"]
+    },
+    "three_states_multi_transition": {
+      "function": "fsm_three_state",
+      "expectedStates": [0, 1, 2],
+      "expectedTransitions": [
+        {"from": 0, "to": 1, "event": "go"},
+        {"from": 1, "to": 2, "event": "next"},
+        {"from": 2, "to": 0, "event": "reset"}
+      ],
+      "expectedQuality": ["STATE_TRANSITIONS_IDENTIFIED"]
+    },
+    "switch_case_fsm": {
+      "function": "fsm_switch",
+      "expectedStates": [0, 1, 2, 3],
+      "expectedTransitions": [
+        {"from": 0, "to": 1},
+        {"from": 1, "to": 2},
+        {"from": 2, "to": 3},
+        {"from": 3, "to": 0}
+      ],
+      "expectedQuality": ["STATE_TRANSITIONS_IDENTIFIED"]
+    },
+    "if_else_fsm": {
+      "function": "fsm_if_else",
+      "expectedStates": [0, 1],
+      "expectedTransitions": [{"from": 0, "to": 1}, {"from": 1, "to": 0}],
+      "expectedQuality": ["STATE_TRANSITIONS_IDENTIFIED", "STATE_STRUCTURE_IDENTIFIED"]
+    },
+    "global_state_var": {
+      "function": "fsm_global_state",
+      "stateVariable": "0x20000100",
+      "expectedStates": [0, 1, 2],
+      "expectedQuality": ["STATE_STRUCTURE_IDENTIFIED", "STATE_TRANSITIONS_IDENTIFIED"]
+    },
+    "local_state_var": {
+      "function": "fsm_local_state",
+      "stateVariable": "local",
+      "expectedStates": [0, 1],
+      "expectedQuality": ["STATE_STRUCTURE_IDENTIFIED", "STATE_TRANSITIONS_IDENTIFIED", "STATE_MACHINE_CANDIDATE"]
+    },
+    "event_driven": {
+      "function": "fsm_on_test_event",
+      "expectedStates": [0, 1],
+      "expectedTransitions": [{"from": 0, "to": 1, "event": "test_event"}],
+      "expectedQuality": ["STATE_TRANSITIONS_IDENTIFIED"]
+    },
+    "branchy_not_fsm": {
+      "function": "branchy_math",
+      "expectNotFsm": true
+    },
+    "shared_state_pair": {
+      "functions": ["fsm_shared_reader", "fsm_shared_writer"],
+      "stateVariable": "0x20000200",
+      "expectedStates": [0, 1],
+      "expectedQuality": ["STATE_STRUCTURE_IDENTIFIED", "STATE_TRANSITIONS_IDENTIFIED", "STATE_MACHINE_CANDIDATE"]
+    },
+    "incomplete_export": {
+      "function": "fsm_incomplete",
+      "expectedQuality": ["NOT_VERIFIABLE", "STATE_MACHINE_CANDIDATE"],
+      "allowAbsent": true
+    }
+  }
+}

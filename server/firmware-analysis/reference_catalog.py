@@ -106,6 +106,12 @@ def catalog_compatible_with_subject(
         reasons.append("analyzerCompat mismatch")
     if meta.get("status") != "ok":
         reasons.append("catalog status not ok")
+    completeness = str(meta.get("completenessStatus") or meta.get("analysisCompleteness") or "")
+    if completeness in {"FAILED", "failed"}:
+        reasons.append("catalog completeness failed")
+    if meta.get("truncated") or completeness == "TRUNCATED":
+        # Still usable for partial diffs, but caller must surface incompleteness.
+        reasons.append("catalog truncated/partial")
     ctype = (controller_type or "").strip().lower()
     mctype = str(meta.get("controllerType") or "").strip().lower()
     if ctype and mctype and ctype != mctype:
@@ -123,7 +129,26 @@ def catalog_compatible_with_subject(
     mproc = str(meta.get("processor") or "").strip()
     if proc and mproc and proc != mproc:
         reasons.append("processor mismatch")
-    return (len(reasons) == 0), reasons
+    # Hard blockers for automatic FunctionDiff
+    hard = {
+        "analyzerCompat mismatch",
+        "catalog status not ok",
+        "catalog completeness failed",
+        "controllerType mismatch",
+        "processor mismatch",
+    }
+    ok = not any(r in hard for r in reasons)
+    return ok, reasons
+
+def catalog_ok_for_autodiff(meta: dict[str, Any] | None) -> tuple[bool, list[str]]:
+    """Stricter gate: incomplete/truncated catalogs must not silent-autodiff as complete."""
+    if not meta:
+        return False, ["missing catalog meta"]
+    ok, reasons = catalog_compatible_with_subject(meta)
+    if "catalog truncated/partial" in reasons:
+        # Allow autodiff but mark partial — still "ok" with warning reasons retained.
+        return True, reasons
+    return ok, reasons
 
 
 def list_catalogs() -> list[dict[str, Any]]:
@@ -203,9 +228,23 @@ def build_catalog_for_ref(
 
         fa = load_function_analysis(paths["functions"])
         cg = load_call_graph(paths["callgraph"] if paths["callgraph"].is_file() else None)
+        fn_count = int(fa.get("functionCount") or len(fa.get("functions") or []) or 0)
+        truncated = bool(fa.get("truncated") or cg.get("truncated"))
+        if not fa.get("ok"):
+            completeness = "FAILED"
+        elif truncated:
+            completeness = "TRUNCATED"
+        elif fn_count > 0:
+            # Complete catalog of recognized functions — not whole-firmware proof.
+            completeness = "FULL_ANALYSIS"
+        else:
+            completeness = "PARTIAL_ANALYSIS"
+
         meta = {
             "schemaVersion": CATALOG_SCHEMA,
             "status": "ok" if fa.get("ok") else "failed",
+            "completenessStatus": completeness,
+            "analysisCompleteness": completeness,
             "referenceId": pub.get("id") or ref.get("id"),
             "firmwareSHA256": sha,
             "manufacturer": pub.get("manufacturer") or "",
@@ -215,18 +254,29 @@ def build_catalog_for_ref(
             "firmwareVersion": pub.get("firmwareVersion") or pub.get("version") or "",
             "hardwareVersion": pub.get("hardwareVersion") or "",
             "processor": fa.get("processor") or processor,
+            "baseAddr": base_addr,
             "analyzer": ANALYZER_ID,
             "analyzerCompat": ANALYZER_COMPAT,
             "analyzerNote": "Uses existing Ghidra ExportFunctionAnalysis/ExportCallGraph — no second engine.",
+            "ghidraVersion": os.environ.get("GHIDRA_VERSION") or "12.2_PUBLIC",
             "ghidraMessage": msg,
-            "functionCount": fa.get("functionCount") or len(fa.get("functions") or []),
+            "analysisParameters": {
+                "processor": processor,
+                "baseAddr": base_addr,
+                "timeoutSec": timeout_sec,
+                "maxFunctions": fa.get("maxFunctions") or 2500,
+            },
+            "functionCount": fn_count,
             "edgeCount": cg.get("edgeCount") or 0,
+            "truncated": truncated,
+            "truncatedSkipped": fa.get("truncatedSkipped"),
             "analyzedAt": datetime.now(timezone.utc).isoformat(),
-            "analysisQuality": "medium" if fa.get("ok") and (fa.get("functionCount") or 0) > 0 else "low",
+            "analysisQuality": "medium" if fa.get("ok") and fn_count > 0 else "low",
             "analysisLimitations": list(fa.get("analysisLimitations") or [])
             + [
                 "Katalog ändert nicht den Referenz-Vertrauensstatus.",
                 f"referenceTrust={trust.get('referenceTrust')}",
+                "Vollständiger Funktionskatalog ≠ Nachweis vollständiger Firmwareabdeckung.",
             ],
             "referenceTrust": trust.get("referenceTrust"),
             "referenceProvenanceVerified": bool(trust.get("referenceProvenanceVerified")),

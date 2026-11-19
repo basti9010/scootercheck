@@ -982,6 +982,41 @@ struct FirmwareZipInspectorView: View {
         if let proc = fa?.processor { rows.append(.meta("Architektur", proc)) }
         rows.append(.meta("Analysequalität", deep.quality.summary))
 
+        // Phase 2.2E: Analysevollständigkeit
+        if deep.analysisCompleteness != nil || deep.firmwareAnalysisCoverage != nil {
+            rows.append(.title("Analysevollständigkeit", top: 8))
+            if let c = deep.analysisCompleteness {
+                rows.append(.meta("Status", c))
+            }
+            if let cov = deep.firmwareAnalysisCoverage {
+                if let n = cov.recognizedFunctionCount {
+                    rows.append(.meta("Erkannte Funktionen", "\(n)"))
+                }
+                if let n = cov.analyzedFunctionCount {
+                    rows.append(.meta("Analysierte Funktionen", "\(n)"))
+                }
+                if let n = cov.unanalyzedFunctionCount {
+                    rows.append(.meta("Nicht analysiert (Truncation)", "\(n)"))
+                }
+                if cov.truncated == true {
+                    rows.append(.warn("Analyse gekürzt (Funktionslimit) — Ergebnis unvollständig."))
+                }
+                if cov.unknownTrueFunctionTotal == true {
+                    rows.append(.meta("Tatsächliche Gesamtzahl", "unbekannt"))
+                }
+            }
+            if let cat = deep.referenceCatalogCoverage {
+                rows.append(.meta("Referenzkatalog", cat.present == true ? "vorhanden" : "fehlt"))
+                if let st = cat.completenessStatus { rows.append(.meta("Katalog-Vollständigkeit", st)) }
+                if let t = cat.referenceTrust { rows.append(.meta("Referenz-Vertrauen", t)) }
+                if let p = cat.processor { rows.append(.meta("Katalog-Architektur", p)) }
+            } else if let meta = deep.referenceMetadata {
+                let present = meta.functionCatalog?.present == true
+                rows.append(.meta("Referenzkatalog", present ? "vorhanden" : "fehlt"))
+                if let t = meta.referenceTrust { rows.append(.meta("Referenz-Vertrauen", t)) }
+            }
+        }
+
         let input = deep.inputBehaviorAnalysis
         let sm = deep.stateMachineAnalysis ?? input?.stateMachineAnalysis
         let inputDiff = deep.inputBehaviorDiff
@@ -1003,6 +1038,15 @@ struct FirmwareZipInspectorView: View {
             }
             if let structured = sm?.structureIdentifiedCount {
                 rows.append(.meta("STATE_STRUCTURE_IDENTIFIED", "\(structured)"))
+            }
+            if let tr = sm?.transitionsIdentifiedCount {
+                rows.append(.meta("STATE_TRANSITIONS_IDENTIFIED", "\(tr)"))
+            }
+            let validation = deep.stateMachineValidation ?? sm?.stateMachineValidation
+            if validation?.dynamicRuntimeVerified == true {
+                rows.append(.meta("Laufzeitverifikation", "ja"))
+            } else if sm != nil {
+                rows.append(.meta("Laufzeitverifikation", "nein (nur statisch)"))
             }
             // Never invent state counts — only show verified numbers when present.
             if let states = sm?.totalEstimatedStates {

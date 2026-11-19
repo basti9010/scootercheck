@@ -980,9 +980,39 @@ def process_job(job_id: str) -> None:
                 "analyzerCompat": catalog_meta.get("analyzerCompat"),
                 "functionCount": catalog_meta.get("functionCount"),
                 "analyzedAt": catalog_meta.get("analyzedAt"),
+                "completenessStatus": catalog_meta.get("completenessStatus")
+                or catalog_meta.get("analysisCompleteness"),
+                "truncated": bool(catalog_meta.get("truncated")),
+                "ghidraVersion": catalog_meta.get("ghidraVersion"),
+                "processor": catalog_meta.get("processor"),
+                "baseAddr": catalog_meta.get("baseAddr"),
+                "referenceTrust": catalog_meta.get("referenceTrust"),
             }
         else:
             result["referenceMetadata"]["functionCatalog"] = {"present": False}
+
+        # Phase 2.2E: structured completeness / coverage (optional, poll-safe).
+        try:
+            from analysis_completeness import assess_analysis_completeness
+
+            completeness = assess_analysis_completeness(
+                function_analysis=func_full,
+                call_graph=cg_full,
+                catalog_meta=catalog_meta if isinstance(catalog_meta, dict) else None,
+                matching=func_diff_full.get("functionMatching")
+                if isinstance(func_diff_full, dict)
+                else None,
+            )
+            result["analysisCompleteness"] = completeness.get("analysisCompleteness")
+            result["firmwareAnalysisCoverage"] = completeness.get("firmwareAnalysisCoverage")
+            result["referenceCatalogCoverage"] = completeness.get("referenceCatalogCoverage")
+            result["functionMatchingCoverage"] = completeness.get("functionMatchingCoverage")
+            sm_full = input_full.get("stateMachineAnalysis") or {}
+            result["stateMachineValidation"] = sm_full.get("stateMachineValidation")
+            notes.extend(completeness.get("notes") or [])
+        except Exception as cov_e:
+            notes.append(f"phase22eCoverage={type(cov_e).__name__}")
+
         limitations = []
         limitations.extend(result.get("functionAnalysis", {}).get("analysisLimitations") or [])
         limitations.extend(result.get("functionDiff", {}).get("analysisLimitations") or [])
@@ -1007,6 +1037,7 @@ def process_job(job_id: str) -> None:
             "inputBehaviorPath": str(job_dir / "FIRM.input_behavior.json"),
             "inputBehaviorDiffPath": str(job_dir / "FIRM.input_behavior_diff.json"),
             "inputBehaviorSummary": result["inputBehaviorAnalysis"].get("summary"),
+            "analysisCompleteness": result.get("analysisCompleteness"),
         }
     except Exception as e:
         notes.append(f"phase2=error:{type(e).__name__}:{e}")
@@ -1522,6 +1553,14 @@ def download_input_behavior_diff(
 def admin_list_reference_catalogs(_: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
     cats = list_catalogs()
     return JSONResponse({"count": len(cats), "catalogs": cats})
+
+
+@APP.get("/v1/firmware/admin/reference-inventory")
+def admin_reference_inventory(_: dict[str, Any] = Depends(require_admin)) -> JSONResponse:
+    """Read-only inventory + analyzability of stock references (Phase 2.2E)."""
+    from reference_inventory import inventory_references
+
+    return JSONResponse(inventory_references(include_file_probe=True))
 
 
 @APP.post("/v1/firmware/admin/reference-catalogs/build")

@@ -56,6 +56,12 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var stateMachineAnalysis: FirmwareStateMachineAnalysisSummary? = nil
     /// Phase 2.2C: Input Behavior Diff vs reference (optional).
     var inputBehaviorDiff: FirmwareInputBehaviorDiffSummary? = nil
+    /// Phase 2.2E: analysis completeness / coverage (optional).
+    var analysisCompleteness: String? = nil
+    var firmwareAnalysisCoverage: FirmwareAnalysisCoverage? = nil
+    var referenceCatalogCoverage: FirmwareReferenceCatalogCoverage? = nil
+    var functionMatchingCoverage: FirmwareFunctionMatchingCoverage? = nil
+    var stateMachineValidation: FirmwareStateMachineValidation? = nil
 
     static let currentSchemaVersion = 1
 
@@ -75,6 +81,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case stockDiff, r2StringsSample, yaraMatches, cortexMIvt, boardPinout, classifiedFindings
         case functionAnalysis, functionDiff, callGraph, referenceMetadata, analysisLimitations
         case functionMatching, inputBehaviorAnalysis, stateMachineAnalysis, inputBehaviorDiff
+        case analysisCompleteness, firmwareAnalysisCoverage, referenceCatalogCoverage
+        case functionMatchingCoverage, stateMachineValidation
     }
 
     init(from decoder: Decoder) throws {
@@ -112,6 +120,12 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         stateMachineAnalysis = try c.decodeIfPresent(FirmwareStateMachineAnalysisSummary.self, forKey: .stateMachineAnalysis)
             ?? inputBehaviorAnalysis?.stateMachineAnalysis
         inputBehaviorDiff = try c.decodeIfPresent(FirmwareInputBehaviorDiffSummary.self, forKey: .inputBehaviorDiff)
+        analysisCompleteness = try c.decodeIfPresent(String.self, forKey: .analysisCompleteness)
+        firmwareAnalysisCoverage = try c.decodeIfPresent(FirmwareAnalysisCoverage.self, forKey: .firmwareAnalysisCoverage)
+        referenceCatalogCoverage = try c.decodeIfPresent(FirmwareReferenceCatalogCoverage.self, forKey: .referenceCatalogCoverage)
+        functionMatchingCoverage = try c.decodeIfPresent(FirmwareFunctionMatchingCoverage.self, forKey: .functionMatchingCoverage)
+        stateMachineValidation = try c.decodeIfPresent(FirmwareStateMachineValidation.self, forKey: .stateMachineValidation)
+            ?? stateMachineAnalysis?.stateMachineValidation
     }
 
     init(
@@ -145,7 +159,12 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         functionMatching: FirmwareFunctionMatchingSummary? = nil,
         inputBehaviorAnalysis: FirmwareInputBehaviorSummary? = nil,
         stateMachineAnalysis: FirmwareStateMachineAnalysisSummary? = nil,
-        inputBehaviorDiff: FirmwareInputBehaviorDiffSummary? = nil
+        inputBehaviorDiff: FirmwareInputBehaviorDiffSummary? = nil,
+        analysisCompleteness: String? = nil,
+        firmwareAnalysisCoverage: FirmwareAnalysisCoverage? = nil,
+        referenceCatalogCoverage: FirmwareReferenceCatalogCoverage? = nil,
+        functionMatchingCoverage: FirmwareFunctionMatchingCoverage? = nil,
+        stateMachineValidation: FirmwareStateMachineValidation? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -178,6 +197,12 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.inputBehaviorAnalysis = inputBehaviorAnalysis
         self.stateMachineAnalysis = stateMachineAnalysis ?? inputBehaviorAnalysis?.stateMachineAnalysis
         self.inputBehaviorDiff = inputBehaviorDiff
+        self.analysisCompleteness = analysisCompleteness
+        self.firmwareAnalysisCoverage = firmwareAnalysisCoverage
+        self.referenceCatalogCoverage = referenceCatalogCoverage
+        self.functionMatchingCoverage = functionMatchingCoverage
+        self.stateMachineValidation = stateMachineValidation
+            ?? self.stateMachineAnalysis?.stateMachineValidation
     }
 
     func encode(to encoder: Encoder) throws {
@@ -213,6 +238,11 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encodeIfPresent(inputBehaviorAnalysis, forKey: .inputBehaviorAnalysis)
         try c.encodeIfPresent(stateMachineAnalysis, forKey: .stateMachineAnalysis)
         try c.encodeIfPresent(inputBehaviorDiff, forKey: .inputBehaviorDiff)
+        try c.encodeIfPresent(analysisCompleteness, forKey: .analysisCompleteness)
+        try c.encodeIfPresent(firmwareAnalysisCoverage, forKey: .firmwareAnalysisCoverage)
+        try c.encodeIfPresent(referenceCatalogCoverage, forKey: .referenceCatalogCoverage)
+        try c.encodeIfPresent(functionMatchingCoverage, forKey: .functionMatchingCoverage)
+        try c.encodeIfPresent(stateMachineValidation, forKey: .stateMachineValidation)
     }
 }
 
@@ -481,6 +511,9 @@ struct FirmwareFunctionMatchingCounts: Equatable, Codable, Sendable {
     var ambiguous: Int?
     var unmatched: Int?
     var pairCount: Int?
+    /// Phase 2.2E: soft cap overflow — incomplete matching when true.
+    var truncated: Bool?
+    var maxFunctions: Int?
 }
 
 struct FirmwareFunctionMatchSample: Equatable, Codable, Sendable, Identifiable {
@@ -512,6 +545,8 @@ struct FirmwareInputBehaviorSummary: Equatable, Codable, Sendable {
 
 struct FirmwareInputBehaviorCounts: Equatable, Codable, Sendable {
     var functionCount: Int?
+    var analyzedFunctionCount: Int?
+    var truncated: Bool?
     var inputRelevantCount: Int?
     var confirmedCount: Int?
     var indicativeCount: Int?
@@ -540,6 +575,8 @@ struct FirmwareStateMachineAnalysisSummary: Equatable, Codable, Sendable {
     var totalEstimatedTransitions: Int?
     var candidateCount: Int?
     var structureIdentifiedCount: Int?
+    var transitionsIdentifiedCount: Int?
+    var stateMachineValidation: FirmwareStateMachineValidation?
     var evidenceTier: String?
     var sampleStateMachines: [FirmwareStateMachineFinding]?
     var analysisLimitations: [String]?
@@ -553,11 +590,60 @@ struct FirmwareStateMachineFinding: Equatable, Codable, Sendable, Identifiable {
     var estimatedTransitions: Int?
     var stateCount: Int?
     var transitionCount: Int?
+    var stateCountVerified: Bool?
+    var transitionCountVerified: Bool?
     var analysisQuality: String?
+    var validationKind: String?
+    var dynamicRuntimeVerified: Bool?
     var uncertainty: String?
     var evidence: [String]?
 
     var id: String { (functionAddress ?? "") + "|" + (functionName ?? "") }
+}
+
+struct FirmwareStateMachineValidation: Equatable, Codable, Sendable {
+    var staticStructure: Int?
+    var controlledTransitionEvidence: Int?
+    var dynamicRuntimeVerified: Bool?
+    var notes: [String]?
+}
+
+struct FirmwareAnalysisCoverage: Equatable, Codable, Sendable {
+    var recognizedFunctionCount: Int?
+    var analyzedFunctionCount: Int?
+    var unanalyzedFunctionCount: Int?
+    var unknownTrueFunctionTotal: Bool?
+    var trueFunctionTotal: Int?
+    var callGraphEdgeCount: Int?
+    var unresolvedCallCount: Int?
+    var truncated: Bool?
+    var maxFunctions: Int?
+    var matchingTruncated: Bool?
+    var matched: Int?
+    var ambiguous: Int?
+    var unmatched: Int?
+}
+
+struct FirmwareReferenceCatalogCoverage: Equatable, Codable, Sendable {
+    var present: Bool?
+    var status: String?
+    var analyzerCompat: String?
+    var completenessStatus: String?
+    var functionCount: Int?
+    var truncated: Bool?
+    var firmwareSHA256: String?
+    var referenceTrust: String?
+    var ghidraVersion: String?
+    var processor: String?
+    var baseAddr: String?
+}
+
+struct FirmwareFunctionMatchingCoverage: Equatable, Codable, Sendable {
+    var truncated: Bool?
+    var matched: Int?
+    var ambiguous: Int?
+    var unmatched: Int?
+    var maxFunctions: Int?
 }
 
 struct FirmwareInputBehaviorDiffSummary: Equatable, Codable, Sendable {
@@ -625,6 +711,8 @@ struct FirmwareReferenceMetadata: Equatable, Codable, Sendable {
     var compatibility: String?
     var candidateRefCount: Int?
     var totalRefCount: Int?
+    /// Phase 2 / 2.2E nested catalog summary from poll payload.
+    var functionCatalog: FirmwareReferenceCatalogCoverage? = nil
 }
 struct FirmwareCortexMIvt: Equatable, Codable, Sendable {
     var likely: Bool?
