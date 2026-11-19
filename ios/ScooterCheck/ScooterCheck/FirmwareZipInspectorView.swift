@@ -996,16 +996,28 @@ struct FirmwareZipInspectorView: View {
             }
             if let tier = input?.evidenceTier { rows.append(.meta("Evidenzstufe", tier)) }
             if let smCount = sm?.stateMachineCount {
-                rows.append(.meta("Zustandsautomaten (geschätzt)", "\(smCount)"))
+                rows.append(.meta("FSM-Kandidaten", "\(smCount)"))
             }
+            if let cand = sm?.candidateCount {
+                rows.append(.meta("STATE_MACHINE_CANDIDATE", "\(cand)"))
+            }
+            if let structured = sm?.structureIdentifiedCount {
+                rows.append(.meta("STATE_STRUCTURE_IDENTIFIED", "\(structured)"))
+            }
+            // Never invent state counts — only show verified numbers when present.
             if let states = sm?.totalEstimatedStates {
-                rows.append(.meta("Zustände (geschätzt)", "\(states)"))
+                rows.append(.meta("Zustände (verifiziert)", "\(states)"))
+            } else if (sm?.stateMachineCount ?? 0) > 0 {
+                rows.append(.meta(
+                    "Zustandszahlen",
+                    "nicht verifiziert — zustandsabhängige Verarbeitung nur vermutet"
+                ))
             }
             if let trans = sm?.totalEstimatedTransitions {
-                rows.append(.meta("Übergänge (geschätzt)", "\(trans)"))
+                rows.append(.meta("Übergänge (verifiziert)", "\(trans)"))
             }
             if let delta = inputDiff?.stateMachineDiff?.delta {
-                rows.append(.meta("FSM-Anzahl Δ zur Referenz", "\(delta)"))
+                rows.append(.meta("FSM-Kandidaten Δ zur Referenz", "\(delta)"))
             }
             if let c = inputDiff?.summary?.structurallyChanged {
                 rows.append(.meta("Input strukturell verändert", "\(c)"))

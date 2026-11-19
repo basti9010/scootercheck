@@ -50,7 +50,10 @@ class InputBehaviorTests(unittest.TestCase):
         self.assertGreaterEqual(out["summary"]["inputRelevantCount"], 1)
         names = [f["name"] for f in out["inputFunctions"]]
         self.assertIn("process_input", names)
-        self.assertIn(out["evidenceTier"], {ib.EVIDENCE_CONFIRMED, ib.EVIDENCE_INDICATIVE})
+        self.assertIn(
+            out["evidenceTier"],
+            {ib.EVIDENCE_CONFIRMED, ib.EVIDENCE_CONFIRMED_LEGACY, ib.EVIDENCE_INDICATIVE},
+        )
 
     def test_string_alone_insufficient(self) -> None:
         fa = {
@@ -93,8 +96,9 @@ class InputBehaviorTests(unittest.TestCase):
         sm = out["stateMachineAnalysis"]
         self.assertGreaterEqual(sm["stateMachineCount"], 1)
         m0 = sm["stateMachines"][0]
-        self.assertGreaterEqual(m0["estimatedStates"], 2)
-        self.assertGreaterEqual(m0["estimatedTransitions"], 1)
+        # Phase 2.2D: no BB-derived state counts
+        self.assertIsNone(m0.get("estimatedStates"))
+        self.assertIsNone(m0.get("stateCount"))
         self.assertIn("uncertainty", m0)
 
     def test_simple_fsm_three_states(self) -> None:
@@ -113,7 +117,8 @@ class InputBehaviorTests(unittest.TestCase):
         }
         out = ib.analyze_input_behavior(fa)
         sm = out["stateMachineAnalysis"]
-        self.assertGreaterEqual(sm["totalEstimatedStates"], 2)
+        self.assertGreaterEqual(sm["stateMachineCount"], 1)
+        self.assertIsNone(sm.get("totalEstimatedStates"))
 
     def test_missing_function_export(self) -> None:
         out = ib.analyze_input_behavior(None)
@@ -169,9 +174,8 @@ class InputBehaviorTests(unittest.TestCase):
             ],
         }
         out = ib.analyze_input_behavior(fa)
-        for m in out["stateMachineAnalysis"]["stateMachines"]:
-            self.assertIn(m["analysisQuality"], {"indicative", "speculative"})
-            self.assertTrue(m.get("uncertainty"))
+        # Generic branchy FUN_* without state naming → no FSM claim
+        self.assertEqual(out["stateMachineAnalysis"]["stateMachineCount"], 0)
 
 
 if __name__ == "__main__":

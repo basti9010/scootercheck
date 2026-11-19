@@ -535,8 +535,11 @@ struct FirmwareInputFunctionFinding: Equatable, Codable, Sendable, Identifiable 
 struct FirmwareStateMachineAnalysisSummary: Equatable, Codable, Sendable {
     var ok: Bool?
     var stateMachineCount: Int?
+    /// Null when not verified — never treat as zero-placeholder from basic blocks.
     var totalEstimatedStates: Int?
     var totalEstimatedTransitions: Int?
+    var candidateCount: Int?
+    var structureIdentifiedCount: Int?
     var evidenceTier: String?
     var sampleStateMachines: [FirmwareStateMachineFinding]?
     var analysisLimitations: [String]?
@@ -548,6 +551,8 @@ struct FirmwareStateMachineFinding: Equatable, Codable, Sendable, Identifiable {
     var functionName: String?
     var estimatedStates: Int?
     var estimatedTransitions: Int?
+    var stateCount: Int?
+    var transitionCount: Int?
     var analysisQuality: String?
     var uncertainty: String?
     var evidence: [String]?

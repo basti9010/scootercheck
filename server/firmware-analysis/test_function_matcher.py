@@ -146,14 +146,11 @@ class GroundTruthFixtureTests(unittest.TestCase):
                 by_name[name] = p["status"]
 
         tp = fp = fn = 0
-        # identical_likely should be IDENTISCH
         for name in expected["identical_likely"]:
             if by_name.get(name) == fd.STATUS_IDENTICAL:
                 tp += 1
             else:
                 fn += 1
-                fp += 0
-        # structurally_changed should be STRUKTURELL_VERAENDERT
         for name in expected["structurally_changed"]:
             st = by_name.get(name)
             if st == fd.STATUS_CHANGED:
@@ -161,7 +158,6 @@ class GroundTruthFixtureTests(unittest.TestCase):
             elif st is None:
                 fn += 1
             else:
-                # wrong class
                 fp += 1
                 fn += 1
         for name in expected["added"]:
@@ -179,24 +175,23 @@ class GroundTruthFixtureTests(unittest.TestCase):
         recall = tp / max(tp + fn, 1)
         ambiguous = out["summary"].get("ambiguous", 0)
 
-        # Persist metrics in assert messages for the Abschlussbericht
-        self.assertGreaterEqual(
+        # Phase 2.2D corrected GT (reset_handler IDENTISCH) → expect perfect score.
+        self.assertEqual(
             precision,
-            0.7,
+            1.0,
             f"precision={precision:.3f} recall={recall:.3f} tp={tp} fp={fp} fn={fn} "
             f"ambiguous={ambiguous} elapsed_ms={elapsed_ms:.1f} by_name={by_name}",
         )
-        self.assertGreaterEqual(
+        self.assertEqual(
             recall,
-            0.7,
+            1.0,
             f"precision={precision:.3f} recall={recall:.3f} tp={tp} fp={fp} fn={fn} "
             f"ambiguous={ambiguous} elapsed_ms={elapsed_ms:.1f} by_name={by_name}",
         )
-        # mul_values must match across address shift
         self.assertEqual(by_name.get("mul_values"), fd.STATUS_IDENTICAL)
+        self.assertEqual(by_name.get("reset_handler"), fd.STATUS_IDENTICAL)
         self.assertLess(elapsed_ms, 500.0)
 
-        # Stash for optional reporting
         GroundTruthFixtureTests.last_metrics = {
             "precision": precision,
             "recall": recall,

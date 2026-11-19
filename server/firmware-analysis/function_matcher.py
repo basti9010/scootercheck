@@ -54,6 +54,7 @@ def match_functions(
     max_functions: int = 2500,
 ) -> dict[str, Any]:
     """Return match artifacts with pairs + confidence stats."""
+    truncated = len(subject_fns) > max_functions or len(reference_fns) > max_functions
     sub = list(subject_fns)[:max_functions]
     ref = list(reference_fns)[:max_functions]
     used_ref: set[int] = set()
@@ -295,6 +296,25 @@ def match_functions(
         )
 
     stats = _stats(matches)
+    limitations = [
+        "Matching is structural/heuristic — not a manipulation verdict.",
+        "Identical helper functions with shared fingerprints stay AMBIGUOUS.",
+        "Absolute addresses are not used as identity keys.",
+        "Generic Ghidra FUN_* names are not treated as reliable identity.",
+    ]
+    notes = [
+        f"functionMatching=ok matched={stats['matched']} ambiguous={stats['ambiguous']} "
+        f"unmatched={stats['unmatched']} high={stats['high']} medium={stats['medium']} low={stats['low']}"
+    ]
+    if truncated:
+        limitations.append(
+            f"Matching unvollständig: Limit {max_functions} Funktionen "
+            f"(subject={len(subject_fns)}, reference={len(reference_fns)})."
+        )
+        notes.append(
+            f"functionMatching=truncated max={max_functions} "
+            f"subject={len(subject_fns)} reference={len(reference_fns)}"
+        )
     return {
         "ok": True,
         "schemaVersion": 1,
@@ -304,17 +324,9 @@ def match_functions(
             "Generic FUN_* names ignored as identity. Addresses never used as identity."
         ),
         "matches": matches,
-        "summary": stats,
-        "analysisLimitations": [
-            "Matching is structural/heuristic — not a manipulation verdict.",
-            "Identical helper functions with shared fingerprints stay AMBIGUOUS.",
-            "Absolute addresses are not used as identity keys.",
-            "Generic Ghidra FUN_* names are not treated as reliable identity.",
-        ],
-        "notes": [
-            f"functionMatching=ok matched={stats['matched']} ambiguous={stats['ambiguous']} "
-            f"unmatched={stats['unmatched']} high={stats['high']} medium={stats['medium']} low={stats['low']}"
-        ],
+        "summary": {**stats, "truncated": truncated, "maxFunctions": max_functions},
+        "analysisLimitations": limitations,
+        "notes": notes,
     }
 
 

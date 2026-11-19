@@ -13,13 +13,28 @@ from function_matcher import is_generic_name, match_functions
 # Categories are technical code properties, not vehicle claims.
 CATEGORY_HINTS: dict[str, tuple[str, ...]] = {
     "button_or_key": ("button", "key", "press", "btn", "taste", "switch_in"),
-    "gpio_event": ("gpio", "pin", "exti", "port_", "irq_gpio", "hal_gpio"),
+    "gpio_event": ("gpio", "exti", "irq_gpio", "hal_gpio"),
     "ble_message": ("ble", "bluetooth", "gatt", "nordic", "nus", "att_"),
-    "uart_or_comm": ("uart", "usart", "can_", "spi_", "i2c_", " comm", "rx_", "tx_"),
-    "event_queue": ("queue", "event", "msg_", "mailbox", "dispatch", "handler"),
+    "uart_or_comm": ("uart", "usart", "can_", "spi_", "i2c_", "rx_", "tx_"),
+    # Avoid bare "handler" / "pin" / "key" alone — too many IRQ/reset/math false positives.
+    "event_queue": ("queue", "event", "msg_", "mailbox", "dispatch", "event_handler", "msg_handler"),
     "state_update": ("state", "mode", "fsm", "transition", "status_set", "set_state"),
-    "input_callback": ("callback", "on_input", "process_input", "input_", "handle_input"),
+    "input_callback": ("callback", "on_input", "process_input", "input_", "handle_input", "input_handler"),
 }
+
+# Explicit non-input entry points (Cortex-M / boot).
+_NAME_DENYLIST = (
+    "reset_handler",
+    "nmi_handler",
+    "hardfault",
+    "memmanage",
+    "busfault",
+    "usagefault",
+    "svcall",
+    "pendsv",
+    "systick",
+    "default_handler",
+)
 
 STRING_HINTS: dict[str, tuple[str, ...]] = {
     "button_or_key": ("button", "key", "press", "btn"),
@@ -30,13 +45,36 @@ STRING_HINTS: dict[str, tuple[str, ...]] = {
     "state_update": ("state", "mode", "fsm"),
 }
 
-EVIDENCE_CONFIRMED = "confirmed"  # ≥2 independent signal classes
-EVIDENCE_INDICATIVE = "indicative"  # single strong structural/name signal
-EVIDENCE_SPECULATIVE = "speculative"  # weak single hint
+# Evidence for code properties (NOT verified vehicle behavior).
+EVIDENCE_CONFIRMED = "confirmed_static"
+EVIDENCE_INDICATIVE = "indicative"
+EVIDENCE_SPECULATIVE = "speculative"
+EVIDENCE_UNKNOWN = "unknown"
+# Backward-compat alias still accepted by older clients/tests.
+EVIDENCE_CONFIRMED_LEGACY = "confirmed"
+
+FSM_CANDIDATE = "STATE_MACHINE_CANDIDATE"
+FSM_STRUCTURE = "STATE_STRUCTURE_IDENTIFIED"
+FSM_TRANSITIONS = "STATE_TRANSITIONS_IDENTIFIED"
+FSM_NOT_VERIFIABLE = "NOT_VERIFIABLE"
 
 MAX_FUNCTIONS = 2500
 MAX_INPUT_FUNCS = 80
 MAX_STATE_MACHINES = 12
+
+# Names that are pure helpers — never promote via call-neighborhood alone.
+_HELPER_NAME_DENY = (
+    "add_",
+    "mul_",
+    "xor_",
+    "sub_",
+    "div_",
+    "loop_",
+    "memcpy",
+    "memset",
+    "strcmp",
+    "strlen",
+)
 
 
 def analyze_input_behavior(
@@ -78,10 +116,18 @@ def analyze_input_behavior(
     state = analyze_state_machines(fns, input_fns)
     tier = _overall_tier(input_fns, state)
 
+    truncated = len(fns) > MAX_FUNCTIONS
+    if truncated:
+        limitations = limitations + [
+            f"Analyse unvollständig: nur die ersten {MAX_FUNCTIONS} von {len(fns)} Funktionen bewertet."
+        ]
+
     notes = [
         f"inputBehavior=ok relevant={len(input_fns)} cats="
         + ",".join(f"{k}:{v}" for k, v in categories.items() if v)
     ]
+    if truncated:
+        notes.append(f"inputBehavior=truncated max={MAX_FUNCTIONS} total={len(fns)}")
     if call_graph and call_graph.get("ok"):
         notes.append(f"inputBehavior=callgraph_edges={call_graph.get('edgeCount')}")
 
@@ -94,8 +140,14 @@ def analyze_input_behavior(
         "categories": {k: v for k, v in categories.items() if v},
         "summary": {
             "functionCount": len(fns),
+            "analyzedFunctionCount": min(len(fns), MAX_FUNCTIONS),
+            "truncated": truncated,
             "inputRelevantCount": len(input_fns),
-            "confirmedCount": sum(1 for x in input_fns if x.get("evidenceTier") == EVIDENCE_CONFIRMED),
+            "confirmedCount": sum(
+                1
+                for x in input_fns
+                if x.get("evidenceTier") in {EVIDENCE_CONFIRMED, EVIDENCE_CONFIRMED_LEGACY}
+            ),
             "indicativeCount": sum(1 for x in input_fns if x.get("evidenceTier") == EVIDENCE_INDICATIVE),
             "speculativeCount": sum(1 for x in input_fns if x.get("evidenceTier") == EVIDENCE_SPECULATIVE),
             "categoryCount": len([k for k, v in categories.items() if v]),
@@ -108,10 +160,16 @@ def analyze_input_behavior(
 
 
 def classify_input_function(f: dict[str, Any]) -> dict[str, Any] | None:
+    """Classify a function as input-related. Conservative — reduce false positives."""
     name = str(f.get("name") or "")
     name_l = name.lower()
+    if any(d in name_l for d in _NAME_DENYLIST):
+        return None
+    if any(name_l.startswith(p) or f"_{p}" in f"_{name_l}" for p in _HELPER_NAME_DENY):
+        # Pure arithmetic/helpers: never classify as input processing.
+        return None
+
     strings = [str(s).lower() for s in (f.get("strings") or [])]
-    constants = [str(c).lower() for c in (f.get("constants") or [])]
     calls = [str(c).lower() for c in (f.get("calls") or [])]
     called_by = [str(c).lower() for c in (f.get("calledBy") or [])]
     blocks = int(f.get("basicBlocks") or 0)
@@ -120,70 +178,72 @@ def classify_input_function(f: dict[str, Any]) -> dict[str, Any] | None:
     hits: dict[str, list[str]] = {}
     signal_classes: set[str] = set()
 
-    # Name signals
+    # Strong name signals only (exact-ish category keys in the function name).
     for cat, keys in CATEGORY_HINTS.items():
         if any(k in name_l for k in keys):
             hits.setdefault(cat, []).append(f"name:{name}")
             signal_classes.add("name")
 
-    # String signals (need ≥1, but alone insufficient for confirmed)
+    # Strings alone never confirm; need another class.
     for cat, keys in STRING_HINTS.items():
         for s in strings:
-            if any(k in s for k in keys):
+            if any(k in s for k in keys) and len(s) >= 4:
                 hits.setdefault(cat, []).append(f"string:{s[:48]}")
                 signal_classes.add("string")
                 break
 
-    # Call-graph neighborhood soft hints
+    # Call neighborhood: only if the function itself already has a name/string hit,
+    # or the name looks like a handler/callback (avoid promoting callees of input fns).
     neigh = " ".join(calls + called_by)
-    for cat, keys in CATEGORY_HINTS.items():
-        if any(k in neigh for k in keys):
-            hits.setdefault(cat, []).append("call_neighborhood")
-            signal_classes.add("calls")
+    handlerish = any(t in name_l for t in ("handle", "callback", "dispatch", "process_input", "on_"))
+    if "name" in signal_classes or "string" in signal_classes or handlerish:
+        for cat, keys in CATEGORY_HINTS.items():
+            if any(k in neigh for k in keys):
+                hits.setdefault(cat, []).append("call_neighborhood")
+                signal_classes.add("calls")
+                break
 
-    # Structural: dense branching often accompanies input/dispatch
+    # CFG density alone is NOT an input signal (common for any branchy helper).
+    # Only reinforce an existing name/string classification.
     structural = False
-    if blocks >= 3 and edges >= blocks:
+    if blocks >= 3 and edges >= blocks and ("name" in signal_classes or "string" in signal_classes):
         structural = True
         signal_classes.add("cfg")
-        if "input_callback" not in hits and (
-            "process" in name_l or "handle" in name_l or "dispatch" in name_l or "input" in name_l
+        if "input_callback" not in hits and any(
+            t in name_l for t in ("process", "handle", "dispatch", "input")
         ):
             hits.setdefault("input_callback", []).append("cfg_dense+name")
-        elif "event_queue" not in hits and edges >= blocks + 2:
-            # weak — only keep if another signal exists later
-            hits.setdefault("event_queue", []).append("cfg_dense")
 
     if not hits:
         return None
 
-    # Single string OR single weak cfg-only → drop (insufficient)
-    cats = list(hits.keys())
-    only_string = signal_classes == {"string"}
-    only_weak_cfg = signal_classes == {"cfg"} and all(
-        e.startswith("cfg_dense") and "name" not in "|".join(v) for v in hits.values() for e in [v[0]]
-    )
-    if only_string or only_weak_cfg:
+    # Drop weak cases: string-only, cfg-only, call-neighborhood-only, or helperish names.
+    if signal_classes <= {"string"} or signal_classes <= {"cfg"} or signal_classes <= {"calls"}:
         return None
 
-    # Evidence tier
-    if len(signal_classes) >= 2 and any(c in signal_classes for c in ("name", "calls", "cfg")):
+    cats = list(hits.keys())
+
+    # confirmed_static: strong name OR (name + another class). Never claim vehicle behavior.
+    if "name" in signal_classes and (
+        len(signal_classes) >= 2 or any(k in name_l for k in ("process_input", "handle_input", "on_input"))
+    ):
         tier = EVIDENCE_CONFIRMED
-    elif "name" in signal_classes or ("cfg" in signal_classes and "calls" in signal_classes):
+    elif "name" in signal_classes:
+        tier = EVIDENCE_INDICATIVE
+    elif "string" in signal_classes and "calls" in signal_classes:
         tier = EVIDENCE_INDICATIVE
     else:
         tier = EVIDENCE_SPECULATIVE
 
-    # Score
-    score = 0.35 * len(signal_classes) + 0.15 * min(3, len(cats))
+    score = 0.3 * len(signal_classes) + 0.1 * min(3, len(cats))
     if structural:
-        score += 0.1
+        score += 0.05
     if not is_generic_name(name):
         score += 0.15
 
-    evidence = []
-    for cat, items in hits.items():
-        evidence.extend(items[:3])
+    evidence: list[str] = []
+    for items in hits.values():
+        evidence.extend(items[:2])
 
     return {
         "address": f.get("address"),
@@ -197,7 +257,7 @@ def classify_input_function(f: dict[str, Any]) -> dict[str, Any] | None:
         "cfgEdges": edges,
         "callCount": len(calls),
         "limitations": [
-            "Heuristik — kein Nachweis, dass diese Funktion reale Eingaben verarbeitet."
+            "confirmed_static = nachvollziehbare Codeeigenschaft, kein Nachweis realen Fahrzeugverhaltens.",
         ],
     }
 
@@ -206,87 +266,142 @@ def analyze_state_machines(
     all_fns: list[dict[str, Any]],
     input_fns: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Detect switch-/branch-heavy functions as candidate FSMs (technical structure only)."""
+    """FSM heuristics without inventing state counts from basic-block counts.
+
+    Concrete stateCount/transitionCount stay null unless multi-signal structure
+    is identified (still not runtime-verified). Basic blocks alone ≠ states.
+    """
     limitations = [
-        "Zustandsautomaten sind strukturelle Hypothesen aus CFG-Mustern.",
-        "Anzahl Zustände/Übergänge ist geschätzt, nicht dynamisch verifiziert.",
+        "Ein Basic Block entspricht nicht automatisch einem Programmzustand.",
+        "Konkrete Zustands-/Übergangszahlen nur bei nachvollziehbarer Struktur; sonst null.",
+        "Keine Aktivierungsfolgen oder Umgehungsempfehlungen.",
     ]
     machines: list[dict[str, Any]] = []
     input_addrs = {x.get("address") for x in input_fns}
+    input_names = {str(x.get("name") or "").lower() for x in input_fns}
 
     for f in all_fns[:MAX_FUNCTIONS]:
+        name = str(f.get("name") or "")
+        name_l = name.lower()
         blocks = int(f.get("basicBlocks") or 0)
         edges = int(f.get("cfgEdges") or 0)
         mnemonics = [str(m).lower() for m in (f.get("mnemonics") or [])]
-        branchy = sum(1 for m in mnemonics if m.startswith(("b", "cbz", "cbnz", "tbz", "tbnz", "it")))
-        # Switch-like: several blocks, edges ≈ or > blocks, some branches
-        if blocks < 3 or edges < 3:
-            continue
-        density = edges / max(blocks, 1)
-        if density < 1.1 and branchy < 2:
+        strings = [str(s).lower() for s in (f.get("strings") or [])]
+        branchy = sum(
+            1
+            for m in mnemonics
+            if m.startswith(("b", "cbz", "cbnz", "tbz", "tbnz")) or m in {"it", "bx", "blx"}
+        )
+        # Skip tiny / non-branchy functions — multi-BB alone is not an FSM.
+        if blocks < 3 or branchy < 2:
             continue
 
-        # Estimate states/transitions conservatively
-        est_states = max(2, min(blocks, 16))
-        est_trans = max(1, min(edges, 32))
-        related_input = f.get("address") in input_addrs or any(
-            "state" in str(f.get("name") or "").lower()
-            or "mode" in str(f.get("name") or "").lower()
-            or "fsm" in str(f.get("name") or "").lower()
-            or "process_input" in str(f.get("name") or "").lower()
-            for _ in [0]
+        name_stateish = any(k in name_l for k in ("state", "mode", "fsm", "process_input"))
+        string_stateish = any(
+            any(k in s for k in ("state", "mode", "fsm")) for s in strings
         )
-        quality = "indicative" if related_input and density >= 1.2 else "speculative"
-        if related_input and branchy >= 3 and density >= 1.3:
-            quality = "indicative"
+        linked_input = f.get("address") in input_addrs or name_l in input_names
+        density = edges / max(blocks, 1)
+
+        signals = 0
+        evidence: list[str] = []
+        if name_stateish:
+            signals += 1
+            evidence.append(f"name:{name}")
+        if string_stateish:
+            signals += 1
+            evidence.append("string:state/mode/fsm")
+        if linked_input:
+            signals += 1
+            evidence.append("linked_input_heuristic")
+        if density >= 1.3 and branchy >= 3:
+            signals += 1
+            evidence.append(f"cfg density={density:.2f} branches={branchy}")
+
+        # Dense CFG without any state/input naming → NOT an FSM claim (false positive guard).
+        if signals == 0:
+            continue
+        if signals == 1 and not (name_stateish or string_stateish or linked_input):
+            continue
+
+        if signals >= 3 and name_stateish:
+            quality = FSM_STRUCTURE
+            # Still do NOT invent numeric state counts from BB — leave null.
+            state_count = None
+            transition_count = None
+            uncertainty = (
+                "Strukturhinweise vorhanden; konkrete Zustandszahl ohne dokumentierte "
+                "Zustandskonstanten/Laufzeit nicht verifizierbar."
+            )
+        elif signals >= 2 or name_stateish:
+            quality = FSM_CANDIDATE
+            state_count = None
+            transition_count = None
+            uncertainty = (
+                "Zustandsabhängige Verarbeitung vermutet — Anzahl der Zustände nicht verifiziert."
+            )
+        else:
+            quality = FSM_NOT_VERIFIABLE
+            state_count = None
+            transition_count = None
+            uncertainty = "Unzureichende Merkmale für belastbare FSM-Aussage."
 
         machines.append(
             {
                 "functionAddress": f.get("address"),
-                "functionName": f.get("name"),
-                "estimatedStates": est_states,
-                "estimatedTransitions": est_trans,
+                "functionName": name,
+                # Phase 2.2D: null unless verified — never BB-derived placeholders.
+                "estimatedStates": state_count,
+                "estimatedTransitions": transition_count,
+                "stateCount": state_count,
+                "transitionCount": transition_count,
                 "basicBlocks": blocks,
                 "cfgEdges": edges,
                 "branchMnemonicCount": branchy,
                 "edgeDensity": round(density, 3),
-                "linkedToInputHeuristic": bool(related_input),
+                "linkedToInputHeuristic": bool(linked_input),
                 "analysisQuality": quality,
-                "evidence": [
-                    f"cfg blocks={blocks} edges={edges}",
-                    f"branchMnemonics={branchy}",
-                ],
-                "uncertainty": (
-                    "Zustandszahl aus Basisblöcken geschätzt; "
-                    "keine Laufzeitverifikation der Übergänge."
-                ),
+                "evidence": evidence[:8] + [f"cfg blocks={blocks} edges={edges} (not used as stateCount)"],
+                "uncertainty": uncertainty,
                 "limitations": [
                     "Keine konkreten Aktivierungsfolgen abgeleitet.",
+                    "Basic-Block-Anzahl ist kein Zustandszähler.",
                 ],
             }
         )
 
     machines.sort(
         key=lambda m: (
-            0 if m.get("analysisQuality") == "indicative" else 1,
+            0
+            if m.get("analysisQuality") == FSM_STRUCTURE
+            else 1
+            if m.get("analysisQuality") == FSM_CANDIDATE
+            else 2,
             -float(m.get("edgeDensity") or 0),
         )
     )
     machines = machines[:MAX_STATE_MACHINES]
+    candidates = sum(1 for m in machines if m.get("analysisQuality") == FSM_CANDIDATE)
+    structured = sum(1 for m in machines if m.get("analysisQuality") == FSM_STRUCTURE)
 
     return {
         "ok": True,
         "schemaVersion": 1,
         "stateMachineCount": len(machines),
-        "totalEstimatedStates": sum(int(m.get("estimatedStates") or 0) for m in machines),
-        "totalEstimatedTransitions": sum(int(m.get("estimatedTransitions") or 0) for m in machines),
+        # Totals of verified counts only (all null → 0 / omitted meaning).
+        "totalEstimatedStates": None,
+        "totalEstimatedTransitions": None,
+        "verifiedStateCountTotal": None,
+        "candidateCount": candidates,
+        "structureIdentifiedCount": structured,
         "stateMachines": machines,
         "analysisLimitations": limitations,
-        "notes": [f"stateMachines={len(machines)}"],
+        "notes": [
+            f"stateMachines={len(machines)} candidates={candidates} structure={structured} "
+            f"(no BB-derived state counts)"
+        ],
         "evidenceTier": (
-            EVIDENCE_INDICATIVE
-            if any(m.get("analysisQuality") == "indicative" for m in machines)
-            else EVIDENCE_SPECULATIVE
+            EVIDENCE_INDICATIVE if structured or candidates else EVIDENCE_SPECULATIVE
         ),
     }
 
@@ -462,8 +577,11 @@ def summarize_input_behavior_for_poll(full: dict[str, Any]) -> dict[str, Any]:
     sm_poll = {
         "ok": sm.get("ok"),
         "stateMachineCount": sm.get("stateMachineCount"),
+        # May be null — clients must not invent placeholders.
         "totalEstimatedStates": sm.get("totalEstimatedStates"),
         "totalEstimatedTransitions": sm.get("totalEstimatedTransitions"),
+        "candidateCount": sm.get("candidateCount"),
+        "structureIdentifiedCount": sm.get("structureIdentifiedCount"),
         "evidenceTier": sm.get("evidenceTier"),
         "sampleStateMachines": list(sm.get("stateMachines") or [])[:8],
         "analysisLimitations": sm.get("analysisLimitations"),
@@ -509,16 +627,21 @@ def _fns(blob: dict[str, Any] | None) -> list[dict[str, Any]]:
 def _tier_rank(tier: str | None) -> int:
     return {
         EVIDENCE_CONFIRMED: 0,
+        EVIDENCE_CONFIRMED_LEGACY: 0,
         EVIDENCE_INDICATIVE: 1,
         EVIDENCE_SPECULATIVE: 2,
+        EVIDENCE_UNKNOWN: 3,
     }.get(tier or "", 9)
 
 
 def _overall_tier(input_fns: list[dict[str, Any]], state: dict[str, Any]) -> str:
-    if any(x.get("evidenceTier") == EVIDENCE_CONFIRMED for x in input_fns):
+    tiers = {x.get("evidenceTier") for x in input_fns}
+    if EVIDENCE_CONFIRMED in tiers or EVIDENCE_CONFIRMED_LEGACY in tiers:
         return EVIDENCE_CONFIRMED
-    if any(x.get("evidenceTier") == EVIDENCE_INDICATIVE for x in input_fns):
+    if EVIDENCE_INDICATIVE in tiers:
         return EVIDENCE_INDICATIVE
     if state.get("evidenceTier") == EVIDENCE_INDICATIVE:
         return EVIDENCE_INDICATIVE
+    if not input_fns and not (state.get("stateMachines") or []):
+        return EVIDENCE_UNKNOWN
     return EVIDENCE_SPECULATIVE
