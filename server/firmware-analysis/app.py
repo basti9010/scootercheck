@@ -706,14 +706,23 @@ def process_job(job_id: str) -> None:
             "format": container.get("format"),
             "containerRecognized": bool(container.get("containerRecognized")),
             "architecture": container.get("architecture") or identity.get("processor"),
+            "architectureConfidence": container.get("architectureConfidence")
+            or identity.get("architectureConfidence")
+            or ("ARCHITECTURE_UNKNOWN" if identity.get("architectureUnknown") else None),
+            "architectureEvidence": list(container.get("architectureEvidence") or [])[:6],
             "baseAddr": container.get("baseAddr") or identity.get("baseAddr"),
             "imageExtractable": container.get("imageExtractable"),
+            "ghidraImportAllowed": container.get("ghidraImportAllowed"),
+            "payloadStructure": container.get("payloadStructure"),
             "components": list(container.get("components") or [])[:8],
             "confidence": container.get("confidence") or identity.get("confidence"),
             "analysisLimitations": list(container.get("analysisLimitations") or [])
             + list(identity.get("analysisLimitations") or []),
             "notes": list(container.get("notes") or [])[:6],
         }
+        result["firmwareArchitectureConfidence"] = result["firmwareContainerAnalysis"].get(
+            "architectureConfidence"
+        )
         notes.extend((container.get("notes") or [])[:2])
     except Exception as cont_e:
         notes.append(f"phase22fContainer={type(cont_e).__name__}")
@@ -943,6 +952,21 @@ def process_job(job_id: str) -> None:
         result["callGraph"] = summarize_call_graph_for_poll(cg_full)
         if isinstance(result["callGraph"].get("callGraphQuality"), dict):
             result["callGraphQuality"] = result["callGraph"]["callGraphQuality"]
+        # Phase 2.2G: analysis profile + address layout
+        if isinstance(func_full.get("analysisProfile"), dict):
+            result["analysisProfile"] = func_full["analysisProfile"]
+            result["analysisProfileHash"] = func_full["analysisProfile"].get("analysisProfileHash")
+        result["ghidraAddressLayout"] = {
+            "requestedLoaderBase": func_full.get("requestedLoaderBase"),
+            "actualImageBase": func_full.get("actualImageBase") or func_full.get("imageBase"),
+            "memoryBlockStart": func_full.get("memoryBlockStart"),
+            "resetHandlerAddress": func_full.get("resetHandlerAddress"),
+            "firmwareFileOffset": func_full.get("firmwareFileOffset"),
+            "note": (
+                "BinaryLoader may map at requestedLoaderBase while Ghidra ImageBase stays 0; "
+                "prefer memoryBlockStart / function entry addresses for layout."
+            ),
+        }
         notes.extend(func_full.get("notes") or [])
         notes.extend(cg_full.get("notes") or [])
 
@@ -990,8 +1014,18 @@ def process_job(job_id: str) -> None:
                 "runtimeTransitionsObserved": runtime_suite.get("runtimeTransitionsObserved"),
                 "programCount": runtime_suite.get("programCount"),
                 "evidenceTier": runtime_suite.get("evidenceTier"),
+                "threeStateReproducible": runtime_suite.get("threeStateReproducible"),
                 "sampleResults": list(runtime_suite.get("results") or [])[:6],
                 "analysisLimitations": runtime_suite.get("analysisLimitations"),
+                "notes": runtime_suite.get("notes"),
+            }
+            result["runtimeValidationDetails"] = {
+                "tool": runtime_suite.get("tool"),
+                "threeStateReproducible": runtime_suite.get("threeStateReproducible"),
+                "programCount": runtime_suite.get("programCount"),
+                "evidenceTier": runtime_suite.get("evidenceTier"),
+                "validationKind": "unicorn_controlled",
+                "vehicleTest": False,
                 "notes": runtime_suite.get("notes"),
             }
             notes.extend(runtime_suite.get("notes") or [])

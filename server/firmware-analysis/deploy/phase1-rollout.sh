@@ -44,8 +44,11 @@ DEPLOY_PY_FILES=(
   test_phase22d_quality.py
   test_phase22e.py
   test_phase22f.py
+  test_phase22g.py
   reference_inventory.py
   analysis_completeness.py
+  analysis_profile.py
+  ghidra_reproducibility.py
   callgraph_quality.py
   ble_container.py
   catalog_batch.py

@@ -187,6 +187,8 @@ class FsmRuntimeTests(unittest.TestCase):
         b = fr.run_fsm_runtime_suite()
         self.assertEqual(a["runtimeTransitionsObserved"], b["runtimeTransitionsObserved"])
         self.assertTrue(a["dynamicRuntimeVerified"])
+        self.assertTrue(a.get("threeStateReproducible"))
+        self.assertTrue(b.get("threeStateReproducible"))
 
     def test_unavailable_marked_not_verifiable(self) -> None:
         with mock.patch.object(fr, "unicorn_fsm_available", return_value=False):

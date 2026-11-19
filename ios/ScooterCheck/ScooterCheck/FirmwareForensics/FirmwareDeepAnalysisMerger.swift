@@ -74,6 +74,14 @@ enum FirmwareDeepAnalysisMerger {
         let firmwareContainerAnalysis = firstNonNil(parts.map(\.firmwareContainerAnalysis))
         let referenceCatalogBatch = firstNonNil(parts.map(\.referenceCatalogBatch))
         let runtimeStateMachineValidation = firstNonNil(parts.map(\.runtimeStateMachineValidation))
+        let analysisProfile = firstNonNil(parts.map(\.analysisProfile))
+        let analysisProfileHash = firstNonNil(parts.map(\.analysisProfileHash))
+            ?? analysisProfile?.analysisProfileHash
+        let ghidraAddressLayout = firstNonNil(parts.map(\.ghidraAddressLayout))
+        let firmwareArchitectureConfidence = firstNonNil(parts.map(\.firmwareArchitectureConfidence))
+            ?? firmwareContainerAnalysis?.architectureConfidence
+        let runtimeValidationDetails = firstNonNil(parts.map(\.runtimeValidationDetails))
+        let ghidraReproducibility = firstNonNil(parts.map(\.ghidraReproducibility))
         let limitations = Array(Set(parts.compactMap(\.analysisLimitations).flatMap { $0 }))
 
         var result = FirmwareDeepAnalysisResult(
@@ -122,7 +130,13 @@ enum FirmwareDeepAnalysisMerger {
             callGraphQuality: callGraphQuality,
             firmwareContainerAnalysis: firmwareContainerAnalysis,
             referenceCatalogBatch: referenceCatalogBatch,
-            runtimeStateMachineValidation: runtimeStateMachineValidation
+            runtimeStateMachineValidation: runtimeStateMachineValidation,
+            analysisProfile: analysisProfile,
+            analysisProfileHash: analysisProfileHash,
+            ghidraAddressLayout: ghidraAddressLayout,
+            firmwareArchitectureConfidence: firmwareArchitectureConfidence,
+            runtimeValidationDetails: runtimeValidationDetails,
+            ghidraReproducibility: ghidraReproducibility
         )
         if result.classifiedFindings == nil {
             result.classifiedFindings = FirmwareEvidenceClassifier.classify(from: result)
@@ -208,6 +222,16 @@ enum FirmwareDeepAnalysisMerger {
         if out.runtimeStateMachineValidation == nil {
             out.runtimeStateMachineValidation = base.runtimeStateMachineValidation
         }
+        if out.analysisProfile == nil { out.analysisProfile = base.analysisProfile }
+        if out.analysisProfileHash == nil { out.analysisProfileHash = base.analysisProfileHash }
+        if out.ghidraAddressLayout == nil { out.ghidraAddressLayout = base.ghidraAddressLayout }
+        if out.firmwareArchitectureConfidence == nil {
+            out.firmwareArchitectureConfidence = base.firmwareArchitectureConfidence
+        }
+        if out.runtimeValidationDetails == nil {
+            out.runtimeValidationDetails = base.runtimeValidationDetails
+        }
+        if out.ghidraReproducibility == nil { out.ghidraReproducibility = base.ghidraReproducibility }
         if out.yaraMatches.isEmpty, !base.yaraMatches.isEmpty {
             out.yaraMatches = base.yaraMatches
         }

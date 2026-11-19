@@ -753,4 +753,55 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         })
         XCTAssertTrue(deep.speedLimits.isEmpty)
     }
+
+    func testPhase22GAnalysisProfileDecode() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "producedAt": "2026-11-19T11:00:00Z",
+          "sources": ["serverDecompile"],
+          "subjectSHA256": "g22",
+          "models": ["f3"],
+          "speedLimits": [],
+          "modeTransitions": [],
+          "inputHints": [],
+          "comboSummaries": [],
+          "notes": [],
+          "caveats": [],
+          "quality": {"hasDeterministicBasis": true, "llmSchemaValidated": false, "summary": "ok"},
+          "analysisProfile": {
+            "analysisProfileVersion": "2.2G.1",
+            "analysisProfileHash": "abcd1234ffff",
+            "analyzerCompat": "2",
+            "ghidraVersion": "12.2_PUBLIC",
+            "processorArchitecture": "ARM:LE:32:Cortex",
+            "requestedLoaderBase": "0x08000000",
+            "seedCortexMEntryPoints": true
+          },
+          "analysisProfileHash": "abcd1234ffff",
+          "ghidraAddressLayout": {
+            "requestedLoaderBase": "0x08000000",
+            "actualImageBase": "00000000",
+            "memoryBlockStart": "08000000",
+            "resetHandlerAddress": "0x08000101"
+          },
+          "firmwareArchitectureConfidence": "ARCHITECTURE_UNKNOWN",
+          "runtimeValidationDetails": {
+            "tool": "unicorn-fsm-runtime",
+            "threeStateReproducible": true,
+            "vehicleTest": false,
+            "evidenceTier": "RUNTIME_TRANSITION_OBSERVED"
+          }
+        }
+        """.data(using: .utf8)!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let deep = try decoder.decode(FirmwareDeepAnalysisResult.self, from: json)
+        XCTAssertEqual(deep.analysisProfile?.analysisProfileVersion, "2.2G.1")
+        XCTAssertEqual(deep.analysisProfileHash, "abcd1234ffff")
+        XCTAssertEqual(deep.ghidraAddressLayout?.requestedLoaderBase, "0x08000000")
+        XCTAssertEqual(deep.firmwareArchitectureConfidence, "ARCHITECTURE_UNKNOWN")
+        XCTAssertEqual(deep.runtimeValidationDetails?.vehicleTest, false)
+        XCTAssertEqual(deep.runtimeValidationDetails?.threeStateReproducible, true)
+    }
 }

@@ -70,6 +70,13 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
     var referenceCatalogBatch: FirmwareReferenceCatalogBatchSummary? = nil
     /// Phase 2.2F: controlled Unicorn FSM runtime suite (optional; not vehicle proof).
     var runtimeStateMachineValidation: FirmwareRuntimeStateMachineValidation? = nil
+    /// Phase 2.2G: versioned Ghidra analysis profile (optional).
+    var analysisProfile: FirmwareAnalysisProfile? = nil
+    var analysisProfileHash: String? = nil
+    var ghidraAddressLayout: FirmwareGhidraAddressLayout? = nil
+    var firmwareArchitectureConfidence: String? = nil
+    var runtimeValidationDetails: FirmwareRuntimeValidationDetails? = nil
+    var ghidraReproducibility: FirmwareGhidraReproducibility? = nil
 
     static let currentSchemaVersion = 1
 
@@ -93,6 +100,8 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         case functionMatchingCoverage, stateMachineValidation
         case callGraphQuality, firmwareContainerAnalysis, referenceCatalogBatch
         case runtimeStateMachineValidation
+        case analysisProfile, analysisProfileHash, ghidraAddressLayout
+        case firmwareArchitectureConfidence, runtimeValidationDetails, ghidraReproducibility
     }
 
     init(from decoder: Decoder) throws {
@@ -144,6 +153,17 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
             FirmwareRuntimeStateMachineValidation.self,
             forKey: .runtimeStateMachineValidation
         )
+        analysisProfile = try c.decodeIfPresent(FirmwareAnalysisProfile.self, forKey: .analysisProfile)
+        analysisProfileHash = try c.decodeIfPresent(String.self, forKey: .analysisProfileHash)
+            ?? analysisProfile?.analysisProfileHash
+        ghidraAddressLayout = try c.decodeIfPresent(FirmwareGhidraAddressLayout.self, forKey: .ghidraAddressLayout)
+        firmwareArchitectureConfidence = try c.decodeIfPresent(String.self, forKey: .firmwareArchitectureConfidence)
+            ?? firmwareContainerAnalysis?.architectureConfidence
+        runtimeValidationDetails = try c.decodeIfPresent(
+            FirmwareRuntimeValidationDetails.self,
+            forKey: .runtimeValidationDetails
+        )
+        ghidraReproducibility = try c.decodeIfPresent(FirmwareGhidraReproducibility.self, forKey: .ghidraReproducibility)
     }
 
     init(
@@ -186,7 +206,13 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         callGraphQuality: FirmwareCallGraphQuality? = nil,
         firmwareContainerAnalysis: FirmwareContainerAnalysis? = nil,
         referenceCatalogBatch: FirmwareReferenceCatalogBatchSummary? = nil,
-        runtimeStateMachineValidation: FirmwareRuntimeStateMachineValidation? = nil
+        runtimeStateMachineValidation: FirmwareRuntimeStateMachineValidation? = nil,
+        analysisProfile: FirmwareAnalysisProfile? = nil,
+        analysisProfileHash: String? = nil,
+        ghidraAddressLayout: FirmwareGhidraAddressLayout? = nil,
+        firmwareArchitectureConfidence: String? = nil,
+        runtimeValidationDetails: FirmwareRuntimeValidationDetails? = nil,
+        ghidraReproducibility: FirmwareGhidraReproducibility? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.producedAt = producedAt
@@ -229,6 +255,13 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         self.firmwareContainerAnalysis = firmwareContainerAnalysis
         self.referenceCatalogBatch = referenceCatalogBatch
         self.runtimeStateMachineValidation = runtimeStateMachineValidation
+        self.analysisProfile = analysisProfile
+        self.analysisProfileHash = analysisProfileHash ?? analysisProfile?.analysisProfileHash
+        self.ghidraAddressLayout = ghidraAddressLayout
+        self.firmwareArchitectureConfidence = firmwareArchitectureConfidence
+            ?? firmwareContainerAnalysis?.architectureConfidence
+        self.runtimeValidationDetails = runtimeValidationDetails
+        self.ghidraReproducibility = ghidraReproducibility
     }
 
     func encode(to encoder: Encoder) throws {
@@ -273,6 +306,12 @@ struct FirmwareDeepAnalysisResult: Equatable, Codable, Sendable {
         try c.encodeIfPresent(firmwareContainerAnalysis, forKey: .firmwareContainerAnalysis)
         try c.encodeIfPresent(referenceCatalogBatch, forKey: .referenceCatalogBatch)
         try c.encodeIfPresent(runtimeStateMachineValidation, forKey: .runtimeStateMachineValidation)
+        try c.encodeIfPresent(analysisProfile, forKey: .analysisProfile)
+        try c.encodeIfPresent(analysisProfileHash, forKey: .analysisProfileHash)
+        try c.encodeIfPresent(ghidraAddressLayout, forKey: .ghidraAddressLayout)
+        try c.encodeIfPresent(firmwareArchitectureConfidence, forKey: .firmwareArchitectureConfidence)
+        try c.encodeIfPresent(runtimeValidationDetails, forKey: .runtimeValidationDetails)
+        try c.encodeIfPresent(ghidraReproducibility, forKey: .ghidraReproducibility)
     }
 }
 
@@ -672,11 +711,53 @@ struct FirmwareContainerAnalysis: Equatable, Codable, Sendable {
     var format: String?
     var containerRecognized: Bool?
     var architecture: String?
+    var architectureConfidence: String?
     var baseAddr: String?
     var imageExtractable: Bool?
+    var ghidraImportAllowed: Bool?
     var confidence: String?
     var components: [FirmwareContainerComponent]?
     var analysisLimitations: [String]?
+    var notes: [String]?
+}
+
+struct FirmwareAnalysisProfile: Equatable, Codable, Sendable {
+    var analysisProfileVersion: String?
+    var analysisProfileHash: String?
+    var analyzerCompat: String?
+    var ghidraVersion: String?
+    var processorArchitecture: String?
+    var requestedLoaderBase: String?
+    var maximumFunctions: Int?
+    var fingerprintVersion: String?
+    var seedCortexMEntryPoints: Bool?
+    var enabledPreScripts: [String]?
+}
+
+struct FirmwareGhidraAddressLayout: Equatable, Codable, Sendable {
+    var requestedLoaderBase: String?
+    var actualImageBase: String?
+    var memoryBlockStart: String?
+    var resetHandlerAddress: String?
+    var firmwareFileOffset: Int?
+    var note: String?
+}
+
+struct FirmwareRuntimeValidationDetails: Equatable, Codable, Sendable {
+    var tool: String?
+    var threeStateReproducible: Bool?
+    var programCount: Int?
+    var evidenceTier: String?
+    var validationKind: String?
+    var vehicleTest: Bool?
+    var notes: [String]?
+}
+
+struct FirmwareGhidraReproducibility: Equatable, Codable, Sendable {
+    var reproducible: Bool?
+    var runCount: Int?
+    var functionSemanticHash: String?
+    var callgraphSemanticHash: String?
     var notes: [String]?
 }
 
@@ -697,6 +778,7 @@ struct FirmwareRuntimeStateMachineValidation: Equatable, Codable, Sendable {
     var runtimeTransitionsObserved: Int?
     var programCount: Int?
     var evidenceTier: String?
+    var threeStateReproducible: Bool?
     var analysisLimitations: [String]?
     var notes: [String]?
 }

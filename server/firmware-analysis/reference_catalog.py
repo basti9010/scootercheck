@@ -24,9 +24,17 @@ from stock_diff import (
     stock_dir,
 )
 
+from analysis_profile import (
+    ANALYZER_COMPAT as _PROFILE_ANALYZER_COMPAT,
+    ANALYZER_ID as _PROFILE_ANALYZER_ID,
+    build_analysis_profile,
+    profiles_compatible,
+    summarize_profile_for_poll,
+)
+
 CATALOG_SCHEMA = 1
-ANALYZER_ID = "ghidra-export-function-analysis"
-ANALYZER_COMPAT = "2"  # bump when fingerprint/CFG semantics change incompatibly (v2: mnemonic-seq FP)
+ANALYZER_ID = _PROFILE_ANALYZER_ID
+ANALYZER_COMPAT = _PROFILE_ANALYZER_COMPAT  # bump when fingerprint/CFG semantics change incompatibly
 
 
 def catalogs_root() -> Path:
@@ -80,6 +88,15 @@ def load_catalog_functions(sha256: str) -> dict[str, Any] | None:
     loaded = load_function_analysis(paths["functions"])
     if not loaded.get("ok"):
         return None
+    # Phase 2.2G: catalogs without analysisProfile are LEGACY_PARTIAL — still loadable
+    # but callers must surface compatibility via catalog_compatible_with_subject / profiles_compatible.
+    if not meta.get("analysisProfileHash") and not meta.get("analysisProfile"):
+        meta = {
+            **meta,
+            "profileCompatibility": "LEGACY_PARTIAL",
+            "analysisLimitations": list(meta.get("analysisLimitations") or [])
+            + ["Katalog ohne analysisProfileHash — Legacy-Teilkompatibilität."],
+        }
     loaded["catalogMeta"] = meta
     return loaded
 
@@ -100,6 +117,7 @@ def catalog_compatible_with_subject(
     models: list[str] | None = None,
     controller_type: str | None = None,
     processor: str | None = None,
+    subject_profile: dict[str, Any] | None = None,
 ) -> tuple[bool, list[str]]:
     reasons: list[str] = []
     if str(meta.get("analyzerCompat") or "") != ANALYZER_COMPAT:
@@ -112,6 +130,21 @@ def catalog_compatible_with_subject(
     if meta.get("truncated") or completeness == "TRUNCATED":
         # Still usable for partial diffs, but caller must surface incompleteness.
         reasons.append("catalog truncated/partial")
+    # Analysis profile compatibility (Phase 2.2G)
+    ref_profile = meta.get("analysisProfile") or {
+        "analyzerCompat": meta.get("analyzerCompat"),
+        "analysisProfileHash": meta.get("analysisProfileHash"),
+        "fingerprintVersion": meta.get("fingerprintVersion"),
+        "ghidraVersion": meta.get("ghidraVersion"),
+        "processorArchitecture": meta.get("processor"),
+        "requestedLoaderBase": meta.get("baseAddr"),
+    }
+    ok_prof, prof_status, prof_reasons = profiles_compatible(subject_profile, ref_profile)
+    reasons.extend(prof_reasons)
+    if not ok_prof and prof_status == "INCOMPATIBLE":
+        reasons.append(f"analysisProfile={prof_status}")
+    elif prof_status == "LEGACY_PARTIAL":
+        reasons.append("analysisProfile=LEGACY_PARTIAL")
     ctype = (controller_type or "").strip().lower()
     mctype = str(meta.get("controllerType") or "").strip().lower()
     if ctype and mctype and ctype != mctype:
@@ -136,8 +169,9 @@ def catalog_compatible_with_subject(
         "catalog completeness failed",
         "controllerType mismatch",
         "processor mismatch",
+        "analysisProfile=INCOMPATIBLE",
     }
-    ok = not any(r in hard for r in reasons)
+    ok = not any(r in hard or r.startswith("analysisProfileHash mismatch") for r in reasons)
     return ok, reasons
 
 def catalog_ok_for_autodiff(meta: dict[str, Any] | None) -> tuple[bool, list[str]]:
@@ -240,6 +274,11 @@ def build_catalog_for_ref(
         else:
             completeness = "PARTIAL_ANALYSIS"
 
+        profile = build_analysis_profile(processor=processor, loader_base=base_addr, timeout_sec=timeout_sec)
+        # Prefer profile embedded in function export when present
+        embedded = fa.get("analysisProfile") if isinstance(fa.get("analysisProfile"), dict) else None
+        if embedded and embedded.get("analysisProfileHash"):
+            profile = {**profile, **embedded}
         meta = {
             "schemaVersion": CATALOG_SCHEMA,
             "status": "ok" if fa.get("ok") else "failed",
@@ -255,16 +294,28 @@ def build_catalog_for_ref(
             "hardwareVersion": pub.get("hardwareVersion") or "",
             "processor": fa.get("processor") or processor,
             "baseAddr": base_addr,
+            "requestedLoaderBase": fa.get("requestedLoaderBase") or base_addr,
+            "actualImageBase": fa.get("actualImageBase") or fa.get("imageBase"),
+            "memoryBlockStart": fa.get("memoryBlockStart"),
+            "resetHandlerAddress": fa.get("resetHandlerAddress"),
             "analyzer": ANALYZER_ID,
             "analyzerCompat": ANALYZER_COMPAT,
             "analyzerNote": "Uses existing Ghidra ExportFunctionAnalysis/ExportCallGraph — no second engine.",
-            "ghidraVersion": os.environ.get("GHIDRA_VERSION") or "12.2_PUBLIC",
+            "ghidraVersion": profile.get("ghidraVersion") or os.environ.get("GHIDRA_VERSION") or "12.2_PUBLIC",
             "ghidraMessage": msg,
+            "analysisProfile": summarize_profile_for_poll(profile),
+            "analysisProfileHash": profile.get("analysisProfileHash"),
+            "analysisProfileVersion": profile.get("analysisProfileVersion"),
+            "fingerprintVersion": profile.get("fingerprintVersion"),
             "analysisParameters": {
                 "processor": processor,
                 "baseAddr": base_addr,
                 "timeoutSec": timeout_sec,
-                "maxFunctions": fa.get("maxFunctions") or 2500,
+                "maxFunctions": fa.get("maxFunctions") or profile.get("maximumFunctions") or 2500,
+                "seedCortexMEntryPoints": (profile.get("autoAnalysisOptions") or {}).get(
+                    "seedCortexMEntryPoints", True
+                ),
+                "analysisProfileHash": profile.get("analysisProfileHash"),
             },
             "functionCount": fn_count,
             "edgeCount": cg.get("edgeCount") or 0,
@@ -277,6 +328,7 @@ def build_catalog_for_ref(
                 "Katalog ändert nicht den Referenz-Vertrauensstatus.",
                 f"referenceTrust={trust.get('referenceTrust')}",
                 "Vollständiger Funktionskatalog ≠ Nachweis vollständiger Firmwareabdeckung.",
+                "Kataloge ohne analysisProfileHash sind nur LEGACY_PARTIAL vergleichbar.",
             ],
             "referenceTrust": trust.get("referenceTrust"),
             "referenceProvenanceVerified": bool(trust.get("referenceProvenanceVerified")),

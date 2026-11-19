@@ -15,7 +15,9 @@ import ghidra.program.model.listing.FunctionIterator;
 import ghidra.program.model.listing.FunctionManager;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.RefType;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceManager;
@@ -68,16 +70,73 @@ public class ExportFunctionAnalysis extends GhidraScript {
         Listing listing = currentProgram.getListing();
         ConsoleTaskMonitor monitor = new ConsoleTaskMonitor();
         String processor = currentProgram.getLanguage().getLanguageID().getIdAsString();
+        Memory mem = currentProgram.getMemory();
+        Address actualImageBase = currentProgram.getImageBase();
+        String requestedLoaderBase = System.getenv("GHIDRA_BASE_ADDR");
+        if (requestedLoaderBase == null || requestedLoaderBase.isEmpty()) {
+            requestedLoaderBase = System.getenv("SCOOTERCHECK_LOADER_BASE");
+        }
+        Address memoryBlockStart = null;
+        try {
+            for (MemoryBlock block : mem.getBlocks()) {
+                if (block != null && block.isInitialized() && block.isLoaded()) {
+                    memoryBlockStart = block.getStart();
+                    break;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        // Prefer IVT at memory block start (BinaryLoader maps here) over ImageBase which may stay 0.
+        Address ivtProbe = memoryBlockStart != null ? memoryBlockStart : actualImageBase;
+        String resetHandlerAddress = null;
+        Long resetHandlerFileOffset = null;
+        try {
+            int sp = mem.getInt(ivtProbe);
+            int resetWord = mem.getInt(ivtProbe.add(4));
+            long resetDest = (resetWord & 0xFFFFFFFFL) & ~1L;
+            resetHandlerAddress = String.format("0x%08x", resetDest);
+            if (memoryBlockStart != null) {
+                resetHandlerFileOffset = Long.valueOf(resetDest - memoryBlockStart.getOffset());
+            }
+            // silence unused warning for sp read (validates IVT readable)
+            if (sp == 0) {
+                // keep nulls if clearly empty
+            }
+        } catch (Exception ignored) {
+        }
 
         StringBuilder sb = new StringBuilder(256 * 1024);
         sb.append("{\n");
         sb.append("  \"schemaVersion\": 1,\n");
         // featuresVersion documents optional fields (branchMnemonicCount) without
         // changing fingerprint semantics (analyzerCompat stays "2").
-        sb.append("  \"featuresVersion\": 1,\n");
+        sb.append("  \"featuresVersion\": 2,\n");
         sb.append("  \"program\": ").append(jsonString(currentProgram.getName())).append(",\n");
         sb.append("  \"processor\": ").append(jsonString(processor)).append(",\n");
-        sb.append("  \"imageBase\": ").append(jsonString(currentProgram.getImageBase().toString())).append(",\n");
+        // Phase 2.2G: distinguish requested loader base vs Ghidra ImageBase vs memory block.
+        // BinaryLoader often maps the file at loader-baseAddr while getImageBase() stays 0.
+        sb.append("  \"imageBase\": ").append(jsonString(actualImageBase.toString())).append(",\n");
+        sb.append("  \"actualImageBase\": ").append(jsonString(actualImageBase.toString())).append(",\n");
+        if (requestedLoaderBase != null && !requestedLoaderBase.isEmpty()) {
+            sb.append("  \"requestedLoaderBase\": ").append(jsonString(requestedLoaderBase)).append(",\n");
+        } else {
+            sb.append("  \"requestedLoaderBase\": null,\n");
+        }
+        if (memoryBlockStart != null) {
+            sb.append("  \"memoryBlockStart\": ").append(jsonString(memoryBlockStart.toString())).append(",\n");
+        } else {
+            sb.append("  \"memoryBlockStart\": null,\n");
+        }
+        if (resetHandlerAddress != null) {
+            sb.append("  \"resetHandlerAddress\": ").append(jsonString(resetHandlerAddress)).append(",\n");
+        } else {
+            sb.append("  \"resetHandlerAddress\": null,\n");
+        }
+        if (resetHandlerFileOffset != null) {
+            sb.append("  \"firmwareFileOffset\": ").append(resetHandlerFileOffset.longValue()).append(",\n");
+        } else {
+            sb.append("  \"firmwareFileOffset\": null,\n");
+        }
         sb.append("  \"functions\": [\n");
 
         int count = 0;
