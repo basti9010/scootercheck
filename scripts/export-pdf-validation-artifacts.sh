@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
 # Recover synthetic PDFKit validation outputs from the iOS Simulator / xcresult onto the host.
-# Usage: export-pdf-validation-artifacts.sh <simulator-udid> <workspace-root>
+# Usage: export-pdf-validation-artifacts.sh <simulator-udid> <workspace-root> [hint-path]
 set -euo pipefail
 
 DEST="${1:?simulator udid}"
 ROOT="${2:?workspace root}"
+HINT_PATH="${3:-}"
 OUT="$ROOT/release-validation/pdf"
 XCRESULT="$ROOT/release-validation/ScooterCheckTests.xcresult"
 MARKER_DIR_NAME="release-validation-pdf"
+EXPECTED_PDFS=(
+  short-report.pdf
+  full-report.pdf
+  long-values.pdf
+  many-findings.pdf
+  truncated-results.pdf
+  incomplete-analysis.pdf
+)
 
 mkdir -p "$OUT/previews"
 echo "exporting PDF validation artifacts"
 echo "  simulator=$DEST"
 echo "  out=$OUT"
+echo "  hint=${HINT_PATH:-<none>}"
 
 copy_tree_if_present() {
   local src="$1"
   if [[ -d "$src" ]]; then
-    echo "  found artifact tree: $src"
-    # Prefer structured copy of known names.
+    local pdf_here
+    pdf_here="$(find "$src" -maxdepth 1 -type f -name '*.pdf' 2>/dev/null | wc -l | tr -d ' ')"
+    echo "  found artifact tree: $src (pdfs_here=$pdf_here)"
     shopt -s nullglob
     for pdf in "$src"/*.pdf; do
       cp -f "$pdf" "$OUT/"
@@ -34,31 +45,74 @@ copy_tree_if_present() {
   fi
 }
 
+copy_named_pdfs_under() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+  local name
+  for name in "${EXPECTED_PDFS[@]}"; do
+    while IFS= read -r -d '' pdf; do
+      cp -f "$pdf" "$OUT/$name"
+    done < <(find "$root" -type f -name "$name" -print0 2>/dev/null || true)
+  done
+  while IFS= read -r -d '' dir; do
+    copy_tree_if_present "$dir"
+  done < <(find "$root" -type d -name "$MARKER_DIR_NAME" -print0 2>/dev/null || true)
+}
+
+# 0) Explicit hint from CI log / path marker (most reliable when available).
+if [[ -n "$HINT_PATH" && -d "$HINT_PATH" ]]; then
+  copy_tree_if_present "$HINT_PATH"
+fi
+if [[ -f "$ROOT/release-validation/pdf-fallback-path.txt" ]]; then
+  hinted="$(tr -d '\r\n' < "$ROOT/release-validation/pdf-fallback-path.txt" || true)"
+  if [[ -n "${hinted:-}" && -d "$hinted" ]]; then
+    copy_tree_if_present "$hinted"
+  fi
+fi
+
 # 1) Host path written via SIMCTL_CHILD_FIRMWARE_PDF_VALIDATION_DIR (may already be populated).
 copy_tree_if_present "$OUT"
 
-# 2) Simulator app / test data containers (tmp lives under Library/Caches or tmp).
+# 2) Simulator app / test data containers.
 for BUNDLE in com.scootercheck.app com.scootercheck.app.tests; do
   for KIND in data; do
     CONT="$(xcrun simctl get_app_container "$DEST" "$BUNDLE" "$KIND" 2>/dev/null || true)"
     if [[ -n "${CONT:-}" && -d "$CONT" ]]; then
       echo "  scanning container $BUNDLE/$KIND -> $CONT"
-      while IFS= read -r -d '' dir; do
-        copy_tree_if_present "$dir"
-      done < <(find "$CONT" -type d -name "$MARKER_DIR_NAME" -print0 2>/dev/null || true)
-      while IFS= read -r -d '' pdf; do
-        base="$(basename "$pdf")"
-        case "$base" in
-          short-report.pdf|full-report.pdf|long-values.pdf|many-findings.pdf|truncated-results.pdf|incomplete-analysis.pdf)
-            cp -f "$pdf" "$OUT/"
-            ;;
-        esac
-      done < <(find "$CONT" -type f -name '*.pdf' -print0 2>/dev/null || true)
+      copy_named_pdfs_under "$CONT"
+    else
+      echo "  get_app_container miss: $BUNDLE/$KIND"
     fi
   done
 done
 
-# 3) xcresult attachments (XCTAttachment lifetime keepAlways).
+# 3) Device-wide scan — XCTest tmp often survives under Application/<uuid>/tmp even when
+#    get_app_container fails after the test runner exits.
+DEVICE_ROOT=""
+for candidate in \
+  "$HOME/Library/Developer/CoreSimulator/Devices/$DEST" \
+  "/Users/runner/Library/Developer/CoreSimulator/Devices/$DEST"
+do
+  if [[ -d "$candidate/data" ]]; then
+    DEVICE_ROOT="$candidate"
+    break
+  fi
+done
+if [[ -n "$DEVICE_ROOT" ]]; then
+  echo "  scanning device data tree: $DEVICE_ROOT/data"
+  copy_named_pdfs_under "$DEVICE_ROOT/data"
+else
+  echo "  device data root not found for $DEST"
+  # Last-resort: any booted/available device that still holds the marker.
+  while IFS= read -r -d '' dir; do
+    echo "  fallback marker dir: $dir"
+    copy_tree_if_present "$dir"
+  done < <(find "$HOME/Library/Developer/CoreSimulator/Devices" \
+    /Users/runner/Library/Developer/CoreSimulator/Devices \
+    -type d -name "$MARKER_DIR_NAME" -print0 2>/dev/null || true)
+fi
+
+# 4) xcresult attachments (XCTAttachment lifetime keepAlways).
 if [[ -d "$XCRESULT" ]]; then
   echo "  scanning xcresult $XCRESULT"
   ATT_OUT="$ROOT/release-validation/xcresult-attachments"
@@ -66,26 +120,54 @@ if [[ -d "$XCRESULT" ]]; then
   if xcrun xcresulttool export-attachments --help >/dev/null 2>&1; then
     xcrun xcresulttool export-attachments --path "$XCRESULT" --output-path "$ATT_OUT" 2>/dev/null || true
   fi
-  # Fallback: walk binary attachment payloads / named files inside the bundle.
+  # Also try legacy JSON walk for attachment payloads when export-attachments is a no-op.
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PY' "$XCRESULT" "$ATT_OUT" 2>/dev/null || true
+import json, pathlib, subprocess, sys
+xc, out = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
+try:
+    raw = subprocess.check_output(
+        ["xcrun", "xcresulttool", "get", "--path", str(xc), "--format", "json"],
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+except Exception:
+    sys.exit(0)
+# Best-effort: dump any string paths mentioning our report names for diagnostics.
+for name in (
+    "short-report", "full-report", "long-values", "many-findings",
+    "truncated-results", "incomplete-analysis", "validation-summary",
+):
+    if name in raw:
+        (out / f"mention-{name}.txt").write_text(f"mentioned in xcresult json\n")
+PY
+  fi
   while IFS= read -r -d '' f; do
     base="$(basename "$f")"
     lower="$(printf '%s' "$base" | tr '[:upper:]' '[:lower:]')"
+    # Detect PDF by magic even when xcresult strips the extension.
+    if head -c 5 "$f" 2>/dev/null | grep -q '%PDF-'; then
+      dest_name="$base"
+      [[ "$dest_name" != *.pdf ]] && dest_name="${dest_name}.pdf"
+      for n in short-report full-report long-values many-findings truncated-results incomplete-analysis; do
+        if echo "$lower" | grep -q "$n"; then dest_name="$n.pdf"; break; fi
+      done
+      # Avoid clobbering already-correct named PDFs with anonymous attachment blobs.
+      if [[ ! -f "$OUT/$dest_name" ]] || echo "$lower" | grep -Eq 'short-report|full-report|long-values|many-findings|truncated-results|incomplete-analysis'; then
+        cp -f "$f" "$OUT/$dest_name"
+      fi
+      continue
+    fi
     case "$lower" in
-      *.pdf|short-report*|full-report*|long-values*|many-findings*|truncated-results*|incomplete-analysis*)
-        if file "$f" | grep -qi 'pdf'; then
-          # Normalize to expected names when possible.
-          dest_name="$base"
-          for n in short-report full-report long-values many-findings truncated-results incomplete-analysis; do
-            if echo "$lower" | grep -q "$n"; then dest_name="$n.pdf"; break; fi
-          done
-          cp -f "$f" "$OUT/$dest_name"
-        fi
-        ;;
-      *.png)
+      *.png|*page-*.png*)
         cp -f "$f" "$OUT/previews/" 2>/dev/null || true
         ;;
       *validation-summary*)
         cp -f "$f" "$OUT/validation-summary.json" 2>/dev/null || true
+        ;;
+      *validation-path*)
+        cp -f "$f" "$OUT/validation-path.txt" 2>/dev/null || true
         ;;
     esac
   done < <(find "$XCRESULT" "$ATT_OUT" -type f -print0 2>/dev/null || true)
@@ -99,6 +181,13 @@ ls -la "$OUT/previews" || true
 
 if [[ "$PDF_COUNT" -lt 6 ]]; then
   echo "::error::Expected ≥6 PDF reports under $OUT, found $PDF_COUNT"
+  echo "  diagnostic: expected names + any leftover marker dirs"
+  for name in "${EXPECTED_PDFS[@]}"; do
+    echo "    - $name present=$([[ -f "$OUT/$name" ]] && echo yes || echo no)"
+  done
+  find "$HOME/Library/Developer/CoreSimulator/Devices" \
+    /Users/runner/Library/Developer/CoreSimulator/Devices \
+    -type d -name "$MARKER_DIR_NAME" 2>/dev/null | head -20 || true
   exit 1
 fi
 

@@ -10,32 +10,40 @@ import UIKit
 /// can recover them from the simulator data container and/or the `.xcresult` bundle.
 final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
 
-    /// Prefer an explicit host-forwarded env var; always also write under tmp marker dir.
-    private var outputRoot: URL {
-        let tmpRoot = FileManager.default.temporaryDirectory
-            .appendingPathComponent("release-validation-pdf", isDirectory: true)
-        if let env = ProcessInfo.processInfo.environment["FIRMWARE_PDF_VALIDATION_DIR"], !env.isEmpty {
-            // When the simulator can write to the host path (SIMCTL_CHILD_*), use it.
-            // Always keep tmpRoot as a discoverable fallback for simctl get_app_container.
-            return URL(fileURLWithPath: env, isDirectory: true)
-        }
-        return tmpRoot
-    }
-
+    /// Stable simulator-tmp marker dir — always writable and findable via device data scan.
     private var fallbackTmpRoot: URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("release-validation-pdf", isDirectory: true)
     }
 
+    /// Optional host path from SIMCTL_CHILD_FIRMWARE_PDF_VALIDATION_DIR (best-effort only).
+    private var hostOutputRoot: URL? {
+        guard let env = ProcessInfo.processInfo.environment["FIRMWARE_PDF_VALIDATION_DIR"], !env.isEmpty else {
+            return nil
+        }
+        let url = URL(fileURLWithPath: env, isDirectory: true)
+        // Ignore host paths that collide with the tmp marker (already covered by fallback).
+        if url.standardizedFileURL == fallbackTmpRoot.standardizedFileURL { return nil }
+        return url
+    }
+
     override func setUpWithError() throws {
         try super.setUpWithError()
-        for root in [outputRoot, fallbackTmpRoot] {
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-            try FileManager.default.createDirectory(
+        var roots = [fallbackTmpRoot]
+        if let host = hostOutputRoot { roots.append(host) }
+        for root in roots {
+            try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(
                 at: root.appendingPathComponent("previews", isDirectory: true),
                 withIntermediateDirectories: true
             )
         }
+        // Tmp marker must always succeed.
+        try FileManager.default.createDirectory(at: fallbackTmpRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: fallbackTmpRoot.appendingPathComponent("previews", isDirectory: true),
+            withIntermediateDirectories: true
+        )
     }
 
     func testReleasePDFValidationSixReportsAndPreviews() throws {
@@ -58,8 +66,9 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
         let payload: [String: Any] = [
             "phase": "final-release-acceptance",
             "environment": "PDFKit/iOS-Simulator",
-            "outputDirectory": outputRoot.path,
+            "outputDirectory": hostOutputRoot?.path ?? fallbackTmpRoot.path,
             "fallbackDirectory": fallbackTmpRoot.path,
+            "hostDirectoryWritable": hostDirectoryWritable,
             "reports": summary,
             "checks": [
                 "pdfMagic",
@@ -75,41 +84,63 @@ final class FirmwareForensicPDFReleaseValidationTests: XCTestCase {
         ]
         let data = try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
         try writeArtifact(data, relativePath: "validation-summary.json", contentType: "public.json")
-        // Machine-readable path marker for CI logs / simctl recovery.
+        // Machine-readable path marker for CI logs / device-data recovery.
         let marker = """
-        FIRMWARE_PDF_VALIDATION_OUTPUT=\(outputRoot.path)
+        FIRMWARE_PDF_VALIDATION_OUTPUT=\(hostOutputRoot?.path ?? fallbackTmpRoot.path)
         FIRMWARE_PDF_VALIDATION_FALLBACK=\(fallbackTmpRoot.path)
         FIRMWARE_PDF_VALIDATION_REPORTS=\(summary.count)
+        FIRMWARE_PDF_VALIDATION_HOST_WRITABLE=\(hostDirectoryWritable)
         """
         try writeArtifact(
             Data(marker.utf8),
             relativePath: "validation-path.txt",
             contentType: "public.plain-text"
         )
+        // Single-line tokens are easy to scrape from xcodebuild logs on the host.
+        print("FIRMWARE_PDF_VALIDATION_FALLBACK=\(fallbackTmpRoot.path)")
+        print("FIRMWARE_PDF_VALIDATION_REPORTS=\(summary.count)")
         print(marker)
         XCTAssertEqual(summary.count, 6)
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: fallbackTmpRoot.appendingPathComponent("short-report.pdf").path),
+            "tmp marker must contain short-report.pdf for CI recovery"
+        )
     }
+
+    private var hostDirectoryWritable: Bool = false
 
     // MARK: - Artifact I/O
 
-    /// Writes to the preferred output root, mirrors into the tmp fallback, and attaches for xcresult.
+    /// Always writes under the simulator tmp marker; optionally mirrors to the host path;
+    /// always attaches for xcresult recovery.
     private func writeArtifact(_ data: Data, relativePath: String, contentType: String) throws {
-        let roots = (outputRoot.path == fallbackTmpRoot.path)
-            ? [outputRoot]
-            : [outputRoot, fallbackTmpRoot]
-        for root in roots {
-            let url = root.appendingPathComponent(relativePath)
-            try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try data.write(to: url, options: .atomic)
-            XCTAssertGreaterThan(
-                (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.intValue ?? 0,
-                0,
-                "empty artifact \(relativePath)"
-            )
+        let tmpURL = fallbackTmpRoot.appendingPathComponent(relativePath)
+        try FileManager.default.createDirectory(
+            at: tmpURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: tmpURL, options: .atomic)
+        XCTAssertGreaterThan(
+            (try FileManager.default.attributesOfItem(atPath: tmpURL.path)[.size] as? NSNumber)?.intValue ?? 0,
+            0,
+            "empty artifact \(relativePath)"
+        )
+
+        if let host = hostOutputRoot {
+            let hostURL = host.appendingPathComponent(relativePath)
+            do {
+                try FileManager.default.createDirectory(
+                    at: hostURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try data.write(to: hostURL, options: .atomic)
+                hostDirectoryWritable = true
+            } catch {
+                // Host workspace paths are usually not writable from the simulator sandbox.
+                hostDirectoryWritable = false
+            }
         }
+
         let attachment = XCTAttachment(data: data, uniformTypeIdentifier: contentType)
         attachment.name = relativePath
         attachment.lifetime = .keepAlways

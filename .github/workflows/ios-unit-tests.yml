@@ -87,6 +87,8 @@ jobs:
           echo "Using simulator UDID=$DEST"
           echo "$DEST" > "$GITHUB_WORKSPACE/release-validation/simulator-udid.txt"
           echo "SIMULATOR_UDID=$DEST" >> "$GITHUB_ENV"
+          set +e
+          set -o pipefail
           xcodebuild test \
             -project ScooterCheck.xcodeproj \
             -scheme ScooterCheck \
@@ -95,7 +97,25 @@ jobs:
             -parallel-testing-enabled NO \
             -maximum-parallel-testing-workers 1 \
             -resultBundlePath "$GITHUB_WORKSPACE/release-validation/ScooterCheckTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$GITHUB_WORKSPACE/release-validation/xcodebuild-test.log"
+          XC_STATUS=${PIPESTATUS[0]}
+          set +o pipefail
+          # Persist the simulator-tmp marker path printed by the PDF validation test.
+          python3 - <<'PY'
+          import os, pathlib, re
+          ws = os.environ.get("GITHUB_WORKSPACE", ".")
+          log = pathlib.Path(ws) / "release-validation" / "xcodebuild-test.log"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          m = re.search(r"FIRMWARE_PDF_VALIDATION_FALLBACK=(\S+)", text)
+          out = pathlib.Path(ws) / "release-validation" / "pdf-fallback-path.txt"
+          if m:
+              out.write_text(m.group(1) + "\n")
+              print(f"Captured PDF fallback path: {m.group(1)}")
+          else:
+              print("No FIRMWARE_PDF_VALIDATION_FALLBACK marker in xcodebuild log")
+          PY
+          exit "$XC_STATUS"
 
       - name: Export PDF validation artifacts to host
         if: always()
@@ -109,7 +129,12 @@ jobs:
             echo "::warning::simulator UDID unknown; attempting xcresult-only recovery"
             DEST="unknown"
           fi
-          bash scripts/export-pdf-validation-artifacts.sh "$DEST" "$GITHUB_WORKSPACE"
+          HINT=""
+          if [ -f release-validation/pdf-fallback-path.txt ]; then
+            HINT="$(tr -d '\r\n' < release-validation/pdf-fallback-path.txt)"
+            echo "Using captured fallback hint: $HINT"
+          fi
+          bash scripts/export-pdf-validation-artifacts.sh "$DEST" "$GITHUB_WORKSPACE" "$HINT"
 
       - name: Summarize PDF validation artifacts
         if: always()

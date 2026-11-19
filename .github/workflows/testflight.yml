@@ -1,5 +1,5 @@
 name: TestFlight
-# Retrigger tip distribution after cancelled push run on 055f4d3.
+# Retrigger tip distribution after PDF host-recovery fix (device-data scan).
 
 on:
   workflow_dispatch:
