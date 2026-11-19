@@ -126,13 +126,15 @@ ANGR_SYMBOLIC=0            # 1 = kurze Local-Explore je Speed-Site
 
 Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angrTimeoutSec`, `angrMemMb`, `angrCfgDepth`, `angrSymbolic`.
 
-## Auth (Phase 2.1 / 2.2B)
+## Auth (Phase 2.1 / 2.2B / 2.2H)
 
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API
 - und/oder `X-ScooterCheck-Token` wenn `API_TOKEN` / `ADMIN_API_TOKEN` gesetzt
 - `X-ScooterCheck-Client-Id` bindet Jobs an einen Client-Principal (Ownership), ist **kein** Identitätsnachweis
-- Admin: JWT `role=admin`, oder `ADMIN_API_TOKEN`, oder (Kompatibilität) shared `API_TOKEN` solange `API_TOKEN_GRANTS_ADMIN=1` (Default)
-- Migration (ohne Prod-Token-Rotation in dieser Phase): App → JWT für Nutzer; Ops setzt `ADMIN_API_TOKEN`; dann `API_TOKEN_GRANTS_ADMIN=0` — shared Token nur noch mit Client-Id für eigene Jobs
+- Admin: JWT `role=admin` **oder** `ADMIN_API_TOKEN`
+- **Phase 2.2H secure default:** `API_TOKEN_GRANTS_ADMIN=0` — shared `API_TOKEN` does **not** grant admin
+- Legacy opt-in only: `API_TOKEN_GRANTS_ADMIN=1` (discouraged; staging/new deploys keep `0`)
+- Ops before next prod restart: set `ADMIN_API_TOKEN`, confirm `API_TOKEN_GRANTS_ADMIN=0` in remote env (no secret rotation by deploy script)
 
 ## Firmware-Identität / Auto-Funktionen (Phase 2.2B)
 

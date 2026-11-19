@@ -1,0 +1,190 @@
+{
+  "phase": "2.2H",
+  "generatedAt": "2026-11-19T10:38:47.428182+00:00",
+  "input": {
+    "file": "version_a.dec.bin",
+    "sha256": "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "bytes": 256
+  },
+  "job": {
+    "jobId": "8710a0da-38b6-4c6c-909d-743c08645530",
+    "state": "completed",
+    "message": "Klartext übernommen (256 Byte) → /tmp/sc22h-report2-pf_j9eh5/plaintext/2026/11/19/8710a0da-38b6-4c6c-909d-743c08645530_6b7d6ec03575_version_a.dec.bin.dec.bin · capstone 0 · yara 0 · unicorn 1 · paths 1",
+    "plaintextSHA256": "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "plaintextSaved": true,
+    "elapsedSec": 0.069
+  },
+  "resultKeys": [
+    "analysisCompleteness",
+    "analysisLimitations",
+    "analysisProfile",
+    "analysisProfileHash",
+    "boardPinout",
+    "callGraph",
+    "caveats",
+    "comboSummaries",
+    "controllerType",
+    "cortexMIvt",
+    "emulationSites",
+    "firmwareAnalysisCoverage",
+    "firmwareArchitectureConfidence",
+    "firmwareContainerAnalysis",
+    "functionAnalysis",
+    "functionDiff",
+    "functionMatching",
+    "functionMatchingCoverage",
+    "ghidraAddressLayout",
+    "inputBehaviorAnalysis",
+    "inputBehaviorDiff",
+    "inputHints",
+    "legalCapKmhInCode",
+    "limitSlices",
+    "maxSpeedKmhInCode",
+    "modeTransitions",
+    "models",
+    "notes",
+    "packageDisplayName",
+    "pathHints",
+    "producedAt",
+    "quality",
+    "referenceCatalogCoverage",
+    "referenceMetadata",
+    "runtimeStateMachineValidation",
+    "runtimeValidationDetails",
+    "schemaVersion",
+    "sources",
+    "speedLimits",
+    "stateMachineAnalysis",
+    "stateMachineValidation",
+    "stockDiff",
+    "subjectSHA256",
+    "yaraMatches"
+  ],
+  "subjectSHA256": "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+  "firmwareContainerAnalysis": {
+    "ok": true,
+    "status": "FORMAT_UNSUPPORTED",
+    "format": null,
+    "containerRecognized": false,
+    "architecture": "ARM:LE:32:Cortex",
+    "architectureConfidence": "ARCHITECTURE_UNKNOWN",
+    "architectureEvidence": [],
+    "baseAddr": "0x08000000",
+    "imageExtractable": null,
+    "ghidraImportAllowed": null,
+    "payloadStructure": null,
+    "components": [],
+    "confidence": "high",
+    "analysisLimitations": [
+      "Keine Architektur allein aus dem Dateinamen.",
+      "Keine Umgehung unbekannter Schutzmechanismen.",
+      "Keine Schlüssel-Extraktion.",
+      "Kein RAW4TFT-Container — BLE-Adapter nicht anwendbar."
+    ],
+    "notes": [
+      "bleContainer=source:bytes",
+      "byteCount=256",
+      "magic_not_RAW4TFT"
+    ]
+  },
+  "firmwareArchitectureConfidence": "ARCHITECTURE_UNKNOWN",
+  "analysisProfile": {
+    "analysisProfileVersion": "2.2G.1",
+    "analysisProfileHash": "8a4c448ec9122549a18053fd210dfbb295be984ead0eb98c7e79c626bde0f50b",
+    "analyzerCompat": "2",
+    "ghidraVersion": null,
+    "processorArchitecture": "ARM:LE:32:Cortex",
+    "requestedLoaderBase": "0x08000000",
+    "enabledPreScripts": [
+      "SeedCortexMEntryPoints.java"
+    ],
+    "maximumFunctions": 2500,
+    "fingerprintVersion": "2",
+    "callGraphSchemaVersion": 2,
+    "seedCortexMEntryPoints": true,
+    "ghidraExecuted": false,
+    "note": "Profile declared without Ghidra execution in this job"
+  },
+  "analysisProfileHash": "8a4c448ec9122549a18053fd210dfbb295be984ead0eb98c7e79c626bde0f50b",
+  "callGraphQuality": null,
+  "functionDiff": {
+    "ok": false,
+    "schemaVersion": 1,
+    "tool": "ghidra-function-export-diff",
+    "toolNote": "Phase-2.2C multi-stage matcher — Diaphora/BinDiff nicht integriert.",
+    "summary": {
+      "identical": 0,
+      "structurallyChanged": 0,
+      "added": 0,
+      "removed": 0,
+      "uncomparable": 0,
+      "subjectFunctionCount": 0,
+      "referenceFunctionCount": 0,
+      "matched": 0,
+      "ambiguous": 0,
+      "matchHigh": 0,
+      "matchMedium": 0,
+      "matchLow": 0,
+      "overall": "NICHT_VERGLEICHBAR"
+    },
+    "samplePairs": [],
+    "analysisLimitations": [
+      "Funktionsdiff ist kein Manipulationsnachweis.",
+      "Vergleich basiert auf multi-stage Function Matching (kein Diaphora/BinDiff).",
+      "Absolute Adressen und generische FUN_*-Namen sind keine Identitätsmerkmale.",
+      "Subject-Analyse fehlgeschlagen."
+    ],
+    "notes": [
+      "Subject-Funktionsexport fehlt oder ungültig."
+    ],
+    "functionMatching": {
+      "ok": false,
+      "summary": {},
+      "tool": null,
+      "toolNote": null,
+      "analysisLimitations": [
+        "Funktionsdiff ist kein Manipulationsnachweis.",
+        "Vergleich basiert auf multi-stage Function Matching (kein Diaphora/BinDiff).",
+        "Absolute Adressen und generische FUN_*-Namen sind keine Identitätsmerkmale.",
+        "Subject-Analyse fehlgeschlagen."
+      ],
+      "sampleMatches": []
+    }
+  },
+  "analysisCompleteness": "FAILED",
+  "analysisLimitations": [
+    "Kein Ghidra-Funktionsexport vorhanden.",
+    "Funktionsdiff ist kein Manipulationsnachweis.",
+    "Vergleich basiert auf multi-stage Function Matching (kein Diaphora/BinDiff).",
+    "Absolute Adressen und generische FUN_*-Namen sind keine Identitätsmerkmale.",
+    "Subject-Analyse fehlgeschlagen.",
+    "Kein Callgraph-Export vorhanden.",
+    "Input Behavior Analysis ist heuristisch und kein Nachweis realen Fahrzeugverhaltens.",
+    "Einzelne Strings/Konstanten allein gelten nicht als Funktionsnachweis.",
+    "Keine Aktivierungsfolgen oder Umgehungsempfehlungen.",
+    "Funktionsexport fehlt/ungültig.",
+    "Input-Behavior-Diff ist strukturell — keine Manipulationsaussage.",
+    "Strukturelle Änderung ≠ Nachweis einer Veränderung des Eingabeverhaltens am Fahrzeug.",
+    "Subject Input Behavior fehlt.",
+    "Keine eindeutig passende Referenzfirmware für Funktionsvergleich."
+  ],
+  "notesSample": [
+    "archiveSHA256=6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "encSHA256=6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "already plaintext (filename_hint=version_a.dec.bin)",
+    "plaintextSHA256=6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "plaintextBytes=256",
+    "bleContainer=source:bytes",
+    "byteCount=256",
+    "plaintextSaved=/tmp/sc22h-report2-pf_j9eh5/plaintext/2026/11/19/8710a0da-38b6-4c6c-909d-743c08645530_6b7d6ec03575_version_a.dec.bin.dec.bin",
+    "r2=skipped (radare2 not installed or ENABLE_R2=0)",
+    "ghidra=disabled (ENABLE_GHIDRA=0)",
+    "capstone=ok speeds=0",
+    "yara=ok matches=0"
+  ],
+  "quality": {
+    "hasDeterministicBasis": true,
+    "llmSchemaValidated": false,
+    "summary": "Server-Decrypt + deterministischer Speed-/Combo-Scan. + IVT. + Unicorn. + Pfadanalyse. + Limit-Slice."
+  }
+}

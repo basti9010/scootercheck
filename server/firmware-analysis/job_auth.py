@@ -10,9 +10,10 @@ Rules:
 - Unauthorized → 404 (no job metadata leak).
 
 Migration (API_TOKEN_GRANTS_ADMIN):
-- default "1" keeps current ops scripts working (shared token ⇒ admin).
-- set "0" in production once clients use JWT for users; then shared API_TOKEN
-  is non-admin (jobs only via Client-Id ownership) unless ADMIN_API_TOKEN matches.
+- Phase 2.2H default is "0" (shared API_TOKEN is NOT admin).
+- Ops that still need shared-token admin must set API_TOKEN_GRANTS_ADMIN=1 explicitly
+  OR use ADMIN_API_TOKEN / JWT role=admin.
+- Staging and new deploys should keep API_TOKEN_GRANTS_ADMIN=0.
 """
 from __future__ import annotations
 
@@ -30,8 +31,8 @@ def _env_truthy(name: str, default: str = "0") -> bool:
 
 
 def api_token_grants_admin() -> bool:
-    """Whether the shared API_TOKEN authenticates as admin (compat default: yes)."""
-    return _env_truthy("API_TOKEN_GRANTS_ADMIN", "1")
+    """Whether the shared API_TOKEN authenticates as admin (secure default: no)."""
+    return _env_truthy("API_TOKEN_GRANTS_ADMIN", "0")
 
 
 def is_admin(auth: dict[str, Any]) -> bool:

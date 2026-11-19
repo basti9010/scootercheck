@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# ScooterCheck firmware-analysis rollout (Phase 1 + 2 + 2.1) to Hetzner.
+# ScooterCheck firmware-analysis rollout (Phase 1 → 2.2H) to Hetzner.
 #
 # Default: DRY-RUN (no remote writes, no restart).
 # Real deploy: CONFIRM_PROD_DEPLOY=YES ./deploy/phase1-rollout.sh
 #
 # Never deletes or modifies /var/lib/scootercheck (jobs, decrypted, stock-fw, catalogs).
+# Phase 2.2H: ensure remote .env has API_TOKEN_GRANTS_ADMIN=0 and ADMIN_API_TOKEN set
+# before any real restart (manual ops step — this script does not rotate secrets).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,6 +47,8 @@ DEPLOY_PY_FILES=(
   test_phase22e.py
   test_phase22f.py
   test_phase22g.py
+  test_phase22h_e2e.py
+  staging_harness.py
   reference_inventory.py
   analysis_completeness.py
   analysis_profile.py
@@ -62,6 +66,7 @@ DEPLOY_PY_FILES=(
   test_ghidra_export_fixtures.py
   firmware_identify.py
   README.md
+  .env.example
 )
 
 # Ghidra scripts (Phase 1 + 2 + 2.2B)
@@ -165,16 +170,16 @@ remote_import_and_tests() {
   cmd=$(cat <<EOF
 set -euo pipefail
 cd '$REMOTE_APP'
-./.venv/bin/python -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, app; print("imports_ok")'
-./.venv/bin/python -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff -q
+./.venv/bin/python -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, analysis_profile, ble_container, app; print("imports_ok")'
+./.venv/bin/python -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff test_api_auth_security -q
 EOF
 )
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "DRY-RUN: would run remote imports + unit tests"
     (
       cd "$APP_SRC"
-      python3 -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify; print("local_imports_ok")'
-      python3 -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff -q
+      python3 -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, analysis_profile, ble_container; print("local_imports_ok")'
+      python3 -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff test_api_auth_security -q
     ) || return 1
     return 0
   fi
