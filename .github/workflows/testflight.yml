@@ -85,6 +85,7 @@ on:
       - cursor/backend-auth-b100
       - cursor/forensik-phase1-reliability-b100
       - feature/firmware-forensics-phase2
+      - cursor/plaintext-server-skip-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"

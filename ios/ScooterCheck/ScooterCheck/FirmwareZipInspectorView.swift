@@ -218,9 +218,10 @@ struct FirmwareZipInspectorView: View {
         }
     }
 
-    /// Slim first screen after file pick — server decrypt is the primary path.
+    /// Slim first screen after file pick — server decrypt/analyse is the primary path.
     private func preDecryptSummary(_ r: FirmwareForensicReport) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+        let isPlain = r.crypto.status == .plaintext
+        return VStack(alignment: .leading, spacing: Theme.Space.sm) {
             Text("Datei bereit")
                 .font(Theme.caption.weight(.semibold))
                 .foregroundStyle(Theme.accent)
@@ -232,7 +233,9 @@ struct FirmwareZipInspectorView: View {
                 Text("Lokal geprüft · \(r.crypto.status.label) · \(formatKind(r.containerKind))")
                     .font(Theme.caption)
                     .foregroundStyle(Theme.textSecondary)
-                Text("Für Ampel, Limits und Combos: als Nächstes auf dem Server entschlüsseln. Export erscheint danach.")
+                Text(isPlain
+                     ? "Klartext erkannt. Als Nächstes auf dem Server analysieren (Limits, Combos, Ampel). Export erscheint danach."
+                     : "Für Ampel, Limits und Combos: als Nächstes auf dem Server entschlüsseln. Export erscheint danach.")
                     .font(.caption2)
                     .foregroundStyle(Theme.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -247,10 +250,15 @@ struct FirmwareZipInspectorView: View {
     private func decryptActionCard(_ r: FirmwareForensicReport) -> some View {
         let serverReady = FirmwareServerAnalysisClient.fromAppSettings().isConfigured
         let hasServerDeep = reportHasServerDeep(r)
+        let isPlain = r.crypto.status == .plaintext
         return sectionCard(hasServerDeep ? "Erneut analysieren" : "Server-Analyse") {
             Text(hasServerDeep
-                 ? "Optional erneut auf dem Server entschlüsseln und analysieren."
-                 : "Standardweg: Datei auf dem Server entschlüsseln — Klartext-Limits, Combos und Ampel.")
+                 ? (isPlain
+                    ? "Optional erneut auf dem Server analysieren (Klartext — kein erneutes Entschlüsseln nötig)."
+                    : "Optional erneut auf dem Server entschlüsseln und analysieren.")
+                 : (isPlain
+                    ? "Klartext-Datei: auf dem Server analysieren — Limits, Combos und Ampel (ohne TEA/XTEA)."
+                    : "Standardweg: Datei auf dem Server entschlüsseln — Klartext-Limits, Combos und Ampel."))
                 .font(Theme.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -270,10 +278,8 @@ struct FirmwareZipInspectorView: View {
                     Task { await uploadToAnalysisServer() }
                 } label: {
                     Label(
-                        isServerBusy
-                            ? "Entschlüsselung läuft…"
-                            : (hasServerDeep ? "Erneut auf Server entschlüsseln" : "Auf Server entschlüsseln"),
-                        systemImage: "lock.open"
+                        serverAnalyzeButtonTitle(isPlain: isPlain, hasServerDeep: hasServerDeep),
+                        systemImage: isPlain ? "cpu" : "lock.open"
                     )
                     .font(Theme.buttonSecondary)
                     .frame(maxWidth: .infinity)
@@ -292,6 +298,16 @@ struct FirmwareZipInspectorView: View {
                     .foregroundStyle(Theme.textMuted)
             }
         }
+    }
+
+    private func serverAnalyzeButtonTitle(isPlain: Bool, hasServerDeep: Bool) -> String {
+        if isServerBusy {
+            return isPlain ? "Analyse läuft…" : "Entschlüsselung läuft…"
+        }
+        if hasServerDeep {
+            return isPlain ? "Erneut auf Server analysieren" : "Erneut auf Server entschlüsseln"
+        }
+        return isPlain ? "Auf Server analysieren" : "Auf Server entschlüsseln"
     }
 
     private var serverProgressCard: some View {

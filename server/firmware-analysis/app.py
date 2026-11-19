@@ -62,6 +62,7 @@ from llm_enrich import (
     llm_provider,
 )
 from llm_verify import verify_enrichment
+from plaintext_detect import looks_like_plaintext_firmware
 from r2_extract import analyze_firmware as r2_analyze, merge_r2_into_result, r2_configured
 from reference_catalog import (
     build_catalogs,
@@ -632,28 +633,50 @@ def process_job(job_id: str) -> None:
         )
         return
 
-    _update(job, progressPercent=40, message="ninebottea decrypt…")
     out_bin = job_dir / "FIRM.dec.bin"
-    ok, msg = run_decrypt(enc_path, out_bin)
-    if not ok:
-        result = deep_result(
-            subject_sha256=enc_sha,
-            display_name=display,
-            models=models,
-            controller_type=ctype,
-            plaintext=b"",
-            decrypt_ok=False,
-            notes=notes + [msg],
-        )
-        _update(
-            job,
-            state="failed",
-            errorCode="DECRYPT_FAILED",
-            message=msg,
-            progressPercent=100,
-            result=result,
-        )
-        return
+    already_plain, plain_reason = looks_like_plaintext_firmware(
+        enc_path, original_name=meta.originalFileName or enc_path.name
+    )
+    if already_plain:
+        _update(job, progressPercent=40, message="Klartext erkannt — Decrypt übersprungen")
+        shutil.copy2(enc_path, out_bin)
+        ok, msg = True, f"already plaintext ({plain_reason})"
+        notes.append(msg)
+    else:
+        _update(job, progressPercent=40, message="ninebottea decrypt…")
+        ok, msg = run_decrypt(enc_path, out_bin)
+        if not ok:
+            # Recovery: ninebottea exit 4 on dumps that are already cleartext
+            # (e.g. bare .bin without .dec hint). Filename already ruled out above —
+            # only accept strong IVT evidence so real .enc failures stay failed.
+            recover, recover_reason = looks_like_plaintext_firmware(
+                enc_path,
+                original_name=meta.originalFileName or enc_path.name,
+                ignore_filename=True,
+            )
+            if recover and recover_reason == "cortex_m_ivt":
+                shutil.copy2(enc_path, out_bin)
+                ok, msg = True, f"decrypt failed; treating as plaintext ({recover_reason})"
+                notes.append(f"decrypt_error_ignored={msg}")
+            else:
+                result = deep_result(
+                    subject_sha256=enc_sha,
+                    display_name=display,
+                    models=models,
+                    controller_type=ctype,
+                    plaintext=b"",
+                    decrypt_ok=False,
+                    notes=notes + [msg],
+                )
+                _update(
+                    job,
+                    state="failed",
+                    errorCode="DECRYPT_FAILED",
+                    message=msg,
+                    progressPercent=100,
+                    result=result,
+                )
+                return
 
     plaintext = out_bin.read_bytes()
     plain_sha = sha256_bytes(plaintext)
@@ -665,13 +688,14 @@ def process_job(job_id: str) -> None:
     stored = PLAINTEXT_STORE / day / f"{job_id}_{plain_sha[:12]}_{safe_name}.dec.bin"
     stored.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(out_bin, stored)
+    decrypt_label = "Klartext übernommen" if already_plain or msg.startswith("decrypt failed") else "Decrypt OK"
     _update(
         job,
         plaintextSHA256=plain_sha,
         plaintextPath=str(stored),
         plaintextSaved=True,
         progressPercent=55,
-        message=f"Decrypt OK ({len(plaintext)} Byte)",
+        message=f"{decrypt_label} ({len(plaintext)} Byte)",
     )
     notes.append(f"plaintextSaved={stored}")
 
@@ -974,7 +998,7 @@ def process_job(job_id: str) -> None:
             "comboPolicy=keine validierte Tastenfolge (nur Live-/Belegt-/Validiert:-Zeilen erlaubt)"
         )
 
-    parts = [f"Decrypt OK ({len(plaintext)} Byte) → {stored}"]
+    parts = [f"{decrypt_label} ({len(plaintext)} Byte) → {stored}"]
     if r2_info.get("ok"):
         parts.append(f"r2 {len(r2_info.get('speeds') or [])} Speeds")
     if cs_info.get("ok"):
