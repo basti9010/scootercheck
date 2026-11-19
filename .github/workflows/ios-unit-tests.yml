@@ -50,6 +50,8 @@ jobs:
       - name: Unit tests (ScooterCheckTests)
         env:
           FIRMWARE_PDF_VALIDATION_DIR: ${{ github.workspace }}/release-validation/pdf
+          # Pass through to the iOS Simulator test process (xcodebuild env alone is not enough).
+          SIMCTL_CHILD_FIRMWARE_PDF_VALIDATION_DIR: ${{ github.workspace }}/release-validation/pdf
         run: |
           DEST=$(xcrun simctl list devices available -j | python3 -c '
           import json, sys

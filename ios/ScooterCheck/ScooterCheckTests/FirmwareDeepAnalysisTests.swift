@@ -1,5 +1,5 @@
 import XCTest
-// Phase 2.3.3 CI retrigger (macOS runner capacity miss on 449b7ea)
+// Phase 2.3.4 final: retrigger Tip TestFlight after push-run cancel + PDF artifact env
 import PDFKit
 @testable import ScooterCheck
 
