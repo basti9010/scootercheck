@@ -100,29 +100,6 @@ struct FirmwareZipInspectorView: View {
             .sheet(isPresented: $showRefForm) {
                 referenceImportForm
             }
-            .sheet(isPresented: $showShare) {
-                FirmwareShareSheet(items: shareItems)
-            }
-            .sheet(isPresented: $showDecompilePreview) {
-                NavigationStack {
-                    ScrollView {
-                        Text(decompilePreview?.preview ?? "")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(Theme.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                    }
-                    .background(Theme.bg.ignoresSafeArea())
-                    .navigationTitle("Ghidra .c (Vorschau)")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Schließen") { showDecompilePreview = false }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
-            }
         }
     }
 
@@ -196,6 +173,31 @@ struct FirmwareZipInspectorView: View {
                 }
             }
             .preferredColorScheme(.dark)
+            // Share / preview must be presented from this fullScreenCover host.
+            // A sheet on the parent body stays hidden under the analysis cover.
+            .sheet(isPresented: $showShare, onDismiss: { shareItems = [] }) {
+                FirmwareShareSheet(items: shareItems)
+            }
+            .sheet(isPresented: $showDecompilePreview) {
+                NavigationStack {
+                    ScrollView {
+                        Text(decompilePreview?.preview ?? "")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .background(Theme.bg.ignoresSafeArea())
+                    .navigationTitle("Ghidra .c (Vorschau)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Schließen") { showDecompilePreview = false }
+                        }
+                    }
+                }
+                .preferredColorScheme(.dark)
+            }
         }
     }
 
@@ -1910,29 +1912,67 @@ struct FirmwareZipInspectorView: View {
 
     private func sharePDF(_ r: FirmwareForensicReport) {
         let data = FirmwareForensicPDF.render(r)
+        guard data.count > 500, String(data: data.prefix(5), encoding: .ascii) == "%PDF-" else {
+            errorText = "PDF-Export fehlgeschlagen: leerer oder ungültiger Bericht."
+            return
+        }
+        let stamp = Int(Date().timeIntervalSince1970)
+        let stem = exportFileStem()
         let base = FileManager.default.temporaryDirectory
-        let pdfURL = base.appendingPathComponent("ScooterCheck-Firmware-Forensik.pdf")
-        try? data.write(to: pdfURL)
-        var items: [Any] = [pdfURL]
+        let pdfURL = base.appendingPathComponent("ScooterCheck-Firmware-Forensik-\(stem)-\(stamp).pdf")
+        do {
+            try data.write(to: pdfURL, options: .atomic)
+        } catch {
+            errorText = "PDF konnte nicht gespeichert werden: \(error.localizedDescription)"
+            return
+        }
+        var items: [Any] = [
+            NamedShareFile(url: pdfURL, title: "ScooterCheck Firmware-Forensik", utType: "com.adobe.pdf")
+        ]
         if let plain = serverPlaintextData, !plain.isEmpty {
-            let stem = (lastFileName as NSString).deletingPathExtension
-            let binURL = base.appendingPathComponent("\(stem.isEmpty ? "FIRM" : stem).dec.bin")
-            try? plain.write(to: binURL)
-            items.append(binURL)
+            let binURL = base.appendingPathComponent("\(stem).dec.bin")
+            do {
+                try plain.write(to: binURL, options: .atomic)
+                items.append(
+                    NamedShareFile(url: binURL, title: "\(stem).dec.bin", utType: "public.data")
+                )
+            } catch {
+                // PDF remains shareable even if plaintext sidecar write fails.
+                errorText = "PDF bereit; Klartext-Binär konnte nicht angehängt werden."
+            }
         }
         shareItems = items
         showShare = true
     }
 
     private func shareJSON(_ r: FirmwareForensicReport) {
-        guard let data = try? FirmwareForensicPDF.jsonData(r) else {
+        guard let data = try? FirmwareForensicPDF.jsonData(r), !data.isEmpty else {
             errorText = "JSON-Export fehlgeschlagen."
             return
         }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ScooterCheck-Firmware-Forensik.json")
-        try? data.write(to: url)
-        shareItems = [url]
+        let stamp = Int(Date().timeIntervalSince1970)
+        let stem = exportFileStem()
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ScooterCheck-Firmware-Forensik-\(stem)-\(stamp).json")
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            errorText = "JSON konnte nicht gespeichert werden: \(error.localizedDescription)"
+            return
+        }
+        shareItems = [
+            NamedShareFile(url: url, title: "ScooterCheck Firmware-Forensik JSON", utType: "public.json")
+        ]
         showShare = true
+    }
+
+    private func exportFileStem() -> String {
+        let raw = (lastFileName as NSString).deletingPathExtension
+        let cleaned = raw
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? "FIRM" : cleaned
     }
 }
 
@@ -2067,12 +2107,14 @@ private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
-/// Einfacher UIActivity-Share-Wrapper für Forensik-Exporte.
+/// UIActivity-Share-Wrapper für Forensik-Exporte (PDF/JSON/.dec.bin).
 struct FirmwareShareSheet: UIViewControllerRepresentable {
     var items: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.excludedActivityTypes = [.addToReadingList, .assignToContact]
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
