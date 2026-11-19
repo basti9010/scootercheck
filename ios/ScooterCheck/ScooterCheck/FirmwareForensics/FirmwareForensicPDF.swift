@@ -218,12 +218,72 @@ enum FirmwareForensicPDF {
                 ("IVT", deep.cortexMIvt != nil),
                 ("Pinout", deep.boardPinout != nil),
                 ("Speed-Signaturen", !deep.speedLimits.isEmpty),
+                ("Function Matching", deep.functionMatching != nil || deep.functionDiff != nil),
+                ("Input Behavior", deep.inputBehaviorAnalysis != nil),
                 ("Emulation/Angr", deep.sources.contains(.serverEmulation) || deep.sources.contains(.serverAngr)),
                 ("KI", deep.sources.contains(.serverLLM)),
             ]
             for (name, ok) in steps {
                 y = ensure(ctx, y: y, need: 16)
                 y = line(ctx, "• \(name): \(ok ? "Daten vorhanden" : "nicht vorhanden / nicht gelaufen")", y: y, size: 8)
+            }
+
+            // Phase 2.2C: Funktionszuordnung
+            if let fd = deep.functionDiff, let sum = fd.summary {
+                y = gap(y)
+                y = line(ctx, "Funktionszuordnung (strukturell, kein Manipulationsnachweis):", y: y, size: 9, bold: true)
+                y = line(ctx, "Methode: \(fd.toolNote ?? fd.tool ?? "multi-stage matcher")", y: y, size: 8)
+                y = line(
+                    ctx,
+                    "Zugeordnet=\(sum.matched ?? 0) · Identisch=\(sum.identical ?? 0) · Verändert=\(sum.structurallyChanged ?? 0) · "
+                        + "Hinzu=\(sum.added ?? 0) · Entfernt=\(sum.removed ?? 0) · Mehrdeutig=\(sum.ambiguous ?? 0)",
+                    y: y,
+                    size: 8
+                )
+                if let high = sum.matchHigh, let med = sum.matchMedium, let low = sum.matchLow {
+                    y = line(ctx, "Matching-Konfidenz HIGH/MEDIUM/LOW: \(high)/\(med)/\(low)", y: y, size: 8)
+                }
+                for lim in (fd.analysisLimitations ?? []).prefix(4) {
+                    y = ensure(ctx, y: y, need: 16)
+                    y = line(ctx, "• \(lim)", y: y, size: 7)
+                }
+            }
+
+            // Phase 2.2C: Eingabeverarbeitung
+            if let ib = deep.inputBehaviorAnalysis {
+                y = gap(y)
+                y = line(ctx, "Eingabeverarbeitung (heuristisch):", y: y, size: 9, bold: true)
+                y = line(
+                    ctx,
+                    "Relevante Funktionen=\(ib.summary?.inputRelevantCount ?? 0) · Evidenzstufe=\(ib.evidenceTier ?? "—")",
+                    y: y,
+                    size: 8
+                )
+                if let cats = ib.categories, !cats.isEmpty {
+                    let label = cats.map { "\($0.key):\($0.value)" }.sorted().joined(separator: ", ")
+                    y = line(ctx, "Kategorien: \(label)", y: y, size: 8)
+                }
+                let sm = deep.stateMachineAnalysis ?? ib.stateMachineAnalysis
+                if let sm {
+                    y = line(
+                        ctx,
+                        "Zustandsautomaten=\(sm.stateMachineCount ?? 0) · Zustände≈\(sm.totalEstimatedStates ?? 0) · Übergänge≈\(sm.totalEstimatedTransitions ?? 0)",
+                        y: y,
+                        size: 8
+                    )
+                }
+                if let diff = deep.inputBehaviorDiff?.summary {
+                    y = line(
+                        ctx,
+                        "Input-Diff vs Referenz: identisch=\(diff.identical ?? 0) verändert=\(diff.structurallyChanged ?? 0) hinzu=\(diff.added ?? 0) entfernt=\(diff.removed ?? 0)",
+                        y: y,
+                        size: 8
+                    )
+                }
+                for lim in (ib.analysisLimitations ?? []).prefix(4) {
+                    y = ensure(ctx, y: y, need: 16)
+                    y = line(ctx, "• \(lim)", y: y, size: 7)
+                }
             }
 
             let findings = deep.classifiedFindings

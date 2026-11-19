@@ -20,6 +20,22 @@
       "loop_accumulate"
     ]
   },
+  "expectedInputBehavior": {
+    "notes": "Harmless synthetic input/state helpers only — no scooter limits or unlock logic.",
+    "version_a": {
+      "inputFunctions": ["process_input"],
+      "stateMachineCandidatesMin": 1,
+      "categories": ["input_callback"]
+    },
+    "version_b": {
+      "inputFunctions": ["process_input"],
+      "stateMachineCandidatesMin": 1,
+      "categories": ["input_callback"]
+    },
+    "diff": {
+      "process_input": ["IDENTISCH", "STRUKTURELL_VERAENDERT"]
+    }
+  },
   "version_a": {
     "sha256": "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
     "bytes": 256,

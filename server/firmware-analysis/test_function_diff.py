@@ -29,7 +29,7 @@ def _fn(addr: str, name: str, size: int, blocks: int, edges: int, fp: str, calls
 
 class FunctionDiffTests(unittest.TestCase):
     def test_identical_functions(self) -> None:
-        f = _fn("0x08001000", "FUN_a", 64, 4, 5, "aaa111")
+        f = _fn("0x08001000", "helper_a", 64, 4, 5, "aaa111")
         a = {"ok": True, "functions": [f]}
         b = {"ok": True, "functions": [dict(f)]}
         out = fd.compare_function_analyses(a, b)
@@ -39,19 +39,20 @@ class FunctionDiffTests(unittest.TestCase):
     def test_structurally_changed(self) -> None:
         a = {
             "ok": True,
-            "functions": [_fn("0x08001000", "FUN_a", 64, 4, 5, "aaa111", calls=["x"])],
+            "functions": [_fn("0x08001000", "helper_a", 64, 4, 5, "aaa111", calls=["x"])],
         }
         b = {
             "ok": True,
-            "functions": [_fn("0x08001000", "FUN_a", 96, 8, 10, "bbb222", calls=["y"])],
+            "functions": [_fn("0x08001000", "helper_a", 96, 8, 10, "bbb222", calls=["y"])],
         }
         out = fd.compare_function_analyses(a, b)
         self.assertEqual(out["summary"]["structurallyChanged"], 1)
         self.assertEqual(out["pairs"][0]["status"], fd.STATUS_CHANGED)
 
     def test_added_and_removed(self) -> None:
-        a = {"ok": True, "functions": [_fn("0x1", "FUN_new", 10, 1, 1, "n1")]}
-        b = {"ok": True, "functions": [_fn("0x2", "FUN_old", 10, 1, 1, "o1")]}
+        # Distinct sizes/CFG so multi-stage matcher does not false-pair them.
+        a = {"ok": True, "functions": [_fn("0x1", "brand_new_fn", 64, 6, 8, "n1")]}
+        b = {"ok": True, "functions": [_fn("0x2", "legacy_only_fn", 12, 1, 1, "o1")]}
         out = fd.compare_function_analyses(a, b)
         self.assertEqual(out["summary"]["added"], 1)
         self.assertEqual(out["summary"]["removed"], 1)
