@@ -423,6 +423,53 @@ struct BLERadarSettingsSheet: View {
                     Text("Nur Treffer ab dieser Signalstärke lösen Radar-Alarme aus.")
                         .font(Theme.meta)
                 }
+
+                Section {
+                    Toggle(
+                        "Radar-Hinweise",
+                        isOn: Binding(
+                            get: { session.settings.notifyScooterDetections },
+                            set: { v in
+                                var s = session.settings
+                                s.notifyScooterDetections = v
+                                session.settings = s
+                            }
+                        )
+                    )
+                    .listRowBackground(Theme.card)
+                    Toggle(
+                        "Ton",
+                        isOn: Binding(
+                            get: { session.settings.soundEnabled },
+                            set: { v in
+                                var s = session.settings
+                                s.soundEnabled = v
+                                session.settings = s
+                                radar.soundEnabled = v
+                            }
+                        )
+                    )
+                    .listRowBackground(Theme.card)
+                    Toggle(
+                        "Haptik",
+                        isOn: Binding(
+                            get: { session.settings.hapticsEnabled },
+                            set: { v in
+                                var s = session.settings
+                                s.hapticsEnabled = v
+                                session.settings = s
+                                radar.hapticsEnabled = v
+                            }
+                        )
+                    )
+                    .listRowBackground(Theme.card)
+                } header: {
+                    Text("Benachrichtigungen")
+                        .font(Theme.meta)
+                } footer: {
+                    Text("Gewöhnliche Scooter-Hinweise erscheinen nur bei aktiviertem Radar und nur auf der Radar-Oberfläche (im Hintergrund optional als Systemmeldung). Gerätewächter bleiben unabhängig.")
+                        .font(Theme.meta)
+                }
             }
             .font(Theme.caption)
             .listStyle(.insetGrouped)
@@ -442,7 +489,7 @@ struct BLERadarSettingsSheet: View {
             }
             .preferredColorScheme(.dark)
         }
-        .presentationDetents([.height(340), .medium])
+        .presentationDetents([.height(460), .medium])
         .presentationDragIndicator(.visible)
     }
 }

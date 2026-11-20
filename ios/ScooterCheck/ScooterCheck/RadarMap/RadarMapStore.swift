@@ -26,6 +26,16 @@ final class RadarMapStore: ObservableObject {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("store.json")
         settings = RadarMapSettings.load()
+        // One-time: enable local sighting history if older installs still had the opt-in off.
+        let migrateKey = "radarMap.storeSightingsDefaultOn.v1"
+        if UserDefaults.standard.object(forKey: migrateKey) == nil {
+            if !settings.storeSightings {
+                var s = settings
+                s.storeSightings = true
+                settings = s
+            }
+            UserDefaults.standard.set(true, forKey: migrateKey)
+        }
         load()
         pruneRetentionIfNeeded()
     }

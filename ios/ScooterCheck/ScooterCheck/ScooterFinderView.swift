@@ -141,6 +141,9 @@ struct ScooterFinderView: View {
                 ble.startScan()
             }
             BLERadarService.shared.attach(ble: ble)
+            if mode == .radar {
+                radar.setRadarUIVisible(true)
+            }
             if mode == .radar, !radarBrowseMode, !isFinding {
                 startRadarBrowse()
             }
@@ -157,8 +160,10 @@ struct ScooterFinderView: View {
             if multiMonitor.isActive {
                 multiMonitor.stop()
             }
+            // Leaving the radar surface must not end a background session.
+            // Explicit stop remains on the radar "beenden" action.
+            radar.setRadarUIVisible(false)
             if radarBrowseMode {
-                radar.endSession()
                 radarBrowseMode = false
             }
         }

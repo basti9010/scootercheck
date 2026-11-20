@@ -56,10 +56,12 @@ Name-unabhängige Strukturpfade (≥1 starkes Signal):
 | C_no_strings | 13 | 0 | 6 | 23 | 1.0 | 0.6842 | 0.8125 | 1.0 |
 | D_shifted | 13 | 0 | 6 | 23 | 1.0 | 0.6842 | 0.8125 | 1.0 |
 | E_anon_meta | 13 | 0 | 6 | 23 | 1.0 | 0.6842 | 0.8125 | 1.0 |
-| F_generic_no_signature | 14 | 0 | 5 | 23 | 1.0 | 0.7368 | 0.8485 | 1.0 |
+| F_generic_no_signature | 13 | 0 | 6 | 23 | 1.0 | 0.6842 | 0.8125 | 1.0 |
 | G_partial_dataflow | 15 | 1 | 4 | 22 | 0.9375 | 0.7895 | 0.8571 | 0.9565 |
 
 Trade-off vs Phase 2.3.2 (14-case GT, C–E recall 0.4167): C–E recall raised to ~0.68 with FP=0 on anonymized variants; A/G keep one FP.
+
+**Final-release re-run note (F):** Prior doc row listed F at TP=14 / R=0.7368. Live re-evaluation on the same fixtures now yields TP=13 / R=0.6842 (FP still 0). Missed positives vs A: `fn_07` (state_update), `fn_18` (input_callback). No threshold change — precision remains 1.0; investigate further only if F drifts below the C recall floor (0.40) or gains FP.
 
 ### Real firmware negative control (phase232 exports, AF 2.3.3)
 

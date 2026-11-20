@@ -83,7 +83,12 @@ final class RadarMapRecorder: NSObject, ObservableObject {
 
         let fp = BLEDeviceFingerprint.from(device: device)
         let fpKey = fingerprintKey(fp)
-        let match = resolveIdentity(device: device, fingerprint: fp, fingerprintKey: fpKey)
+        let match: IdentityResolution = {
+            guard store.settings.storeDeviceHistory else {
+                return .init(identity: nil, confidence: .unknown)
+            }
+            return resolveIdentity(device: device, fingerprint: fp, fingerprintKey: fpKey)
+        }()
         let identityId = match.identity?.id
 
         // Ausgeblendet?
@@ -138,27 +143,31 @@ final class RadarMapRecorder: NSObject, ObservableObject {
 
         // Neue Sichtung
         var identity = match.identity
-        if identity == nil, match.confidence.allowsHistoryMerge || match.confidence == .unknown {
-            let created = RadarDeviceIdentity(
-                id: UUID(),
-                primaryPeripheralId: device.id,
-                fingerprintKey: fpKey,
-                displayName: device.bleListDisplayName,
-                manufacturer: ExtendedScooterModelHint.recognize(bleName: device.cryptoName)?.brand,
-                model: device.modelLabel ?? ExtendedScooterModelHint.recognize(bleName: device.cryptoName)?.title,
-                firstSeenAt: now,
-                lastSeenAt: now,
-                sightingCount: 0,
-                deviceKind: kind,
-                approvalStatusRaw: approval?.rawValue
-            )
-            store.upsertIdentity(created)
-            identity = created
-        } else if var id = identity {
-            id.lastSeenAt = now
-            id.displayName = device.bleListDisplayName
-            store.upsertIdentity(id)
-            identity = id
+        if store.settings.storeDeviceHistory {
+            if identity == nil, match.confidence.allowsHistoryMerge || match.confidence == .unknown {
+                let created = RadarDeviceIdentity(
+                    id: UUID(),
+                    primaryPeripheralId: device.id,
+                    fingerprintKey: fpKey,
+                    displayName: device.bleListDisplayName,
+                    manufacturer: ExtendedScooterModelHint.recognize(bleName: device.cryptoName)?.brand,
+                    model: device.modelLabel ?? ExtendedScooterModelHint.recognize(bleName: device.cryptoName)?.title,
+                    firstSeenAt: now,
+                    lastSeenAt: now,
+                    sightingCount: 0,
+                    deviceKind: kind,
+                    approvalStatusRaw: approval?.rawValue
+                )
+                store.upsertIdentity(created)
+                identity = created
+            } else if var id = identity {
+                id.lastSeenAt = now
+                id.displayName = device.bleListDisplayName
+                store.upsertIdentity(id)
+                identity = id
+            }
+        } else {
+            identity = nil
         }
 
         let sighting = RadarSighting(
@@ -277,6 +286,8 @@ final class RadarMapRecorder: NSObject, ObservableObject {
     }
 
     private func maybeNotifyRepeat(identityId: UUID, deviceName: String, now: Date) {
+        // Same central gate as ordinary radar alerts — no off-radar pop-up flood.
+        guard BLERadarService.shared.allowsOrdinaryRadarUserAlerts(forLocalNotification: true) else { return }
         let count = store.sightings.filter {
             $0.deviceIdentityId == identityId && $0.identityMatchConfidence.allowsHistoryMerge
         }.count
@@ -288,6 +299,7 @@ final class RadarMapRecorder: NSObject, ObservableObject {
         content.title = "Bekannter Scooter erneut erkannt"
         content.body = "Zu „\(deviceName)“ liegen bereits \(count) frühere Sichtungen vor."
         content.sound = .default
+        content.userInfo = ["type": "radarMapRepeat", "identityId": identityId.uuidString]
         let req = UNNotificationRequest(
             identifier: "radar-map-repeat-\(identityId.uuidString)",
             content: content,

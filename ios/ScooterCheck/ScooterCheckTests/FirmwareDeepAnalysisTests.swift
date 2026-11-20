@@ -1,5 +1,5 @@
 import XCTest
-// Phase 2.3.3 CI retrigger (macOS runner capacity miss on 449b7ea)
+// Phase 2.3.4 final: retrigger Tip TestFlight after push-run cancel + PDF artifact env
 import PDFKit
 @testable import ScooterCheck
 
@@ -1357,15 +1357,30 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
                 "totalFunctions": 50,
                 "dataflowExportCoverage": 66.0,
                 "parameterRecoveryCoverage": 40.0,
+                "parameterNonZeroCoverage": 22.0,
+                "parameterUnknownCoverage": 50.0,
+                "parameterPartialCoverage": 10.0,
+                "exactParameterAccuracy": 90.0,
+                "acceptedOrAmbiguousRate": 100.0,
+                "unknownParameterRate": 0.0,
+                "partialSignatureRate": 0.0,
+                "recoveredParameterCoverage": 100.0,
                 "memoryAccessCoverage": 88.0,
                 "dataReferenceCoverage": 55.0,
                 "unresolvedDataflowCount": 3,
+                "parameterQualityDistribution": {
+                  "CONFIRMED_ZERO_PARAMETERS": 5,
+                  "RECOVERED_PARAMETER_COUNT": 15,
+                  "UNKNOWN_PARAMETER_COUNT": 25,
+                  "PARTIAL_SIGNATURE": 5
+                },
                 "semanticConfidenceDistribution": {
                   "GHIDRA_EXPORTED": 33,
                   "MNEMONIC_DERIVED": 12,
                   "PARTIAL": 3,
                   "NOT_AVAILABLE": 2
-                }
+                },
+                "note": "exact≠accepted — abweichende Parameterzahlen zählen nicht als exakt korrekt."
               }
             },
             "evidenceTier": "INDICATIVE"
@@ -1379,12 +1394,24 @@ final class FirmwareDeepAnalysisTests: XCTestCase {
         XCTAssertEqual(qm.totalFunctions, 50)
         XCTAssertEqual(qm.dataflowExportCoverage, 66.0)
         XCTAssertEqual(qm.parameterRecoveryCoverage, 40.0)
+        XCTAssertEqual(qm.parameterNonZeroCoverage, 22.0)
+        XCTAssertEqual(qm.parameterUnknownCoverage, 50.0)
+        XCTAssertEqual(qm.parameterPartialCoverage, 10.0)
+        XCTAssertEqual(qm.exactParameterAccuracy, 90.0)
+        XCTAssertEqual(qm.acceptedOrAmbiguousRate, 100.0)
+        XCTAssertLessThanOrEqual(qm.exactParameterAccuracy ?? 0, qm.acceptedOrAmbiguousRate ?? 0)
+        XCTAssertEqual(qm.unknownParameterRate, 0.0)
+        XCTAssertEqual(qm.partialSignatureRate, 0.0)
+        XCTAssertEqual(qm.recoveredParameterCoverage, 100.0)
         XCTAssertEqual(qm.memoryAccessCoverage, 88.0)
         XCTAssertEqual(qm.dataReferenceCoverage, 55.0)
         XCTAssertEqual(qm.unresolvedDataflowCount, 3)
+        XCTAssertEqual(qm.parameterQualityDistribution?["UNKNOWN_PARAMETER_COUNT"], 25)
+        XCTAssertEqual(qm.parameterQualityDistribution?["RECOVERED_PARAMETER_COUNT"], 15)
         XCTAssertEqual(qm.semanticConfidenceDistribution?["GHIDRA_EXPORTED"], 33)
         XCTAssertEqual(qm.semanticConfidenceDistribution?["NOT_AVAILABLE"], 2)
         XCTAssertEqual(deep.activationForensics?.referenceComparison?.referenceTrust, "communityLibrary")
+        XCTAssertTrue((qm.note ?? "").contains("exact"))
     }
 
     func testPhase22H2KeychainSaveResultContract() {

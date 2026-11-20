@@ -63,6 +63,7 @@ DEPLOY_PY_FILES=(
   test_phase233_quality.py
   test_phase233_jwt_artifacts.py
   test_phase233_ghidra_export_gt.py
+  test_phase234_parameter_quality.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py
@@ -86,6 +87,7 @@ DEPLOY_PY_FILES=(
   docs/phase231-semantic-validation.md
   docs/phase232-ghidra-validation.md
   docs/phase233-quality.md
+  docs/phase234-release-hardening.md
   .env.example
 )
 

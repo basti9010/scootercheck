@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Firmware-Forensik 2.0 — Read-Only, Dark UI (#12161C / #6BDBC2).
 struct FirmwareZipInspectorView: View {
@@ -17,9 +18,8 @@ struct FirmwareZipInspectorView: View {
     @State private var preferredReferenceId: String?
     @State private var lastFileName: String = ""
     @State private var lastData: Data?
-    @State private var shareItems: [Any] = []
-    @State private var showShare = false
     @State private var showRefForm = false
+    @State private var isExportBusy = false
     @State private var pendingRefData: Data?
     @State private var pendingRefName: String = ""
     @State private var refManufacturer = "Segway-Ninebot"
@@ -100,29 +100,6 @@ struct FirmwareZipInspectorView: View {
             .sheet(isPresented: $showRefForm) {
                 referenceImportForm
             }
-            .sheet(isPresented: $showShare) {
-                FirmwareShareSheet(items: shareItems)
-            }
-            .sheet(isPresented: $showDecompilePreview) {
-                NavigationStack {
-                    ScrollView {
-                        Text(decompilePreview?.preview ?? "")
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(Theme.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                    }
-                    .background(Theme.bg.ignoresSafeArea())
-                    .navigationTitle("Ghidra .c (Vorschau)")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Schließen") { showDecompilePreview = false }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
-            }
         }
     }
 
@@ -196,6 +173,26 @@ struct FirmwareZipInspectorView: View {
                 }
             }
             .preferredColorScheme(.dark)
+            .sheet(isPresented: $showDecompilePreview) {
+                NavigationStack {
+                    ScrollView {
+                        Text(decompilePreview?.preview ?? "")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                    }
+                    .background(Theme.bg.ignoresSafeArea())
+                    .navigationTitle("Ghidra .c (Vorschau)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Schließen") { showDecompilePreview = false }
+                        }
+                    }
+                }
+                .preferredColorScheme(.dark)
+            }
         }
     }
 
@@ -1909,30 +1906,83 @@ struct FirmwareZipInspectorView: View {
     }
 
     private func sharePDF(_ r: FirmwareForensicReport) {
+        guard !isExportBusy else { return }
+        isExportBusy = true
+        defer { isExportBusy = false }
+
         let data = FirmwareForensicPDF.render(r)
-        let base = FileManager.default.temporaryDirectory
-        let pdfURL = base.appendingPathComponent("ScooterCheck-Firmware-Forensik.pdf")
-        try? data.write(to: pdfURL)
-        var items: [Any] = [pdfURL]
-        if let plain = serverPlaintextData, !plain.isEmpty {
-            let stem = (lastFileName as NSString).deletingPathExtension
-            let binURL = base.appendingPathComponent("\(stem.isEmpty ? "FIRM" : stem).dec.bin")
-            try? plain.write(to: binURL)
-            items.append(binURL)
+        guard data.count > 500, String(data: data.prefix(5), encoding: .ascii) == "%PDF-" else {
+            errorText = "PDF-Export fehlgeschlagen: leerer oder ungültiger Bericht."
+            return
         }
-        shareItems = items
-        showShare = true
+        let stamp = Int(Date().timeIntervalSince1970)
+        let stem = exportFileStem()
+        let base = FileManager.default.temporaryDirectory
+        let pdfURL = base.appendingPathComponent("ScooterCheck-Firmware-Forensik-\(stem)-\(stamp).pdf")
+        do {
+            try data.write(to: pdfURL, options: .atomic)
+        } catch {
+            errorText = "PDF konnte nicht gespeichert werden: \(error.localizedDescription)"
+            return
+        }
+        var items: [Any] = [
+            NamedShareFile(url: pdfURL, title: "ScooterCheck Firmware-Forensik", utType: "com.adobe.pdf")
+        ]
+        if let plain = serverPlaintextData, !plain.isEmpty {
+            let binURL = base.appendingPathComponent("\(stem).dec.bin")
+            do {
+                try plain.write(to: binURL, options: .atomic)
+                items.append(
+                    NamedShareFile(url: binURL, title: "\(stem).dec.bin", utType: "public.data")
+                )
+            } catch {
+                errorText = "PDF bereit; Klartext-Binär konnte nicht angehängt werden."
+            }
+        }
+        // Present UIKit share immediately from the topmost VC (analysis cover).
+        // SwiftUI `.sheet` under nested covers often only appears after dismiss.
+        FirmwareExportSharePresenter.present(items: items) { presented in
+            if !presented {
+                errorText = "PDF-Teilen-Menü konnte nicht geöffnet werden."
+            }
+        }
     }
 
     private func shareJSON(_ r: FirmwareForensicReport) {
-        guard let data = try? FirmwareForensicPDF.jsonData(r) else {
+        guard !isExportBusy else { return }
+        isExportBusy = true
+        defer { isExportBusy = false }
+
+        guard let data = try? FirmwareForensicPDF.jsonData(r), !data.isEmpty else {
             errorText = "JSON-Export fehlgeschlagen."
             return
         }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ScooterCheck-Firmware-Forensik.json")
-        try? data.write(to: url)
-        shareItems = [url]
-        showShare = true
+        let stamp = Int(Date().timeIntervalSince1970)
+        let stem = exportFileStem()
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ScooterCheck-Firmware-Forensik-\(stem)-\(stamp).json")
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            errorText = "JSON konnte nicht gespeichert werden: \(error.localizedDescription)"
+            return
+        }
+        FirmwareExportSharePresenter.present(items: [
+            NamedShareFile(url: url, title: "ScooterCheck Firmware-Forensik JSON", utType: "public.json")
+        ]) { presented in
+            if !presented {
+                errorText = "JSON-Teilen-Menü konnte nicht geöffnet werden."
+            }
+        }
+    }
+
+    private func exportFileStem() -> String {
+        let raw = (lastFileName as NSString).deletingPathExtension
+        let cleaned = raw
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? "FIRM" : cleaned
     }
 }
 
@@ -1961,10 +2011,36 @@ private func firmwareActivationDataflowQualityMetaLines(
     }
     pct("Export-Abdeckung", qm.dataflowExportCoverage)
     pct("Parameter-Wiederherstellung", qm.parameterRecoveryCoverage)
+    pct("Parameter > 0", qm.parameterNonZeroCoverage)
+    pct("Parameter unbekannt", qm.parameterUnknownCoverage)
+    pct("Signatur teilweise", qm.parameterPartialCoverage)
+    pct("Exakte Parameter-Accuracy", qm.exactParameterAccuracy)
+    pct("Akzeptiert/mehrdeutig", qm.acceptedOrAmbiguousRate)
     pct("Speicherzugriffe", qm.memoryAccessCoverage)
     pct("Datenreferenzen", qm.dataReferenceCoverage)
     if let n = qm.unresolvedDataflowCount {
         lines.append(FirmwareActivationLabelValue(label: "offene Dataflows", value: "\(n)"))
+    }
+    if qm.exactParameterAccuracy != nil || qm.acceptedOrAmbiguousRate != nil {
+        lines.append(FirmwareActivationLabelValue(
+            label: "Hinweis Accuracy",
+            value: "exact ≠ accepted — abweichende Parameterzahlen zählen nicht als exakt"
+        ))
+    }
+    if let n = qm.parameterUnknownCount, n > 0 {
+        lines.append(FirmwareActivationLabelValue(
+            label: "Hinweis Parameter",
+            value: "unbekannte Signaturen ≠ null Parameter"
+        ))
+    }
+    if let dist = qm.parameterQualityDistribution, !dist.isEmpty {
+        let label = dist.filter { $0.value > 0 }
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: " · ")
+        if !label.isEmpty {
+            lines.append(FirmwareActivationLabelValue(label: "Parameter-Qualität", value: label))
+        }
     }
     if let dist = qm.semanticConfidenceDistribution, !dist.isEmpty {
         let label = dist.filter { $0.value > 0 }
@@ -2041,12 +2117,75 @@ private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
-/// Einfacher UIActivity-Share-Wrapper für Forensik-Exporte.
+/// Presents `UIActivityViewController` from the topmost view controller so the
+/// share sheet appears immediately even inside a nested `fullScreenCover`.
+enum FirmwareExportSharePresenter {
+    @MainActor
+    static func present(items: [Any], completion: ((Bool) -> Void)? = nil) {
+        guard !items.isEmpty else {
+            completion?(false)
+            return
+        }
+        guard let host = topViewController() else {
+            completion?(false)
+            return
+        }
+        // Avoid stacking another activity controller.
+        if host.presentedViewController is UIActivityViewController {
+            completion?(true)
+            return
+        }
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.excludedActivityTypes = [.addToReadingList, .assignToContact]
+        if let pop = controller.popoverPresentationController {
+            pop.sourceView = host.view
+            pop.sourceRect = CGRect(
+                x: host.view.bounds.midX,
+                y: host.view.bounds.midY,
+                width: 1,
+                height: 1
+            )
+            pop.permittedArrowDirections = []
+        }
+        // Present from the topmost host without waiting on animation completion for
+        // correctness of the share flow; still report success once presentation starts.
+        host.present(controller, animated: true)
+        completion?(true)
+    }
+
+    @MainActor
+    static func topViewController(base: UIViewController? = nil) -> UIViewController? {
+        let resolvedBase: UIViewController? = {
+            if let base { return base }
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            for scene in scenes {
+                if let key = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+                    return key
+                }
+            }
+            return scenes.flatMap(\.windows).first { $0.isHidden == false }?.rootViewController
+        }()
+        if let nav = resolvedBase as? UINavigationController {
+            return topViewController(base: nav.visibleViewController)
+        }
+        if let tab = resolvedBase as? UITabBarController {
+            return topViewController(base: tab.selectedViewController)
+        }
+        if let presented = resolvedBase?.presentedViewController {
+            return topViewController(base: presented)
+        }
+        return resolvedBase
+    }
+}
+
+/// Legacy SwiftUI wrapper kept for any remaining call sites / previews.
 struct FirmwareShareSheet: UIViewControllerRepresentable {
     var items: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.excludedActivityTypes = [.addToReadingList, .assignToContact]
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

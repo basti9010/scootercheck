@@ -14,7 +14,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002080",
@@ -26,7 +28,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002100",
@@ -38,7 +42,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002180",
@@ -50,7 +56,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002200",
@@ -62,7 +70,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002280",
@@ -74,7 +84,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002300",
@@ -86,7 +98,9 @@
       "conditionalBranches": 2,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002380",
@@ -98,7 +112,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002400",
@@ -110,7 +126,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002480",
@@ -122,7 +140,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002500",
@@ -134,7 +154,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002580",
@@ -146,7 +168,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002600",
@@ -158,7 +182,9 @@
       "conditionalBranches": 2,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002680",
@@ -170,7 +196,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 2,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002700",
@@ -182,7 +210,9 @@
       "conditionalBranches": 2,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002780",
@@ -194,7 +224,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002800",
@@ -206,7 +238,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "RECOVERED_PARAMETER_COUNT",
+      "signatureSource": "ANALYSIS"
     },
     {
       "address": "0x8002880",
@@ -218,7 +252,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002900",
@@ -230,7 +266,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002980",
@@ -242,7 +280,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002a00",
@@ -254,7 +294,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002a80",
@@ -266,7 +308,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002b00",
@@ -278,7 +322,9 @@
       "conditionalBranches": 5,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002b80",
@@ -290,7 +336,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002c00",
@@ -302,7 +350,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002c80",
@@ -314,7 +364,9 @@
       "conditionalBranches": 5,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002d00",
@@ -326,7 +378,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002d80",
@@ -338,7 +392,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002e00",
@@ -350,7 +406,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002e80",
@@ -362,7 +420,9 @@
       "conditionalBranches": 5,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002f00",
@@ -374,7 +434,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8002f80",
@@ -386,7 +448,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003000",
@@ -398,7 +462,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003080",
@@ -410,7 +476,9 @@
       "conditionalBranches": 5,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003100",
@@ -422,7 +490,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003180",
@@ -434,7 +504,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003200",
@@ -446,7 +518,9 @@
       "conditionalBranches": 5,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003280",
@@ -458,7 +532,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003300",
@@ -470,7 +546,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003380",
@@ -482,7 +560,9 @@
       "conditionalBranches": 0,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003400",
@@ -494,7 +574,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 0,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     },
     {
       "address": "0x8003480",
@@ -506,7 +588,9 @@
       "conditionalBranches": 1,
       "callCount": 0,
       "dataReferenceCount": 1,
-      "quality": "ok"
+      "quality": "ok",
+      "parameterQuality": "UNKNOWN_PARAMETER_COUNT",
+      "signatureSource": "DEFAULT"
     }
   ]
 }

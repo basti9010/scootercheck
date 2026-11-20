@@ -1,0 +1,171 @@
+# Final release — PR build/unit-test CI (no TestFlight upload / no signing secrets).
+# Separates compile+test+PDFKit validation from distribution allowlists.
+name: iOS Unit Tests
+
+on:
+  pull_request:
+    paths:
+      - "ios/ScooterCheck/**"
+      - ".github/workflows/ios-unit-tests.yml"
+      - "scripts/export-pdf-validation-artifacts.sh"
+  push:
+    paths:
+      - "ios/ScooterCheck/**"
+      - ".github/workflows/ios-unit-tests.yml"
+      - "scripts/export-pdf-validation-artifacts.sh"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-unit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: ScooterCheck Unit Tests
+    runs-on: macos-15
+    timeout-minutes: 45
+    # No secrets: fork PRs and untrusted branches stay safe.
+    defaults:
+      run:
+        working-directory: ios/ScooterCheck
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          CANDIDATE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$CANDIDATE" ]; then
+            CANDIDATE=$(ls -d /Applications/Xcode_*.app /Applications/Xcode.app 2>/dev/null | sort -V | tail -1)
+          fi
+          echo "Using $CANDIDATE"
+          sudo xcode-select -s "$CANDIDATE/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+
+      - name: Prepare PDF validation output
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/release-validation/pdf/previews"
+          echo "FIRMWARE_PDF_VALIDATION_DIR=$GITHUB_WORKSPACE/release-validation/pdf" >> "$GITHUB_ENV"
+          chmod +x "$GITHUB_WORKSPACE/scripts/export-pdf-validation-artifacts.sh"
+
+      - name: Unit tests (ScooterCheckTests)
+        id: xctest
+        env:
+          FIRMWARE_PDF_VALIDATION_DIR: ${{ github.workspace }}/release-validation/pdf
+          # Pass through to the iOS Simulator test process (xcodebuild env alone is not enough).
+          SIMCTL_CHILD_FIRMWARE_PDF_VALIDATION_DIR: ${{ github.workspace }}/release-validation/pdf
+        run: |
+          DEST=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          preferred = ("iPhone 17", "iPhone 16", "iPhone 16e", "iPhone SE")
+          candidates = []
+          for runtime, devices in data.get("devices", {}).items():
+              if "iOS" not in runtime and "iPhone" not in runtime:
+                  continue
+              for d in devices:
+                  if not d.get("isAvailable"):
+                      continue
+                  name = d.get("name") or ""
+                  if "iPhone" not in name:
+                      continue
+                  candidates.append((name, d["udid"], runtime))
+          if not candidates:
+              sys.exit("no iPhone simulator available")
+          for pref in preferred:
+              for name, udid, runtime in candidates:
+                  if name.startswith(pref):
+                      print(udid)
+                      print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
+                      raise SystemExit(0)
+          name, udid, runtime = candidates[-1]
+          print(udid)
+          print(f"Selected {name} ({runtime}) -> {udid}", file=sys.stderr)
+          ')
+          echo "Using simulator UDID=$DEST"
+          echo "$DEST" > "$GITHUB_WORKSPACE/release-validation/simulator-udid.txt"
+          echo "SIMULATOR_UDID=$DEST" >> "$GITHUB_ENV"
+          set +e
+          set -o pipefail
+          xcodebuild test \
+            -project ScooterCheck.xcodeproj \
+            -scheme ScooterCheck \
+            -destination "platform=iOS Simulator,id=$DEST" \
+            -only-testing:ScooterCheckTests \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
+            -resultBundlePath "$GITHUB_WORKSPACE/release-validation/ScooterCheckTests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee "$GITHUB_WORKSPACE/release-validation/xcodebuild-test.log"
+          XC_STATUS=${PIPESTATUS[0]}
+          set +o pipefail
+          # Persist the simulator-tmp marker path printed by the PDF validation test.
+          python3 - <<'PY'
+          import os, pathlib, re
+          ws = os.environ.get("GITHUB_WORKSPACE", ".")
+          log = pathlib.Path(ws) / "release-validation" / "xcodebuild-test.log"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          m = re.search(r"FIRMWARE_PDF_VALIDATION_FALLBACK=(\S+)", text)
+          out = pathlib.Path(ws) / "release-validation" / "pdf-fallback-path.txt"
+          if m:
+              out.write_text(m.group(1) + "\n")
+              print(f"Captured PDF fallback path: {m.group(1)}")
+          else:
+              print("No FIRMWARE_PDF_VALIDATION_FALLBACK marker in xcodebuild log")
+          PY
+          exit "$XC_STATUS"
+
+      - name: Export PDF validation artifacts to host
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          DEST="${SIMULATOR_UDID:-}"
+          if [ -z "$DEST" ] && [ -f release-validation/simulator-udid.txt ]; then
+            DEST="$(cat release-validation/simulator-udid.txt)"
+          fi
+          if [ -z "$DEST" ]; then
+            echo "::warning::simulator UDID unknown; attempting xcresult-only recovery"
+            DEST="unknown"
+          fi
+          HINT=""
+          if [ -f release-validation/pdf-fallback-path.txt ]; then
+            HINT="$(tr -d '\r\n' < release-validation/pdf-fallback-path.txt)"
+            echo "Using captured fallback hint: $HINT"
+          fi
+          bash scripts/export-pdf-validation-artifacts.sh "$DEST" "$GITHUB_WORKSPACE" "$HINT"
+
+      - name: Summarize PDF validation artifacts
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          OUT="$GITHUB_WORKSPACE/release-validation/pdf"
+          echo "PDF validation dir: $OUT"
+          ls -la "$OUT" || true
+          ls -la "$OUT/previews" || true
+          PDF_COUNT=$(find "$OUT" -maxdepth 1 -type f -name '*.pdf' | wc -l | tr -d ' ')
+          PNG_COUNT=$(find "$OUT/previews" -type f -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+          BYTES=$(du -sk "$OUT" 2>/dev/null | awk '{print $1}')
+          echo "Recovered PDFs=$PDF_COUNT PNGs=$PNG_COUNT size_kib=$BYTES"
+          if [ -f "$OUT/validation-summary.json" ]; then
+            python3 - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("release-validation/pdf/validation-summary.json")
+          data = json.loads(p.read_text())
+          print("reports:", len(data.get("reports") or []))
+          for r in data.get("reports") or []:
+              print(f"  - {r.get('name')}: pages={r.get('pageCount')} ok={r.get('ok')} bytes={r.get('byteCount')}")
+          PY
+          fi
+          test "$PDF_COUNT" -ge 6
+
+      - name: Upload PDF release-validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-release-validation
+          path: |
+            release-validation/pdf/**
+          if-no-files-found: error
+          retention-days: 14
