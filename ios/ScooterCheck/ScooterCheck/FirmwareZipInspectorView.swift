@@ -2130,7 +2130,7 @@ enum FirmwareExportSharePresenter {
             completion?(false)
             return
         }
-        // Avoid stacking another controller if one is already being presented.
+        // Avoid stacking another activity controller.
         if host.presentedViewController is UIActivityViewController {
             completion?(true)
             return
@@ -2147,29 +2147,34 @@ enum FirmwareExportSharePresenter {
             )
             pop.permittedArrowDirections = []
         }
-        host.present(controller, animated: true) {
-            completion?(true)
-        }
+        // Present from the topmost host without waiting on animation completion for
+        // correctness of the share flow; still report success once presentation starts.
+        host.present(controller, animated: true)
+        completion?(true)
     }
 
     @MainActor
-    static func topViewController(
-        base: UIViewController? = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)?
-            .rootViewController
-    ) -> UIViewController? {
-        if let nav = base as? UINavigationController {
+    static func topViewController(base: UIViewController? = nil) -> UIViewController? {
+        let resolvedBase: UIViewController? = {
+            if let base { return base }
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            for scene in scenes {
+                if let key = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+                    return key
+                }
+            }
+            return scenes.flatMap(\.windows).first { $0.isHidden == false }?.rootViewController
+        }()
+        if let nav = resolvedBase as? UINavigationController {
             return topViewController(base: nav.visibleViewController)
         }
-        if let tab = base as? UITabBarController {
+        if let tab = resolvedBase as? UITabBarController {
             return topViewController(base: tab.selectedViewController)
         }
-        if let presented = base?.presentedViewController {
+        if let presented = resolvedBase?.presentedViewController {
             return topViewController(base: presented)
         }
-        return base
+        return resolvedBase
     }
 }
 
