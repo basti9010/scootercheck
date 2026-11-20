@@ -3,6 +3,7 @@ import PDFKit
 @testable import ScooterCheck
 
 /// Guards the firmware-forensics export write path used by "PDF exportieren".
+@MainActor
 final class FirmwareForensicPDFExportShareTests: XCTestCase {
 
     func testRenderedPDFCanBeWrittenAtomicallyForShareSheet() throws {
