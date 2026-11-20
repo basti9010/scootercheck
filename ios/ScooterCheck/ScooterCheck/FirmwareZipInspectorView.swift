@@ -6,6 +6,10 @@ struct FirmwareZipInspectorView: View {
     var mode: FirmwareForensicsMode = .fileOnly
     var vehicleContext: FirmwareVehicleContext? = nil
     var onBackToHub: (() -> Void)? = nil
+    /// Wird nach lokaler oder Server-Analyse aufgerufen (Report + Originalbytes für Archivierung).
+    var onReportProduced: ((FirmwareForensicReport, Data?) -> Void)? = nil
+    /// Bereits gespeicherte Analyse — beim Öffnen anzeigen ohne erneute Ghidra-Runde.
+    var preloadedReport: FirmwareForensicReport? = nil
 
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var references = FirmwareReferenceStore.shared
@@ -99,6 +103,16 @@ struct FirmwareZipInspectorView: View {
             }
             .sheet(isPresented: $showRefForm) {
                 referenceImportForm
+            }
+            .onAppear {
+                if report == nil, let preloadedReport {
+                    report = preloadedReport
+                    lastFileName = preloadedReport.originalFileName
+                    showAnalysisSession = true
+                    serverStatusText = preloadedReport.serverArtifacts?.jobId.map {
+                        "Gespeicherte Analyse · Job \($0) — keine erneute Ghidra-Ausführung."
+                    } ?? "Gespeicherte Analyse geladen — keine erneute Serveranalyse."
+                }
             }
         }
     }
@@ -1658,6 +1672,7 @@ struct FirmwareZipInspectorView: View {
         if combinesWithReadout {
             DualSourceCaseStore.saveForensic(analyzed)
         }
+        onReportProduced?(analyzed, lastData)
         if refModel.isEmpty, let first = analyzed.meta.models.first {
             refModel = first
         }
@@ -1849,6 +1864,7 @@ struct FirmwareZipInspectorView: View {
         if combinesWithReadout {
             DualSourceCaseStore.saveForensic(current)
         }
+        onReportProduced?(current, lastData)
     }
 
     private func prepareReferenceImport(url: URL) {

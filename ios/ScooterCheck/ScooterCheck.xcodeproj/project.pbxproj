@@ -177,6 +177,16 @@
 		A100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift */; };
 		A100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift */; };
 		A100000000000000000000F9 /* BLERadarAlertGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F9 /* BLERadarAlertGateTests.swift */; };
+		A10000000000000000000FA1 /* InvestigationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA1 /* InvestigationModels.swift */; };
+		A10000000000000000000FA2 /* InvestigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA2 /* InvestigationStore.swift */; };
+		A10000000000000000000FA3 /* InvestigationHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA3 /* InvestigationHubView.swift */; };
+		A10000000000000000000FA4 /* InvestigationDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA4 /* InvestigationDetailView.swift */; };
+		A10000000000000000000FA5 /* ReuseReadoutPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA5 /* ReuseReadoutPromptView.swift */; };
+		A10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift */; };
+		A10000000000000000000FA7 /* InvestigationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA7 /* InvestigationStoreTests.swift */; };
+		A10000000000000000000FA8 /* InvestigationCombinedPDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA8 /* InvestigationCombinedPDF.swift */; };
+		A10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */; };
+		A10000000000000000000FAA /* InvestigationFlowLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */; };
 		A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E8 /* FirmwareComboExtractor.swift */; };
 		A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EB /* FirmwareComboPolicy.swift */; };
 		A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */; };
@@ -369,6 +379,16 @@
 		B100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDFReleaseValidationTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDFExportShareTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000F9 /* BLERadarAlertGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLERadarAlertGateTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA1 /* InvestigationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA2 /* InvestigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA3 /* InvestigationHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationHubView.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA4 /* InvestigationDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationDetailView.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA5 /* ReuseReadoutPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReuseReadoutPromptView.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombinedReadoutSummaryCard.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA7 /* InvestigationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationStoreTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA8 /* InvestigationCombinedPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationCombinedPDF.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationCombinedPDFTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationFlowLogicTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -494,10 +514,25 @@
 				B1000000000000000000000C /* Assets.xcassets */,
 				E10000000000000000000005 /* Integrity */,
 				E1000000000000000000000F /* FirmwareForensics */,
+				E10000000000000000000FA0 /* Investigation */,
 				E10000000000000000000006 /* Ninebot */,
 				E10000000000000000000007 /* Xiaomi */,
 			);
 			path = ScooterCheck;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000FA0 /* Investigation */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000FA1 /* InvestigationModels.swift */,
+				B10000000000000000000FA2 /* InvestigationStore.swift */,
+				B10000000000000000000FA3 /* InvestigationHubView.swift */,
+				B10000000000000000000FA4 /* InvestigationDetailView.swift */,
+				B10000000000000000000FA5 /* ReuseReadoutPromptView.swift */,
+				B10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift */,
+				B10000000000000000000FA8 /* InvestigationCombinedPDF.swift */,
+			);
+			path = Investigation;
 			sourceTree = "<group>";
 		};
 		E1000000000000000000000F /* FirmwareForensics */ = {
@@ -574,6 +609,9 @@
 				B100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift */,
 				B100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift */,
 				B100000000000000000000F9 /* BLERadarAlertGateTests.swift */,
+				B10000000000000000000FA7 /* InvestigationStoreTests.swift */,
+				B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */,
+				B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */,
 				B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
@@ -808,6 +846,13 @@
 				A100000000000000000000E4 /* FirmwareDeepAnalysisMerger.swift in Sources */,
 				A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */,
 				A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */,
+				A10000000000000000000FA1 /* InvestigationModels.swift in Sources */,
+				A10000000000000000000FA2 /* InvestigationStore.swift in Sources */,
+				A10000000000000000000FA3 /* InvestigationHubView.swift in Sources */,
+				A10000000000000000000FA4 /* InvestigationDetailView.swift in Sources */,
+				A10000000000000000000FA5 /* ReuseReadoutPromptView.swift in Sources */,
+				A10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift in Sources */,
+				A10000000000000000000FA8 /* InvestigationCombinedPDF.swift in Sources */,
 				A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */,
 				A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */,
 				A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */,
@@ -882,6 +927,9 @@
 				A100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift in Sources */,
 				A100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift in Sources */,
 				A100000000000000000000F9 /* BLERadarAlertGateTests.swift in Sources */,
+				A10000000000000000000FA7 /* InvestigationStoreTests.swift in Sources */,
+				A10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift in Sources */,
+				A10000000000000000000FAA /* InvestigationFlowLogicTests.swift in Sources */,
 				A100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,

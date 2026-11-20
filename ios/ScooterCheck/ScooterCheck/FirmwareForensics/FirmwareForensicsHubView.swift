@@ -13,6 +13,8 @@ struct FirmwareForensicsHubView: View {
     /// `nil` = Hub zeigen; sonst direkt in den gewählten Modus.
     var initialMode: FirmwareForensicsMode? = nil
     var onClose: () -> Void
+    var onReportProduced: ((FirmwareForensicReport, Data?) -> Void)? = nil
+    var preloadedReport: FirmwareForensicReport? = nil
 
     @State private var mode: FirmwareForensicsMode?
 
@@ -22,7 +24,9 @@ struct FirmwareForensicsHubView: View {
                 FirmwareZipInspectorView(
                     mode: mode,
                     vehicleContext: mode == .withReadout ? vehicleContext : nil,
-                    onBackToHub: { self.mode = nil }
+                    onBackToHub: initialMode == nil ? { self.mode = nil } : nil,
+                    onReportProduced: onReportProduced,
+                    preloadedReport: preloadedReport
                 )
             } else {
                 NavigationStack {
@@ -42,7 +46,7 @@ struct FirmwareForensicsHubView: View {
             VStack(alignment: .leading, spacing: Theme.Space.section) {
                 VStack(alignment: .leading, spacing: Theme.Space.titleStack) {
                     PageTitle(text: "Firmware-Forensik")
-                    Text("Wähle, ob du nur eine Datei auswertest oder sie mit einer Scooter-Auslese kombinierst.")
+                    Text("Direktzugriff auf die vorhandene Analyse. Der empfohlene Einstieg ist „E-Scooter untersuchen“.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -69,7 +73,7 @@ struct FirmwareForensicsHubView: View {
                 }
 
                 if vehicleContext == nil {
-                    Text("Tipp: Für die Kombination zuerst unter „E-Scooter auslesen“ verbinden — oder nach der Auslese dem Hinweis folgen.")
+                    Text("Tipp: Für die Kombination unter „E-Scooter untersuchen“ den kombinierten Ablauf starten.")
                         .font(Theme.caption)
                         .foregroundStyle(Theme.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
