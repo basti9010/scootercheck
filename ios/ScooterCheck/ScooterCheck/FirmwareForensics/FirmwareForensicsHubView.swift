@@ -13,7 +13,8 @@ struct FirmwareForensicsHubView: View {
     /// `nil` = Hub zeigen; sonst direkt in den gewählten Modus.
     var initialMode: FirmwareForensicsMode? = nil
     var onClose: () -> Void
-    var onReportProduced: ((FirmwareForensicReport) -> Void)? = nil
+    var onReportProduced: ((FirmwareForensicReport, Data?) -> Void)? = nil
+    var preloadedReport: FirmwareForensicReport? = nil
 
     @State private var mode: FirmwareForensicsMode?
 
@@ -24,7 +25,8 @@ struct FirmwareForensicsHubView: View {
                     mode: mode,
                     vehicleContext: mode == .withReadout ? vehicleContext : nil,
                     onBackToHub: initialMode == nil ? { self.mode = nil } : nil,
-                    onReportProduced: onReportProduced
+                    onReportProduced: onReportProduced,
+                    preloadedReport: preloadedReport
                 )
             } else {
                 NavigationStack {

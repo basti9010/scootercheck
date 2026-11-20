@@ -30,6 +30,11 @@ struct ContentView: View {
     @State private var investigationDetailId: String? = nil
     @State private var pendingCombinedAfterReadout = false
     @State private var combinedAwaitFirmwareAdvance = false
+    @State private var firmwarePreloadedReport: FirmwareForensicReport? = nil
+    @State private var identityConflictMessage: String? = nil
+    @State private var pendingIdentitySummary: InvestigationReadoutSummary? = nil
+    @State private var showIdentityConflict = false
+    @State private var showCombinedPDFBusy = false
     @ObservedObject private var investigationStore = InvestigationStore.shared
     @ObservedObject private var appSettings = AppSettings.shared
     @EnvironmentObject private var auth: AuthSessionStore
@@ -311,15 +316,17 @@ struct ContentView: View {
             .fullScreenCover(isPresented: $showFirmwareZipInspector, onDismiss: {
                 dualSourceRevision += 1
                 firmwareForensicsInitialMode = nil
+                firmwarePreloadedReport = nil
                 handleFirmwareInspectorDismiss()
             }) {
                 FirmwareForensicsHubView(
                     vehicleContext: firmwareVehicleContext,
                     initialMode: firmwareForensicsInitialMode,
                     onClose: { showFirmwareZipInspector = false },
-                    onReportProduced: { report in
-                        handleFirmwareReportProduced(report)
-                    }
+                    onReportProduced: { report, data in
+                        handleFirmwareReportProduced(report, originalData: data)
+                    },
+                    preloadedReport: firmwarePreloadedReport
                 )
             }
             .sheet(isPresented: $showReuseReadoutPrompt) {
@@ -353,12 +360,41 @@ struct ContentView: View {
                             showInvestigationDetail = false
                             beginAppendScooter(to: rec)
                         },
+                        onResume: { rec in
+                            showInvestigationDetail = false
+                            resumeInvestigation(rec)
+                        },
+                        onSwitchScooter: { rec in
+                            showInvestigationDetail = false
+                            // Neue Untersuchung — bestehende Daten bleiben erhalten.
+                            activeInvestigationId = nil
+                            startCombinedInvestigation()
+                            _ = rec
+                        },
                         onClose: {
                             showInvestigationDetail = false
                             investigationDetailId = nil
                         }
                     )
                 }
+            }
+            .alert(
+                "Unterschiedliche Scooter-Identifikatoren",
+                isPresented: $showIdentityConflict
+            ) {
+                Button("Abbrechen", role: .cancel) {
+                    pendingIdentitySummary = nil
+                    identityConflictMessage = nil
+                }
+                Button("Trotzdem zuordnen", role: .destructive) {
+                    if let summary = pendingIdentitySummary, let id = activeInvestigationId {
+                        investigationStore.replaceReadout(summary, to: id)
+                    }
+                    pendingIdentitySummary = nil
+                    identityConflictMessage = nil
+                }
+            } message: {
+                Text(identityConflictMessage ?? "Die ausgewählte Scooter-Auslesung besitzt andere Geräteidentifikatoren als die bisherige Untersuchung.")
             }
             .sheet(isPresented: $showAdmin) {
                 NavigationStack {
@@ -1209,7 +1245,8 @@ struct ContentView: View {
     }
 
     /// `mode == nil` → Hub (Datei allein / Mit Auslese); sonst direkter Einstieg.
-    private func openFirmwareForensics(mode: FirmwareForensicsMode?) {
+    private func openFirmwareForensics(mode: FirmwareForensicsMode?, preloaded: FirmwareForensicReport? = nil) {
+        firmwarePreloadedReport = preloaded
         firmwareForensicsInitialMode = mode
         showFirmwareZipInspector = true
     }
@@ -1217,35 +1254,87 @@ struct ContentView: View {
     // MARK: - Unified Investigation Flow
 
     private func startScooterOnlyInvestigation() {
-        let rec = investigationStore.create(title: "Scooter-Auslesung")
+        let rec = investigationStore.create(title: "Scooter-Auslesung", progress: .selectScooter)
         activeInvestigationId = rec.id
         investigationFlow = .scooterOnly
         pendingCombinedAfterReadout = false
         combinedAwaitFirmwareAdvance = false
+        investigationStore.setProgress(.selectScooter, for: rec.id)
         startNewCheck()
     }
 
     private func startFirmwareOnlyInvestigation() {
-        let rec = investigationStore.create(title: "Firmwareanalyse")
+        let rec = investigationStore.create(title: "Firmwareanalyse", progress: .selectFirmware)
         activeInvestigationId = rec.id
         investigationFlow = .firmwareOnly
         pendingCombinedAfterReadout = false
         combinedAwaitFirmwareAdvance = false
+        investigationStore.setProgress(.selectFirmware, for: rec.id)
         openFirmwareForensics(mode: .fileOnly)
     }
 
     private func startCombinedInvestigation() {
         let candidates = availableReadoutCandidates()
-        let rec = investigationStore.create(title: "Kombinierte Untersuchung")
+        let rec = investigationStore.create(title: "Kombinierte Untersuchung", progress: .selectScooter)
         activeInvestigationId = rec.id
         investigationFlow = .combined(.selectScooter)
         pendingCombinedAfterReadout = true
         combinedAwaitFirmwareAdvance = false
+        investigationStore.setProgress(.selectScooter, for: rec.id)
         if candidates.isEmpty {
             beginCombinedFreshScooterSelect()
         } else {
             reuseReadoutCandidates = candidates
             showReuseReadoutPrompt = true
+        }
+    }
+
+    private func resumeInvestigation(_ rec: InvestigationRecord) {
+        activeInvestigationId = rec.id
+        let step = CombinedInvestigationStep.from(progress: rec.reconciledProgress)
+        switch rec.reconciledProgress {
+        case .selectScooter, .readScooter:
+            investigationFlow = .combined(step)
+            pendingCombinedAfterReadout = rec.readout == nil
+            combinedAwaitFirmwareAdvance = rec.readout != nil && rec.firmwareRefs.isEmpty
+            if let summary = rec.readout,
+               let hid = summary.historyEntryId,
+               let uuid = UUID(uuidString: hid),
+               let session = history.loadSession(id: uuid),
+               let loaded = session.result {
+                self.session = session
+                self.result = loaded
+                self.profile = session.profile
+                screen = .result
+                combinedAwaitFirmwareAdvance = true
+                investigationFlow = .combined(.readScooter)
+            } else {
+                startNewCheck()
+                investigationFlow = .combined(.selectScooter)
+            }
+        case .selectFirmware, .analyzeFirmware:
+            investigationFlow = .combined(.pickFirmware)
+            if let summary = rec.readout,
+               let hid = summary.historyEntryId,
+               let uuid = UUID(uuidString: hid),
+               let session = history.loadSession(id: uuid),
+               let loaded = session.result {
+                self.session = session
+                self.result = loaded
+                self.profile = session.profile
+            }
+            // Gespeicherte Analyse wiederverwenden, falls vorhanden — keine Auto-Ghidra.
+            if let first = rec.firmwareRefs.first,
+               let report = investigationStore.loadFirmwareReport(ref: first, investigationId: rec.id) {
+                openFirmwareForensics(mode: rec.readout == nil ? .fileOnly : .withReadout, preloaded: report)
+            } else {
+                openFirmwareForensics(mode: rec.readout == nil ? .fileOnly : .withReadout)
+            }
+        case .showResults:
+            investigationFlow = .combined(.results)
+            investigationDetailId = rec.id
+            showInvestigationDetail = true
+            screen = .investigate
         }
     }
 
@@ -1288,13 +1377,23 @@ struct ContentView: View {
         investigationFlow = .combined(.selectScooter)
         pendingCombinedAfterReadout = true
         combinedAwaitFirmwareAdvance = false
+        if let id = activeInvestigationId {
+            investigationStore.setProgress(.selectScooter, for: id)
+        }
         startNewCheck()
         investigationFlow = .combined(.selectScooter)
     }
 
     private func applyExistingReadoutToCombined(_ summary: InvestigationReadoutSummary) {
         guard let id = activeInvestigationId else { return }
-        investigationStore.attachReadout(summary, to: id)
+        if let outcome = investigationStore.attachReadout(summary, to: id),
+           case .conflict(let reasons) = outcome {
+            pendingIdentitySummary = summary
+            identityConflictMessage = reasons.joined(separator: "\n")
+            showIdentityConflict = true
+            return
+        }
+        investigationStore.setProgress(.selectFirmware, for: id)
         investigationFlow = .combined(.pickFirmware)
         pendingCombinedAfterReadout = false
         combinedAwaitFirmwareAdvance = false
@@ -1312,6 +1411,9 @@ struct ContentView: View {
     private func advanceCombinedToFirmwarePick() {
         combinedAwaitFirmwareAdvance = false
         investigationFlow = .combined(.pickFirmware)
+        if let id = activeInvestigationId {
+            investigationStore.setProgress(.selectFirmware, for: id)
+        }
         openFirmwareForensics(mode: .withReadout)
     }
 
@@ -1358,16 +1460,18 @@ struct ContentView: View {
         openFirmwareForensics(mode: .withReadout)
     }
 
-    private func handleFirmwareReportProduced(_ report: FirmwareForensicReport) {
+    private func handleFirmwareReportProduced(_ report: FirmwareForensicReport, originalData: Data?) {
         let id: String
         if let existing = activeInvestigationId {
             id = existing
         } else {
-            let rec = investigationStore.create(title: report.originalFileName)
+            let rec = investigationStore.create(title: report.originalFileName, progress: .analyzeFirmware)
             id = rec.id
             activeInvestigationId = id
         }
-        try? investigationStore.attachFirmwareReport(report, to: id)
+        // Bereits vorhandene SHA → Report aktualisieren, keine Doppelarchivierung.
+        try? investigationStore.attachFirmwareReport(report, originalData: originalData, to: id)
+        investigationStore.setProgress(.showResults, for: id)
         if case .combined = investigationFlow {
             investigationFlow = .combined(.results)
         }
@@ -1407,16 +1511,37 @@ struct ContentView: View {
         let summary = InvestigationReadoutSummary.from(
             result: result,
             historyEntryId: historyEntryId,
-            bleId: ble.lastConnectedDevice?.id
+            bleId: ble.lastConnectedDevice?.id,
+            bleName: ble.lastConnectedDevice.map { $0.cryptoName.isEmpty ? $0.name : $0.cryptoName }
         )
         if let id = activeInvestigationId {
-            investigationStore.attachReadout(summary, to: id)
+            if let outcome = investigationStore.attachReadout(summary, to: id) {
+                switch outcome {
+                case .conflict(let reasons), .uncertain(let reasons):
+                    if case .conflict = outcome {
+                        pendingIdentitySummary = summary
+                        identityConflictMessage = "Die ausgewählte Scooter-Auslesung besitzt andere Geräteidentifikatoren als die bisherige Untersuchung.\n\n" + reasons.joined(separator: "\n")
+                        showIdentityConflict = true
+                        return
+                    }
+                case .compatible:
+                    break
+                }
+            }
+            investigationStore.setProgress(.readScooter, for: id)
         } else if case .scooterOnly = investigationFlow {
-            let rec = investigationStore.create(title: summary.shortLabel)
+            let rec = investigationStore.create(title: summary.shortLabel, progress: .showResults)
             activeInvestigationId = rec.id
-            investigationStore.attachReadout(summary, to: rec.id)
+            _ = investigationStore.attachReadout(summary, to: rec.id)
         } else if case .appendScooter(let invId) = investigationFlow {
-            investigationStore.attachReadout(summary, to: invId)
+            if let outcome = investigationStore.attachReadout(summary, to: invId),
+               case .conflict(let reasons) = outcome {
+                pendingIdentitySummary = summary
+                identityConflictMessage = reasons.joined(separator: "\n")
+                showIdentityConflict = true
+                activeInvestigationId = invId
+                return
+            }
             activeInvestigationId = invId
         }
 
@@ -1424,9 +1549,19 @@ struct ContentView: View {
             investigationFlow = .combined(.readScooter)
             pendingCombinedAfterReadout = false
             combinedAwaitFirmwareAdvance = true
+            if let id = activeInvestigationId {
+                investigationStore.setProgress(.selectFirmware, for: id)
+            }
         } else if case .combined(.selectScooter) = investigationFlow {
             investigationFlow = .combined(.readScooter)
             combinedAwaitFirmwareAdvance = true
+            if let id = activeInvestigationId {
+                investigationStore.setProgress(.selectFirmware, for: id)
+            }
+        } else if case .scooterOnly = investigationFlow {
+            if let id = activeInvestigationId {
+                investigationStore.setProgress(.showResults, for: id)
+            }
         } else if case .appendScooter = investigationFlow {
             // After scooter append with existing firmware → combined detail.
             screen = .investigate
@@ -1435,6 +1570,34 @@ struct ContentView: View {
                 showInvestigationDetail = true
             }
         }
+        investigationStore.flush()
+    }
+
+    private func exportActiveCombinedPDF() {
+        guard let id = activeInvestigationId,
+              let rec = investigationStore.record(id: id) else { return }
+        showCombinedPDFBusy = true
+        defer { showCombinedPDFBusy = false }
+        let pairs: [(InvestigationFirmwareRef, FirmwareForensicReport)] = rec.firmwareRefs.compactMap { ref in
+            guard let report = investigationStore.loadFirmwareReport(ref: ref, investigationId: id) else {
+                return nil
+            }
+            return (ref, report)
+        }
+        let dual = DualSourcePanicCorrelator.assess(
+            forensic: pairs.first?.1,
+            reading: result?.reading,
+            profile: profile,
+            storedCombo: SoftUnlockComboStore.load(forSerial: rec.readout?.serial)
+        )
+        let data = InvestigationCombinedPDF.render(record: rec, reports: pairs, dualSource: dual)
+        guard data.count > 500, String(data: data.prefix(5), encoding: .ascii) == "%PDF-" else { return }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ScooterCheck-Untersuchung-\(id.prefix(8))-\(Int(Date().timeIntervalSince1970)).pdf")
+        guard (try? data.write(to: url, options: .atomic)) != nil else { return }
+        FirmwareExportSharePresenter.present(items: [
+            NamedShareFile(url: url, title: "ScooterCheck Untersuchungsbericht", utType: "com.adobe.pdf")
+        ])
     }
 
     private func subjectStringBinding(_ keyPath: WritableKeyPath<ProtocolSubject, String?>) -> Binding<String> {
@@ -1838,6 +2001,19 @@ struct ContentView: View {
                     enabled: !busy
                 ) {
                     appendFirmwareFromCurrentResult()
+                }
+
+                if let id = activeInvestigationId,
+                   let inv = investigationStore.record(id: id),
+                   inv.kind == .combined || !inv.firmwareRefs.isEmpty {
+                    ScootActionFeatureCard(
+                        title: "Gesamten Untersuchungsbericht als PDF erstellen",
+                        subtitle: "Scooter + Firmware + Vergleich",
+                        systemImage: "doc.richtext",
+                        enabled: !busy && !showCombinedPDFBusy
+                    ) {
+                        exportActiveCombinedPDF()
+                    }
                 }
             }
 

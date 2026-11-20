@@ -43,6 +43,38 @@ struct InvestigationHubView: View {
                     )
                 }
 
+                if !store.resumableRecords.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                        Text("Untersuchung fortsetzen")
+                            .font(Theme.sectionTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        ForEach(store.resumableRecords.prefix(4)) { rec in
+                            Button {
+                                onOpenInvestigation?(rec)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(rec.title)
+                                        .font(Theme.cardTitle)
+                                        .foregroundStyle(Theme.textPrimary)
+                                        .lineLimit(1)
+                                    Text(rec.resumeSubtitle)
+                                        .font(Theme.meta)
+                                        .foregroundStyle(Theme.textSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Text("Untersuchung fortsetzen")
+                                        .font(Theme.buttonSecondary)
+                                        .foregroundStyle(Theme.accent)
+                                }
+                                .padding(Theme.Space.cardPadding)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Theme.card)
+                                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
                 if !store.records.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Space.sm) {
                         Text("Zuletzt")
@@ -58,7 +90,7 @@ struct InvestigationHubView: View {
                                             .font(Theme.cardTitle)
                                             .foregroundStyle(Theme.textPrimary)
                                             .lineLimit(1)
-                                        Text("\(rec.kind.label) · \(rec.firmwareRefs.count) Firmware")
+                                        Text("\(rec.kind.label) · \(rec.firmwareRefs.count) Firmware · \(rec.reconciledProgress.title)")
                                             .font(Theme.meta)
                                             .foregroundStyle(Theme.textSecondary)
                                     }
