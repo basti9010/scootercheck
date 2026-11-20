@@ -82,12 +82,13 @@ final class InvestigationStoreTests: XCTestCase {
         _ = try store.attachFirmwareReport(reportB, originalData: bytesB, to: rec.id)
         XCTAssertEqual(store.record(id: rec.id)?.firmwareRefs.count, 2)
 
-        // Reload from disk
+        // Reload from disk (flush debounced save first)
+        store.flush()
         let reloaded = InvestigationStore(testRoot: tempRoot)
-        let again = reloaded.record(id: rec.id)
-        XCTAssertEqual(again?.firmwareRefs.count, 2)
-        XCTAssertEqual(again?.readout?.serial, "UNIT-SN")
-        let first = again!.firmwareRefs[0]
+        let again = try XCTUnwrap(reloaded.record(id: rec.id))
+        XCTAssertEqual(again.firmwareRefs.count, 2)
+        XCTAssertEqual(again.readout?.serial, "UNIT-SN")
+        let first = again.firmwareRefs[0]
         let archived = reloaded.loadArchivedFirmwareData(ref: first, investigationId: rec.id)
         XCTAssertEqual(archived, bytes)
         XCTAssertEqual(FirmwareDigest.sha256Hex(archived!), FirmwareDigest.sha256Hex(bytes))

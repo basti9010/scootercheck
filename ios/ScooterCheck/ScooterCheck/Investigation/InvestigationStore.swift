@@ -87,7 +87,21 @@ final class InvestigationStore: ObservableObject {
 
     func setProgress(_ progress: InvestigationProgress, for id: String) {
         guard var rec = record(id: id) else { return }
-        // Nie hinter gesicherte Artefakte zurückfallen.
+        // Nie hinter gesicherte Artefakte zurückfallen — Ausnahme:
+        // Auslesung vorhanden, noch keine Firmware → selectFirmware/analyzeFirmware
+        // ist ein gültiger Combined-Warteschritt (auch nach temporärem showResults).
+        if rec.readout != nil, rec.firmwareRefs.isEmpty,
+           progress == .selectFirmware || progress == .analyzeFirmware {
+            rec.progress = progress
+            upsert(rec)
+            return
+        }
+        if rec.readout != nil, !rec.firmwareRefs.isEmpty {
+            // Beide Artefakte vorhanden → höchstens showResults.
+            rec.progress = .showResults
+            upsert(rec)
+            return
+        }
         let floor = rec.reconciledProgress
         rec.progress = maxProgress(floor, progress)
         upsert(rec)
