@@ -6,6 +6,8 @@ struct FirmwareZipInspectorView: View {
     var mode: FirmwareForensicsMode = .fileOnly
     var vehicleContext: FirmwareVehicleContext? = nil
     var onBackToHub: (() -> Void)? = nil
+    /// Wird nach lokaler oder Server-Analyse aufgerufen (kein Installationsnachweis).
+    var onReportProduced: ((FirmwareForensicReport) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var references = FirmwareReferenceStore.shared
@@ -1658,6 +1660,7 @@ struct FirmwareZipInspectorView: View {
         if combinesWithReadout {
             DualSourceCaseStore.saveForensic(analyzed)
         }
+        onReportProduced?(analyzed)
         if refModel.isEmpty, let first = analyzed.meta.models.first {
             refModel = first
         }
@@ -1849,6 +1852,7 @@ struct FirmwareZipInspectorView: View {
         if combinesWithReadout {
             DualSourceCaseStore.saveForensic(current)
         }
+        onReportProduced?(current)
     }
 
     private func prepareReferenceImport(url: URL) {
