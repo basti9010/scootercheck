@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Firmware-Forensik 2.0 — Read-Only, Dark UI (#12161C / #6BDBC2).
 struct FirmwareZipInspectorView: View {
@@ -17,9 +18,8 @@ struct FirmwareZipInspectorView: View {
     @State private var preferredReferenceId: String?
     @State private var lastFileName: String = ""
     @State private var lastData: Data?
-    @State private var shareItems: [Any] = []
-    @State private var showShare = false
     @State private var showRefForm = false
+    @State private var isExportBusy = false
     @State private var pendingRefData: Data?
     @State private var pendingRefName: String = ""
     @State private var refManufacturer = "Segway-Ninebot"
@@ -173,11 +173,6 @@ struct FirmwareZipInspectorView: View {
                 }
             }
             .preferredColorScheme(.dark)
-            // Share / preview must be presented from this fullScreenCover host.
-            // A sheet on the parent body stays hidden under the analysis cover.
-            .sheet(isPresented: $showShare, onDismiss: { shareItems = [] }) {
-                FirmwareShareSheet(items: shareItems)
-            }
             .sheet(isPresented: $showDecompilePreview) {
                 NavigationStack {
                     ScrollView {
@@ -1911,6 +1906,10 @@ struct FirmwareZipInspectorView: View {
     }
 
     private func sharePDF(_ r: FirmwareForensicReport) {
+        guard !isExportBusy else { return }
+        isExportBusy = true
+        defer { isExportBusy = false }
+
         let data = FirmwareForensicPDF.render(r)
         guard data.count > 500, String(data: data.prefix(5), encoding: .ascii) == "%PDF-" else {
             errorText = "PDF-Export fehlgeschlagen: leerer oder ungültiger Bericht."
@@ -1937,15 +1936,23 @@ struct FirmwareZipInspectorView: View {
                     NamedShareFile(url: binURL, title: "\(stem).dec.bin", utType: "public.data")
                 )
             } catch {
-                // PDF remains shareable even if plaintext sidecar write fails.
                 errorText = "PDF bereit; Klartext-Binär konnte nicht angehängt werden."
             }
         }
-        shareItems = items
-        showShare = true
+        // Present UIKit share immediately from the topmost VC (analysis cover).
+        // SwiftUI `.sheet` under nested covers often only appears after dismiss.
+        FirmwareExportSharePresenter.present(items: items) { presented in
+            if !presented {
+                errorText = "PDF-Teilen-Menü konnte nicht geöffnet werden."
+            }
+        }
     }
 
     private func shareJSON(_ r: FirmwareForensicReport) {
+        guard !isExportBusy else { return }
+        isExportBusy = true
+        defer { isExportBusy = false }
+
         guard let data = try? FirmwareForensicPDF.jsonData(r), !data.isEmpty else {
             errorText = "JSON-Export fehlgeschlagen."
             return
@@ -1960,10 +1967,13 @@ struct FirmwareZipInspectorView: View {
             errorText = "JSON konnte nicht gespeichert werden: \(error.localizedDescription)"
             return
         }
-        shareItems = [
+        FirmwareExportSharePresenter.present(items: [
             NamedShareFile(url: url, title: "ScooterCheck Firmware-Forensik JSON", utType: "public.json")
-        ]
-        showShare = true
+        ]) { presented in
+            if !presented {
+                errorText = "JSON-Teilen-Menü konnte nicht geöffnet werden."
+            }
+        }
     }
 
     private func exportFileStem() -> String {
@@ -2107,7 +2117,63 @@ private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
-/// UIActivity-Share-Wrapper für Forensik-Exporte (PDF/JSON/.dec.bin).
+/// Presents `UIActivityViewController` from the topmost view controller so the
+/// share sheet appears immediately even inside a nested `fullScreenCover`.
+enum FirmwareExportSharePresenter {
+    @MainActor
+    static func present(items: [Any], completion: ((Bool) -> Void)? = nil) {
+        guard !items.isEmpty else {
+            completion?(false)
+            return
+        }
+        guard let host = topViewController() else {
+            completion?(false)
+            return
+        }
+        // Avoid stacking another controller if one is already being presented.
+        if host.presentedViewController is UIActivityViewController {
+            completion?(true)
+            return
+        }
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.excludedActivityTypes = [.addToReadingList, .assignToContact]
+        if let pop = controller.popoverPresentationController {
+            pop.sourceView = host.view
+            pop.sourceRect = CGRect(
+                x: host.view.bounds.midX,
+                y: host.view.bounds.midY,
+                width: 1,
+                height: 1
+            )
+            pop.permittedArrowDirections = []
+        }
+        host.present(controller, animated: true) {
+            completion?(true)
+        }
+    }
+
+    @MainActor
+    static func topViewController(
+        base: UIViewController? = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .rootViewController
+    ) -> UIViewController? {
+        if let nav = base as? UINavigationController {
+            return topViewController(base: nav.visibleViewController)
+        }
+        if let tab = base as? UITabBarController {
+            return topViewController(base: tab.selectedViewController)
+        }
+        if let presented = base?.presentedViewController {
+            return topViewController(base: presented)
+        }
+        return base
+    }
+}
+
+/// Legacy SwiftUI wrapper kept for any remaining call sites / previews.
 struct FirmwareShareSheet: UIViewControllerRepresentable {
     var items: [Any]
 

@@ -109,5 +109,13 @@ final class FirmwareForensicPDFExportShareTests: XCTestCase {
         XCTAssertEqual(named.url, url)
         XCTAssertTrue(named.title.contains("Forensik"))
         XCTAssertNotNil(PDFDocument(url: url))
+
+        // Presenter must resolve a host VC in the simulator test process (may be nil
+        // in pure XCTest without a window — still must not crash).
+        let presented = expectation(description: "share presenter callback")
+        FirmwareExportSharePresenter.present(items: [named]) { _ in
+            presented.fulfill()
+        }
+        wait(for: [presented], timeout: 2.0)
     }
 }

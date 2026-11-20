@@ -249,7 +249,7 @@ struct RadarMapSettings: Codable, Equatable, Sendable {
     }
 
     static let `default` = RadarMapSettings(
-        storeSightings: false,
+        storeSightings: true,
         storeLocation: false,
         storeDeviceHistory: true,
         notifyRepeatSightings: false,
@@ -286,7 +286,7 @@ struct RadarMapSettings: Codable, Equatable, Sendable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        storeSightings = try c.decodeIfPresent(Bool.self, forKey: .storeSightings) ?? false
+        storeSightings = try c.decodeIfPresent(Bool.self, forKey: .storeSightings) ?? true
         storeLocation = try c.decodeIfPresent(Bool.self, forKey: .storeLocation) ?? false
         storeDeviceHistory = try c.decodeIfPresent(Bool.self, forKey: .storeDeviceHistory) ?? true
         notifyRepeatSightings = try c.decodeIfPresent(Bool.self, forKey: .notifyRepeatSightings) ?? false

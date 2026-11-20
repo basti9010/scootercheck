@@ -173,10 +173,13 @@ struct RadarMapView: View {
         .onAppear {
             RadarMapRecorder.shared.requestLocationIfNeeded()
             store.pruneRetentionIfNeeded()
+            // Radar-Karte ist Teil der aktivierten Radar-Oberfläche.
+            BLERadarService.shared.setRadarUIVisible(true)
         }
         .onDisappear {
             timelineTask?.cancel()
             timelinePlaying = false
+            BLERadarService.shared.setRadarUIVisible(false)
         }
     }
 

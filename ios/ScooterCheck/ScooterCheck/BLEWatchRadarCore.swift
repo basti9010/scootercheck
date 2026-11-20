@@ -676,6 +676,9 @@ final class BLERadarService: ObservableObject {
     @Published private(set) var scanState: BLERadarScanState = .radarEnded
     @Published private(set) var scanStateDetail: String = BLERadarScanState.radarEnded.detail
     @Published private(set) var isInBackground = false
+    /// True while the Scooter-Radar / Signal-Finder surface is on screen.
+    /// Ordinary radar pop-ups/sounds are gated on this in the foreground.
+    @Published private(set) var radarUIVisible = false
     @Published var showSettingsSheet = false
 
     private var processors: [UUID: BLESignalProcessor] = [:]
@@ -808,6 +811,25 @@ final class BLERadarService: ObservableObject {
             ble?.ensureRadarScanRunning(preferBackgroundFilter: isInBackground)
             refreshScanState()
         }
+    }
+
+    /// Call from Scooter-Radar / Signal-Finder views to scope ordinary pop-ups.
+    func setRadarUIVisible(_ visible: Bool) {
+        radarUIVisible = visible
+        if !visible {
+            banner = nil
+        }
+    }
+
+    /// Central gate: ordinary radar user alerts only when radar is active and
+    /// (foreground radar UI is visible OR app is backgrounded for UN delivery).
+    func allowsOrdinaryRadarUserAlerts(forLocalNotification: Bool) -> Bool {
+        guard isEnabled, sessionActive || sessionStore.sessionRequested else { return false }
+        guard sessionStore.settings.notifyScooterDetections else { return false }
+        if isInBackground {
+            return forLocalNotification
+        }
+        return radarUIVisible
     }
 
     func refreshScanState() {
@@ -1048,7 +1070,7 @@ final class BLERadarService: ObservableObject {
             metadata: ["kind": prepared.kind.rawValue]
         ))
         presentAlarm(title: prepared.title, body: prepared.body, warning: prepared.kind.accentWarning)
-        if sessionStore.settings.notifyScooterDetections {
+        if allowsOrdinaryRadarUserAlerts(forLocalNotification: true) {
             BLENotificationService.shared.post(
                 id: "radar-\(device.id.uuidString)-\(Int(now.timeIntervalSince1970))",
                 title: prepared.title,
@@ -1058,7 +1080,7 @@ final class BLERadarService: ObservableObject {
                     "deviceId": device.id.uuidString,
                     "alarmKind": prepared.kind.rawValue
                 ],
-                sound: soundEnabled && sessionStore.settings.soundEnabled
+                sound: soundEnabled && sessionStore.settings.soundEnabled && isInBackground
             )
         }
         BLESearchLiveActivityController.shared.updateRadar(
@@ -1082,7 +1104,7 @@ final class BLERadarService: ObservableObject {
         let title = warning
             ? "\(bundle.count) E-Scooter · Zulassungshinweis"
             : "\(bundle.count) E-Scooter erkannt"
-        var body = bundle.map(\.deviceName).prefix(3).joined(separator: ", ")
+        let body = bundle.map(\.deviceName).prefix(3).joined(separator: ", ")
         timelineEvents.append(BLESearchEvent(
             type: .deviceFirstSeen,
             title: title,
@@ -1090,25 +1112,27 @@ final class BLERadarService: ObservableObject {
             metadata: ["kind": "scooterDetected", "count": "\(bundle.count)"]
         ))
         presentAlarm(title: title, body: body, warning: warning)
-        if sessionStore.settings.notifyScooterDetections {
+        if allowsOrdinaryRadarUserAlerts(forLocalNotification: true) {
             BLENotificationService.shared.post(
                 id: "radar-bundle-\(Int(now.timeIntervalSince1970))",
                 title: title,
                 body: body,
                 userInfo: ["type": "bleRadar", "bundled": true],
-                sound: soundEnabled && sessionStore.settings.soundEnabled
+                sound: soundEnabled && sessionStore.settings.soundEnabled && isInBackground
             )
         }
         sessionStore.recordSighting(summary: body, at: now)
     }
 
     private func presentAlarm(title: String, body: String, warning: Bool) {
+        // In-app banner / sound / haptics only while the radar surface is visible.
+        guard radarUIVisible, !isInBackground else { return }
+        guard isEnabled, sessionActive || sessionStore.sessionRequested else { return }
         banner = "\(title)\n\(body)"
-        // Haptik nur im Vordergrund — kein Anspruch auf Vibration bei gesperrtem Display.
-        if hapticsEnabled, sessionStore.settings.hapticsEnabled, !isInBackground {
+        if hapticsEnabled, sessionStore.settings.hapticsEnabled {
             UINotificationFeedbackGenerator().notificationOccurred(warning ? .error : .warning)
         }
-        if soundEnabled, sessionStore.settings.soundEnabled, !isInBackground {
+        if soundEnabled, sessionStore.settings.soundEnabled {
             AudioServicesPlaySystemSound(1007)
         }
         Task { @MainActor in

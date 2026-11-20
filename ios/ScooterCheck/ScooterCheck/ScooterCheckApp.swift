@@ -33,12 +33,23 @@ final class ScooterCheckAppDelegate: NSObject, UIApplicationDelegate, UNUserNoti
         return true
     }
 
-    /// Vordergrund: Banner anzeigen, nicht schlucken.
+    /// Vordergrund: Gerätewächter weiter zeigen; gewöhnliche Radar-Banner nur auf Radar-UI.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        let info = notification.request.content.userInfo
+        let type = info["type"] as? String
+        if type == "bleRadar" || type == "radarMapRepeat" {
+            Task { @MainActor in
+                let allow = BLERadarService.shared.radarUIVisible
+                    && BLERadarService.shared.allowsOrdinaryRadarUserAlerts(forLocalNotification: false)
+                completionHandler(allow ? [.banner, .sound] : [])
+            }
+            return
+        }
+        // bleWatch and other configured notifications keep foreground banners.
         completionHandler([.banner, .sound])
     }
 

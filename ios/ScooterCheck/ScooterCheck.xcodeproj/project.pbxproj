@@ -176,6 +176,7 @@
 		A100000000000000000000E7 /* FirmwareForensicsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E7 /* FirmwareForensicsHubView.swift */; };
 		A100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift */; };
 		A100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift */; };
+		A100000000000000000000F9 /* BLERadarAlertGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F9 /* BLERadarAlertGateTests.swift */; };
 		A100000000000000000000E8 /* FirmwareComboExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E8 /* FirmwareComboExtractor.swift */; };
 		A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EB /* FirmwareComboPolicy.swift */; };
 		A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */; };
@@ -367,6 +368,7 @@
 		B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDFReleaseValidationTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDFExportShareTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000F9 /* BLERadarAlertGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLERadarAlertGateTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -571,6 +573,7 @@
 				B100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift */,
 				B100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift */,
 				B100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift */,
+				B100000000000000000000F9 /* BLERadarAlertGateTests.swift */,
 				B100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift */,
 				B10000000000000000000020 /* SoftUnlockComboStoreTests.swift */,
 				B1000000000000000000001E /* PeakDisReportBugsTests.swift */,
@@ -878,6 +881,7 @@
 				A100000000000000000000E6 /* FirmwareDeepAnalysisTests.swift in Sources */,
 				A100000000000000000000F7 /* FirmwareForensicPDFReleaseValidationTests.swift in Sources */,
 				A100000000000000000000F8 /* FirmwareForensicPDFExportShareTests.swift in Sources */,
+				A100000000000000000000F9 /* BLERadarAlertGateTests.swift in Sources */,
 				A100000000000000000000EA /* FirmwareReadoutMatchCorrelatorTests.swift in Sources */,
 				A10000000000000000000020 /* SoftUnlockComboStoreTests.swift in Sources */,
 				A1000000000000000000001E /* PeakDisReportBugsTests.swift in Sources */,
