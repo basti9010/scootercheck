@@ -42,3 +42,13 @@ Encrypted local payloads: **never** treated as machine code (BinaryStaticAnalyze
 2. Port `FirmwareForensicsHubView` + job poll UI
 3. AuthSessionStore JWT wiring
 4. CI job for synthetic Ghidra when runner has GHIDRA_HOME
+
+## Agent report refresh (post-completion)
+
+Full inventory reports merged from agent branches:
+- A: `origin/cursor/cycle7-server-infra-inventory-86df`
+- B: `origin/cursor/cycle7-agent-b-fw-forensics-e660`
+- C: already on tip (`REPORT_GHIDRA_INTEGRATION.md`)
+- D: `origin/cursor/cycle7-agent-d-ios-gaps-19f0`
+
+Implementation already covers D priorities 1–2 and partial 4 (ServerClient without Auth JWT). Remaining: Hub UI, Orchestrator, AuthSession, ContentView attach callback.
