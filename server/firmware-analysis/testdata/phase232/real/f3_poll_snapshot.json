@@ -1,0 +1,497 @@
+{
+  "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+  "activationForensics": {
+    "ok": true,
+    "schemaVersion": 2,
+    "phase": "2.3.2",
+    "summary": {
+      "functionsExamined": 181,
+      "inputHandlerCount": 21,
+      "categories": {
+        "input_callback": 21
+      },
+      "undocumentedFindingCount": 1,
+      "conditionalLogicCount": 80,
+      "fsmLinkedCount": 0,
+      "graphNodeCount": 39,
+      "graphEdgeCount": 18,
+      "elapsedSec": 0.022
+    },
+    "categoryCounts": {
+      "button_input": 0,
+      "gpio_input": 0,
+      "indicator_input": 0,
+      "hazard_indicator_input": 0,
+      "ble_input": 0,
+      "uart_input": 0,
+      "event_queue": 0,
+      "input_callback": 21,
+      "state_update": 0,
+      "conditional_feature_gate": 0
+    },
+    "sampleInputHandlers": [
+      {
+        "address": "0800c4d4",
+        "name": "FUN_0800c4d4",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 2.0,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "0800c570",
+        "name": "FUN_0800c570",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 2.0,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "0800024c",
+        "name": "FUN_0800024c",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "080002ae",
+        "name": "FUN_080002ae",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "0800035e",
+        "name": "FUN_0800035e",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "08001050",
+        "name": "FUN_08001050",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "08004208",
+        "name": "FUN_08004208",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "0800423c",
+        "name": "FUN_0800423c",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "080044a2",
+        "name": "FUN_080044a2",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "08004a20",
+        "name": "FUN_08004a20",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "08004a70",
+        "name": "FUN_08004a70",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      },
+      {
+        "address": "08004ab4",
+        "name": "FUN_08004ab4",
+        "inputCategories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "confidence": 1.55,
+        "genericName": true,
+        "weakCandidate": true,
+        "structuralOnly": true
+      }
+    ],
+    "undocumentedLogic": {
+      "summary": {
+        "genericNamedFunctions": 171,
+        "addedVsReference": 0,
+        "structurallyChanged": 0,
+        "notReliablyMatched": 0,
+        "inputRelatedChanges": 0,
+        "findingCount": 1
+      },
+      "evidenceTier": "SPECULATIVE"
+    },
+    "conditionalLogicFindings": {
+      "summary": {
+        "functionsWithConditionalLogic": 80,
+        "functionsWithConditionalLogicTotal": 104,
+        "inputLinked": 21,
+        "stateStorePatterns": 72,
+        "qualityClasses": {
+          "CONDITIONAL_LOGIC_ONLY": 9,
+          "INPUT_RELATED_CONDITIONAL_LOGIC": 21,
+          "STATE_RELATED_CONDITIONAL_LOGIC": 74,
+          "FEATURE_GATE_CANDIDATE": 0,
+          "NOT_CLASSIFIABLE": 0
+        },
+        "featureGateCandidates": 0,
+        "conditionalLogicOnly": 9,
+        "resultLimits": {
+          "totalFunctionsAnalyzed": 181,
+          "totalCandidatesDetected": 104,
+          "returnedCandidates": 80,
+          "omittedCandidates": 24,
+          "resultTruncated": true,
+          "truncationReason": "MAX_CONDITIONAL",
+          "configuredLimit": 80,
+          "analysisComplete": true
+        }
+      },
+      "resultLimits": {
+        "totalFunctionsAnalyzed": 181,
+        "totalCandidatesDetected": 104,
+        "returnedCandidates": 80,
+        "omittedCandidates": 24,
+        "resultTruncated": true,
+        "truncationReason": "MAX_CONDITIONAL",
+        "configuredLimit": 80,
+        "analysisComplete": true
+      }
+    },
+    "resultLimits": {
+      "handlers": {
+        "totalFunctionsAnalyzed": 181,
+        "totalCandidatesDetected": 21,
+        "returnedCandidates": 21,
+        "omittedCandidates": 0,
+        "resultTruncated": false,
+        "truncationReason": null,
+        "configuredLimit": 100,
+        "analysisComplete": true
+      },
+      "conditionalLogic": {
+        "totalFunctionsAnalyzed": 181,
+        "totalCandidatesDetected": 104,
+        "returnedCandidates": 80,
+        "omittedCandidates": 24,
+        "resultTruncated": true,
+        "truncationReason": "MAX_CONDITIONAL",
+        "configuredLimit": 80,
+        "analysisComplete": true
+      },
+      "evidenceGraph": {
+        "totalFunctionsAnalyzed": 21,
+        "totalCandidatesDetected": 57,
+        "returnedCandidates": 57,
+        "omittedCandidates": 0,
+        "resultTruncated": false,
+        "truncationReason": null,
+        "configuredLimit": 600,
+        "analysisComplete": true,
+        "totalGraphNodes": 39,
+        "totalGraphEdges": 18,
+        "returnedGraphNodes": 39,
+        "returnedGraphEdges": 18
+      }
+    },
+    "conditionalLogicQuality": {
+      "CONDITIONAL_LOGIC_ONLY": 9,
+      "INPUT_RELATED_CONDITIONAL_LOGIC": 21,
+      "STATE_RELATED_CONDITIONAL_LOGIC": 74,
+      "FEATURE_GATE_CANDIDATE": 0,
+      "NOT_CLASSIFIABLE": 0
+    },
+    "fsmIntegration": {
+      "fsmCandidateCount": 1,
+      "inputLinkedFsmCount": 0
+    },
+    "activationEvidenceGraph": {
+      "nodeCount": 39,
+      "edgeCount": 18,
+      "resultLimits": {
+        "totalFunctionsAnalyzed": 21,
+        "totalCandidatesDetected": 57,
+        "returnedCandidates": 57,
+        "omittedCandidates": 0,
+        "resultTruncated": false,
+        "truncationReason": null,
+        "configuredLimit": 600,
+        "analysisComplete": true,
+        "totalGraphNodes": 39,
+        "totalGraphEdges": 18,
+        "returnedGraphNodes": 39,
+        "returnedGraphEdges": 18
+      }
+    },
+    "evidenceGraphQuality": {
+      "nodeCount": 39,
+      "edgeCount": 18,
+      "confirmedEdgeCount": 0,
+      "indicativeEdgeCount": 18,
+      "speculativeEdgeCount": 0,
+      "unresolvedEdgeCount": 0
+    },
+    "activationEvidenceDistribution": {
+      "staticConfirmedCount": 0,
+      "indicativeCount": 0,
+      "speculativeCount": 21,
+      "unknownCount": 0,
+      "ambiguousCount": 0,
+      "overallEvidenceTier": "SPECULATIVE",
+      "overallEvidenceSummary": "\u00dcberwiegend spekulative / schwache Hinweise.",
+      "strongestIndividualFinding": {
+        "address": "0800c4d4",
+        "name": "FUN_0800c4d4",
+        "evidenceTier": "SPECULATIVE",
+        "inputCategories": [
+          "input_callback"
+        ]
+      }
+    },
+    "inputDetectionQuality": {
+      "genericNamedHandlers": 21,
+      "namedHandlers": 0,
+      "structuralMultiSignal": 21,
+      "nameOrStringOnly": 0,
+      "note": "Keine Precision/Recall f\u00fcr reale Firmware ohne unabh\u00e4ngige Ground Truth."
+    },
+    "semanticDataFlow": {
+      "ok": true,
+      "functionsAnalyzed": 181,
+      "withMemoryReads": 154,
+      "withMemoryWrites": 145,
+      "withConditionals": 97,
+      "withCalls": 85,
+      "qualityOk": 173,
+      "qualityPartial": 7,
+      "qualityMissing": 1,
+      "fromDataflowExport": 173,
+      "derivedOnly": 0,
+      "provenanceCounts": {
+        "GHIDRA_EXPORTED": 173,
+        "MNEMONIC_DERIVED": 0,
+        "PARTIAL": 8,
+        "NOT_AVAILABLE": 0
+      },
+      "dataflowCoveragePercent": 95.58011049723757,
+      "source": "dataflow_export"
+    },
+    "referenceComparison": {
+      "referenceTrust": "communityLibrary",
+      "referenceIsCommunity": true,
+      "profileCompatibility": {
+        "ok": false,
+        "status": "UNKNOWN",
+        "reasons": []
+      }
+    },
+    "prioritization": {
+      "top": [
+        {
+          "address": "0800c4d4",
+          "name": "FUN_0800c4d4",
+          "priorityScore": 2.8,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "0800c570",
+          "name": "FUN_0800c570",
+          "priorityScore": 2.8,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "0800024c",
+          "name": "FUN_0800024c",
+          "priorityScore": 2.35,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "080002ae",
+          "name": "FUN_080002ae",
+          "priorityScore": 2.35,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "0800035e",
+          "name": "FUN_0800035e",
+          "priorityScore": 2.35,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "08001050",
+          "name": "FUN_08001050",
+          "priorityScore": 2.35,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "08004208",
+          "name": "FUN_08004208",
+          "priorityScore": 2.35,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        },
+        {
+          "address": "0800423c",
+          "name": "FUN_0800423c",
+          "priorityScore": 2.35,
+          "inputCategories": [
+            "input_callback"
+          ],
+          "evidenceTier": "SPECULATIVE",
+          "reasons": [
+            "conditional_logic_quality",
+            "generic_name_name_independent_analysis"
+          ],
+          "note": "Hohe Priorit\u00e4t ist kein Manipulationsnachweis."
+        }
+      ]
+    },
+    "evidenceTier": "SPECULATIVE",
+    "analysisLimitations": [
+      "Activation Forensics ist eine statische Codeanalyse \u2014 kein Nachweis realen Fahrzeugverhaltens.",
+      "Keine Rekonstruktion oder Ausgabe von Aktivierungs-/Umgehungssequenzen.",
+      "Funktionsnamen und Strings sind nur erg\u00e4nzende Hinweise; generische Namen (FUN_*) sind \u00fcblich.",
+      "Nicht jede undokumentierte Funktion ist eine Tuningfunktion; nicht jede \u00c4nderung ist Manipulation.",
+      "Hohe Analysepriorit\u00e4t ist kein Manipulationsnachweis.",
+      "Community-Referenzen sind keine verifizierte Herstellerfirmware.",
+      "Gesamt-Evidenz spiegelt die Verteilung der Einzelfunde wider \u2014 ein starker Einzelfund best\u00e4tigt nicht alle Ergebnisse.",
+      "Kontrollpr\u00fcfung an Referenzfirmware \u2014 Community-Herkunft bleibt sichtbar; kein OEM-Automatismus.",
+      "Semantic data-flow is a compact structural summary \u2014 not full pcode / SSA.",
+      "Ohne Ghidra-Dataflow-Export werden Merkmale aus Mnemonics/Calls/Refs abgeleitet (best-effort).",
+      "parameterCount ist null wenn die Signatur unbekannt ist \u2014 nicht erraten.",
+      "Input Behavior Analysis ist heuristisch und kein Nachweis realen Fahrzeugverhaltens.",
+      "Einzelne Strings/Konstanten allein gelten nicht als Funktionsnachweis.",
+      "Keine Aktivierungsfolgen oder Umgehungsempfehlungen.",
+      "Ein Basic Block entspricht nicht automatisch einem Programmzustand."
+    ],
+    "notes": [
+      "phase=2.3.2",
+      "analysisMode=negative_control_reference",
+      "phase=2.3.2",
+      "dataflowExport=ok count=181",
+      "callGraph=used-for-callCount-fallback",
+      "semanticDataflow=ok functions=181 ok=173 partial=7 missing=1"
+    ]
+  },
+  "analysisProfileHash": "c0f507820a1457a1af98c2a66352db531f2f4ad1bcf72bc32c58e307e3f41de7"
+}

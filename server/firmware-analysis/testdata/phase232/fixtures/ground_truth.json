@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.2",
+  "disclaimer": "Kontrollierte Fixtures \u2014 keine realen Tuning-Aktivierungsmechanismen. Metriken nur f\u00fcr Fixtures.",
+  "addressShiftD": "0x1000",
+  "variants": {
+    "A_named": {
+      "file": "A_named.functions.json",
+      "description": "Original names + strings"
+    },
+    "B_generic": {
+      "file": "B_generic.functions.json",
+      "description": "FUN_* names, strings retained"
+    },
+    "C_no_strings": {
+      "file": "C_no_strings.functions.json",
+      "description": "FUN_* ohne Strings"
+    },
+    "D_shifted": {
+      "file": "D_shifted.functions.json",
+      "description": "FUN_* + Adressen +0x1000"
+    },
+    "E_anon_meta": {
+      "file": "E_anon_meta.functions.json",
+      "description": "FUN_* ohne Strings, reduzierte Metadaten"
+    }
+  },
+  "cases": [
+    {
+      "id": "fn_00",
+      "logicalName": "btn_input_handler",
+      "addressA": "0x08001000",
+      "addressD": "0x08002000",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_01",
+      "logicalName": "gpio_exti_isr",
+      "addressA": "0x08001080",
+      "addressD": "0x08002080",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_02",
+      "logicalName": "indicator_process",
+      "addressA": "0x08001100",
+      "addressD": "0x08002100",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_03",
+      "logicalName": "hazard_lamp_update",
+      "addressA": "0x08001180",
+      "addressD": "0x08002180",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_04",
+      "logicalName": "ble_gatt_on_write",
+      "addressA": "0x08001200",
+      "addressD": "0x08002200",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_05",
+      "logicalName": "uart_rx_event",
+      "addressA": "0x08001280",
+      "addressD": "0x08002280",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_06",
+      "logicalName": "event_queue_dispatch",
+      "addressA": "0x08001300",
+      "addressD": "0x08002300",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_07",
+      "logicalName": "mode_state_set",
+      "addressA": "0x08001380",
+      "addressD": "0x08002380",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_08",
+      "logicalName": null,
+      "addressA": "0x08001400",
+      "addressD": "0x08002400",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_09",
+      "logicalName": null,
+      "addressA": "0x08001480",
+      "addressD": "0x08002480",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_10",
+      "logicalName": "memcpy_like_helper",
+      "addressA": "0x08001500",
+      "addressD": "0x08002500",
+      "expectDetect": false
+    },
+    {
+      "id": "fn_11",
+      "logicalName": null,
+      "addressA": "0x08001580",
+      "addressD": "0x08002580",
+      "expectDetect": true
+    },
+    {
+      "id": "fn_12",
+      "logicalName": "x86_stub_ignored",
+      "addressA": "0x08001600",
+      "addressD": "0x08002600",
+      "expectDetect": false
+    },
+    {
+      "id": "fn_13",
+      "logicalName": "process_input_frame",
+      "addressA": "0x08001680",
+      "addressD": "0x08002680",
+      "expectDetect": true
+    }
+  ],
+  "expectCounts": {
+    "positives": 12,
+    "negatives": 2,
+    "total": 14
+  }
+}

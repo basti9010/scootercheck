@@ -1,0 +1,68 @@
+{
+  "description": "Phase 2.2F callgraph classification ground truth (synthetic edges). Documented before analysis.",
+  "cases": [
+    {
+      "id": "direct_call",
+      "edge": {"from": "a", "to": "b", "toName": "foo", "kind": "direct", "evidence": "static"},
+      "expect": "DIRECT_CALL"
+    },
+    {
+      "id": "indirect_call",
+      "edge": {"from": "a", "to": null, "toName": null, "kind": "indirect", "evidence": "heuristic"},
+      "expect": "INDIRECT_CALL"
+    },
+    {
+      "id": "internal_conditional_branch",
+      "edge": {"from": "a", "to": "a+10", "toName": null, "kind": "jump", "evidence": "internal", "classification": "INTERNAL_BRANCH"},
+      "expect": "INTERNAL_BRANCH"
+    },
+    {
+      "id": "internal_unconditional_branch",
+      "edge": {"from": "a", "to": "a+40", "toName": null, "kind": "jump", "evidence": "internal", "classification": "INTERNAL_BRANCH"},
+      "expect": "INTERNAL_BRANCH"
+    },
+    {
+      "id": "pointer_call",
+      "edge": {"from": "a", "to": null, "toName": null, "kind": "indirect", "evidence": "heuristic"},
+      "expect": "INDIRECT_CALL"
+    },
+    {
+      "id": "tail_call",
+      "edge": {"from": "a", "to": "b", "toName": "bar", "kind": "jump", "evidence": "tail"},
+      "expect": "TAIL_CALL"
+    },
+    {
+      "id": "thumb_bit_direct",
+      "edge": {"from": "a", "to": "b", "toName": "thumb_fn", "kind": "direct", "evidence": "static", "classification": "DIRECT_CALL"},
+      "expect": "DIRECT_CALL",
+      "note": "Thumb LSB handled in Ghidra export; classification remains DIRECT_CALL"
+    },
+    {
+      "id": "literal_pool_unknown",
+      "edge": {"from": "a", "to": "litpool", "toName": null, "kind": "jump", "evidence": "unresolved"},
+      "expect": "UNKNOWN_CONTROL_FLOW",
+      "note": "Literal-pool / non-call jump without target name"
+    },
+    {
+      "id": "unresolved_call",
+      "edge": {"from": "a", "to": "dead", "toName": null, "kind": "call", "evidence": "unresolved"},
+      "expect": "UNRESOLVED_CALL"
+    },
+    {
+      "id": "legacy_jump_unresolved_not_call",
+      "edge": {"from": "a", "to": "dead", "toName": null, "kind": "jump", "evidence": "unresolved"},
+      "expect": "UNKNOWN_CONTROL_FLOW"
+    },
+    {
+      "id": "legacy_static_direct",
+      "edge": {"from": "a", "to": "b", "toName": "baz", "kind": "direct", "evidence": "static"},
+      "expect": "DIRECT_CALL"
+    },
+    {
+      "id": "no_calls",
+      "edge": null,
+      "expect": null,
+      "note": "function without edges — covered by empty graph"
+    }
+  ]
+}

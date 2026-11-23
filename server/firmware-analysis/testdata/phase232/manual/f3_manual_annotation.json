@@ -1,0 +1,502 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.2",
+  "disclaimer": "Limited manual annotation of community F3 VCU export. Not OEM GT. No unlock sequences.",
+  "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+  "sampleSize": 14,
+  "functions": [
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "high_fan_in",
+      "address": "080044a2",
+      "name": "FUN_080044a2",
+      "codeProperties": {
+        "basicBlocks": 9,
+        "cfgEdges": 13,
+        "calledByCount": 13,
+        "callCount": 1,
+        "dataflowQuality": "ok",
+        "memoryReads": 2,
+        "memoryWrites": 2,
+        "compareOps": 3,
+        "conditionalBranches": 4,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": true,
+        "categories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "weakCandidate": true,
+        "structuralOnly": true,
+        "conditionalQualityClass": "INPUT_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "callback_or_shared_helper_candidate",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "medium",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "high_fan_in",
+      "address": "0800027e",
+      "name": "FUN_0800027e",
+      "codeProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 1,
+        "calledByCount": 8,
+        "callCount": 1,
+        "dataflowQuality": "ok",
+        "memoryReads": 0,
+        "memoryWrites": 0,
+        "compareOps": 0,
+        "conditionalBranches": 0,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "NOT_CLASSIFIABLE"
+      },
+      "manualTechnicalAssessment": "ambiguous_structure",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "low",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "high_fan_in",
+      "address": "08001050",
+      "name": "FUN_08001050",
+      "codeProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 3,
+        "calledByCount": 6,
+        "callCount": 0,
+        "dataflowQuality": "ok",
+        "memoryReads": 2,
+        "memoryWrites": 2,
+        "compareOps": 1,
+        "conditionalBranches": 1,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": true,
+        "categories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "weakCandidate": true,
+        "structuralOnly": true,
+        "conditionalQualityClass": "INPUT_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "callback_or_shared_helper_candidate",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "medium",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "high_fan_in",
+      "address": "08008924",
+      "name": "FUN_08008924",
+      "codeProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 4,
+        "calledByCount": 6,
+        "callCount": 2,
+        "dataflowQuality": "ok",
+        "memoryReads": 5,
+        "memoryWrites": 3,
+        "compareOps": 1,
+        "conditionalBranches": 1,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": true,
+        "categories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "weakCandidate": true,
+        "structuralOnly": true,
+        "conditionalQualityClass": "INPUT_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "callback_or_shared_helper_candidate",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "medium",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "mmio_const",
+      "address": "0800bf90",
+      "name": "FUN_0800bf90",
+      "codeProperties": {
+        "basicBlocks": 20,
+        "cfgEdges": 34,
+        "calledByCount": 0,
+        "callCount": 2,
+        "dataflowQuality": "ok",
+        "memoryReads": 2,
+        "memoryWrites": 12,
+        "compareOps": 7,
+        "conditionalBranches": 11,
+        "mmioHint": true
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "STATE_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "possible_peripheral_io_path",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "medium",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "mmio_const",
+      "address": "0800c0d0",
+      "name": "FUN_0800c0d0",
+      "codeProperties": {
+        "basicBlocks": 55,
+        "cfgEdges": 90,
+        "calledByCount": 0,
+        "callCount": 1,
+        "dataflowQuality": "ok",
+        "memoryReads": 4,
+        "memoryWrites": 21,
+        "compareOps": 34,
+        "conditionalBranches": 39,
+        "mmioHint": true
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "STATE_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "possible_peripheral_io_path",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "medium",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "mmio_const",
+      "address": "0800c4d4",
+      "name": "FUN_0800c4d4",
+      "codeProperties": {
+        "basicBlocks": 9,
+        "cfgEdges": 12,
+        "calledByCount": 1,
+        "callCount": 0,
+        "dataflowQuality": "ok",
+        "memoryReads": 3,
+        "memoryWrites": 7,
+        "compareOps": 3,
+        "conditionalBranches": 6,
+        "mmioHint": true
+      },
+      "automaticClassification": {
+        "detected": true,
+        "categories": [
+          "input_callback"
+        ],
+        "evidenceTier": "SPECULATIVE",
+        "weakCandidate": true,
+        "structuralOnly": true,
+        "conditionalQualityClass": "INPUT_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "possible_peripheral_io_path",
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "medium",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "dense_compare",
+      "address": "08000436",
+      "name": "FUN_08000436",
+      "codeProperties": {
+        "basicBlocks": 20,
+        "cfgEdges": 27,
+        "calledByCount": 1,
+        "callCount": 0,
+        "dataflowQuality": "ok",
+        "memoryReads": 2,
+        "memoryWrites": 1,
+        "compareOps": 4,
+        "conditionalBranches": 11,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "STATE_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "general_conditional_logic",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "dense_compare",
+      "address": "08000888",
+      "name": "FUN_08000888",
+      "codeProperties": {
+        "basicBlocks": 12,
+        "cfgEdges": 16,
+        "calledByCount": 1,
+        "callCount": 0,
+        "dataflowQuality": "ok",
+        "memoryReads": 2,
+        "memoryWrites": 1,
+        "compareOps": 4,
+        "conditionalBranches": 4,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "STATE_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "general_conditional_logic",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "dense_compare",
+      "address": "08000a1c",
+      "name": "FUN_08000a1c",
+      "codeProperties": {
+        "basicBlocks": 7,
+        "cfgEdges": 10,
+        "calledByCount": 0,
+        "callCount": 1,
+        "dataflowQuality": "ok",
+        "memoryReads": 2,
+        "memoryWrites": 1,
+        "compareOps": 3,
+        "conditionalBranches": 3,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "STATE_RELATED_CONDITIONAL_LOGIC"
+      },
+      "manualTechnicalAssessment": "general_conditional_logic",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "memory_heavy",
+      "address": "08001064",
+      "name": "FUN_08001064",
+      "codeProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "calledByCount": 1,
+        "callCount": 0,
+        "dataflowQuality": "ok",
+        "memoryReads": 7,
+        "memoryWrites": 5,
+        "compareOps": 0,
+        "conditionalBranches": 1,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "NOT_CLASSIFIABLE"
+      },
+      "manualTechnicalAssessment": "general_memory_routine",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "memory_heavy",
+      "address": "080010cc",
+      "name": "FUN_080010cc",
+      "codeProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 9,
+        "calledByCount": 0,
+        "callCount": 9,
+        "dataflowQuality": "ok",
+        "memoryReads": 1,
+        "memoryWrites": 4,
+        "compareOps": 0,
+        "conditionalBranches": 0,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "NOT_CLASSIFIABLE"
+      },
+      "manualTechnicalAssessment": "general_memory_routine",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "small",
+      "address": "08000282",
+      "name": "FUN_08000282",
+      "codeProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 1,
+        "calledByCount": 0,
+        "callCount": 1,
+        "dataflowQuality": "ok",
+        "memoryReads": 1,
+        "memoryWrites": 1,
+        "compareOps": 0,
+        "conditionalBranches": 0,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "NOT_CLASSIFIABLE"
+      },
+      "manualTechnicalAssessment": "trivial_or_leaf",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    },
+    {
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "sampleKind": "small",
+      "address": "08000352",
+      "name": "FUN_08000352",
+      "codeProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 1,
+        "calledByCount": 2,
+        "callCount": 1,
+        "dataflowQuality": "ok",
+        "memoryReads": 0,
+        "memoryWrites": 0,
+        "compareOps": 0,
+        "conditionalBranches": 0,
+        "mmioHint": false
+      },
+      "automaticClassification": {
+        "detected": false,
+        "categories": null,
+        "evidenceTier": null,
+        "weakCandidate": null,
+        "structuralOnly": null,
+        "conditionalQualityClass": "NOT_CLASSIFIABLE"
+      },
+      "manualTechnicalAssessment": "trivial_or_leaf",
+      "manualLabel": "TECHNICALLY_CONFIRMED_OTHER_LOGIC",
+      "uncertainty": "high",
+      "limitations": [
+        "Community reference firmware \u2014 not OEM ground truth.",
+        "Manual labels are technical code assessments only \u2014 not vehicle behavior.",
+        "No activation/unlock sequence reconstruction."
+      ]
+    }
+  ],
+  "limitedMetrics": {
+    "sampleSize": 14,
+    "automaticDetections": 4,
+    "manualConfirmedGeneralInput": 0,
+    "manualConfirmedOtherLogic": 7,
+    "manualNotSufficientlyDeterminable": 7,
+    "autoDetectButManualOtherLogic": 0,
+    "note": "Not precision/recall for full firmware \u2014 sample only."
+  }
+}

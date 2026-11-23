@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.1",
+  "disclaimer": "Kontrollierte Fixtures — keine realen Tuning-Aktivierungsmechanismen. Metriken nur für Fixtures.",
+  "variants": {
+    "A_named": {
+      "description": "Aussagekräftige Funktionsnamen + Strings"
+    },
+    "B_generic_names": {
+      "description": "Gleiche Struktur, FUN_* Namen"
+    },
+    "C_no_strings": {
+      "description": "FUN_* ohne Stringhinweise"
+    },
+    "D_shifted_addr": {
+      "description": "Adressen +0x1000, Struktur unverändert"
+    }
+  },
+  "cases_named": [
+    {
+      "address": "0x08001000",
+      "name": "btn_input_handler",
+      "expectDetect": true,
+      "categories": [
+        "button_input"
+      ]
+    },
+    {
+      "address": "0x08001080",
+      "name": "gpio_exti_isr",
+      "expectDetect": true,
+      "categories": [
+        "gpio_input"
+      ]
+    },
+    {
+      "address": "0x08001100",
+      "name": "indicator_process",
+      "expectDetect": true,
+      "categories": [
+        "indicator_input"
+      ]
+    },
+    {
+      "address": "0x08001180",
+      "name": "hazard_lamp_update",
+      "expectDetect": true,
+      "categories": [
+        "hazard_indicator_input"
+      ]
+    },
+    {
+      "address": "0x08001200",
+      "name": "ble_gatt_on_write",
+      "expectDetect": true,
+      "categories": [
+        "ble_input"
+      ]
+    },
+    {
+      "address": "0x08001280",
+      "name": "uart_rx_event",
+      "expectDetect": true,
+      "categories": [
+        "uart_input"
+      ]
+    },
+    {
+      "address": "0x08001300",
+      "name": "event_queue_dispatch",
+      "expectDetect": true,
+      "categories": [
+        "event_queue"
+      ]
+    },
+    {
+      "address": "0x08001500",
+      "name": "memcpy_like_helper",
+      "expectDetect": false
+    },
+    {
+      "address": "0x08001580",
+      "name": "FUN_08001580",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001680",
+      "name": "process_input_frame",
+      "expectDetect": true
+    }
+  ],
+  "cases_generic": [
+    {
+      "address": "0x08001000",
+      "name": "FUN_08001000",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001080",
+      "name": "FUN_08001080",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001200",
+      "name": "FUN_08001200",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001280",
+      "name": "FUN_08001280",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001680",
+      "name": "FUN_08001680",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001500",
+      "name": "FUN_08001500",
+      "expectDetect": false
+    }
+  ],
+  "cases_no_strings": [
+    {
+      "address": "0x08001000",
+      "name": "FUN_08001000",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001080",
+      "name": "FUN_08001080",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001200",
+      "name": "FUN_08001200",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001280",
+      "name": "FUN_08001280",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001680",
+      "name": "FUN_08001680",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08001500",
+      "name": "FUN_08001500",
+      "expectDetect": false
+    }
+  ],
+  "cases_shifted": [
+    {
+      "address": "0x08002000",
+      "name": "btn_input_handler",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002080",
+      "name": "gpio_exti_isr",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002100",
+      "name": "indicator_process",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002180",
+      "name": "hazard_lamp_update",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002200",
+      "name": "ble_gatt_on_write",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002280",
+      "name": "uart_rx_event",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002300",
+      "name": "event_queue_dispatch",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002380",
+      "name": "mode_state_set",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002400",
+      "name": "FUN_08001400",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002480",
+      "name": "FUN_08001480",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002500",
+      "name": "memcpy_like_helper",
+      "expectDetect": false
+    },
+    {
+      "address": "0x08002580",
+      "name": "FUN_08001580",
+      "expectDetect": true
+    },
+    {
+      "address": "0x08002680",
+      "name": "process_input_frame",
+      "expectDetect": true
+    }
+  ],
+  "cases_extra": [
+    {
+      "address": "0x08002000",
+      "expectDetect": true,
+      "note": "param-based"
+    },
+    {
+      "address": "0x08002080",
+      "expectDetect": true,
+      "note": "mmio memory-based"
+    },
+    {
+      "address": "0x08002100",
+      "expectDetect": true,
+      "note": "state-related"
+    },
+    {
+      "address": "0x08002180",
+      "expectDetect": false,
+      "note": "compare-only"
+    },
+    {
+      "address": "0x08002200",
+      "expectDetect": false,
+      "note": "memory-only"
+    },
+    {
+      "address": "0x08002280",
+      "expectDetect": false,
+      "note": "error branches"
+    },
+    {
+      "address": "0x08002300",
+      "expectDetect": false,
+      "note": "compute"
+    }
+  ]
+}

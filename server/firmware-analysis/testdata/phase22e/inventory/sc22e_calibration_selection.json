@@ -1,0 +1,20 @@
+[
+  {
+    "id": "895e06427e167ac5",
+    "model": "f3",
+    "version": "1.5.8 (Compat)",
+    "controller": "VCU",
+    "bytes": 56372,
+    "file": "rexzy_f3_VCU_1.5.8_Compat__895e06427e16.bin",
+    "sha256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4"
+  },
+  {
+    "id": "1f1e05eb79ab0beb",
+    "model": "g3",
+    "version": "1.5.13 (Compat)",
+    "controller": "VCU",
+    "bytes": 56820,
+    "file": "rexzy_g3_VCU_1.5.13_Compat__1f1e05eb79ab.bin",
+    "sha256": "1f1e05eb79ab0bebdd0c016345f9cd9c25364bc1e7e46162414fba1f2093b108"
+  }
+]

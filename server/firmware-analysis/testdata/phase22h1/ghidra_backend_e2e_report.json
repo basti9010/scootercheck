@@ -1,0 +1,196 @@
+{
+  "phase": "2.2H.1",
+  "generatedAt": "2026-11-19T10:56:35.151997+00:00",
+  "base": "/tmp/scootercheck-phase22h1-isolated/run",
+  "ghidraHome": "/opt/ghidra/ghidra_12.2_PUBLIC",
+  "results": [
+    {
+      "ok": true,
+      "label": "f3_vcu_1.5.8",
+      "sha256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "jobIdAnon": "3d403406…",
+      "state": "completed",
+      "message": "Klartext übernommen (56372 Byte) → /tmp/scootercheck-phase22h1-isolated/run/staging/plaintext/2026/11/19/3d403406-1312-4b85-911f-827f63c50f57_895e06427e16_f3_vcu_1.5.8.dec.bin.dec.bin · capstone 0 · yara 4 · unicorn 8 · paths 30 · Ghidra .c",
+      "uploadStatus": 200,
+      "uploadMs": 22923,
+      "processElapsedSec": 23.37,
+      "plaintextSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "decompileSaved": true,
+      "functionsPathExists": true,
+      "callgraphPathExists": true,
+      "functionCount": 181,
+      "expectedFunctionCount": 181,
+      "functionCountMatch": true,
+      "analysisProfileVersion": "2.2G.1",
+      "analysisProfileHash": "1d0aea6293aca111a858b0319a9661e8d5c5a0e5e06af517bd6b408a11819047",
+      "ghidraVersion": "12.2",
+      "processor": "ARM:LE:32:Cortex",
+      "requestedLoaderBase": "0x08000000",
+      "actualImageBase": "00000000",
+      "memoryBlockStart": "08000000",
+      "resetHandlerAddress": "0x08001188",
+      "callGraphQuality": {
+        "directCalls": 746,
+        "indirectCalls": 18,
+        "internalBranches": 1178,
+        "tailCalls": 459,
+        "unresolvedCalls": 0,
+        "edgeCount": 2402
+      },
+      "ghidraRan": true,
+      "artifacts": {
+        "functions": {
+          "status": 200,
+          "bytes": 124517,
+          "contentType": "application/json",
+          "jsonKeys": [
+            "actualImageBase",
+            "analysisLimitations",
+            "analysisProfile",
+            "firmwareFileOffset",
+            "functionCount",
+            "functions",
+            "imageBase",
+            "memoryBlockStart",
+            "notes",
+            "ok",
+            "processor",
+            "program",
+            "requestedLoaderBase",
+            "resetHandlerAddress",
+            "schemaVersion",
+            "truncated"
+          ]
+        },
+        "callgraph": {
+          "status": 200,
+          "bytes": 358549,
+          "contentType": "application/json",
+          "jsonKeys": [
+            "analysisLimitations",
+            "analysisProfile",
+            "callGraphQuality",
+            "dotPath",
+            "edgeCount",
+            "edges",
+            "featuresVersion",
+            "functionCount",
+            "heuristicCount",
+            "notes",
+            "ok",
+            "schemaVersion",
+            "staticEdgeCount",
+            "truncated",
+            "unresolvedCount"
+          ]
+        },
+        "functionDiff": {
+          "status": 200,
+          "bytes": 1163,
+          "contentType": "application/json"
+        },
+        "inputBehavior": {
+          "status": 200,
+          "bytes": 3384,
+          "contentType": "application/json"
+        }
+      },
+      "foreignJob404": 404
+    },
+    {
+      "ok": true,
+      "label": "g3_vcu_1.5.13",
+      "sha256": "1f1e05eb79ab0bebdd0c016345f9cd9c25364bc1e7e46162414fba1f2093b108",
+      "jobIdAnon": "d6144b06…",
+      "state": "completed",
+      "message": "Klartext übernommen (56820 Byte) → /tmp/scootercheck-phase22h1-isolated/run/staging/plaintext/2026/11/19/d6144b06-952a-4c97-b087-b9420ed64d58_1f1e05eb79ab_g3_vcu_1.5.13.dec.bin.dec.bin · capstone 0 · yara 4 · unicorn 8 · paths 28 · Ghidra .",
+      "uploadStatus": 200,
+      "uploadMs": 23311,
+      "processElapsedSec": 23.44,
+      "plaintextSHA256": "1f1e05eb79ab0bebdd0c016345f9cd9c25364bc1e7e46162414fba1f2093b108",
+      "decompileSaved": true,
+      "functionsPathExists": true,
+      "callgraphPathExists": true,
+      "functionCount": 220,
+      "expectedFunctionCount": 220,
+      "functionCountMatch": true,
+      "analysisProfileVersion": "2.2G.1",
+      "analysisProfileHash": "1d0aea6293aca111a858b0319a9661e8d5c5a0e5e06af517bd6b408a11819047",
+      "ghidraVersion": "12.2",
+      "processor": "ARM:LE:32:Cortex",
+      "requestedLoaderBase": "0x08000000",
+      "actualImageBase": "00000000",
+      "memoryBlockStart": "08000000",
+      "resetHandlerAddress": "0x08001188",
+      "callGraphQuality": {
+        "directCalls": 1022,
+        "indirectCalls": 20,
+        "internalBranches": 1317,
+        "tailCalls": 635,
+        "unresolvedCalls": 0,
+        "edgeCount": 2994
+      },
+      "ghidraRan": true,
+      "artifacts": {
+        "functions": {
+          "status": 200,
+          "bytes": 149967,
+          "contentType": "application/json",
+          "jsonKeys": [
+            "actualImageBase",
+            "analysisLimitations",
+            "analysisProfile",
+            "firmwareFileOffset",
+            "functionCount",
+            "functions",
+            "imageBase",
+            "memoryBlockStart",
+            "notes",
+            "ok",
+            "processor",
+            "program",
+            "requestedLoaderBase",
+            "resetHandlerAddress",
+            "schemaVersion",
+            "truncated"
+          ]
+        },
+        "callgraph": {
+          "status": 200,
+          "bytes": 447398,
+          "contentType": "application/json",
+          "jsonKeys": [
+            "analysisLimitations",
+            "analysisProfile",
+            "callGraphQuality",
+            "dotPath",
+            "edgeCount",
+            "edges",
+            "featuresVersion",
+            "functionCount",
+            "heuristicCount",
+            "notes",
+            "ok",
+            "schemaVersion",
+            "staticEdgeCount",
+            "truncated",
+            "unresolvedCount"
+          ]
+        },
+        "functionDiff": {
+          "status": 200,
+          "bytes": 1163,
+          "contentType": "application/json"
+        },
+        "inputBehavior": {
+          "status": 200,
+          "bytes": 3290,
+          "contentType": "application/json"
+        }
+      },
+      "foreignJob404": 404
+    }
+  ],
+  "allOk": true,
+  "functionCountsMatch": true
+}

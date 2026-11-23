@@ -1,0 +1,4 @@
+digraph CallGraph {
+  // ScooterCheck Phase-2.2F; edges=2402 direct=746 internal=1178 unresolved=0
+  label="callgraph edges=2402";
+}

@@ -1,0 +1,349 @@
+{
+  "ok": true,
+  "schemaVersion": 1,
+  "featuresVersion": 2,
+  "processor": "ARM:LE:32:Cortex",
+  "functionCount": 14,
+  "truncated": false,
+  "functions": [
+    {
+      "address": "0x08001000",
+      "name": "FUN_08001000",
+      "size": 48,
+      "basicBlocks": 4,
+      "cfgEdges": 5,
+      "calls": [],
+      "calledBy": [
+        "0x0800f001",
+        "0x0800f002",
+        "0x0800f003"
+      ],
+      "constants": [
+        1,
+        0,
+        "0x40020000"
+      ],
+      "strings": [
+        "button"
+      ],
+      "mnemonics": [
+        "str",
+        "bne",
+        "ldr",
+        "cmp",
+        "beq",
+        "movs",
+        "strb",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_btn",
+      "confidence": "high",
+      "processor": "ARM:LE:32:Cortex",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001080",
+      "name": "FUN_08001080",
+      "size": 40,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "calls": [],
+      "strings": [
+        "gpio"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_gpio",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f001",
+        "0x0800f002",
+        "0x0800f003"
+      ],
+      "constants": [
+        "0x40020010"
+      ]
+    },
+    {
+      "address": "0x08001100",
+      "name": "FUN_08001100",
+      "size": 36,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "strings": [
+        "indicator"
+      ],
+      "mnemonics": [
+        "bne",
+        "ldr",
+        "cmp",
+        "beq",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_ind",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f010",
+        "0x0800f011"
+      ],
+      "constants": []
+    },
+    {
+      "address": "0x08001180",
+      "name": "FUN_08001180",
+      "size": 32,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "strings": [
+        "hazard"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_haz",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001200",
+      "name": "FUN_08001200",
+      "size": 64,
+      "basicBlocks": 5,
+      "cfgEdges": 6,
+      "strings": [
+        "ble",
+        "gatt"
+      ],
+      "mnemonics": [
+        "bne",
+        "push",
+        "ldr",
+        "cmp",
+        "beq",
+        "bl",
+        "str",
+        "pop"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_ble",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f020",
+        "0x0800f021",
+        "0x0800f022"
+      ],
+      "constants": []
+    },
+    {
+      "address": "0x08001280",
+      "name": "FUN_08001280",
+      "size": 44,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "strings": [
+        "uart",
+        "rx"
+      ],
+      "mnemonics": [
+        "str",
+        "ldr",
+        "cmp",
+        "bne",
+        "strb",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_uart",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f030",
+        "0x0800f031",
+        "0x0800f032"
+      ],
+      "constants": []
+    },
+    {
+      "address": "0x08001300",
+      "name": "FUN_08001300",
+      "size": 56,
+      "basicBlocks": 4,
+      "cfgEdges": 5,
+      "strings": [
+        "event",
+        "queue"
+      ],
+      "mnemonics": [
+        "bne",
+        "ldr",
+        "cmp",
+        "beq",
+        "bl",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_eq",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f040",
+        "0x0800f041"
+      ],
+      "constants": []
+    },
+    {
+      "address": "0x08001380",
+      "name": "FUN_08001380",
+      "size": 28,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "strings": [
+        "state"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_st",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001400",
+      "name": "FUN_08001400",
+      "size": 72,
+      "basicBlocks": 6,
+      "cfgEdges": 8,
+      "strings": [
+        "state",
+        "mode"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "cmp",
+        "bne",
+        "movs",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 2,
+      "fingerprint": "fp_fun_state",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001480",
+      "name": "FUN_08001480",
+      "size": 40,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "strings": [
+        "process_input"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_extra",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001500",
+      "name": "FUN_08001500",
+      "size": 24,
+      "basicBlocks": 1,
+      "cfgEdges": 0,
+      "strings": [],
+      "mnemonics": [
+        "mov",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_memcpy",
+      "quality": "ok",
+      "calledBy": [],
+      "constants": []
+    },
+    {
+      "address": "0x08001580",
+      "name": "FUN_08001580",
+      "size": 36,
+      "basicBlocks": 3,
+      "cfgEdges": 3,
+      "strings": [
+        "msg_handler"
+      ],
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "bne",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_amb",
+      "quality": "ok"
+    },
+    {
+      "address": "0x08001600",
+      "name": "FUN_08001600",
+      "size": 16,
+      "basicBlocks": 1,
+      "cfgEdges": 0,
+      "strings": [],
+      "mnemonics": [
+        "ret"
+      ],
+      "branchMnemonicCount": 0,
+      "fingerprint": "fp_x86",
+      "processor": "x86:LE:32:default",
+      "quality": "unsupported_arch"
+    },
+    {
+      "address": "0x08001680",
+      "name": "FUN_08001680",
+      "size": 52,
+      "basicBlocks": 4,
+      "cfgEdges": 4,
+      "strings": [
+        "input"
+      ],
+      "mnemonics": [
+        "bne",
+        "ldr",
+        "cmp",
+        "beq",
+        "bl",
+        "str",
+        "bx"
+      ],
+      "branchMnemonicCount": 1,
+      "fingerprint": "fp_pif",
+      "quality": "ok",
+      "calledBy": [
+        "0x0800f050",
+        "0x0800f051",
+        "0x0800f052"
+      ],
+      "constants": []
+    }
+  ]
+}

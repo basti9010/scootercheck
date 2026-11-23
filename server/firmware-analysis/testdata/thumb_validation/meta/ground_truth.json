@@ -1,0 +1,81 @@
+{
+  "method": "hand-assembled Thumb (Python emitter, literal-pool BLX calls)",
+  "compiler": "none (raw Thumb opcodes)",
+  "processor": "ARM:LE:32:Cortex",
+  "baseAddr": "0x08000000",
+  "phase22d_reset_handler_note": {
+    "decision": "IDENTISCH is correct for reset_handler body",
+    "rationale": [
+      "C source for reset_handler is identical in version_a.c and version_b.c.",
+      "Machine bytes at file offsets 0x68 (A) and 0x74 (B) for the 12-byte body are identical: 072000bf014a904702e000bf.",
+      "Only the following literal-pool pointer differs (relocated process_input address); code-address immediates are excluded from fingerprints by design.",
+      "process_input itself is structurally changed; that is a callee dependency change, not a body change of reset_handler.",
+      "Therefore listing reset_handler under structurally_changed was incorrect Ground Truth from Phase 2.2C."
+    ],
+    "classification": "identical_likely",
+    "optionalNote": "calleeChanged=process_input (transitive dependency; not a body diff)"
+  },
+  "expectedDiff": {
+    "identical_likely": [
+      "mul_values",
+      "reset_handler"
+    ],
+    "structurally_changed": [
+      "add_values",
+      "compare_and_branch",
+      "process_input"
+    ],
+    "added": [
+      "xor_values"
+    ],
+    "removed": [
+      "loop_accumulate"
+    ]
+  },
+  "expectedInputBehavior": {
+    "notes": "Harmless synthetic input/state helpers only — no scooter limits or unlock logic.",
+    "version_a": {
+      "inputFunctionsMustInclude": ["process_input"],
+      "inputFunctionsMustExclude": ["add_values", "mul_values", "loop_accumulate"],
+      "stateMachine": {
+        "process_input": "STATE_MACHINE_CANDIDATE_OR_NOT_VERIFIABLE",
+        "noStateCountFromBasicBlocksAlone": true
+      }
+    },
+    "version_b": {
+      "inputFunctionsMustInclude": ["process_input"],
+      "inputFunctionsMustExclude": ["add_values", "mul_values", "xor_values"],
+      "stateMachine": {
+        "process_input": "STATE_MACHINE_CANDIDATE_OR_NOT_VERIFIABLE",
+        "noStateCountFromBasicBlocksAlone": true
+      }
+    },
+    "diff": {
+      "process_input": ["IDENTISCH", "STRUKTURELL_VERAENDERT"]
+    }
+  },
+  "version_a": {
+    "sha256": "6b7d6ec035753bbc547f92e97c7e01ce74597e13e2abe7864740fbd589cfb08b",
+    "bytes": 256,
+    "functions": {
+      "add_values": "0x8000008",
+      "mul_values": "0x800000c",
+      "loop_accumulate": "0x8000010",
+      "compare_and_branch": "0x8000020",
+      "process_input": "0x8000048",
+      "reset_handler": "0x8000068"
+    }
+  },
+  "version_b": {
+    "sha256": "0585f489d87738e11ae716babaca23943da67d543016fa0d3532223325304c75",
+    "bytes": 256,
+    "functions": {
+      "add_values": "0x8000008",
+      "mul_values": "0x8000010",
+      "xor_values": "0x8000014",
+      "compare_and_branch": "0x8000018",
+      "process_input": "0x8000050",
+      "reset_handler": "0x8000074"
+    }
+  }
+}
