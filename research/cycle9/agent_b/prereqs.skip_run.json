@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraPrereqValidation",
+  "cycle": 9,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:34:34.691432+00:00",
+  "processorTarget": "ARM:LE:32:Cortex",
+  "loaderBaseTarget": "0x08000000",
+  "syntheticFirmware": {
+    "present": true,
+    "path": "/agent/repos/scootercheck/research/cycle9/fixtures/synthetic_cortex_m_thumb.bin",
+    "size": 512,
+    "sha256": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+    "sha256MatchesCycle7": true,
+    "readableSyntheticOnly": true,
+    "notRealScooterFirmware": true
+  },
+  "ivt": {
+    "ok": true,
+    "likely": true,
+    "flashBase": "0x08000000",
+    "initialSP": "0x20020000",
+    "resetHandler": "0x08000100",
+    "resetThumb": true,
+    "resetFileOffset": 256,
+    "notes": []
+  },
+  "ghidraScriptsDir": "/agent/repos/scootercheck/server/firmware-analysis/ghidra_scripts",
+  "ghidraScripts": {
+    "SeedCortexMEntryPoints.java": true,
+    "ExportAllDecompiled.java": true,
+    "ExportFunctionAnalysis.java": true,
+    "ExportCallGraph.java": true
+  },
+  "ghidraHomeEnv": null,
+  "ghidraHeadlessEnv": null,
+  "analyzeHeadless": null,
+  "ghidraAvailable": false,
+  "exactMissingCause": "MISSING_PREREQUISITE: GHIDRA_HOME unset; GHIDRA_HEADLESS unset; analyzeHeadless not on PATH; /opt/ghidra absent or empty. Java present does not imply Ghidra.",
+  "environmentProbe": {
+    "resolutionPaths": [
+      {
+        "path": "env:GHIDRA_HEADLESS",
+        "value": null,
+        "status": "unset"
+      },
+      {
+        "path": "env:GHIDRA_HOME/support/analyzeHeadless",
+        "value": null,
+        "ghidraHome": null,
+        "status": "unset"
+      },
+      {
+        "path": "env:GHIDRA_HOME/ghidra_*/support/analyzeHeadless",
+        "value": null,
+        "candidates": [],
+        "status": "unset"
+      },
+      {
+        "path": "PATH:analyzeHeadless",
+        "value": null,
+        "status": "absent"
+      },
+      {
+        "path": "/opt/ghidra/ghidra_*/support/analyzeHeadless",
+        "value": null,
+        "optGhidraDirExists": false,
+        "candidates": [],
+        "status": "dir_missing"
+      }
+    ],
+    "java": {
+      "javaOnPath": "/usr/bin/java",
+      "versionLines": [
+        "openjdk version \"21.0.13.0.3\" 2026-10-24",
+        "OpenJDK Runtime Environment (build 21.0.13.0.3+1-1-24.04.1-Ubuntu)",
+        "OpenJDK 64-Bit Server VM (build 21.0.13.0.3+1-1-24.04.1-Ubuntu, mixed mode, sharing)"
+      ],
+      "impliesGhidra": false,
+      "note": "OpenJDK/JRE alone is not a Ghidra install"
+    },
+    "driver": {
+      "modulePath": "/agent/repos/scootercheck/server/firmware-analysis",
+      "importOk": true,
+      "ghidraConfigured": false,
+      "error": null
+    },
+    "fakeExportScan": {
+      "scanned": false,
+      "suspectFiles": []
+    }
+  },
+  "cycle9ProofPointMap": [
+    {
+      "id": 1,
+      "name": "Import"
+    },
+    {
+      "id": 2,
+      "name": "Architecture"
+    },
+    {
+      "id": 3,
+      "name": "Static analysis"
+    },
+    {
+      "id": 4,
+      "name": "Function detection"
+    },
+    {
+      "id": 5,
+      "name": "Control-flow"
+    },
+    {
+      "id": 6,
+      "name": "JSON export"
+    },
+    {
+      "id": 7,
+      "name": "Error handling"
+    }
+  ],
+  "errors": [],
+  "notes": [
+    "marker=SYNTH_C7_NOT_SCOOTER_FW",
+    "MISSING_PREREQUISITE: GHIDRA_HOME unset; GHIDRA_HEADLESS unset; analyzeHeadless not on PATH; /opt/ghidra absent or empty. Java present does not imply Ghidra.",
+    "Do NOT fabricate .functions.json / .callgraph.json / .dec.c.",
+    "ghidra_decompile.ghidra_configured()=False (matches probe)"
+  ],
+  "hardBans": [
+    "no real encrypted ZT3 plaintext reconstruction",
+    "no Cycle-6 FIRM.bin.enc decrypt",
+    "no fake Ghidra export artifacts when tools missing",
+    "never claim successful Ghidra run without analyzeHeadless"
+  ]
+}

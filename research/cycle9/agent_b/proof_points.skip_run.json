@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraValidationProofPoints",
+  "cycle": 9,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:34:34.719928+00:00",
+  "ghidraAvailable": false,
+  "syntheticBin": "/agent/repos/scootercheck/research/cycle9/fixtures/synthetic_cortex_m_thumb.bin",
+  "processor": "ARM:LE:32:Cortex",
+  "loaderBase": "0x08000000",
+  "outDir": "/agent/repos/scootercheck/research/cycle9/fixtures/out_synthetic",
+  "overallStatus": "SKIPPED_NO_GHIDRA",
+  "exactMissingCause": "MISSING_PREREQUISITE: GHIDRA_HOME unset, GHIDRA_HEADLESS unset, analyzeHeadless not on PATH, /opt/ghidra absent. Java present does not imply Ghidra.",
+  "proofPoints": [
+    {
+      "id": 1,
+      "name": "Import",
+      "status": "SKIP",
+      "detail": "analyzeHeadless unavailable — BinaryLoader import not attempted"
+    },
+    {
+      "id": 2,
+      "name": "Architecture",
+      "status": "SKIP",
+      "detail": "Target processor ARM:LE:32:Cortex + base 0x08000000 documented; Ghidra language assignment not executed"
+    },
+    {
+      "id": 3,
+      "name": "Static analysis",
+      "status": "SKIP",
+      "detail": "No headless auto-analysis without Ghidra"
+    },
+    {
+      "id": 4,
+      "name": "Function detection",
+      "status": "SKIP",
+      "detail": "No SeedCortexMEntryPoints / ExportFunctionAnalysis run; no fabricated .functions.json"
+    },
+    {
+      "id": 5,
+      "name": "Control-flow",
+      "status": "SKIP",
+      "detail": "No ExportCallGraph.java run; no fabricated .callgraph.json"
+    },
+    {
+      "id": 6,
+      "name": "JSON export",
+      "status": "PASS",
+      "detail": "Validation proof envelope written to /agent/repos/scootercheck/research/cycle9/fixtures/out_synthetic/proof_points.json (not a Ghidra export; no fabricated function/callgraph JSON)"
+    },
+    {
+      "id": 7,
+      "name": "Error handling",
+      "status": "PASS",
+      "detail": "MISSING_PREREQUISITE: GHIDRA_HOME unset, GHIDRA_HEADLESS unset, analyzeHeadless not on PATH, /opt/ghidra absent. Java present does not imply Ghidra."
+    }
+  ],
+  "hardBans": [
+    "no real encrypted ZT3 plaintext reconstruction",
+    "no Cycle-6 FIRM.bin.enc decrypt",
+    "no fake Ghidra export artifacts",
+    "never claim successful Ghidra run without analyzeHeadless"
+  ]
+}
