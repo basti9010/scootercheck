@@ -21,16 +21,11 @@ struct ContentView: View {
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
-    @State private var historyShareItems: [Any] = []
-    @State private var showHistoryShare = false
     @State private var busy = false
-    /// Prüfungsübersicht: Aktiv | Archiv
-    @State private var historyShelf: HistoryShelf = .active
+    /// Prüfungsübersicht: Aktiv | Archiv (bound into ProtocolHistoryOverviewView)
+    @State private var historyShelf: ProtocolHistoryShelf = .active
     @State private var historySelecting = false
     @State private var selectedHistoryIds: Set<UUID> = []
-    @State private var pendingDeleteIds: Set<UUID> = []
-    @State private var showHistoryDeleteConfirm = false
-    @State private var historyToast: String?
     @State private var powerCyclePhase: PowerCyclePhase = .idle
     @State private var powerCycleScanA: IntegrityReading? = nil
     @State private var powerCycleDevice: ScannedDevice? = nil
@@ -76,11 +71,6 @@ struct ContentView: View {
 
     /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
     @State private var findDestination: ScooterFindDestination = .hub
-
-    private enum HistoryShelf: Equatable {
-        case active
-        case archive
-    }
 
     private enum PowerCyclePhase: Equatable {
         case idle
@@ -150,8 +140,15 @@ struct ContentView: View {
                         )
                         .transition(.opacity)
                     } else if screen == .overview {
-                        controlsOverview
-                            .transition(.opacity)
+                        ProtocolHistoryOverviewView(
+                            history: history,
+                            shelf: $historyShelf,
+                            selecting: $historySelecting,
+                            selectedIds: $selectedHistoryIds,
+                            onNewCheck: { primaryAction() },
+                            onOpen: { openHistoryEntry($0) }
+                        )
+                        .transition(.opacity)
                     } else {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 20) {
@@ -286,46 +283,6 @@ struct ContentView: View {
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
                 isPresented: $showShare
             )
-            .sheet(isPresented: $showHistoryShare, onDismiss: { historyShareItems = [] }) {
-                ActivityShare(
-                    items: historyShareItems,
-                    subject: historyShareItems.count > 3
-                        ? "ScooterCheck Prüfberichte"
-                        : "ScooterCheck Prüfbericht"
-                )
-            }
-            .confirmationDialog(
-                pendingDeleteIds.count <= 1 ? "Prüfung löschen?" : "Prüfungen löschen?",
-                isPresented: $showHistoryDeleteConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Löschen", role: .destructive) {
-                    confirmHistoryDelete()
-                }
-                Button("Abbrechen", role: .cancel) {
-                    pendingDeleteIds = []
-                }
-            } message: {
-                if pendingDeleteIds.count <= 1 {
-                    Text("Diese Prüfung wird dauerhaft gelöscht.")
-                } else {
-                    Text("Die \(pendingDeleteIds.count) ausgewählten Prüfungen werden dauerhaft gelöscht.")
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if let historyToast {
-                    Text(historyToast)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Theme.accent.opacity(0.95))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 100)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .allowsHitTesting(false)
-                }
-            }
             .overlay(alignment: .top) {
                 if let banner = watchService.lastBanner, screen != .find || findDestination == .hub {
                     BLERadarBannerView(text: banner)
@@ -1123,14 +1080,8 @@ struct ContentView: View {
             } else if screen == .result, result != nil {
                 resultActionPanel
             } else if screen == .overview {
-                // „Neue Prüfung“ sitzt kompakt im Header — kein grauer Fuß-Container.
-                if historySelecting, !selectedHistoryIds.isEmpty {
-                    historySelectionActionBar
-                        .padding(.horizontal, Theme.Space.page)
-                        .padding(.top, 12)
-                        .padding(.bottom, 16)
-                        .background(.ultraThinMaterial)
-                }
+                // Selection bar lives inside ProtocolHistoryOverviewView (safeAreaInset).
+                EmptyView()
             } else if screen == .home {
                 VStack(spacing: 10) {
                     if ble.phase == .scanning {
@@ -2224,361 +2175,7 @@ struct ContentView: View {
         }
     }
 
-    private var visibleHistoryEntries: [ProtocolHistoryStore.Entry] {
-        historyShelf == .archive ? history.archivedEntries : history.activeEntries
-    }
-
-    private var historyShelfTitle: String {
-        switch historyShelf {
-        case .active:
-            return history.activeCount == 0 ? "Prüfungen" : "Prüfungen (\(history.activeCount))"
-        case .archive:
-            return history.archivedCount == 0 ? "Archiv" : "Archiv (\(history.archivedCount))"
-        }
-    }
-
-    private var controlsOverview: some View {
-        List {
-            historyOverviewHeader
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
-                .listRowSeparator(.hidden)
-
-            if visibleHistoryEntries.isEmpty {
-                historyEmptyState
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
-                    .listRowSeparator(.hidden)
-            } else {
-                ForEach(visibleHistoryEntries) { entry in
-                    Group {
-                        if historySelecting {
-                            controlRow(entry)
-                        } else {
-                            controlRow(entry)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    historySwipeActions(for: entry)
-                                }
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
-                    .listRowSeparator(.hidden)
-                }
-            }
-
-            AppCopyrightFooter()
-                .frame(maxWidth: .infinity)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 28, trailing: 20))
-                .listRowSeparator(.hidden)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, 1)
-        .background(Theme.bg)
-        .animation(.easeInOut(duration: 0.22), value: historyShelf)
-        .animation(.easeInOut(duration: 0.22), value: historySelecting)
-    }
-
-    private var historyOverviewHeader: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.md) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.md) {
-                PageTitle(text: historyShelfTitle)
-                Spacer(minLength: Theme.Space.sm)
-                if !historySelecting {
-                    Button {
-                        primaryAction()
-                    } label: {
-                        Text("Neue Prüfung")
-                            .font(Theme.buttonSecondary)
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Neue Prüfung")
-                }
-                Button {
-                    toggleHistorySelecting()
-                } label: {
-                    Text(historySelecting ? "Fertig" : "Auswählen")
-                        .font(Theme.buttonSecondary)
-                        .foregroundStyle(Theme.accent)
-                }
-                .buttonStyle(.plain)
-                .disabled(visibleHistoryEntries.isEmpty && !historySelecting)
-                .opacity(visibleHistoryEntries.isEmpty && !historySelecting ? 0.35 : 1)
-            }
-
-            Picker("Bereich", selection: $historyShelf) {
-                Text("Aktiv (\(history.activeCount))").tag(HistoryShelf.active)
-                Text("Archiv (\(history.archivedCount))").tag(HistoryShelf.archive)
-            }
-            .scootSegmented()
-            .onChange(of: historyShelf) { _ in
-                selectedHistoryIds = []
-                historySelecting = false
-            }
-
-            if historySelecting {
-                HStack {
-                    Text(
-                        selectedHistoryIds.isEmpty
-                            ? "Keine ausgewählt"
-                            : "\(selectedHistoryIds.count) ausgewählt"
-                    )
-                    .font(Theme.secondary)
-                    .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    if !visibleHistoryEntries.isEmpty {
-                        Button(
-                            selectedHistoryIds.count == visibleHistoryEntries.count
-                                ? "Auswahl aufheben"
-                                : "Alle auswählen"
-                        ) {
-                            if selectedHistoryIds.count == visibleHistoryEntries.count {
-                                selectedHistoryIds = []
-                            } else {
-                                selectedHistoryIds = Set(visibleHistoryEntries.map(\.id))
-                            }
-                        }
-                        .font(Theme.buttonSecondary)
-                        .foregroundStyle(Theme.accent)
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, Theme.Space.xl)
-        .padding(.top, Theme.Space.sm)
-    }
-
-    private var historyEmptyState: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            Image(systemName: historyShelf == .archive ? "archivebox" : "tray")
-                .font(.system(size: Theme.Icon.function, weight: .medium))
-                .foregroundStyle(Theme.textMuted)
-            Text(historyShelf == .archive ? "Archiv ist leer" : "Noch keine Prüfungen")
-                .font(Theme.cardTitle)
-                .foregroundStyle(Theme.textPrimary)
-            Text(
-                historyShelf == .archive
-                    ? "Archivierte Prüfungen erscheinen hier und können jederzeit wiederhergestellt werden."
-                    : "Gespeicherte Prüfberichte erscheinen hier offline auf diesem Gerät."
-            )
-            .font(Theme.caption)
-            .foregroundStyle(Theme.textMuted)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .scootCard()
-    }
-
-    @ViewBuilder
-    private func historySwipeActions(for entry: ProtocolHistoryStore.Entry) -> some View {
-        // Trailing swipeActions: first declared sits at the trailing edge (rechts).
-        // Gewünschte Sicht links→rechts: Öffnen · Teilen · Archiv/Restore · Löschen
-        Button(role: .destructive) {
-            requestHistoryDelete(ids: Set([entry.id]))
-        } label: {
-            Label("Löschen", systemImage: "trash")
-        }
-
-        if historyShelf == .archive {
-            Button {
-                restoreHistory(ids: Set([entry.id]))
-            } label: {
-                Label("Wiederherstellen", systemImage: "arrow.uturn.backward")
-            }
-            .tint(Theme.accent)
-        } else {
-            Button {
-                archiveHistory(ids: Set([entry.id]))
-            } label: {
-                Label("Archivieren", systemImage: "archivebox")
-            }
-            .tint(Color.white.opacity(0.55))
-        }
-
-        Button {
-            shareHistory(ids: Set([entry.id]))
-        } label: {
-            Label("Teilen", systemImage: "square.and.arrow.up")
-        }
-        .tint(.gray)
-
-        Button {
-            openHistoryEntry(entry)
-        } label: {
-            Label("Öffnen", systemImage: "doc.text.magnifyingglass")
-        }
-        .tint(Theme.accent)
-    }
-
-    @ViewBuilder
-    private func controlRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
-        let selected = selectedHistoryIds.contains(entry.id)
-        Button {
-            if historySelecting {
-                toggleHistorySelection(entry.id)
-            } else {
-                openHistoryEntry(entry)
-            }
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                if historySelecting {
-                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(selected ? Theme.accent : Theme.muted)
-                        .padding(.top, 24)
-                        .accessibilityHidden(true)
-                }
-
-                CheckCoverThumbnail(entry: entry, size: 64)
-
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    HStack(alignment: .top, spacing: Theme.Space.sm) {
-                        Text(entry.protocolNumber)
-                            .font(Theme.cardTitle)
-                            .foregroundStyle(Theme.textTitle)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.85)
-                        Spacer(minLength: 4)
-                        if let verdict = entry.verdict {
-                            VerdictBadge(verdict: verdict)
-                        }
-                    }
-                    Text("\(entry.profile.family.title) · \(Int(entry.profile.ratedMaxKmh)) km/h")
-                        .font(Theme.secondary)
-                        .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(1)
-                    if let serial = entry.serialDisplay, !serial.isEmpty {
-                        Text(serial)
-                            .font(Theme.caption.monospaced())
-                            .foregroundStyle(Theme.textMuted)
-                            .lineLimit(1)
-                    }
-                    if let subject = entry.subjectSummary ?? entry.knownLabel, !subject.isEmpty {
-                        Text(subject)
-                            .font(Theme.caption.weight(.medium))
-                            .foregroundStyle(Theme.accent)
-                            .lineLimit(1)
-                    }
-                    Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                }
-            }
-            .padding(Theme.Space.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected && historySelecting ? Theme.accent.opacity(0.10) : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                    .stroke(
-                        selected && historySelecting ? Theme.accent.opacity(0.55) : Theme.border,
-                        lineWidth: 1
-                    )
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(entry.protocolNumber)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    private var historySelectionActionBar: some View {
-        // Links→rechts: Öffnen (nur Einzelwahl) · Teilen · Archiv/Restore · Löschen
-        HStack(spacing: 0) {
-            if selectedHistoryIds.count == 1,
-               let id = selectedHistoryIds.first,
-               let entry = visibleHistoryEntries.first(where: { $0.id == id }) {
-                historyActionButton(
-                    title: "Öffnen",
-                    systemImage: "doc.text.magnifyingglass",
-                    tint: Theme.accent,
-                    enabled: true
-                ) {
-                    openHistoryEntry(entry)
-                }
-            }
-            historyActionButton(
-                title: "Teilen",
-                systemImage: "square.and.arrow.up",
-                tint: Theme.accent,
-                enabled: !selectedHistoryIds.isEmpty
-            ) {
-                shareHistory(ids: selectedHistoryIds)
-            }
-            if historyShelf == .archive {
-                historyActionButton(
-                    title: "Wiederherstellen",
-                    systemImage: "arrow.uturn.backward",
-                    tint: Theme.accent,
-                    enabled: !selectedHistoryIds.isEmpty
-                ) {
-                    restoreHistory(ids: selectedHistoryIds)
-                }
-            } else {
-                historyActionButton(
-                    title: "Archivieren",
-                    systemImage: "archivebox",
-                    tint: Theme.accent,
-                    enabled: !selectedHistoryIds.isEmpty
-                ) {
-                    archiveHistory(ids: selectedHistoryIds)
-                }
-            }
-            historyActionButton(
-                title: "Löschen",
-                systemImage: "trash",
-                tint: Theme.danger,
-                enabled: !selectedHistoryIds.isEmpty
-            ) {
-                requestHistoryDelete(ids: selectedHistoryIds)
-            }
-        }
-    }
-
-    private func historyActionButton(
-        title: String,
-        systemImage: String,
-        tint: Color,
-        enabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: systemImage)
-                    .font(.body.weight(.semibold))
-                Text(title)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .foregroundStyle(enabled ? tint : Theme.muted.opacity(0.45))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-    }
-
-    private func toggleHistorySelecting() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            historySelecting.toggle()
-            if !historySelecting {
-                selectedHistoryIds = []
-            }
-        }
-    }
-
-    private func toggleHistorySelection(_ id: UUID) {
-        if selectedHistoryIds.contains(id) {
-            selectedHistoryIds.remove(id)
-        } else {
-            selectedHistoryIds.insert(id)
-        }
-    }
-
+    /// Restore a stored Prüfbericht into the result shell.
     private func openHistoryEntry(_ entry: ProtocolHistoryStore.Entry) {
         guard let stored = history.loadSession(id: entry.id),
               let storedResult = stored.result else { return }
@@ -2590,68 +2187,6 @@ struct ContentView: View {
         historySelecting = false
         selectedHistoryIds = []
         screen = .result
-    }
-
-    private func shareHistory(ids: Set<UUID>) {
-        let items = history.shareItems(for: ids)
-        guard !items.isEmpty else { return }
-        historyShareItems = items
-        showHistoryShare = true
-    }
-
-    private func archiveHistory(ids: Set<UUID>) {
-        let count = history.archive(ids: ids)
-        guard count > 0 else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            selectedHistoryIds.subtract(ids)
-            if selectedHistoryIds.isEmpty { historySelecting = false }
-        }
-        presentHistoryToast(
-            count == 1 ? "Prüfung archiviert" : "\(count) Prüfungen archiviert"
-        )
-    }
-
-    private func restoreHistory(ids: Set<UUID>) {
-        let count = history.restore(ids: ids)
-        guard count > 0 else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            selectedHistoryIds.subtract(ids)
-            if selectedHistoryIds.isEmpty { historySelecting = false }
-        }
-        presentHistoryToast(
-            count == 1 ? "Prüfung wiederhergestellt" : "\(count) Prüfungen wiederhergestellt"
-        )
-    }
-
-    private func requestHistoryDelete(ids: Set<UUID>) {
-        guard !ids.isEmpty else { return }
-        pendingDeleteIds = ids
-        showHistoryDeleteConfirm = true
-    }
-
-    private func confirmHistoryDelete() {
-        let ids = pendingDeleteIds
-        pendingDeleteIds = []
-        guard !ids.isEmpty else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            history.delete(ids: ids)
-            selectedHistoryIds.subtract(ids)
-            if selectedHistoryIds.isEmpty { historySelecting = false }
-        }
-    }
-
-    private func presentHistoryToast(_ message: String) {
-        withAnimation(.easeOut(duration: 0.2)) {
-            historyToast = message
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
-            withAnimation(.easeIn(duration: 0.2)) {
-                if historyToast == message {
-                    historyToast = nil
-                }
-            }
-        }
     }
 
 }
