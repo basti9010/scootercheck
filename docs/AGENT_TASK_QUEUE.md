@@ -38,7 +38,7 @@ Cycle 4 Fix-Budget erschöpft. Cycle 5: **neues** Budget max **3** Auto-Fix-Durc
 | Status | IN_PROGRESS |
 | Attempt | 1 / 3 |
 | Agent | generalPurpose fix Xiaomi match |
-| QA | explore Cycle 4/5 test quality |
+| QA | [QA Cycle 4/5 test quality](bc-6a013177-8f84-52a1-aec1-02aee962bcae) → **PASS_WITH_NOTES**; Xiaomi-Test behalten (Produktfix) |
 
 ---
 
