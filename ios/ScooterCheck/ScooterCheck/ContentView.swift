@@ -17,6 +17,12 @@ struct ContentView: View {
     @State private var showPrivacy = false
     @State private var showSettings = false
     @State private var showFirmwareZipInspector = false
+    /// Investigation Hub detail sheet (P1-1 Hub/UI slice).
+    @State private var showInvestigationDetail = false
+    @State private var investigationDetailId: String? = nil
+    @State private var showReuseReadoutPrompt = false
+    @State private var reuseReadoutCandidates: [InvestigationReadoutSummary] = []
+    @ObservedObject private var investigationStore = InvestigationStore.shared
     @ObservedObject private var appSettings = AppSettings.shared
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
@@ -67,6 +73,7 @@ struct ContentView: View {
         case overview
         case find
         case pedelec
+        case investigate
     }
 
     /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
@@ -124,7 +131,18 @@ struct ContentView: View {
 
                 // Wurzelbereiche (Menü): dezenter Crossfade — keine konkurrierende Slide zum Header/Logo.
                 Group {
-                    if screen == .find {
+                    if screen == .investigate {
+                        InvestigationHubView(
+                            onScooterOnly: { startScooterOnlyFromHub() },
+                            onFirmwareOnly: { startFirmwareOnlyFromHub() },
+                            onCombined: { startCombinedFromHub() },
+                            onOpenInvestigation: { rec in
+                                investigationDetailId = rec.id
+                                showInvestigationDetail = true
+                            }
+                        )
+                        .transition(.opacity)
+                    } else if screen == .find {
                         ScooterFindHubView(ble: ble, destination: $findDestination)
                             .transition(.opacity)
                     } else if screen == .pedelec, AppFeatureFlags.pedelecAuslesenVisible {
@@ -156,7 +174,7 @@ struct ContentView: View {
                                     errorBanner(err)
                                 }
                                 switch screen {
-                                case .overview, .find, .pedelec:
+                                case .overview, .find, .pedelec, .investigate:
                                     EmptyView()
                                 case .result:
                                     if let result {
@@ -222,6 +240,53 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showFirmwareZipInspector) {
                 FirmwareZipInspectorView()
+            }
+            .sheet(isPresented: $showReuseReadoutPrompt) {
+                ReuseReadoutPromptView(
+                    candidates: reuseReadoutCandidates,
+                    onUse: { _ in
+                        showReuseReadoutPrompt = false
+                        // Full attach/reuse wiring deferred — open auslesen for now.
+                        navigateFromMenu(to: .home)
+                    },
+                    onPickNew: {
+                        showReuseReadoutPrompt = false
+                        navigateFromMenu(to: .home)
+                    },
+                    onCancel: {
+                        showReuseReadoutPrompt = false
+                        screen = .investigate
+                    }
+                )
+            }
+            .fullScreenCover(isPresented: $showInvestigationDetail) {
+                if let id = investigationDetailId {
+                    InvestigationDetailView(
+                        recordId: id,
+                        onAppendFirmware: { _ in
+                            showInvestigationDetail = false
+                            showFirmwareZipInspector = true
+                        },
+                        onAppendScooter: { _ in
+                            showInvestigationDetail = false
+                            navigateFromMenu(to: .home)
+                        },
+                        onResume: { _ in
+                            showInvestigationDetail = false
+                            screen = .investigate
+                        },
+                        onSwitchScooter: { _ in
+                            showInvestigationDetail = false
+                            navigateFromMenu(to: .home)
+                        },
+                        onClose: {
+                            showInvestigationDetail = false
+                            investigationDetailId = nil
+                        }
+                    )
+                } else {
+                    Color.clear.onAppear { showInvestigationDetail = false }
+                }
             }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
@@ -1074,8 +1139,8 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            // find/pedelec: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
-            if showsStartLanding || screen == .find || screen == .pedelec {
+            // find/pedelec/investigate: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
+            if showsStartLanding || screen == .find || screen == .pedelec || screen == .investigate {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
@@ -1216,7 +1281,7 @@ struct ContentView: View {
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview, .find, .pedelec: return true
+        case .overview, .find, .pedelec, .investigate: return true
         case .result: return result != nil
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
@@ -1237,7 +1302,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find, .pedelec:
+        case .find, .pedelec, .investigate:
             break
         case .home:
             if ble.phase == .scanning {
@@ -1984,6 +2049,13 @@ struct ContentView: View {
 
             VStack(spacing: 4) {
                 sideNavRow(
+                    title: "E-Scooter untersuchen",
+                    systemImage: "magnifyingglass.circle",
+                    selected: screen == .investigate
+                ) {
+                    navigateFromMenu(to: .investigate)
+                }
+                sideNavRow(
                     title: "E-Scooter auslesen",
                     systemImage: "antenna.radiowaves.left.and.right",
                     selected: screen == .home
@@ -2132,6 +2204,9 @@ struct ContentView: View {
         setMenuOpen(false)
         let apply = {
             switch target {
+            case .investigate:
+                if screen == .result { persistCurrentSession() }
+                screen = .investigate
             case .home:
                 if screen == .result { persistCurrentSession() }
                 screen = .home
@@ -2173,6 +2248,66 @@ struct ContentView: View {
         withAnimation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade) {
             apply()
         }
+    }
+
+    // MARK: - Investigation Hub entry points (P1-1; full attach deferred)
+
+    private func startScooterOnlyFromHub() {
+        _ = investigationStore.create(title: "E-Scooter-Untersuchung", progress: .selectScooter)
+        navigateFromMenu(to: .home)
+    }
+
+    private func startFirmwareOnlyFromHub() {
+        _ = investigationStore.create(title: "Firmwareanalyse", progress: .selectFirmware)
+        setMenuOpen(false)
+        showFirmwareZipInspector = true
+    }
+
+    private func startCombinedFromHub() {
+        let candidates = availableReadoutCandidates()
+        _ = investigationStore.create(title: "Kombinierte Untersuchung", progress: .selectScooter)
+        if candidates.isEmpty {
+            navigateFromMenu(to: .home)
+        } else {
+            reuseReadoutCandidates = candidates
+            showReuseReadoutPrompt = true
+        }
+    }
+
+    /// Readouts already in InvestigationStore packs plus recent history sessions.
+    private func availableReadoutCandidates() -> [InvestigationReadoutSummary] {
+        var out: [InvestigationReadoutSummary] = []
+        for rec in investigationStore.records {
+            if let r = rec.readout { out.append(r) }
+        }
+        for entry in history.activeEntries.prefix(12) {
+            if let session = history.loadSession(id: entry.id),
+               let result = session.result,
+               ScooterVerification.isVerifiedScooterReading(result.reading) {
+                var summary = InvestigationReadoutSummary.from(
+                    result: result,
+                    historyEntryId: entry.id.uuidString,
+                    bleId: entry.blePeripheralId
+                )
+                summary.protocolNumber = entry.protocolNumber
+                summary.savedAt = entry.createdAt
+                if !out.contains(where: { $0.historyEntryId == summary.historyEntryId && $0.serial == summary.serial }) {
+                    out.append(summary)
+                }
+            }
+        }
+        if let result,
+           ScooterVerification.isVerifiedScooterReading(result.reading) {
+            let current = InvestigationReadoutSummary.from(
+                result: result,
+                historyEntryId: session?.id.uuidString,
+                bleId: nil
+            )
+            if !out.contains(where: { $0.serial == current.serial && $0.serial != nil }) {
+                out.insert(current, at: 0)
+            }
+        }
+        return Array(out.prefix(8))
     }
 
     /// Restore a stored Prüfbericht into the result shell.

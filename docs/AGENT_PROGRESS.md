@@ -2,7 +2,7 @@
 
 **Cycle 5:** 2026-11-23 Europe/Berlin — P0 VERIFIED · P1 implementation underway  
 **Branch:** `cursor/multi-agent-system-b100` · PR https://github.com/basti9010/scootercheck/pull/103  
-**HEAD (docs sync):** `c1262d3`
+**HEAD (docs sync):** multi-agent tip + P1-1 Hub/UI branch `cursor/p1-1-investigation-hub-ui-b100`
 
 ### Cycle 5 FIX-1 + P0
 
@@ -44,7 +44,28 @@ Ported from `origin/cursor/unified-investigation-flow-b100` tip `f306bf3` onto m
 
 **pbxproj:** A100/B100/E100 style; DeepAnalysisModels uses `…ED` (unified `…E1` already taken by `AuslesenDeviceViews` on multi-agent).
 
-**Deferred:** Hub/Detail/Reuse/Summary UI, Combined PDF, ContentView `.investigate` splice, HubView, ServerAnalysisClient/auth, Ghidra/LiveCheck BleClient changes, orchestrator/package loader/document picker.
+**Deferred (foundation):** Hub/Detail/Reuse/Summary UI, Combined PDF, ContentView `.investigate` splice, HubView, ServerAnalysisClient/auth, Ghidra/LiveCheck BleClient changes, orchestrator/package loader/document picker.
+
+### P1-1 Hub/UI slice (`cursor/p1-1-investigation-hub-ui-b100`)
+
+Ported from `origin/cursor/unified-investigation-flow-b100` tip `f306bf3` onto multi-agent (file checkout + surgical ContentView):
+
+**Investigation UI:**
+- `InvestigationHubView`, `InvestigationDetailView`, `ReuseReadoutPromptView`, `CombinedReadoutSummaryCard`
+- `InvestigationCombinedPDF` + `InvestigationCombinedPDFTests`
+
+**Compile deps (minimal):**
+- `DualSourcePanicCorrelator` (FB1 — avoids D1–D5 collision with P0 tests)
+- `FirmwareReadoutMatchCorrelator` (FB2 — CombinedPDF §6)
+- `FirmwareExportSharePresenter` (FAB — extracted from unified inspector, no ZIP wholesale)
+
+**ContentView splice (surgical):**
+- `AppScreen.investigate`, menu „E-Scooter untersuchen“, Hub body, detail fullScreenCover, reuse sheet
+- Hub entry stubs → existing `.home` / ZIP inspector (no BleClient / attach / Ghidra)
+
+**pbxproj:** FA3–FA6, FA8–FA9 (+ FAB/FB1); keep FA1/FA2/FA7/FAA.
+
+**Still deferred:** FirmwareForensicsHubView / modern inspector callbacks, attachReadout after dump, Combined progress on result, DualSourcePanicCard in result chrome, ServerAnalysisClient/auth, Ghidra/LiveCheck BleClient, vehicle writes/unlock.
 
 
 ## Ehrliche Laufzeit
@@ -80,8 +101,8 @@ Compile/assertion cascade → Attempt-Budget erschöpft → Cycle 5 FIX-1 → **
 
 ## Nächste Schritte
 
-1. P1-1/2/3 Parallel-Branches mergen nach CI+Review
-2. P1-1 Hub/UI + surgical ContentView `.investigate`
+1. Merge P1-1 Hub/UI into `cursor/multi-agent-system-b100` after CI+Review
+2. Wire attach/resume + FirmwareForensicsHubView callbacks
 3. P1-4 Regression tests erweitern
 4. ContentView Steps 3–6 (menu/home/result/comparison)
 
