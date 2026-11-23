@@ -84,11 +84,11 @@ Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Bri
 | Agent (Impl) | forensic-expert → `generalPurpose` |
 | Agent (Review) | qa-security |
 | Abhängigkeiten | CYCLE2-ORCH-1 (unabhängig von P0-1/2) |
-| Status | READY |
+| Status | REVIEW |
 | Akzeptanz | Manifest mit SHA-256 über kanonische Artefakte; Verifikation; PDF/JSON Metadaten; keine stillen Destructive Overwrites für sealed packs; Tests |
-| Testergebnis | — |
-| Branch/Commit | — |
-| Review | — |
+| Testergebnis | Unit-Tests `PackIntegrityTests` geschrieben; xcodebuild auf Linux nicht ausführbar — CI/macOS |
+| Branch/Commit | merged from `cursor/p0-pack-integrity-b100` @ 0610023 |
+| Review | pending QA |
 
 ---
 
