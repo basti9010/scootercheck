@@ -1,6 +1,6 @@
 # P1-3 – BLE ↔ Firmware Correlation Architecture
 
-**Status:** Design only (Cycle 5 P1-3) — **not implemented**  
+**Status:** Design + MVP correlator — see `P1-3_CORRELATOR_MVP.md` (Cycle 5 P1-3)  
 **Branch intent:** Reuse engines; no second Evidence/Attribution/ZIP analyzer  
 **Policy:** Read-only; no vehicle writes; ZIP ≠ installed firmware
 
