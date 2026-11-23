@@ -2,23 +2,10 @@
 
 **Cycle:** 3 (Quality & Autonomy / macOS CI)  
 **Branch:** `cursor/multi-agent-system-b100`  
-**Lock:** `CYCLE3_CI_ACTIVE` — keine parallelen Autonomie-Zyklen  
+**Lock:** `CYCLE3_CI_ACTIVE`  
 **Zuletzt gelesen:** 2026-11-23 (Europe/Berlin)
 
 Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
-
-**P0-Verifikation:** Code implementiert, aber **UNVERIFIED** bis macOS CI grün meldet.
-
----
-
-## Orchestrierung
-
-| Custom Agent | Cloud Task | Cycle 3 |
-|--------------|------------|---------|
-| project-manager | Parent | CI-Setup, Fix-Loop (max 3) |
-| ios-developer | generalPurpose | Scheme/CI Fixes |
-| qa-security | explore | Review nach CI |
-| bluetooth / forensic | generalPurpose | nur bei CI-Fail in ihrem Scope |
 
 ---
 
@@ -27,13 +14,10 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 | Feld | Wert |
 |------|------|
 | ID | CYCLE3-CI-1 |
-| Priorität | P0 |
-| Agent | project-manager / ios-developer |
-| Status | IN_PROGRESS |
-| Akzeptanz | Workflow `ios-unit-tests.yml`; Scheme mit Testables; Docs; Trigger auf PR/Push |
-| Testergebnis | Run `45133543772` **failure** — Xcode 16.2 ohne iOS 18.2 Simulator-Runtime |
-| Branch/Commit | `0fed874` → Fix attempt 1 |
-| Review | — |
+| Status | DONE (workflow exists) |
+| Akzeptanz | Workflow + Scheme Testables + Docs |
+| Testergebnis | Workflow läuft auf macos-15 / Xcode 26.3; Build der Test-Targets schlägt fehl |
+| Commit | `0fed874` + fixes |
 
 ---
 
@@ -42,86 +26,45 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 | Feld | Wert |
 |------|------|
 | ID | CYCLE3-CI-2 |
-| Priorität | P0 |
-| Agent | qa-security + Parent |
-| Abhängigkeiten | CYCLE3-CI-1 |
-| Status | IN_PROGRESS |
-| Akzeptanz | CI führt BLECentralCoordinator / Enc2 / PackIntegrity / BleWriteGate / WriteDisableRegression Tests aus; Ergebnis dokumentiert |
-| Testergebnis | UNVERIFIED — Build failed before XCTest |
-| Fix-Attempts | 3 / 3 (1: Xcode dest; 2: Swift 6 arg order in AttributionEngineTests; 3: CI-FIX-3 XCTest Swift 6 compile) |
+| Status | **BLOCKED** |
+| Fix-Attempts | **3 / 3** (Limit erreicht) |
+| Testergebnis | XCTest **nie ausgeführt** — `build-for-testing` failt weiter |
+| Evidence | Runs `45133543772`, `45133904740`, `45134455674`, `45135136966` |
+| Remaining errors (nach Attempt 3) | `LiveTelemetryTests` Double?; `BLESearchMotionCoreTests` Double?; `BLEWatchRadarTests` missing `BLERadarConfig.minHitsForAlarm` |
+| Next | Manuelle Freigabe oder neuer Zyklus mit erhöhtem Budget; P1 gesperrt bis CI grün |
 
 ---
 
-## CI-FIX-1 – Simulator destination / Xcode match
+## CI-FIX Log
 
-| Feld | Wert |
-|------|------|
-| ID | CI-FIX-1 |
-| Priorität | P0 |
-| Agent | project-manager |
-| Status | IN_PROGRESS |
-| Root cause | Xcode 16.2 + `name=iPhone 16` → OS:latest, aber Runtime 18.2 fehlt; Runner hat 18.5+/26.x |
-| Fix | Prefer Xcode 26.x with visible destinations; else download platform; pin destination by UDID |
-| Attempt | 3 / 3 |
+| ID | Attempt | Cause | Fix | Result |
+|----|---------|-------|-----|--------|
+| CI-FIX-1 | 1 | Xcode 16.2 / no iOS 18.2 sim | Prefer Xcode 26 + UDID dest | dest OK; new compile errors |
+| CI-FIX-2 | 2 | Swift 6 arg order AttributionEngineTests | Reorder labels | more compile errors |
+| CI-FIX-3 | 3 | Double?/throws/MainActor in several tests | unwrap/throws/@MainActor | still fail: LiveTelemetry, BLESearchMotion, BLEWatchRadar |
 
 ---
 
-## CI-FIX-3 – XCTest Swift 6 compile (Xcode 26)
+## P0 Code (Cycle 2) — CI-Verifikation
 
-| Feld | Wert |
-|------|------|
-| ID | CI-FIX-3 |
-| Priorität | P0 |
-| Agent | ios-developer |
-| Status | IN_PROGRESS |
-| Root cause | Xcode 26 / Swift 6: `XCTAssertEqual(..., accuracy:)` rejects `Double?`; `try XCTUnwrap` needs throwing tests; `@MainActor` on `ProtocolHistoryStore.makeKnownLabel` |
-| Fix | `?? -1` for optional Double accuracy asserts; mark affected tests `throws`; `@MainActor` on `KnownScooterAliasTests` |
-| Attempt | 3 / 3 |
+| ID | Code | CI |
+|----|------|-----|
+| P0-1 BLE Central | DONE | **UNVERIFIED / BLOCKED** |
+| P0-2 Enc2 Lifecycle | DONE | **UNVERIFIED / BLOCKED** |
+| P0-3 Pack Integrity | DONE | **UNVERIFIED / BLOCKED** |
+| P0-4 Write Gate | DONE | **UNVERIFIED / BLOCKED** |
+| CYCLE3-REG-1 WriteDisableRegression | code present | **UNVERIFIED** |
 
 ---
 
-## CYCLE3-REG-1 – Write-Disable Regression Tests
+## P1 – gesperrt bis CYCLE3-CI-2 DONE
 
-| Feld | Wert |
-|------|------|
-| ID | CYCLE3-REG-1 |
-| Priorität | P0 |
-| Agent | ios-developer / Parent |
-| Status | REVIEW |
-| Akzeptanz | `WriteDisableRegressionTests` im Target; SoftUnlock observational; Navee forbidden; Gate closed |
-| Testergebnis | UNVERIFIED (wartet CI) |
-
----
-
-## P0 (Cycle 2) – Implementiert, Verifikation ausstehend
-
-| ID | Code | CI-Status |
-|----|------|-----------|
-| P0-1 BLE Central | DONE code | UNVERIFIED |
-| P0-2 Enc2 Lifecycle | DONE code | UNVERIFIED |
-| P0-3 Pack Integrity | DONE code | UNVERIFIED |
-| P0-4 Write Gate | DONE code | UNVERIFIED |
-| CYCLE2-ORCH-1 | DONE | n/a |
-
----
-
-## P1 – BACKLOG (erst nach grüner P0-CI)
-
-| ID | Status | Hinweis |
-|----|--------|---------|
-| P1-INV Investigation Flow 1.1 | BACKLOG | nach CYCLE3-CI-2 DONE |
-| P1-CV ContentView modularisieren | BACKLOG | |
-| P1-CORR BLE/Firmware Korrelation | BACKLOG | |
-| P1-REG weitere Regressionstests | BACKLOG | |
-
----
-
-## Abgeschlossen
-
-| ID | Commit |
+| ID | Status |
 |----|--------|
-| CYCLE1-* | `cdd4d97` |
-| CYCLE2 P0 code | `7c8ecfa` |
+| P1-INV Investigation Flow 1.1 | BACKLOG (blocked by CI) |
+| P1-CV ContentView modularisieren | BACKLOG |
+| P1-CORR BLE/Firmware Korrelation | BACKLOG |
+| P1-REG weitere Regressionstests | BACKLOG |
 
 ---
 
@@ -129,20 +72,7 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 
 ```
 cycle_id: 3
-owner: quality-autonomy-upgrade
+ci_fix_attempts: 3/3 EXHAUSTED
+status: BLOCKED awaiting human or new cycle budget
 branch: cursor/multi-agent-system-b100
-overlapping_cycle2_p1_timer: unsubscribed
-ci_fix_max_attempts: 3
-zwischenbericht_timer: scootercheck-4h-zwischenbericht (may still be active)
 ```
-
-
-## CI-FIX-2 – Swift 6 argument order in AttributionEngineTests
-
-| Feld | Wert |
-|------|------|
-| ID | CI-FIX-2 |
-| Status | DONE |
-| Root cause | Xcode 26 / Swift 6: labeled args must match declaration order (`modMatch` vs `interpreted`) |
-| Fix | Reorder `fact(...)` helper + call sites |
-| Attempt | 2 / 3 |

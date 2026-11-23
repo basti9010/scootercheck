@@ -48,5 +48,9 @@ Geschrieben, **nicht** auf Linux ausgeführt (kein `xcodebuild`):
 | Scheme Testables `ScooterCheckTests` | gefixt |
 | `WriteDisableRegressionTests` | angelegt |
 | `CI_AUTONOMY_LOOP.md` (max 3 Fix-Attempts) | angelegt |
-| Erste CI-Ausführung | **pending** — Ergebnis nicht erfunden |
+| Erste CI-Ausführung | failure (Sim-Runtime) |
+| CI-FIX 1–3 | destination OK → Swift 6 test compile cascade → **BLOCKED 3/3** |
+| XCTest execution | **never reached** |
+| P0 CI verification | UNVERIFIED |
 | Cycle2 P1-Timer | unsubscribed (kein Overlap) |
+| Agents Cycle 3 | Parent (PM); generalPurpose ios-dev for CI-FIX-3 (`bc-e006219e…`) |

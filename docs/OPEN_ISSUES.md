@@ -9,7 +9,8 @@ Aktualisiert nach Multi-Agent-Erstanalyse (2026-11-23 Europe/Berlin).
 - [x] Forensik: Pack-Manifest + SHA (`PackIntegrity`) — ensurePack seal + Thumbs ausgeschlossen
 - [x] Write/Manipulation Gate (`BleWriteGate`, default deny) — Transport-Reads bleiben UART-TX
 - [ ] Kein Merge nach `main` ohne Freigabe
-- [ ] XCTest auf macOS/CI ausführen (Linux Cloud Agent kann nicht)
+- [ ] XCTest auf macOS/CI ausführen — Workflow existiert; **BLOCKED** nach 3 Auto-Fixes (Xcode 26 Test-Compile: LiveTelemetryTests, BLESearchMotionCoreTests, BLEWatchRadarTests `minHitsForAlarm`)
+- [ ] P0 CI-Verifikation (BLECentralCoordinator / Enc2 / PackIntegrity / BleWriteGate) — UNVERIFIED
 
 ## P1
 

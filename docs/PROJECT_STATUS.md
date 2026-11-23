@@ -38,8 +38,8 @@ Gemeinsames Gedächtnis: diese Datei + `ARCHITECTURE.md`, `DEVELOPMENT_ROADMAP.m
 
 **Cycle 1:** fünf Spezialisten-Reviews parallel (`explore`) + PM-Merge → Roadmap.  
 **Cycle 2:** Task Queue + P0-1…P0-4 implementiert (Worktrees für P0-3/P0-4; Parent für BLE).  
-**Cycle 3:** macOS CI (`.github/workflows/ios-unit-tests.yml`) + P0-Verifikation; siehe `docs/CI_AUTONOMY_LOOP.md`.  
-P0-Code = implementiert, **CI-Verifikation ausstehend** (nicht als grün behaupten).
+**Cycle 3:** macOS CI (`.github/workflows/ios-unit-tests.yml`) angelegt; 3 Auto-Fix-Versuche erschöpft → **BLOCKED**.  
+P0-Code = implementiert, **CI-UNVERIFIED** (XCTest noch nicht gelaufen). Details: `AGENT_TASK_QUEUE.md`, `CI_AUTONOMY_LOOP.md`.
 
 ## Autonomie / 4h-Zyklus
 
