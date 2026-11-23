@@ -87,7 +87,7 @@ Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Bri
 | Status | REVIEW |
 | Akzeptanz | Manifest mit SHA-256 über kanonische Artefakte; Verifikation; PDF/JSON Metadaten; keine stillen Destructive Overwrites für sealed packs; Tests |
 | Testergebnis | Unit-Tests `PackIntegrityTests` (hash stability, mismatch, missing); xcodebuild auf Linux nicht ausführbar — CI/macOS |
-| Branch/Commit | `cursor/p0-pack-integrity-b100` @ 6a5d628b34be218c9cec6f3f6b7b38ec6c44efe4 |
+| Branch/Commit | `cursor/p0-pack-integrity-b100` @ 0610023c3ea58076878210382e7a5df57c104f9e |
 | Review | — |
 
 ---
