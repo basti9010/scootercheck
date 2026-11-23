@@ -38,7 +38,7 @@ Compile blockers from Cycle 3 are resolved. Remaining = assertion mismatches.
 | Status | IN_PROGRESS |
 | Cause | `UniversalDiagnosisTests.loadProfiles` hardcoded `/workspace/...` → FatalError on Actions |
 | Fix | `272c438` Bundle.main load (no try!) |
-| QA | [QA review Cycle 4](bc-4f64d9f7-45f9-5df5-baf8-337710b632b9) |
+| QA | [QA review Cycle 4](bc-4f64d9f7-45f9-5df5-baf8-337710b632b9) → **PASS_WITH_NOTES** (P0 intact; await Attempt-3 green) |
 
 ---
 
