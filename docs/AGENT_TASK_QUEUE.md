@@ -39,7 +39,7 @@
 
 | ID | Status | Agent |
 |----|--------|-------|
-| P1-1 Investigation Flow 1.1 | Research **DONE** · Foundation port **IN FLIGHT** | Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` · Agent `bc-5cc7c0db…` → `cursor/p1-1-investigation-foundation-b100` |
+| P1-1 Investigation Flow 1.1 | Research **DONE** · Foundation slice **PORTED** (Store+Forensics models/PDF jsonData+tests; Hub/UI/ContentView deferred) | Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` · Branch `cursor/p1-1-investigation-foundation-b100` · source tip `f306bf3` |
 | P1-2 ContentView modularization | Step 1 **DONE** · Step 2 History **IN FLIGHT** | Plan `docs/P1_CONTENTVIEW_MODULARIZATION.md` · Agent `bc-b8cd6320…` → `cursor/p1-2-contentview-history-b100` |
 | P1-3 BLE/Firmware correlation | Design **DONE** · MVP **IN FLIGHT** | Design `docs/P1-3_BLE_FIRMWARE_CORRELATION.md` · Agent `bc-ef9785e8…` → `cursor/p1-3-cross-source-correlator-b100` |
 | P1-4 Regression tests | BACKLOG | after first Investigation/Correlator merge |

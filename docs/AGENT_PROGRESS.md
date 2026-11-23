@@ -29,6 +29,24 @@ QA: PASS_WITH_NOTES.
 
 Parent merges after independent review; no concurrent writes on multi-agent HEAD.
 
+### P1-1 foundation slice (this branch)
+
+Ported from `origin/cursor/unified-investigation-flow-b100` tip `f306bf3` onto multi-agent base (surgical file checkout, no wholesale merge):
+
+**FirmwareForensics (Codable + PDF `jsonData` compile set):**
+- `FirmwareForensicModels`, `FirmwareDeepAnalysisModels`, `FirmwareDigest`
+- `FirmwareEvidenceTier`, `FirmwareComboPolicy`, `FirmwareDeepAnalysisBriefing`
+- `FirmwareForensicPDF`, `FirmwareForensicScorer`
+
+**Investigation foundation:**
+- `InvestigationModels`, `InvestigationStore`
+- Tests: `InvestigationStoreTests`, `InvestigationFlowLogicTests` (wired into test target)
+
+**pbxproj:** A100/B100/E100 style; DeepAnalysisModels uses `…ED` (unified `…E1` already taken by `AuslesenDeviceViews` on multi-agent).
+
+**Deferred:** Hub/Detail/Reuse/Summary UI, Combined PDF, ContentView `.investigate` splice, HubView, ServerAnalysisClient/auth, Ghidra/LiveCheck BleClient changes, orchestrator/package loader/document picker.
+
+
 ## Ehrliche Laufzeit
 
 | Modus | Was passierte |
