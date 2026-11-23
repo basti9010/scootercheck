@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraEnvironmentProbe",
+  "cycle": 9,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:34:34.691432+00:00",
+  "ghidraAvailable": false,
+  "exactMissingCause": "MISSING_PREREQUISITE: GHIDRA_HOME unset; GHIDRA_HEADLESS unset; analyzeHeadless not on PATH; /opt/ghidra absent or empty. Java present does not imply Ghidra.",
+  "analyzeHeadless": null,
+  "ghidraHomeEnv": null,
+  "ghidraHeadlessEnv": null,
+  "resolutionPaths": [
+    {
+      "path": "env:GHIDRA_HEADLESS",
+      "value": null,
+      "status": "unset"
+    },
+    {
+      "path": "env:GHIDRA_HOME/support/analyzeHeadless",
+      "value": null,
+      "ghidraHome": null,
+      "status": "unset"
+    },
+    {
+      "path": "env:GHIDRA_HOME/ghidra_*/support/analyzeHeadless",
+      "value": null,
+      "candidates": [],
+      "status": "unset"
+    },
+    {
+      "path": "PATH:analyzeHeadless",
+      "value": null,
+      "status": "absent"
+    },
+    {
+      "path": "/opt/ghidra/ghidra_*/support/analyzeHeadless",
+      "value": null,
+      "optGhidraDirExists": false,
+      "candidates": [],
+      "status": "dir_missing"
+    }
+  ],
+  "java": {
+    "javaOnPath": "/usr/bin/java",
+    "versionLines": [
+      "openjdk version \"21.0.13.0.3\" 2026-10-24",
+      "OpenJDK Runtime Environment (build 21.0.13.0.3+1-1-24.04.1-Ubuntu)",
+      "OpenJDK 64-Bit Server VM (build 21.0.13.0.3+1-1-24.04.1-Ubuntu, mixed mode, sharing)"
+    ],
+    "impliesGhidra": false,
+    "note": "OpenJDK/JRE alone is not a Ghidra install"
+  },
+  "driver": {
+    "modulePath": "/agent/repos/scootercheck/server/firmware-analysis",
+    "importOk": true,
+    "ghidraConfigured": false,
+    "error": null
+  }
+}
