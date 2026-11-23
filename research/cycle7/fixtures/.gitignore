@@ -1,0 +1,3 @@
+# Headless smoke outputs (generated when GHIDRA_HOME is set)
+out_synthetic/
+*.log
