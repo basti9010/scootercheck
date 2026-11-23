@@ -7,104 +7,51 @@
 
 Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 
-Cycle 3 Fix-Budget (3/3) abgeschlossen. Cycle 4: **neues** Budget max **3** Auto-Fix-Durchläufe.
-
 ---
 
-## CYCLE4-ORCH-1 – Bestandaufnahme
+## CYCLE4-CI-1 Ergebnis (Attempt 1 / 3)
 
 | Feld | Wert |
 |------|------|
-| ID | CYCLE4-ORCH-1 |
-| Status | DONE |
-| CI evidence | Runs `45135136966`, `45163223956` (sha `31a0aed` / `abccc47`) |
-| Errors | LiveTelemetryTests:30 Double?; BLESearchMotionCoreTests:308/327/332/365 Double?; BLEWatchRadarTests:64 missing `minHitsForAlarm` |
-| Classification | API/Optional typing (XCTAssertEqual accuracy needs Double); outdated test API member |
+| Commit | `0a51888` / `52d0bca` |
+| Run | `45231395278` |
+| Build | **SUCCESS** |
+| XCTest | **EXECUTED** (`TEST EXECUTE FAILED` — assertion failures) |
+| P0 BLECentralCoordinator | **PASSED** 4/4 |
+| P0 Enc2SessionLifecycle | **PASSED** 5/5 |
+| P0 PackIntegrity | **PASSED** (all cases) |
+| P0 BleWriteGate | **PASSED** 3/3 |
+
+Compile blockers from Cycle 3 are resolved. Remaining = assertion mismatches.
 
 ---
 
-## CYCLE4-A – LiveTelemetryTests
+## CYCLE4-CI-2 – Assertion failures (Attempt 2 / 3)
 
-| Feld | Wert |
-|------|------|
-| ID | CYCLE4-A |
-| Status | DONE |
-| Agent | [Diagnose LiveTelemetryTests](bc-3326a84a-0221-53cf-8eb8-710e531b7a32) → confirm `Double?` + `?? -1` |
-| Fix commit | `52d0bca` |
-
----
-
-## CYCLE4-B – BLESearchMotionCoreTests
-
-| Feld | Wert |
-|------|------|
-| ID | CYCLE4-B |
-| Status | DONE |
-| Agent | [Diagnose BLESearchMotionTests](bc-f82614c4-c8f9-5dd1-bc65-342ab3aecff0) → confirm `measuredRssi` Double? |
-| Fix commit | `52d0bca` (`?? .nan`; equivalent to agent `?? -1`) |
-
----
-
-## CYCLE4-C – BLEWatchRadarTests
-
-| Feld | Wert |
-|------|------|
-| ID | CYCLE4-C |
-| Status | DONE |
-| Agent | [Diagnose BLEWatchRadarTests](bc-9c9544a6-55f7-576e-b9c2-6960ce4baccd) → Foreground/Background rename |
-| Fix commit | `52d0bca` |
-
----
-
-## CYCLE4-CI-1 – Push & verify
-
-| Feld | Wert |
-|------|------|
-| ID | CYCLE4-CI-1 |
 | Status | IN_PROGRESS |
-| Fix-Attempts | 1 / 3 (first push `52d0bca` — awaiting CI) |
-| Goal | build-for-testing OK + test-without-building executes XCTest |
+| Agents | [Fix AttributionEngine](bc-2ddbd77a-3769-5c22-84c8-4646f94fa512), [Fix BLEAnalysis](bc-d825e444-ccfe-5feb-b5fd-eaa99475a1ae), [Fix remaining](bc-38083053-a220-51d0-9600-a20f11f94209) |
+
+Failing tests (~10 cases):
+- AttributionEngineTests (2) + ElevatedLimitVerdictTests stock→auffaellig (likely `fwMcu: "1.0.0"` → fw.unknown)
+- BLEAnalysisCoreTests fingerprint self-match medium≠high
+- BLEIdentificationTests Ninebot UART
+- BLESearchMotionCoreTests compass + UTurn
+- EvidenceExplanationEngineTests (2)
+- FAQCatalogTests Schriftgroesse ascii
+- RadarMapTests repeat filter
 
 ---
 
-## CYCLE4-P0 – P0 suite evidence
+## CYCLE4-P0 – partial evidence
 
-| Feld | Wert |
-|------|------|
-| ID | CYCLE4-P0 |
-| Status | BACKLOG |
-| Suites | BLECentralCoordinator / Enc2SessionLifecycle / PackIntegrity / BleWriteGate |
-| Need | executed counts (pass/fail/skip), not compile-only |
+| Suite | CI |
+|-------|-----|
+| BLECentralCoordinatorTests | PASSED |
+| Enc2SessionLifecycleTests | PASSED |
+| PackIntegrityTests | PASSED |
+| BleWriteGateTests | PASSED |
 
----
-
-## CYCLE4-QA – Independent review
-
-| Feld | Wert |
-|------|------|
-| ID | CYCLE4-QA |
-| Status | BACKLOG |
-
----
-
-## P0 Code (Cycle 2) — CI-Verifikation
-
-| ID | Code | CI |
-|----|------|-----|
-| P0-1 BLE Central | DONE | UNVERIFIED (Cycle 4) |
-| P0-2 Enc2 Lifecycle | DONE | UNVERIFIED |
-| P0-3 Pack Integrity | DONE | UNVERIFIED |
-| P0-4 Write Gate | DONE | UNVERIFIED |
-
----
-
-## P1 – gesperrt bis CYCLE4-P0 DONE
-
-| ID | Status |
-|----|--------|
-| P1-INV Investigation Flow 1.1 | BACKLOG |
-| P1-CV ContentView modularisieren | BACKLOG |
-| P1-CORR BLE/Firmware Korrelation | BACKLOG |
+Full Cycle-4 success still requires **entire** XCTest suite green.
 
 ---
 
@@ -112,8 +59,7 @@ Cycle 3 Fix-Budget (3/3) abgeschlossen. Cycle 4: **neues** Budget max **3** Auto
 
 ```
 cycle_id: 4
-ci_fix_attempts: 0/3
+ci_fix_attempts: 1/3 completed (build green); attempt 2 in progress
 status: ACTIVE
 branch: cursor/multi-agent-system-b100
-prior_cycle_3: BLOCKED 3/3 exhausted — closed
 ```
