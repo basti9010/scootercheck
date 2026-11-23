@@ -322,7 +322,9 @@ class PathConfinementTests(unittest.TestCase):
             self.app_mod.ADMIN_API_TOKEN = ""
             self.app_mod.JWT_SECRET = ""
             warnings = self.app_mod._auth_security_warnings()
-            self.assertTrue(any("auth=open" in w for w in warnings))
+            self.assertTrue(any(w.startswith("CRITICAL:") and "auth=open" in w for w in warnings))
+            self.assertFalse(self.app_mod._auth_security_ok(warnings))
+            self.assertEqual(self.app_mod._auth_mode(), "open")
         finally:
             self.app_mod.API_TOKEN = prev["API_TOKEN"]
             self.app_mod.ADMIN_API_TOKEN = prev["ADMIN_API_TOKEN"]

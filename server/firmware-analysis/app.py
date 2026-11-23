@@ -1474,8 +1474,28 @@ def process_job(job_id: str) -> None:
     )
 
 
+def _auth_mode() -> str:
+    """Coarse auth posture for /health (never secrets).
+
+    - open: no credentials configured (dev-only; CRITICAL)
+    - shared_token_admin: API_TOKEN_GRANTS_ADMIN=1 (discouraged; CRITICAL)
+    - separated: user credentials do not imply admin (secure default)
+    """
+    if not API_TOKEN and not ADMIN_API_TOKEN and not JWT_SECRET:
+        return "open"
+    if api_token_grants_admin():
+        return "shared_token_admin"
+    return "separated"
+
+
 def _auth_security_warnings() -> list[str]:
-    """Surface insecure legacy auth flags (fail-open for ops visibility, fail-closed for ownership)."""
+    """Surface insecure auth flags for ops (ownership stays fail-closed).
+
+    Severity prefixes:
+    - CRITICAL: must not ship publicly (open auth / shared-token admin)
+    - INSECURE: legacy spoofable ownership
+    - ADVISORY: incomplete but not privilege-collapsing
+    """
     warnings: list[str] = []
     if not API_TOKEN and not ADMIN_API_TOKEN and not JWT_SECRET:
         warnings.append(
@@ -1484,7 +1504,8 @@ def _auth_security_warnings() -> list[str]:
         )
     if api_token_grants_admin():
         warnings.append(
-            "INSECURE: API_TOKEN_GRANTS_ADMIN=1 — shared API_TOKEN grants admin. "
+            "CRITICAL: API_TOKEN_GRANTS_ADMIN=1 — shared API_TOKEN grants admin "
+            "(user vs admin separation broken). "
             "Set API_TOKEN_GRANTS_ADMIN=0 and use ADMIN_API_TOKEN / JWT role=admin."
         )
     if trust_api_token_client_id():
@@ -1493,14 +1514,26 @@ def _auth_security_warnings() -> list[str]:
             "shared API_TOKEN (spoofable). Set TRUST_API_TOKEN_CLIENT_ID=0; prefer Bearer JWT."
         )
     if API_TOKEN and not ADMIN_API_TOKEN and api_token_grants_admin():
+        # Live prod (2026-11-23) posture: grants=true + adminApiTokenConfigured=false.
         warnings.append(
-            "INSECURE: shared API_TOKEN is the only admin credential (no ADMIN_API_TOKEN)."
+            "CRITICAL: shared API_TOKEN is the only admin credential (no ADMIN_API_TOKEN). "
+            "Set ADMIN_API_TOKEN and API_TOKEN_GRANTS_ADMIN=0 before relying on authSecurityOk."
+        )
+    if API_TOKEN and not ADMIN_API_TOKEN and not api_token_grants_admin():
+        warnings.append(
+            "ADVISORY: ADMIN_API_TOKEN unset — admin endpoints require JWT role=admin only."
         )
     if not JWT_SECRET:
         warnings.append(
-            "JWT_SECRET unset — user-owned firmware jobs via Bearer JWT are unavailable."
+            "ADVISORY: JWT_SECRET unset — user-owned firmware jobs via Bearer JWT are unavailable."
         )
     return warnings
+
+
+def _auth_security_ok(warnings: list[str] | None = None) -> bool:
+    """True only when no CRITICAL/INSECURE warnings (ADVISORY does not fail the gate)."""
+    warnings = _auth_security_warnings() if warnings is None else warnings
+    return not any(w.startswith(("CRITICAL:", "INSECURE:")) for w in warnings)
 
 
 @APP.get("/health")
@@ -1517,7 +1550,9 @@ def health() -> dict[str, Any]:
         "adminApiTokenConfigured": bool(ADMIN_API_TOKEN),
         "apiTokenGrantsAdmin": api_token_grants_admin(),
         "trustApiTokenClientId": trust_api_token_client_id(),
-        "authSecurityOk": len(auth_warnings) == 0,
+        "authMode": _auth_mode(),
+        "authSecurityOk": _auth_security_ok(auth_warnings),
+        "authSecurityCritical": any(w.startswith("CRITICAL:") for w in auth_warnings),
         "authSecurityWarnings": auth_warnings,
         "retentionDays": JOB_RETENTION_DAYS,
         "maxStoredJobs": MAX_STORED_JOBS,

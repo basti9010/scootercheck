@@ -103,8 +103,73 @@ class ApiAuthSecurityTests(unittest.TestCase):
         self.assertTrue(body.get("adminApiTokenConfigured"))
         self.assertFalse(body.get("apiTokenGrantsAdmin"))
         self.assertFalse(body.get("trustApiTokenClientId"))
+        self.assertEqual(body.get("authMode"), "separated")
         self.assertTrue(body.get("authSecurityOk"))
+        self.assertFalse(body.get("authSecurityCritical"))
         self.assertEqual(body.get("authSecurityWarnings"), [])
+
+    def test_open_auth_health_is_critical_not_ok(self) -> None:
+        """auth=open must keep authSecurityOk false with a CRITICAL warning."""
+        prev = {
+            "API_TOKEN": self.app_mod.API_TOKEN,
+            "ADMIN_API_TOKEN": self.app_mod.ADMIN_API_TOKEN,
+            "JWT_SECRET": self.app_mod.JWT_SECRET,
+        }
+        try:
+            self.app_mod.API_TOKEN = ""
+            self.app_mod.ADMIN_API_TOKEN = ""
+            self.app_mod.JWT_SECRET = ""
+            r = self.client.get("/health")
+            self.assertEqual(r.status_code, 200)
+            body = r.json()
+            self.assertEqual(body.get("authMode"), "open")
+            self.assertFalse(body.get("authSecurityOk"))
+            self.assertTrue(body.get("authSecurityCritical"))
+            warnings = body.get("authSecurityWarnings") or []
+            self.assertTrue(any(w.startswith("CRITICAL:") and "auth=open" in w for w in warnings))
+        finally:
+            self.app_mod.API_TOKEN = prev["API_TOKEN"]
+            self.app_mod.ADMIN_API_TOKEN = prev["ADMIN_API_TOKEN"]
+            self.app_mod.JWT_SECRET = prev["JWT_SECRET"]
+
+    def test_shared_token_admin_health_is_critical_not_ok(self) -> None:
+        """Prod-like grants=1 + no ADMIN_API_TOKEN → CRITICAL, authSecurityOk false."""
+        prev_admin = self.app_mod.ADMIN_API_TOKEN
+        with mock.patch.object(self.app_mod, "api_token_grants_admin", return_value=True):
+            self.app_mod.ADMIN_API_TOKEN = ""
+            try:
+                r = self.client.get("/health")
+                self.assertEqual(r.status_code, 200)
+                body = r.json()
+                self.assertEqual(body.get("authMode"), "shared_token_admin")
+                self.assertFalse(body.get("adminApiTokenConfigured"))
+                self.assertTrue(body.get("apiTokenGrantsAdmin"))
+                self.assertFalse(body.get("authSecurityOk"))
+                self.assertTrue(body.get("authSecurityCritical"))
+                warnings = body.get("authSecurityWarnings") or []
+                self.assertTrue(
+                    any("API_TOKEN_GRANTS_ADMIN=1" in w and w.startswith("CRITICAL:") for w in warnings)
+                )
+                self.assertTrue(
+                    any("only admin credential" in w and w.startswith("CRITICAL:") for w in warnings)
+                )
+            finally:
+                self.app_mod.ADMIN_API_TOKEN = prev_admin
+
+    def test_jwt_advisory_alone_does_not_fail_auth_security_ok(self) -> None:
+        """ADVISORY (JWT unset) must not collapse authSecurityOk when tokens are separated."""
+        prev = self.app_mod.JWT_SECRET
+        try:
+            self.app_mod.JWT_SECRET = ""
+            r = self.client.get("/health")
+            body = r.json()
+            self.assertEqual(body.get("authMode"), "separated")
+            self.assertTrue(body.get("authSecurityOk"))
+            self.assertFalse(body.get("authSecurityCritical"))
+            warnings = body.get("authSecurityWarnings") or []
+            self.assertTrue(any(w.startswith("ADVISORY:") and "JWT_SECRET" in w for w in warnings))
+        finally:
+            self.app_mod.JWT_SECRET = prev
 
     def test_invalid_jwt_rejected(self) -> None:
         r = self.client.get(
