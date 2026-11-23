@@ -189,6 +189,8 @@ enum Nb {
     }
 
     /// Register schreiben (u16 LE Payload) — nur für harmlose Identify/Find-Befehle.
+    /// Callers that send vehicle-affecting ops must pass through `BleWriteGate`
+    /// (`authorize` / `assertAllowed`) before writing the resulting frame.
     static func writeU16(
         board: Board,
         register: UInt8,
@@ -208,6 +210,7 @@ enum Nb {
         )
     }
 
+    /// Register schreiben (Roh-Payload). Callers must pass vehicle ops through `BleWriteGate`.
     static func writeBytes(
         board: Board,
         register: UInt8,

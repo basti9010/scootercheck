@@ -63,6 +63,10 @@ final class BLECapabilityService: NSObject, ObservableObject {
     }
 
     func sendImmediateAlert(level: BLEImmediateAlertLevel) {
+        guard BleWriteGate.authorize(.capabilityAlert) else {
+            phase = .failed("BLE-Schreibzugriff für Immediate Alert ist deaktiviert")
+            return
+        }
         guard capabilities.supportsImmediateAlert, let peripheral, let ch = alertCharacteristic else {
             phase = .failed("Immediate Alert nicht verfügbar.")
             return
@@ -87,6 +91,10 @@ final class BLECapabilityService: NSObject, ObservableObject {
     }
 
     func setNordicLed(on: Bool) {
+        guard BleWriteGate.authorize(.capabilityNordicLed) else {
+            phase = .failed("BLE-Schreibzugriff für Nordic LED ist deaktiviert")
+            return
+        }
         guard capabilities.supportsNordicLed, let peripheral, let ch = nordicLedCharacteristic else {
             phase = .failed("Dokumentierte LED-Funktion nicht verfügbar.")
             return
