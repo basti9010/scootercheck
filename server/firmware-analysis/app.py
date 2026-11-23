@@ -2107,3 +2107,9 @@ def admin_delete_job(job_id: str, _: dict[str, Any] = Depends(require_admin)) ->
         raise HTTPException(status_code=404, detail="job not found")
     delete_job_artifacts(job)
     return JSONResponse({"message": "deleted", "jobId": job_id})
+
+
+# Cycle 11 — admin-only diagnostics (true admin JWT / ADMIN_API_TOKEN; never shared-token admin).
+from diagnostics_routes import create_diagnostics_router  # noqa: E402
+
+APP.include_router(create_diagnostics_router(require_auth=require_auth))
