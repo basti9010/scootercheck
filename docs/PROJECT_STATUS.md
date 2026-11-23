@@ -1,10 +1,10 @@
 # ScooterCheck – Project Status
 
-**Stand:** 2026-11-23 ~19:45 Europe/Berlin  
+**Stand:** 2026-11-23 ~20:00 Europe/Berlin  
 **Aktiver Multi-Agent-Branch:** `cursor/multi-agent-system-b100` (PR #103)  
 **Basis:** `cursor/pedelec-auswerten-b100`  
 **P0:** **VERIFIED** (CI `45239479743`, 324/0 on `1a0012e`)  
-**P1:** Research complete · Implementation slices in parallel worktrees  
+**P1:** Foundation + History extract + Correlator MVP **merged**; Hub/UI + ContentView `.investigate` pending  
 **Hauptregel:** Nur lesende Diagnose – keine Limit-Änderung, kein Flash, keine Unlock-Kombos.
 
 ## Produkt
@@ -26,9 +26,9 @@ Kernablauf: Scooter suchen → verbinden → Manipulation prüfen → Bericht (P
 | ProtocolHistoryStore + PackIntegrity | vorhanden (P0) |
 | BLECentralCoordinator / Enc2Lifecycle / BleWriteGate | vorhanden (P0 VERIFIED) |
 | Pedelec + Universal Diagnosis | vorhanden |
-| ContentView leaf extract | DONE (AuslesenDeviceViews, IntegrityResultChrome) |
-| Unified Investigation Hub / Flow 1.1 | **Port in Arbeit** — Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` |
-| BLE↔Firmware CrossSourceCorrelator | Design DONE · MVP Branch parallel |
+| ContentView modularization | Steps 1–2 DONE (~2196 LOC); Steps 3–6 pending |
+| Investigation Store + Forensics Codable | **MERGED** (Hub/UI/ContentView splice deferred) |
+| BLE↔Firmware CrossSourceCorrelator | MVP **MERGED** (`Correlation/`) |
 
 ## Multi-Agent
 

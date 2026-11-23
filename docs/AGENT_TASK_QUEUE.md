@@ -39,10 +39,10 @@
 
 | ID | Status | Agent |
 |----|--------|-------|
-| P1-1 Investigation Flow 1.1 | Research **DONE** · Foundation slice **PORTED** (Store+Forensics models/PDF jsonData+tests; Hub/UI/ContentView deferred) | Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` · Branch `cursor/p1-1-investigation-foundation-b100` · source tip `f306bf3` |
-| P1-2 ContentView modularization | Step 1 **DONE** · Step 2 History **IN FLIGHT** | Plan `docs/P1_CONTENTVIEW_MODULARIZATION.md` · Agent `bc-b8cd6320…` → `cursor/p1-2-contentview-history-b100` |
-| P1-3 BLE/Firmware correlation | Design **DONE** · MVP **IN FLIGHT** | Design `docs/P1-3_BLE_FIRMWARE_CORRELATION.md` · Agent `bc-ef9785e8…` → `cursor/p1-3-cross-source-correlator-b100` |
-| P1-4 Regression tests | BACKLOG | after first Investigation/Correlator merge |
+| P1-1 Investigation Flow 1.1 | Foundation **MERGED** · Hub/UI/ContentView deferred | [Port Investigation foundation](bc-5cc7c0db-ad8d-53ee-b72a-737489341149) · Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` |
+| P1-2 ContentView modularization | Step 1+2 **MERGED** (leaves + History) · Steps 3–6 BACKLOG | [Extract ContentView history](bc-b8cd6320-00b9-5b8f-b94e-2eea4de7bf36) · ContentView ~2196 LOC |
+| P1-3 BLE/Firmware correlation | MVP **MERGED** | [CrossSourceCorrelator MVP](bc-ef9785e8-27d0-5544-a470-08f7f88bacd0) · `docs/P1-3_CORRELATOR_MVP.md` |
+| P1-4 Regression tests | PARTIAL | InvestigationStore/FlowLogic + CrossSourceCorrelatorTests landed; Hub/UI coverage pending |
 
 ---
 
@@ -51,7 +51,7 @@
 ```
 cycle_id: 5
 ci_fix_attempts: 1/3 (success)
-status: P0_VERIFIED — P1 research active
+status: P0_VERIFIED — P1 slices 1–3 merged; await CI on c55ce78+
 branch: cursor/multi-agent-system-b100
-green_ci: 45239479743 @ 1a0012e
+green_ci: 45239479743 @ 1a0012e (pre-P1-code)
 ```

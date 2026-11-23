@@ -19,15 +19,15 @@ QA: PASS_WITH_NOTES.
 | P1-2 plan + leaf extract | `docs/P1_CONTENTVIEW_MODULARIZATION.md` · leaves merged | analyze + QA `bc-f4c59e3b…` |
 | P1-3 design | `docs/P1-3_BLE_FIRMWARE_CORRELATION.md` | `bc-1b6136d2…` |
 
-### Cycle 5 P1 implementation (IN FLIGHT — parallel worktrees)
+### Cycle 5 P1 implementation (MERGED into multi-agent)
 
-| Slice | Branch target | Agent |
-|-------|---------------|-------|
-| P1-1 foundation (Forensics+Store) | `cursor/p1-1-investigation-foundation-b100` | `bc-5cc7c0db…` |
-| P1-2 history extract | `cursor/p1-2-contentview-history-b100` | `bc-b8cd6320…` |
-| P1-3 correlator MVP | `cursor/p1-3-cross-source-correlator-b100` | `bc-ef9785e8…` |
+| Slice | Branch | Agent | Merge |
+|-------|--------|-------|-------|
+| P1-1 foundation | `cursor/p1-1-investigation-foundation-b100` | [Port Investigation foundation](bc-5cc7c0db-ad8d-53ee-b72a-737489341149) | `c213945` |
+| P1-3 correlator MVP | `cursor/p1-3-cross-source-correlator-b100` | [CrossSourceCorrelator MVP](bc-ef9785e8-27d0-5544-a470-08f7f88bacd0) | `2371ec3` |
+| P1-2 history extract | `cursor/p1-2-contentview-history-b100` | [Extract ContentView history](bc-b8cd6320-00b9-5b8f-b94e-2eea4de7bf36) | `c55ce78` |
 
-Parent merges after independent review; no concurrent writes on multi-agent HEAD.
+pbxproj conflicts resolved to keep FirmwareForensics + Investigation + Correlation + History groups.
 
 ### P1-1 foundation slice (this branch)
 
