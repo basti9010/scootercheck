@@ -28,10 +28,9 @@ Cycle 3 Fix-Budget (3/3) abgeschlossen. Cycle 4: **neues** Budget max **3** Auto
 | Feld | Wert |
 |------|------|
 | ID | CYCLE4-A |
-| Status | IN_PROGRESS |
-| Agent | explore `bc-3326a84a…` + Parent implement |
-| Cause | `decodeBmsTempC` → `Double?`; accuracy overload needs `Double` |
-| Fix | unwrap before accuracy assert |
+| Status | DONE |
+| Agent | [Diagnose LiveTelemetryTests](bc-3326a84a-0221-53cf-8eb8-710e531b7a32) → confirm `Double?` + `?? -1` |
+| Fix commit | `52d0bca` |
 
 ---
 
@@ -40,10 +39,9 @@ Cycle 3 Fix-Budget (3/3) abgeschlossen. Cycle 4: **neues** Budget max **3** Auto
 | Feld | Wert |
 |------|------|
 | ID | CYCLE4-B |
-| Status | IN_PROGRESS |
-| Agent | explore `bc-f82614c4…` + Parent implement |
-| Cause | `measuredRssi` → `Double?` |
-| Fix | unwrap / `??` before accuracy assert |
+| Status | DONE |
+| Agent | [Diagnose BLESearchMotionTests](bc-f82614c4-c8f9-5dd1-bc65-342ab3aecff0) → confirm `measuredRssi` Double? |
+| Fix commit | `52d0bca` (`?? .nan`; equivalent to agent `?? -1`) |
 
 ---
 
@@ -52,10 +50,9 @@ Cycle 3 Fix-Budget (3/3) abgeschlossen. Cycle 4: **neues** Budget max **3** Auto
 | Feld | Wert |
 |------|------|
 | ID | CYCLE4-C |
-| Status | IN_PROGRESS |
-| Agent | explore `bc-9c9544a6…` + Parent implement |
-| Cause | `minHitsForAlarm` renamed → Foreground/Background |
-| Fix | assert `minHitsForAlarmForeground` (>=2) + background constant |
+| Status | DONE |
+| Agent | [Diagnose BLEWatchRadarTests](bc-9c9544a6-55f7-576e-b9c2-6960ce4baccd) → Foreground/Background rename |
+| Fix commit | `52d0bca` |
 
 ---
 
@@ -64,8 +61,8 @@ Cycle 3 Fix-Budget (3/3) abgeschlossen. Cycle 4: **neues** Budget max **3** Auto
 | Feld | Wert |
 |------|------|
 | ID | CYCLE4-CI-1 |
-| Status | READY |
-| Fix-Attempts | 0 / 3 |
+| Status | IN_PROGRESS |
+| Fix-Attempts | 1 / 3 (first push `52d0bca` — awaiting CI) |
 | Goal | build-for-testing OK + test-without-building executes XCTest |
 
 ---
