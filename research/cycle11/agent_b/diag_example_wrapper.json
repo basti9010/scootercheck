@@ -1,0 +1,62 @@
+{
+  "checks": {
+    "decryptCmdConfigured": {
+      "grade": "CONFIGURED",
+      "ok": true
+    },
+    "safeProbe": {
+      "attempted": false,
+      "grade": "AVAILABLE",
+      "ok": false,
+      "skippedReason": "no_documented_safe_flag"
+    },
+    "wrapperAvailable": {
+      "executable": true,
+      "grade": "AVAILABLE",
+      "ok": true,
+      "via": "path"
+    }
+  },
+  "component": "ninebottea",
+  "decryptCmd": {
+    "basename": "decrypt-firm.example.sh",
+    "firstTokenLength": 48,
+    "looksAbsolute": false,
+    "set": true,
+    "tokenCount": 1
+  },
+  "grade": "AVAILABLE",
+  "grades": {
+    "AVAILABLE": true,
+    "CONFIGURED": true,
+    "FAILED": false,
+    "UNKNOWN": false,
+    "VERIFIED": false
+  },
+  "notes": [
+    "Wrapper reachable; safe probe skipped (no_documented_safe_flag) \u2014 grade AVAILABLE (flags alone never equal VERIFIED).",
+    "Never decrypts real ZT3/ENC packs; never invents keys."
+  ],
+  "policy": {
+    "decryptRealPacks": false,
+    "echoEnvSecrets": false,
+    "inventKeys": false,
+    "safeFlagsOnly": true
+  },
+  "probe": {
+    "attempted": false,
+    "exitCode": null,
+    "ok": false,
+    "skippedReason": "no_documented_safe_flag",
+    "stderrPreview": "",
+    "stdoutPreview": ""
+  },
+  "wrapper": {
+    "configured": true,
+    "executable": true,
+    "exists": true,
+    "isFile": true,
+    "resolvedBasename": "decrypt-firm.example.sh",
+    "via": "path"
+  }
+}

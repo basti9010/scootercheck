@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraDiagnosticsSelftest",
+  "cycle": 11,
+  "agent": "C",
+  "generatedAt": "2026-11-23T21:20:38.425454+00:00",
+  "executed": false,
+  "grades": {
+    "configured": false,
+    "available": false,
+    "verified": false,
+    "overall": "FAILED",
+    "endToEndVerified": false,
+    "healthFlagIsNotProof": true
+  },
+  "overallCode": "MISSING_PREREQUISITE",
+  "exactMissingCause": "MISSING_PREREQUISITE: GHIDRA_HOME unset, GHIDRA_HEADLESS unset, analyzeHeadless not on PATH, /opt/ghidra absent. Java present does not imply Ghidra.",
+  "processorTarget": "ARM:LE:32:Cortex",
+  "loaderBaseTarget": "0x08000000",
+  "fixture": {
+    "present": true,
+    "path": "/agent/repos/scootercheck/server/firmware-analysis/testdata/diagnostics/synthetic_cortex_m_thumb.bin",
+    "expected": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+    "actual": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+    "matches": true,
+    "markerPresent": true,
+    "size": 512,
+    "algorithm": "SHA-256",
+    "notRealScooterFirmware": true
+  },
+  "fixturePaths": {
+    "testdata": "/agent/repos/scootercheck/server/firmware-analysis/testdata/diagnostics/synthetic_cortex_m_thumb.bin",
+    "cycle10Constant": "/agent/repos/scootercheck/research/cycle10/fixtures/synthetic_cortex_m_thumb.bin",
+    "resolved": "/agent/repos/scootercheck/server/firmware-analysis/testdata/diagnostics/synthetic_cortex_m_thumb.bin"
+  },
+  "ghidraScripts": {
+    "SeedCortexMEntryPoints.java": true,
+    "ExportFunctionAnalysis.java": true,
+    "ExportCallGraph.java": true
+  },
+  "environmentProbe": {
+    "resolutionPaths": [
+      {
+        "path": "env:GHIDRA_HEADLESS",
+        "value": null,
+        "status": "unset"
+      },
+      {
+        "path": "env:GHIDRA_HOME/support/analyzeHeadless",
+        "value": null,
+        "ghidraHome": null,
+        "status": "unset"
+      },
+      {
+        "path": "env:GHIDRA_HOME/ghidra_*/support/analyzeHeadless",
+        "value": null,
+        "candidates": [],
+        "status": "unset"
+      },
+      {
+        "path": "PATH:analyzeHeadless",
+        "value": null,
+        "status": "absent"
+      },
+      {
+        "path": "/opt/ghidra/ghidra_*/support/analyzeHeadless",
+        "value": null,
+        "optGhidraDirExists": false,
+        "candidates": [],
+        "status": "dir_missing"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "id": 1,
+      "name": "analyzeHeadless",
+      "status": "FAILED",
+      "code": "MISSING_PREREQUISITE",
+      "detail": "MISSING_PREREQUISITE: GHIDRA_HOME unset, GHIDRA_HEADLESS unset, analyzeHeadless not on PATH, /opt/ghidra absent. Java present does not imply Ghidra.",
+      "evidence": {
+        "probes": [
+          {
+            "path": "env:GHIDRA_HEADLESS",
+            "value": null,
+            "status": "unset"
+          },
+          {
+            "path": "env:GHIDRA_HOME/support/analyzeHeadless",
+            "value": null,
+            "ghidraHome": null,
+            "status": "unset"
+          },
+          {
+            "path": "env:GHIDRA_HOME/ghidra_*/support/analyzeHeadless",
+            "value": null,
+            "candidates": [],
+            "status": "unset"
+          },
+          {
+            "path": "PATH:analyzeHeadless",
+            "value": null,
+            "status": "absent"
+          },
+          {
+            "path": "/opt/ghidra/ghidra_*/support/analyzeHeadless",
+            "value": null,
+            "optGhidraDirExists": false,
+            "candidates": [],
+            "status": "dir_missing"
+          }
+        ],
+        "headless": null
+      }
+    },
+    {
+      "id": 2,
+      "name": "import",
+      "status": "UNKNOWN",
+      "code": "MISSING_PREREQUISITE",
+      "detail": "not attempted — analyzeHeadless unavailable"
+    },
+    {
+      "id": 3,
+      "name": "arch",
+      "status": "UNKNOWN",
+      "code": "MISSING_PREREQUISITE",
+      "detail": "not attempted — analyzeHeadless unavailable"
+    },
+    {
+      "id": 4,
+      "name": "analyze",
+      "status": "UNKNOWN",
+      "code": "MISSING_PREREQUISITE",
+      "detail": "not attempted — analyzeHeadless unavailable"
+    },
+    {
+      "id": 5,
+      "name": "functions_export",
+      "status": "UNKNOWN",
+      "code": "MISSING_PREREQUISITE",
+      "detail": "not attempted — analyzeHeadless unavailable"
+    },
+    {
+      "id": 6,
+      "name": "cfg_export",
+      "status": "UNKNOWN",
+      "code": "MISSING_PREREQUISITE",
+      "detail": "not attempted — analyzeHeadless unavailable"
+    },
+    {
+      "id": 7,
+      "name": "artifacts",
+      "status": "VERIFIED",
+      "code": "OK",
+      "detail": "no fabricated Ghidra exports; honest absence under MISSING_PREREQUISITE",
+      "evidence": {
+        "fabricatedExports": [],
+        "exportsCreated": false
+      }
+    },
+    {
+      "id": 8,
+      "name": "sha256_metadata",
+      "status": "VERIFIED",
+      "code": "OK",
+      "detail": "fixture SHA-256 matches frozen Cycle-7/10 digest",
+      "evidence": {
+        "present": true,
+        "path": "/agent/repos/scootercheck/server/firmware-analysis/testdata/diagnostics/synthetic_cortex_m_thumb.bin",
+        "expected": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+        "actual": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+        "matches": true,
+        "markerPresent": true,
+        "size": 512,
+        "algorithm": "SHA-256",
+        "notRealScooterFirmware": true
+      }
+    }
+  ],
+  "run": null,
+  "hardBans": [
+    "no user shell / no arbitrary argv (fixed selftest argv only)",
+    "no fabricated .functions.json / .callgraph.json / .dec.c when Ghidra missing",
+    "never claim VERIFIED from ghidraConfigured health flag alone",
+    "no real encrypted ZT3 / Cycle-6 FIRM.bin.enc plaintext reconstruction",
+    "Java present does not imply Ghidra"
+  ],
+  "notes": [
+    "CONFIGURED ≠ AVAILABLE ≠ VERIFIED ≠ FAILED ≠ UNKNOWN",
+    "Selftest uses fixed argv only (no shell, no caller-supplied args).",
+    "MISSING_PREREQUISITE returns FAILED/UNKNOWN honestly; exports are never faked."
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "checks": {
+    "decryptCmdConfigured": {
+      "grade": "UNKNOWN",
+      "ok": false
+    },
+    "safeProbe": {
+      "attempted": false,
+      "grade": "UNKNOWN",
+      "ok": false,
+      "skippedReason": "not_configured"
+    },
+    "wrapperAvailable": {
+      "executable": false,
+      "grade": "UNKNOWN",
+      "ok": false,
+      "via": null
+    }
+  },
+  "component": "ninebottea",
+  "decryptCmd": {
+    "basename": null,
+    "looksAbsolute": false,
+    "set": false,
+    "tokenCount": 0
+  },
+  "grade": "UNKNOWN",
+  "grades": {
+    "AVAILABLE": false,
+    "CONFIGURED": false,
+    "FAILED": false,
+    "UNKNOWN": true,
+    "VERIFIED": false
+  },
+  "notes": [
+    "DECRYPT_CMD unset on this host \u2014 grade UNKNOWN (not FAILED).",
+    "Never decrypts real ZT3/ENC packs; never invents keys."
+  ],
+  "policy": {
+    "decryptRealPacks": false,
+    "echoEnvSecrets": false,
+    "inventKeys": false,
+    "safeFlagsOnly": true
+  },
+  "probe": {
+    "attempted": false,
+    "exitCode": null,
+    "ok": false,
+    "skippedReason": "not_configured",
+    "stderrPreview": "",
+    "stdoutPreview": ""
+  },
+  "wrapper": {
+    "configured": false,
+    "executable": false,
+    "exists": false,
+    "isFile": false,
+    "resolvedBasename": null,
+    "via": null
+  }
+}

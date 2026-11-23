@@ -53,3 +53,8 @@ branch: cursor/multi-agent-system-b100
 green_ci_p0: 45239479743 @ 1a0012e
 green_ci_p1: 45245015142 @ a2c9329
 ```
+
+## Cycle 11 (active)
+- Server diagnostics API (admin-only)
+- TEA/Ghidra selftest (synthetic)
+- iOS Settings → Firmwareanalyse → Serverdiagnose

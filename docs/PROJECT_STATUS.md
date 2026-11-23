@@ -43,3 +43,6 @@ Kernablauf: Scooter suchen → verbinden → Manipulation prüfen → Bericht (P
 - Investigation Hub/UI + ContentView `.investigate` nach Foundation-Merge
 - ContentView Steps 3–6
 - Correlator an Forensics/Investigation anbinden nach MVP
+
+## Cycle 11
+Server diagnostics API + iOS Serverdiagnose (PR #110). Live Ghidra/TEA E2E still blocked without Freigabe.

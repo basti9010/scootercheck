@@ -116,3 +116,8 @@ Compile/assertion cascade → Attempt-Budget erschöpft → Cycle 5 FIX-1 → **
 |-------|--------|
 | PR #103 + CI branch subscriptions | aktiv |
 | Parallel P1 worktree agents | running |
+
+## Cycle 11 progress
+- diagnostics_tea / diagnostics_ghidra / diagnostics_routes wired
+- iOS Serverdiagnose UI merged
+- Admin-only API; CONFIGURED≠VERIFIED

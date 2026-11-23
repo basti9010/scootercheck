@@ -14,6 +14,7 @@ final class AppSettings: ObservableObject {
     private static let findHapticsKey = "app.settings.find.proximityHaptics.v1"
     private static let firmwareServerURLKey = "app.settings.firmware.analysisServerURL.v1"
     private static let firmwareServerTokenKey = "app.settings.firmware.analysisServerToken.v1"
+    private static let firmwareAdminTokenKey = "app.settings.firmware.analysisAdminToken.v1"
     private static let firmwareAllowLLMKey = "app.settings.firmware.allowLLM.v1"
 
     @Published var textSize: AppTextSize {
@@ -53,9 +54,19 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(firmwareAnalysisServerURLString, forKey: Self.firmwareServerURLKey) }
     }
 
-    /// Shared Secret für Header `X-ScooterCheck-Token`.
+    /// Shared Secret für Header `X-ScooterCheck-Token` (Jobs — nicht Admin).
     @Published var firmwareAnalysisAPIToken: String {
         didSet { UserDefaults.standard.set(firmwareAnalysisAPIToken, forKey: Self.firmwareServerTokenKey) }
+    }
+
+    /// Dedicated `ADMIN_API_TOKEN` for Serverdiagnose / Selftest (≠ shared API token).
+    @Published var firmwareAnalysisAdminAPIToken: String {
+        didSet { UserDefaults.standard.set(firmwareAnalysisAdminAPIToken, forKey: Self.firmwareAdminTokenKey) }
+    }
+
+    /// True when a dedicated admin token is configured (Cycle 11 gate).
+    var isFirmwareDiagnosticsAdmin: Bool {
+        !firmwareAnalysisAdminAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// Opt-in: schema-gebundene KI auf dem Analyse-Server (Default false).
@@ -123,6 +134,7 @@ final class AppSettings: ObservableObject {
             ? FirmwareServerAnalysisClient.defaultBaseURLString
             : storedFWURL
         firmwareAnalysisAPIToken = defaults.string(forKey: Self.firmwareServerTokenKey) ?? ""
+        firmwareAnalysisAdminAPIToken = defaults.string(forKey: Self.firmwareAdminTokenKey) ?? ""
         if defaults.object(forKey: Self.firmwareAllowLLMKey) != nil {
             firmwareAnalysisAllowLLM = defaults.bool(forKey: Self.firmwareAllowLLMKey)
         } else {
