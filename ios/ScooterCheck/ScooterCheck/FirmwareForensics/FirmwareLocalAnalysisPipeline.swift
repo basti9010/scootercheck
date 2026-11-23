@@ -243,10 +243,10 @@ enum FirmwareLocalAnalysisPipeline {
                     ? "Lokal unvollständig (Ciphertext)"
                     : "Lokale Deterministik"
             ),
+            analysisLimitations: limits,
             analysisCompleteness: encrypted
                 ? "INCOMPLETE_ENCRYPTED_LOCAL"
-                : (crypto.status == .unknownFormat ? "FORMAT_UNSUPPORTED_LOCAL" : "LOCAL_STATIC"),
-            analysisLimitations: limits
+                : (crypto.status == .unknownFormat ? "FORMAT_UNSUPPORTED_LOCAL" : "LOCAL_STATIC")
         )
 
         var summaryParts: [String] = [verdict.shortLabel]
