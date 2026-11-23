@@ -35,6 +35,12 @@ final class BLECapabilityService: NSObject, ObservableObject {
             phase = .failed("Gerät wirbt nicht als verbindbar.")
             return
         }
+        do {
+            try BLECentralCoordinator.acquire(.capabilityService)
+        } catch {
+            phase = .failed(error.localizedDescription)
+            return
+        }
         targetId = device.id
         phase = .probing
         capabilities = BLEDeviceCapabilities()
@@ -115,6 +121,7 @@ final class BLECapabilityService: NSObject, ObservableObject {
         targetId = nil
         alertCharacteristic = nil
         nordicLedCharacteristic = nil
+        BLECentralCoordinator.release(.capabilityService)
         if clearCaps {
             capabilities = BLEDeviceCapabilities()
         }

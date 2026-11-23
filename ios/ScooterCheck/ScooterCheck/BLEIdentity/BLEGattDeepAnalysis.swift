@@ -51,6 +51,12 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
             phase = .failed("Gerät wirbt nicht als verbindbar.")
             return
         }
+        do {
+            try BLECentralCoordinator.acquire(.gattDeepAnalysis)
+        } catch {
+            phase = .failed(error.localizedDescription)
+            return
+        }
         targetId = device.id
         phase = .connecting
         collected = []
@@ -76,6 +82,7 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
         central?.delegate = nil
         central = nil
         targetId = nil
+        BLECentralCoordinator.release(.gattDeepAnalysis)
         if case .failed = phase { return }
         if phase != .done, phase != .idle {
             phase = .idle
@@ -123,6 +130,7 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
         if let p = peripheral {
             central?.cancelPeripheralConnection(p)
         }
+        BLECentralCoordinator.release(.gattDeepAnalysis)
     }
 
     private func collectedValue(uuid: String) -> String? {
