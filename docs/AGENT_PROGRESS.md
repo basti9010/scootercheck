@@ -121,3 +121,7 @@ Compile/assertion cascade → Attempt-Budget erschöpft → Cycle 5 FIX-1 → **
 - diagnostics_tea / diagnostics_ghidra / diagnostics_routes wired
 - iOS Serverdiagnose UI merged
 - Admin-only API; CONFIGURED≠VERIFIED
+
+
+## Cycle 12
+Hetzner CD: deploy-hetzner.yml (workflow_dispatch + production env). No autonomous prod deploy.

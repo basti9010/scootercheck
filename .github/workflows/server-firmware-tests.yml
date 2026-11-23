@@ -1,0 +1,98 @@
+name: Server Firmware Tests
+
+# Mandatory CI gate for server/firmware-analysis deploy docs (Cycle 12).
+# Does NOT invent success: job fails if pytest fails.
+# iOS XCTest (ios-unit-tests.yml) is OPTIONAL for server deploy — see
+# server/firmware-analysis/deploy/ci-gate-matrix.md
+#
+# Hard bans for this workflow:
+#   - no prod deploy / no SSH to Hetzner
+#   - no real firmware decrypt
+#   - no claim of E2E without Freigabe
+
+on:
+  pull_request:
+    paths:
+      - "server/firmware-analysis/**"
+      - ".github/workflows/server-firmware-tests.yml"
+      - ".github/workflows/deploy-hetzner.yml"
+  push:
+    branches:
+      - main
+      - master
+      - cursor/hetzner-deploy-cd-c12-b100
+      - "cursor/c12-*"
+      - cursor/multi-agent-system-b100
+      - cursor/pedelec-auswerten-b100
+    paths:
+      - "server/firmware-analysis/**"
+      - ".github/workflows/server-firmware-tests.yml"
+      - ".github/workflows/deploy-hetzner.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: server-firmware-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest-subset:
+    name: Pytest (auth / path / diagnostics / zip / deploy-smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server/firmware-analysis
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: server/firmware-analysis/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # TestClient + pytest runner (not pinned in prod requirements on purpose)
+          pip install "pytest>=8.0" "httpx>=0.27"
+
+      - name: Run mandatory pytest subset
+        env:
+          # Fail closed defaults for auth tests; individual tests override via mock.
+          API_TOKEN: ""
+          JWT_SECRET: ""
+          ADMIN_API_TOKEN: ""
+          DECRYPT_CMD: ""
+          ENABLE_GHIDRA: "0"
+        run: |
+          set -euo pipefail
+          # Mandatory deploy-gate subset (see deploy/ci-gate-matrix.md).
+          # diagnostics_* included when present; missing modules would fail collect —
+          # they exist on Cycle 11+ lineage.
+          python -m pytest -q --tb=short \
+            test_api_auth_security.py \
+            test_path_confinement.py \
+            test_zip_safe.py \
+            test_diagnostics_routes.py \
+            test_diagnostics_tea.py \
+            test_diagnostics_ghidra.py \
+            test_deploy_smoke_logic.py \
+            test_deploy_manifest.py
+
+      - name: Summarize
+        if: always()
+        run: |
+          {
+            echo "## Server Firmware Tests"
+            echo ""
+            echo "- Python: $(python --version)"
+            echo "- Working directory: server/firmware-analysis"
+            echo "- Gate: mandatory for server deploy docs (iOS XCTest optional)"
+            echo "- Network/SSH/prod deploy: not exercised"
+          } >> "$GITHUB_STEP_SUMMARY"
