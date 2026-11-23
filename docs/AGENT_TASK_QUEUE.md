@@ -1,132 +1,109 @@
 # ScooterCheck – Agent Task Queue
 
-**Cycle:** 2 (P0 Hardening)  
+**Cycle:** 3 (Quality & Autonomy / macOS CI)  
 **Branch:** `cursor/multi-agent-system-b100`  
-**Lock:** `CYCLE2_ACTIVE` — keine parallelen Autonomie-Timer für denselben Scope  
+**Lock:** `CYCLE3_CI_ACTIVE` — keine parallelen Autonomie-Zyklen  
 **Zuletzt gelesen:** 2026-11-23 (Europe/Berlin)
 
 Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 
----
-
-## Orchestrierung (ehrlich)
-
-| Custom Agent (`.cursor/agents/`) | Cloud `Task` subagent_type | Nutzung in Cycle 2 |
-|----------------------------------|----------------------------|--------------------|
-| project-manager | Parent / generalPurpose | Parent dieses Runs |
-| bluetooth-specialist | generalPurpose (+ Brief) / Parent | P0-1, P0-2 (Parent mit Brief) |
-| forensic-expert | generalPurpose (+ Brief) | P0-3 Worktree `bc-0711ce79…` |
-| ios-developer | generalPurpose (+ Brief) | P0-4 Worktree `bc-763e88b0…` |
-| qa-security | security-review / explore | unabhängige Reviews |
-| firmware-analyst | explore | nicht P0-fokussiert |
-| ui-ux-designer | explore | nicht P0-fokussiert |
-
-Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Brief laden + Prompt.
+**P0-Verifikation:** Code implementiert, aber **UNVERIFIED** bis macOS CI grün meldet.
 
 ---
 
-## CYCLE2-ORCH-1 – Task Queue + Orchestrierung
+## Orchestrierung
+
+| Custom Agent | Cloud Task | Cycle 3 |
+|--------------|------------|---------|
+| project-manager | Parent | CI-Setup, Fix-Loop (max 3) |
+| ios-developer | generalPurpose | Scheme/CI Fixes |
+| qa-security | explore | Review nach CI |
+| bluetooth / forensic | generalPurpose | nur bei CI-Fail in ihrem Scope |
+
+---
+
+## CYCLE3-CI-1 – macOS XCTest Workflow
 
 | Feld | Wert |
 |------|------|
-| ID | CYCLE2-ORCH-1 |
+| ID | CYCLE3-CI-1 |
 | Priorität | P0 |
-| Agent | project-manager |
-| Abhängigkeiten | — |
-| Status | DONE |
-| Akzeptanz | `AGENT_TASK_QUEUE.md` existiert; Bridging dokumentiert; Überlapp-Timer gestoppt |
-| Testergebnis | n/a (Docs) |
-| Branch/Commit | `cursor/multi-agent-system-b100` |
-| Review | Parent OK |
+| Agent | project-manager / ios-developer |
+| Status | IN_PROGRESS |
+| Akzeptanz | Workflow `ios-unit-tests.yml`; Scheme mit Testables; Docs; Trigger auf PR/Push |
+| Testergebnis | **pending erste CI-Ausführung** — nicht erfunden |
+| Branch/Commit | pending push |
+| Review | — |
 
 ---
 
-## P0-1 – BLE Central Ownership
+## CYCLE3-CI-2 – P0 Verification via CI
 
 | Feld | Wert |
 |------|------|
-| ID | P0-1 |
+| ID | CYCLE3-CI-2 |
 | Priorität | P0 |
-| Agent (Impl) | Parent + bluetooth-specialist Brief (kein separater Task — Shared `BleClient`) |
-| Agent (Review) | qa-security |
-| Abhängigkeiten | CYCLE2-ORCH-1 |
-| Status | DONE |
-| Akzeptanz | Lease/Mutex; sekundäre Centrals blockiert während BleClient-Exklusiv; Tests |
-| Testergebnis | Tests geschrieben; **nicht** auf Linux ausgeführt; QA-Fixes (preempt check, lease release) |
-| Branch/Commit | `7d33c39` + follow-up |
-| Review | explore QA → Fixes applied |
+| Agent | qa-security + Parent |
+| Abhängigkeiten | CYCLE3-CI-1 |
+| Status | READY |
+| Akzeptanz | CI führt BLECentralCoordinator / Enc2 / PackIntegrity / BleWriteGate / WriteDisableRegression Tests aus; Ergebnis dokumentiert |
+| Testergebnis | UNVERIFIED |
+| Fix-Attempts | 0 / 3 |
 
 ---
 
-## P0-2 – Enc2 Session Lifecycle
+## CYCLE3-REG-1 – Write-Disable Regression Tests
 
 | Feld | Wert |
 |------|------|
-| ID | P0-2 |
+| ID | CYCLE3-REG-1 |
 | Priorität | P0 |
-| Agent (Impl) | Parent + bluetooth-specialist Brief |
-| Agent (Review) | qa-security |
-| Abhängigkeiten | P0-1 |
-| Status | DONE |
-| Akzeptanz | Handshake setzt alive; Reset/Disconnect invalidiert; kein Dump-Reuse ohne Handshake |
-| Testergebnis | Tests geschrieben; **nicht** auf Linux ausgeführt |
-| Branch/Commit | `7d33c39` |
-| Review | explore QA PASS |
+| Agent | ios-developer / Parent |
+| Status | REVIEW |
+| Akzeptanz | `WriteDisableRegressionTests` im Target; SoftUnlock observational; Navee forbidden; Gate closed |
+| Testergebnis | UNVERIFIED (wartet CI) |
 
 ---
 
-## P0-3 – Pack Integrity
+## P0 (Cycle 2) – Implementiert, Verifikation ausstehend
 
-| Feld | Wert |
-|------|------|
-| ID | P0-3 |
-| Priorität | P0 |
-| Agent (Impl) | forensic-expert → `generalPurpose` @ worktree `/tmp/sc-p03` |
-| Agent (Review) | qa-security |
-| Abhängigkeiten | CYCLE2-ORCH-1 |
-| Status | DONE |
-| Akzeptanz | Manifest SHA-256; verify; sealed after save/ensurePack |
-| Testergebnis | Tests + Thumb-Ausschluss; ensurePack seal-fix; **nicht** auf Linux ausgeführt |
-| Branch/Commit | merged `0610023` + follow-up |
-| Review | explore QA FAIL → Fixes applied |
+| ID | Code | CI-Status |
+|----|------|-----------|
+| P0-1 BLE Central | DONE code | UNVERIFIED |
+| P0-2 Enc2 Lifecycle | DONE code | UNVERIFIED |
+| P0-3 Pack Integrity | DONE code | UNVERIFIED |
+| P0-4 Write Gate | DONE code | UNVERIFIED |
+| CYCLE2-ORCH-1 | DONE | n/a |
 
 ---
 
-## P0-4 – Write-Disable Gate
+## P1 – BACKLOG (erst nach grüner P0-CI)
 
-| Feld | Wert |
-|------|------|
-| ID | P0-4 |
-| Priorität | P0 |
-| Agent (Impl) | ios-developer + bluetooth-specialist → `generalPurpose` @ `/tmp/sc-p04` |
-| Agent (Review) | qa-security |
-| Abhängigkeiten | CYCLE2-ORCH-1 |
-| Status | DONE |
-| Akzeptanz | Default-deny; Allowlist Auth/Identify/Capability; manipulation hard-false |
-| Testergebnis | Tests geschrieben; Enc2 Auth am Handshake-Start; **nicht** auf Linux ausgeführt |
-| Branch/Commit | merged `7d3e30d` + follow-up |
-| Review | explore QA → Docs + Handshake-Gate |
+| ID | Status | Hinweis |
+|----|--------|---------|
+| P1-INV Investigation Flow 1.1 | BACKLOG | nach CYCLE3-CI-2 DONE |
+| P1-CV ContentView modularisieren | BACKLOG | |
+| P1-CORR BLE/Firmware Korrelation | BACKLOG | |
+| P1-REG weitere Regressionstests | BACKLOG | |
 
 ---
 
-## Abgeschlossen (nicht erneut implementieren)
+## Abgeschlossen
 
-| ID | Status | Commit |
-|----|--------|--------|
-| CYCLE1-AGENTS | DONE | `cdd4d97` |
-| CYCLE1-DOCS | DONE | `cdd4d97` |
-| CYCLE1-REVIEW | DONE | Parallel explore → Roadmap |
-| CYCLE2-ORCH-1 | DONE | Task Queue + Timer-Lock |
+| ID | Commit |
+|----|--------|
+| CYCLE1-* | `cdd4d97` |
+| CYCLE2 P0 code | `7c8ecfa` |
 
 ---
 
 ## Cycle Lock
 
 ```
-cycle_id: 2
-owner_run: multi-agent-cycle-2
+cycle_id: 3
+owner: quality-autonomy-upgrade
 branch: cursor/multi-agent-system-b100
-overlapping_autonomy_timer: unsubscribed (scootercheck-autonomous-next)
-zwischenbericht_timer: scootercheck-4h-zwischenbericht (active)
-worktrees: /tmp/sc-p03 (pack), /tmp/sc-p04 (write-gate)
+overlapping_cycle2_p1_timer: unsubscribed
+ci_fix_max_attempts: 3
+zwischenbericht_timer: scootercheck-4h-zwischenbericht (may still be active)
 ```

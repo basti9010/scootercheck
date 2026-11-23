@@ -39,3 +39,14 @@ Geschrieben, **nicht** auf Linux ausgeführt (kein `xcodebuild`):
 
 - Überlappenden Timer `scootercheck-autonomous-next` unsubscribed (Cycle-Lock).
 - `scootercheck-4h-zwischenbericht` bleibt aktiv.
+
+## Cycle 3 (Quality & Autonomy)
+
+| Schritt | Status |
+|---------|--------|
+| `ios-unit-tests.yml` (macos-15, Xcode 16.2 preferred) | angelegt |
+| Scheme Testables `ScooterCheckTests` | gefixt |
+| `WriteDisableRegressionTests` | angelegt |
+| `CI_AUTONOMY_LOOP.md` (max 3 Fix-Attempts) | angelegt |
+| Erste CI-Ausführung | **pending** — Ergebnis nicht erfunden |
+| Cycle2 P1-Timer | unsubscribed (kein Overlap) |
