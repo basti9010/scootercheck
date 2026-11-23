@@ -51,6 +51,13 @@ class ZipSafeTests(unittest.TestCase):
             zip_safe.inspect_zip(raw)
         self.assertIn("Traversal", str(ctx.exception))
 
+    def test_windows_backslash_traversal_rejected(self) -> None:
+        """POSIX Path.parts does not split on '\\'; reject backslash names outright (Z1)."""
+        raw = _make_zip({"..\\..\\evil.bin": b"pwned"})
+        with self.assertRaises(zip_safe.ZipSafetyError) as ctx:
+            zip_safe.inspect_zip(raw)
+        self.assertIn("Backslash", str(ctx.exception))
+
     def test_absolute_path_rejected(self) -> None:
         raw = _make_zip({"/tmp/evil.bin": b"x" * 16})
         with self.assertRaises(zip_safe.ZipSafetyError):
