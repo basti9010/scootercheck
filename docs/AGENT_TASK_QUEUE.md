@@ -11,15 +11,11 @@
 
 | Feld | Wert |
 |------|------|
-| Green run | `45239479743` |
-| SHA | `1a0012e` (Xiaomi-before-Ninebot fix) |
-| Build | SUCCESS |
-| XCTest | **TEST SUCCEEDED** |
-| Totals | **324** executed · **0** failures · **0** unexpected |
-| P0 suites | ALL PASSED (executed) |
-| FIX-1 | DONE — [Fix Xiaomi Scooter 6 match](bc-bb3ffabc-74eb-5592-adcb-d65e6ae7d17a) |
-| QA | [QA Cycle 4/5](bc-6a013177-8f84-52a1-aec1-02aee962bcae) PASS_WITH_NOTES |
-| Fix attempts used | 1 / 3 |
+| Green run (P0) | `45239479743` @ `1a0012e` — 324/0 |
+| Post-P1 CI | **RED** run `45243815073` @ `fc9b4fe` |
+| Failure | pbxproj: Investigation*Tests not in ScooterCheckTests group → wrong path |
+| CI-FIX-1 | IN FLIGHT — add FA7/FAA to ScooterCheckTests group |
+| Fix attempts (post-P1) | 1 / 3 |
 
 ### P0 suites (CI-executed)
 

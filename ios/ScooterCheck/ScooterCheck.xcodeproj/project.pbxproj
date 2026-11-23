@@ -555,6 +555,8 @@
 				B1000000000000000000008A /* NaveeProtocolTests.swift */,
 				B1000000000000000000008C /* LiveTelemetryTests.swift */,
 				B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */,
+				B10000000000000000000FA7 /* InvestigationStoreTests.swift */,
+				B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */,
 				B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
