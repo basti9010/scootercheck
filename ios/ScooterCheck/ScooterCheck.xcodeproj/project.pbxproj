@@ -301,6 +301,18 @@
 		B10000000000000000000049 /* BLEWatchRadarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000048 /* BLEWatchRadarUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarUI.swift; sourceTree = "<group>"; };
 		B10000000000000000000047 /* BLEWatchRadarCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarCore.swift; sourceTree = "<group>"; };
+		B100000000000000000000A1 /* FirmwareForensicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000A2 /* FirmwareDigest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDigest.swift; sourceTree = "<group>"; };
+		B100000000000000000000A7 /* FirmwareForensicScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicScorer.swift; sourceTree = "<group>"; };
+		B100000000000000000000F2 /* FirmwareForensicPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDF.swift; sourceTree = "<group>"; };
+		B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisBriefing.swift; sourceTree = "<group>"; };
+		B100000000000000000000EB /* FirmwareComboPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareComboPolicy.swift; sourceTree = "<group>"; };
+		B100000000000000000000EC /* FirmwareEvidenceTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareEvidenceTier.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA1 /* InvestigationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA2 /* InvestigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA7 /* InvestigationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationStoreTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationFlowLogicTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
