@@ -117,6 +117,7 @@ else
   grade "diagnostics" "SKIPPED"
 fi
 
-grade "E2E" "NO (no Freigabe / no real tuning fixtures in smoke)"
+grade "END_TO_END_VERIFIED" "NO (no Freigabe / no real tuning fixtures in smoke)"
+grade "E2E" "NO"
 log "SMOKE_PASSED — DEPLOYED+AVAILABLE(health); TEA/Ghidra at most CONFIGURED"
 echo "ok smoke"
