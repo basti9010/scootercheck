@@ -131,14 +131,16 @@ Health: `unicornConfigured`, `angrLiteConfigured`, `angrEngineConfigured`, `angr
 - `Authorization: Bearer <ScooterCheck-JWT>` (User muss `active` sein) — gleicher `JWT_SECRET` wie Auth-API; **preferred owner** `user:<sub>`
 - und/oder `X-ScooterCheck-Token` wenn `API_TOKEN` / `ADMIN_API_TOKEN` gesetzt
 - `X-ScooterCheck-Client-Id` is **metadata only** under secure defaults (not a trusted principal)
-- Admin: JWT `role=admin` **oder** `ADMIN_API_TOKEN`
+- Admin: JWT `role=admin` **oder** `ADMIN_API_TOKEN` (never the shared user `API_TOKEN` under secure defaults)
 - **Phase 2.2H secure default:** `API_TOKEN_GRANTS_ADMIN=0` — shared `API_TOKEN` does **not** grant admin
+- **Do not** set `API_TOKEN_GRANTS_ADMIN=1` in prod/staging/defaults/tests — collapses user vs admin; `/health` reports `authMode=shared_token_admin`, `authSecurityOk=false`, `authSecurityCritical=true`
 - Legacy opt-in only: `API_TOKEN_GRANTS_ADMIN=1` (discouraged; staging/new deploys keep `0`)
 - **Phase 2.2H.1:** `TRUST_API_TOKEN_CLIENT_ID=0` — Client-Id must **not** own/access jobs under shared token (spoofable). Prefer Bearer JWT for user jobs.
 - Legacy opt-in only: `TRUST_API_TOKEN_CLIENT_ID=1` (discouraged)
 - Bearer JWT is preferred over shared token when both headers are present
-- **Phase 2.2H.2:** iOS stores JWT in Keychain; firmware upload/poll/artifacts require Bearer JWT. `/health` exposes `authSecurityOk` / `authSecurityWarnings`.
-- Ops before next prod restart: set `ADMIN_API_TOKEN`, confirm `API_TOKEN_GRANTS_ADMIN=0` and `TRUST_API_TOKEN_CLIENT_ID=0`
+- **Phase 2.2H.2 / Cycle 10:** `/health` exposes `authMode`, `authSecurityOk`, `authSecurityCritical`, `authSecurityWarnings`. Open auth (`auth=open`) and shared-token admin stay **CRITICAL**-warned. `authSecurityOk` fails only on CRITICAL/INSECURE (ADVISORY does not).
+- Ops before next prod restart: set `ADMIN_API_TOKEN`, confirm `API_TOKEN_GRANTS_ADMIN=0` and `TRUST_API_TOKEN_CLIENT_ID=0`, then verify `authSecurityOk=true` / `authMode=separated`
+- Process isolation checklist: `docs/process-isolation.md` (systemd `PrivateTmp` / `ProtectSystem`; Ghidra reproducibility via `ghidra_reproducibility.py`)
 
 ## Firmware-Identität / Auto-Funktionen (Phase 2.2B)
 

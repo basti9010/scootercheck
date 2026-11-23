@@ -27,9 +27,11 @@ Runtime values remain in `runtimeConfig` / top-level for visibility. Catalog com
 
 ```
 API_TOKEN_GRANTS_ADMIN=0
+# Do NOT set to 1 in prod — /health authSecurityOk=false (CRITICAL)
 TRUST_API_TOKEN_CLIENT_ID=0
 ADMIN_API_TOKEN=<set>
 JWT_SECRET=<same as auth service>
 ```
 
-`/health` exposes `authSecurityOk` + `authSecurityWarnings`.
+`/health` exposes `authMode`, `authSecurityOk`, `authSecurityCritical`, `authSecurityWarnings`.
+Target: `authMode=separated`, `authSecurityOk=true`, `authSecurityCritical=false`.

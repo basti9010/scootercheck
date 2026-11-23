@@ -185,7 +185,9 @@ class Phase22H2JwtE2ETests(unittest.TestCase):
         body = r.json()
         self.assertFalse(body.get("apiTokenGrantsAdmin"))
         self.assertFalse(body.get("trustApiTokenClientId"))
+        self.assertEqual(body.get("authMode"), "separated")
         self.assertTrue(body.get("authSecurityOk"))
+        self.assertFalse(body.get("authSecurityCritical"))
         self.assertEqual(body.get("authSecurityWarnings"), [])
 
     def test_job_survives_expired_jwt_and_relogin(self) -> None:

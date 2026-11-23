@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraSha256Binding",
+  "cycle": 10,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:50:35.014798+00:00",
+  "algorithm": "SHA-256",
+  "expected": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+  "actual": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+  "matches": true,
+  "boundArtifact": "/agent/repos/scootercheck/research/cycle10/fixtures/synthetic_cortex_m_thumb.bin",
+  "ghidraAvailable": false,
+  "note": "Fixture digest binding only; no fabricated Ghidra export digests"
+}

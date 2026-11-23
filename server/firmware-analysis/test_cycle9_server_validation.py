@@ -112,7 +112,9 @@ class Cycle9ServerValidation(unittest.TestCase):
         self.assertTrue(body.get("adminApiTokenConfigured"))
         self.assertFalse(body.get("apiTokenGrantsAdmin"))
         self.assertFalse(body.get("trustApiTokenClientId"))
+        self.assertEqual(body.get("authMode"), "separated")
         self.assertTrue(body.get("authSecurityOk"))
+        self.assertFalse(body.get("authSecurityCritical"))
         self.assertEqual(body.get("authSecurityWarnings"), [])
         # Must not leak secrets
         blob = json.dumps(body)

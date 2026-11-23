@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraPersistManifest",
+  "cycle": 10,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:50:35.014798+00:00",
+  "outDir": "/agent/repos/scootercheck/research/cycle10/fixtures/out_synthetic",
+  "persisted": [
+    "/agent/repos/scootercheck/research/cycle10/fixtures/out_synthetic/proof_points.json",
+    "/agent/repos/scootercheck/research/cycle10/fixtures/out_synthetic/sha256_binding.json",
+    "/agent/repos/scootercheck/research/cycle10/fixtures/out_synthetic/persist_manifest.json"
+  ],
+  "ghidraExportsPresent": false,
+  "note": "SKIP path persists proof + SHA binding only; never fabricates Ghidra exports"
+}
