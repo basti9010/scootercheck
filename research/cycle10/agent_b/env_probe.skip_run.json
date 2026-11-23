@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraEnvironmentProbe",
+  "cycle": 10,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:50:34.989115+00:00",
+  "ghidraAvailable": false,
+  "exactMissingCause": "MISSING_PREREQUISITE: GHIDRA_HOME unset; GHIDRA_HEADLESS unset; analyzeHeadless not on PATH; /opt/ghidra absent or empty. Java present does not imply Ghidra.",
+  "analyzeHeadless": null,
+  "ghidraHomeEnv": null,
+  "ghidraHeadlessEnv": null,
+  "install": {
+    "analyzeHeadlessResolved": null,
+    "installed": false,
+    "optGhidraDirExists": false,
+    "resolutionPaths": [
+      {
+        "path": "env:GHIDRA_HEADLESS",
+        "value": null,
+        "status": "unset"
+      },
+      {
+        "path": "env:GHIDRA_HOME/support/analyzeHeadless",
+        "value": null,
+        "ghidraHome": null,
+        "status": "unset"
+      },
+      {
+        "path": "env:GHIDRA_HOME/ghidra_*/support/analyzeHeadless",
+        "value": null,
+        "candidates": [],
+        "status": "unset"
+      },
+      {
+        "path": "PATH:analyzeHeadless",
+        "value": null,
+        "status": "absent"
+      },
+      {
+        "path": "/opt/ghidra/ghidra_*/support/analyzeHeadless",
+        "value": null,
+        "optGhidraDirExists": false,
+        "candidates": [],
+        "status": "dir_missing"
+      }
+    ],
+    "ghidraConfiguredHealthFlagIsNotProof": true,
+    "note": "Install PASS only when analyzeHeadless resolves to an executable. Public /health ghidraConfigured=true is NOT execution proof."
+  },
+  "resolutionPaths": [
+    {
+      "path": "env:GHIDRA_HEADLESS",
+      "value": null,
+      "status": "unset"
+    },
+    {
+      "path": "env:GHIDRA_HOME/support/analyzeHeadless",
+      "value": null,
+      "ghidraHome": null,
+      "status": "unset"
+    },
+    {
+      "path": "env:GHIDRA_HOME/ghidra_*/support/analyzeHeadless",
+      "value": null,
+      "candidates": [],
+      "status": "unset"
+    },
+    {
+      "path": "PATH:analyzeHeadless",
+      "value": null,
+      "status": "absent"
+    },
+    {
+      "path": "/opt/ghidra/ghidra_*/support/analyzeHeadless",
+      "value": null,
+      "optGhidraDirExists": false,
+      "candidates": [],
+      "status": "dir_missing"
+    }
+  ],
+  "java": {
+    "javaOnPath": "/usr/bin/java",
+    "versionLines": [
+      "openjdk version \"21.0.13.0.3\" 2026-10-24",
+      "OpenJDK Runtime Environment (build 21.0.13.0.3+1-1-24.04.1-Ubuntu)",
+      "OpenJDK 64-Bit Server VM (build 21.0.13.0.3+1-1-24.04.1-Ubuntu, mixed mode, sharing)"
+    ],
+    "impliesGhidra": false,
+    "note": "OpenJDK/JRE alone is not a Ghidra install"
+  },
+  "driver": {
+    "modulePath": "/agent/repos/scootercheck/server/firmware-analysis",
+    "importOk": true,
+    "ghidraConfigured": false,
+    "error": null
+  },
+  "sha256Binding": {
+    "expected": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+    "actual": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+    "matches": true,
+    "algorithm": "SHA-256",
+    "boundArtifact": "/agent/repos/scootercheck/research/cycle10/fixtures/synthetic_cortex_m_thumb.bin",
+    "status": "PASS",
+    "note": "Synthetic fixture digest bound into proof envelope; not a Ghidra export"
+  }
+}
