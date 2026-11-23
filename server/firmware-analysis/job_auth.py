@@ -6,7 +6,9 @@ Rules:
 - Phase 2.2H.1: X-ScooterCheck-Client-Id is metadata only by default and MUST NOT
   grant job ownership for shared API_TOKEN (spoofable). Set
   TRUST_API_TOKEN_CLIENT_ID=1 only for temporary legacy compat.
-- Admins: JWT role=admin, or ADMIN_API_TOKEN, or (opt-in) API_TOKEN when grants=1.
+- Admins: JWT role=admin, or ADMIN_API_TOKEN.
+  Shared API_TOKEN as admin (API_TOKEN_GRANTS_ADMIN=1) is legacy opt-in only and
+  CRITICAL-warned on /health — do not enable in prod/staging defaults or tests.
 - Legacy jobs without ownerPrincipal: JWT may access if createdByUserId/email matches;
   otherwise deny (no open access via job id alone).
 - Unauthorized → 404 (no job metadata leak).
@@ -15,7 +17,7 @@ Migration:
 - App should authenticate with Bearer JWT for user-owned firmware jobs.
 - Shared API_TOKEN may still authenticate requests but cannot claim client-id ownership
   unless TRUST_API_TOKEN_CLIENT_ID=1.
-- API_TOKEN_GRANTS_ADMIN default remains "0".
+- API_TOKEN_GRANTS_ADMIN default remains "0" (secure). Prefer ADMIN_API_TOKEN.
 """
 from __future__ import annotations
 
@@ -33,7 +35,11 @@ def _env_truthy(name: str, default: str = "0") -> bool:
 
 
 def api_token_grants_admin() -> bool:
-    """Whether the shared API_TOKEN authenticates as admin (secure default: no)."""
+    """Whether the shared API_TOKEN authenticates as admin.
+
+    Secure default is false. Enabling collapses user vs admin separation and is
+    surfaced as CRITICAL on /health (authMode=shared_token_admin).
+    """
     return _env_truthy("API_TOKEN_GRANTS_ADMIN", "0")
 
 
