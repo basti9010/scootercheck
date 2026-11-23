@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.3",
+  "functions": [
+    {
+      "id": "gt_00",
+      "address": "0x8010000",
+      "name": "thumb_entry",
+      "expect": {
+        "parameterCount": 1,
+        "memoryReads": 2,
+        "memoryWrites": 1,
+        "callCount": 0,
+        "conditionalBranches": 1,
+        "dataReferenceCount": 2,
+        "globalRef": true,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_01",
+      "address": "0x8010020",
+      "name": "FUN_deadbeef",
+      "expect": {
+        "parameterCount": null,
+        "memoryReads": 0,
+        "memoryWrites": 0,
+        "callCount": 0,
+        "conditionalBranches": 0,
+        "dataReferenceCount": 0,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_02",
+      "address": "0x8010040",
+      "name": "mem_rw_helper",
+      "expect": {
+        "parameterCount": 0,
+        "memoryReads": 3,
+        "memoryWrites": 2,
+        "callCount": 0,
+        "conditionalBranches": 0,
+        "dataReferenceCount": 1,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_03",
+      "address": "0x8010060",
+      "name": "call_hub",
+      "expect": {
+        "parameterCount": 2,
+        "memoryReads": 1,
+        "memoryWrites": 0,
+        "callCount": 4,
+        "conditionalBranches": 2,
+        "dataReferenceCount": 1,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_04",
+      "address": "0x8010080",
+      "name": "branch_dispatch",
+      "expect": {
+        "parameterCount": 1,
+        "memoryReads": 1,
+        "memoryWrites": 0,
+        "callCount": 2,
+        "conditionalBranches": 5,
+        "dataReferenceCount": 1,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_05",
+      "address": "0x80100a0",
+      "name": "ret_thunk",
+      "expect": {
+        "parameterCount": 0,
+        "memoryReads": 0,
+        "memoryWrites": 0,
+        "callCount": 0,
+        "conditionalBranches": 0,
+        "dataReferenceCount": 1,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_06",
+      "address": "0x80100c0",
+      "name": "global_ref_init",
+      "expect": {
+        "parameterCount": 0,
+        "memoryReads": 2,
+        "memoryWrites": 3,
+        "callCount": 0,
+        "conditionalBranches": 0,
+        "dataReferenceCount": 2,
+        "globalRef": true,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_07",
+      "address": "0x80100e0",
+      "name": "local_only",
+      "expect": {
+        "parameterCount": 1,
+        "memoryReads": 1,
+        "memoryWrites": 1,
+        "callCount": 0,
+        "conditionalBranches": 0,
+        "dataReferenceCount": 1,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    },
+    {
+      "id": "gt_08",
+      "address": "0x8010100",
+      "name": "incomplete_sig",
+      "expect": {
+        "parameterCount": null,
+        "memoryReads": 1,
+        "memoryWrites": 0,
+        "callCount": 0,
+        "conditionalBranches": 1,
+        "dataReferenceCount": 0,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "partial"
+      }
+    },
+    {
+      "id": "gt_09",
+      "address": "0x8010120",
+      "name": "indirect_caller",
+      "expect": {
+        "parameterCount": 0,
+        "memoryReads": 0,
+        "memoryWrites": 0,
+        "callCount": 1,
+        "conditionalBranches": 1,
+        "dataReferenceCount": 1,
+        "globalRef": false,
+        "returnPresent": true,
+        "quality": "ok"
+      }
+    }
+  ]
+}

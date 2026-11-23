@@ -1,0 +1,151 @@
+{
+  "ok": true,
+  "functionCount": 10,
+  "functions": [
+    {
+      "address": "0x8010000",
+      "name": "thumb_entry",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "bx"
+      ],
+      "calls": [],
+      "constants": [
+        "0x20001000"
+      ]
+    },
+    {
+      "address": "0x8010020",
+      "name": "FUN_deadbeef",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "bx"
+      ],
+      "calls": [],
+      "constants": []
+    },
+    {
+      "address": "0x8010040",
+      "name": "mem_rw_helper",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "bx"
+      ],
+      "calls": [],
+      "constants": []
+    },
+    {
+      "address": "0x8010060",
+      "name": "call_hub",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "bx"
+      ],
+      "calls": [
+        "0x08020000"
+      ],
+      "constants": []
+    },
+    {
+      "address": "0x8010080",
+      "name": "branch_dispatch",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "bx"
+      ],
+      "calls": [
+        "0x08020000"
+      ],
+      "constants": []
+    },
+    {
+      "address": "0x80100a0",
+      "name": "ret_thunk",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "bx"
+      ],
+      "calls": [],
+      "constants": []
+    },
+    {
+      "address": "0x80100c0",
+      "name": "global_ref_init",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "bx"
+      ],
+      "calls": [],
+      "constants": [
+        "0x20001000"
+      ]
+    },
+    {
+      "address": "0x80100e0",
+      "name": "local_only",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "bx"
+      ],
+      "calls": [],
+      "constants": []
+    },
+    {
+      "address": "0x8010100",
+      "name": "incomplete_sig",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "bx"
+      ],
+      "calls": [],
+      "constants": []
+    },
+    {
+      "address": "0x8010120",
+      "name": "indirect_caller",
+      "size": 24,
+      "basicBlocks": 2,
+      "cfgEdges": 2,
+      "mnemonics": [
+        "ldr",
+        "cmp",
+        "beq",
+        "bx"
+      ],
+      "calls": [
+        "0x08020000"
+      ],
+      "constants": []
+    }
+  ]
+}

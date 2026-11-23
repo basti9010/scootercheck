@@ -152,6 +152,11 @@
 		A10000000000000000000054 /* ScootEdgeBackGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000054 /* ScootEdgeBackGesture.swift */; };
 		A100000000000000000000A1 /* FirmwareForensicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A1 /* FirmwareForensicModels.swift */; };
 		A100000000000000000000A2 /* FirmwareDigest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A2 /* FirmwareDigest.swift */; };
+		A100000000000000000000A3 /* FirmwarePackageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A3 /* FirmwarePackageLoader.swift */; };
+		A100000000000000000000A4 /* FirmwareCryptoAssessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A4 /* FirmwareCryptoAssessor.swift */; };
+		A100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift */; };
+		A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */; };
+		A10000000000000000000FD1 /* FirmwarePackageLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FD1 /* FirmwarePackageLoaderTests.swift */; };
 		A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A7 /* FirmwareForensicScorer.swift */; };
 		A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F2 /* FirmwareForensicPDF.swift */; };
 		A100000000000000000000ED /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */; };
@@ -322,6 +327,11 @@
 		B10000000000000000000047 /* BLEWatchRadarCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarCore.swift; sourceTree = "<group>"; };
 		B100000000000000000000A1 /* FirmwareForensicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000A2 /* FirmwareDigest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDigest.swift; sourceTree = "<group>"; };
+		B100000000000000000000A3 /* FirmwarePackageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwarePackageLoader.swift; sourceTree = "<group>"; };
+		B100000000000000000000A4 /* FirmwareCryptoAssessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareCryptoAssessor.swift; sourceTree = "<group>"; };
+		B100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareBinaryStaticAnalyzer.swift; sourceTree = "<group>"; };
+		B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareServerAnalysisClient.swift; sourceTree = "<group>"; };
+		B10000000000000000000FD1 /* FirmwarePackageLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwarePackageLoaderTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000A7 /* FirmwareForensicScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicScorer.swift; sourceTree = "<group>"; };
 		B100000000000000000000F2 /* FirmwareForensicPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDF.swift; sourceTree = "<group>"; };
 		B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
@@ -463,7 +473,11 @@
 			children = (
 				B100000000000000000000A1 /* FirmwareForensicModels.swift */,
 				B100000000000000000000A2 /* FirmwareDigest.swift */,
+				B100000000000000000000A3 /* FirmwarePackageLoader.swift */,
+				B100000000000000000000A4 /* FirmwareCryptoAssessor.swift */,
+				B100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift */,
 				B100000000000000000000A7 /* FirmwareForensicScorer.swift */,
+				B100000000000000000000E5 /* FirmwareServerAnalysisClient.swift */,
 				B100000000000000000000F2 /* FirmwareForensicPDF.swift */,
 				B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */,
 				B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */,
@@ -585,6 +599,7 @@
 				B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */,
 				B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */,
 				B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */,
+				B10000000000000000000FD1 /* FirmwarePackageLoaderTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
@@ -776,6 +791,10 @@
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
 				A100000000000000000000A1 /* FirmwareForensicModels.swift in Sources */,
 				A100000000000000000000A2 /* FirmwareDigest.swift in Sources */,
+				A100000000000000000000A3 /* FirmwarePackageLoader.swift in Sources */,
+				A100000000000000000000A4 /* FirmwareCryptoAssessor.swift in Sources */,
+				A100000000000000000000A5 /* FirmwareBinaryStaticAnalyzer.swift in Sources */,
+				A100000000000000000000E5 /* FirmwareServerAnalysisClient.swift in Sources */,
 				A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */,
 				A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */,
 				A100000000000000000000ED /* FirmwareDeepAnalysisModels.swift in Sources */,
@@ -880,6 +899,7 @@
 				A10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift in Sources */,
 				A10000000000000000000FAA /* InvestigationFlowLogicTests.swift in Sources */,
 				A10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift in Sources */,
+				A10000000000000000000FD1 /* FirmwarePackageLoaderTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,

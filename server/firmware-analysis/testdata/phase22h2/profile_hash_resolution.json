@@ -1,0 +1,12 @@
+{
+  "phase": "2.2H.2",
+  "analysisProfileVersion": "2.2G.1",
+  "cause": "Pre-2.2H.2 analysisProfileHash included runtime soft fields (ghidraVersion, analysisTimeoutSec, memoryLimit).",
+  "legacyHashes": {
+    "phase22h_stub_ghidraVersion_null": "8a4c448ec9122549a18053fd210dfbb295be984ead0eb98c7e79c626bde0f50b",
+    "phase22h1_ghidra_12_2": "1d0aea6293aca111a858b0319a9661e8d5c5a0e5e06af517bd6b408a11819047"
+  },
+  "semanticHash_2_2H_2": "c0f507820a1457a1af98c2a66352db531f2f4ad1bcf72bc32c58e307e3f41de7",
+  "runtimeConfigExcludedFromHash": ["ghidraVersion", "analysisTimeoutSec", "memoryLimit"],
+  "catalogCompat": "Semantic re-hash keeps legacy stored-hash drift as LEGACY_PARTIAL/COMPATIBLE; hard INCOMPATIBLE only when core semantic params differ."
+}

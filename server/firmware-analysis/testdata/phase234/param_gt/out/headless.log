@@ -1,0 +1,79 @@
+INFO  Using log config file: jar:file:/home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: /home/ubuntu/.config/ghidra/ghidra_12.2_PUBLIC/application.log (LoggingInitialization)  
+INFO  Loading user preferences: /home/ubuntu/.config/ghidra/ghidra_12.2_PUBLIC/preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (722 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (DefaultSSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: NativePRNGNonBlocking (SecureRandomFactory)  
+INFO  Loaded 120 trusted CA certificate(s) from /etc/ssl/certs/ca-certificates.crt (UnixSystemTrustKeyStoreUtil)  
+INFO  Loaded 120 trusted CA certificates from the OS trust store. (DefaultTrustManagerFactory)  
+INFO  Loaded 119 trusted CA certificates from the Java default trust store. (DefaultTrustManagerFactory)  
+INFO  Starting cache cleanup: /var/tmp/ubuntu-ghidra/fscache2 (FileCacheMaintenanceDaemon)  
+INFO  Finished cache cleanup, estimated storage used: 0 (FileCacheMaintenanceDaemon)  
+INFO  Headless startup complete (1477 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 60 extension points (19 false positives) (ClassSearcher)  
+INFO  HEADLESS Script Paths:
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/Base/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/Swift/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/BytePatterns/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/Decompiler/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/BSim/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Debug/Debugger/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/PIC/ghidra_scripts
+    /workspace/server/firmware-analysis/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/Atmel/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/FunctionID/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/DATA/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/PDB/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/PyGhidra/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/VersionTracking/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/8051/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Processors/JVM/ghidra_scripts
+    /home/ubuntu/ghidra/ghidra_12.2_PUBLIC/Ghidra/Features/FileFormats/ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: /tmp/sc-p234-ghidra-bibfibd8/proj/ParamGT (HeadlessAnalyzer)  
+INFO  Creating project: /tmp/sc-p234-ghidra-bibfibd8/proj/ParamGT (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: /tmp/sc-p234-ghidra-bibfibd8/proj/ParamGT (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///workspace/server/firmware-analysis/testdata/phase234/param_gt/bin/param_gt.elf (HeadlessAnalyzer)  
+INFO  Using Loader: Executable and Linking Format (ELF) (ProgramLoader)  
+INFO  Using Language/Compiler: ARM:LE:32:v8:default (ProgramLoader)  
+INFO  Using Library Search Path: [., /bin, /lib, /lib64, /lib/x86_64-linux-gnu, /lib/aarch64-linux-gnu, /usr/bin, /usr/lib, /usr/X11R6/bin, /usr/X11R6/lib, /usr/java/packages/lib, /usr/lib/x86_64-linux-gnu/jni, /usr/lib/x86_64-linux-gnu, /usr/lib/jni] (ProgramLoader)  
+INFO  Additional info:
+Loading file:///workspace/server/firmware-analysis/testdata/phase234/param_gt/bin/param_gt.elf?MD5=b9602777fc74afb9ce95e29e9e509a70...
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  ANALYZING all memory and code: file:///workspace/server/firmware-analysis/testdata/phase234/param_gt/bin/param_gt.elf (HeadlessAnalyzer)  
+INFO  Unable to find DWARF information, skipping DWARF analysis (DWARFAnalyzer)  
+INFO  Packed database cache: /var/tmp/ubuntu-ghidra/packed-db-cache (PackedDatabaseCache)  
+INFO  Applied data type archive: generic_clib (ApplyDataArchiveAnalyzer)  
+INFO  No functions detected that make variadic function calls with format strings containing format specifiers (FormatStringAnalyzer)  
+INFO  REPORT: Analysis succeeded for file: file:///workspace/server/firmware-analysis/testdata/phase234/param_gt/bin/param_gt.elf (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: SeedCortexMEntryPoints.java  (HeadlessAnalyzer)  
+INFO  SCRIPT: /workspace/server/firmware-analysis/ghidra_scripts/SeedCortexMEntryPoints.java (HeadlessAnalyzer)  
+INFO  SeedCortexMEntryPoints.java> SeedCortexMEntryPoints: base=0801018c created=11 fromCalls=10 fromLiterals=0 skipped=0 spOk=true resetOk=true notes=block@00010000:ivt-weak,block@08000000:ivt-weak,block@0801011c:ivt-weak,block@0801017c:ivt-weak,block@0801018c:ivt-ok,imageSize=1830:full,sp=0x20001000:ok,ivt_read_fail@08010194,literalScan=0 (GhidraScript)  
+INFO  REPORT: Execute script: ExportFunctionAnalysis.java '/workspace/server/firmware-analysis/testdata/phase234/param_gt/out/param_gt.functions.json'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /workspace/server/firmware-analysis/ghidra_scripts/ExportFunctionAnalysis.java (HeadlessAnalyzer)  
+INFO  ExportFunctionAnalysis.java> ExportFunctionAnalysis: 11 functions -> /workspace/server/firmware-analysis/testdata/phase234/param_gt/out/param_gt.functions.json (GhidraScript)  
+INFO  REPORT: Execute script: ExportDataFlowSummary.java '/workspace/server/firmware-analysis/testdata/phase234/param_gt/out/param_gt.dataflow.json'  (HeadlessAnalyzer)  
+INFO  SCRIPT: /workspace/server/firmware-analysis/ghidra_scripts/ExportDataFlowSummary.java (HeadlessAnalyzer)  
+INFO  ExportDataFlowSummary.java> ExportDataFlowSummary: 11 functions -> /workspace/server/firmware-analysis/testdata/phase234/param_gt/out/param_gt.dataflow.json (GhidraScript)  
+INFO  ANALYZING changes made by post scripts: file:///workspace/server/firmware-analysis/testdata/phase234/param_gt/bin/param_gt.elf (HeadlessAnalyzer)  
+INFO  REPORT: Post-analysis succeeded for file: file:///workspace/server/firmware-analysis/testdata/phase234/param_gt/bin/param_gt.elf (HeadlessAnalyzer)  
+INFO  /param_gt.elf: file created (ubuntu) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /param_gt.elf (ParamGT:/param_gt.elf) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  
+
+---stderr---
+openjdk version "25.0.5.1" 2026-11-17
+OpenJDK Runtime Environment (build 25.0.5.1+2-1-24.04.1-Ubuntu)
+OpenJDK 64-Bit Server VM (build 25.0.5.1+2-1-24.04.1-Ubuntu, mixed mode)

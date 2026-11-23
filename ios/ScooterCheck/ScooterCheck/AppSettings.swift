@@ -12,6 +12,9 @@ final class AppSettings: ObservableObject {
     private static let auslesenHideNamelessKey = "app.settings.auslesen.hideNameless.v1"
     private static let findAudioKey = "app.settings.find.proximityAudio.v1"
     private static let findHapticsKey = "app.settings.find.proximityHaptics.v1"
+    private static let firmwareServerURLKey = "app.settings.firmware.analysisServerURL.v1"
+    private static let firmwareServerTokenKey = "app.settings.firmware.analysisServerToken.v1"
+    private static let firmwareAllowLLMKey = "app.settings.firmware.allowLLM.v1"
 
     @Published var textSize: AppTextSize {
         didSet {
@@ -43,6 +46,21 @@ final class AppSettings: ObservableObject {
     /// Signal-Finder: Haptik standardmäßig aktiv.
     @Published var findProximityHapticsDefault: Bool {
         didSet { UserDefaults.standard.set(findProximityHapticsDefault, forKey: Self.findHapticsKey) }
+    }
+
+    /// Basis-URL des Firmware-Analyse-Servers (leer → Client-Default).
+    @Published var firmwareAnalysisServerURLString: String {
+        didSet { UserDefaults.standard.set(firmwareAnalysisServerURLString, forKey: Self.firmwareServerURLKey) }
+    }
+
+    /// Shared Secret für Header `X-ScooterCheck-Token`.
+    @Published var firmwareAnalysisAPIToken: String {
+        didSet { UserDefaults.standard.set(firmwareAnalysisAPIToken, forKey: Self.firmwareServerTokenKey) }
+    }
+
+    /// Opt-in: schema-gebundene KI auf dem Analyse-Server (Default false).
+    @Published var firmwareAnalysisAllowLLM: Bool {
+        didSet { UserDefaults.standard.set(firmwareAnalysisAllowLLM, forKey: Self.firmwareAllowLLMKey) }
     }
 
     var appVersionLabel: String {
@@ -100,6 +118,16 @@ final class AppSettings: ObservableObject {
         auslesenHideNameless = loadedHideNameless
         findProximityAudioDefault = loadedAudio
         findProximityHapticsDefault = loadedHaptics
+        let storedFWURL = defaults.string(forKey: Self.firmwareServerURLKey) ?? ""
+        firmwareAnalysisServerURLString = storedFWURL.isEmpty
+            ? FirmwareServerAnalysisClient.defaultBaseURLString
+            : storedFWURL
+        firmwareAnalysisAPIToken = defaults.string(forKey: Self.firmwareServerTokenKey) ?? ""
+        if defaults.object(forKey: Self.firmwareAllowLLMKey) != nil {
+            firmwareAnalysisAllowLLM = defaults.bool(forKey: Self.firmwareAllowLLMKey)
+        } else {
+            firmwareAnalysisAllowLLM = false
+        }
 
         Theme.textScale = loadedTextSize.scale
     }

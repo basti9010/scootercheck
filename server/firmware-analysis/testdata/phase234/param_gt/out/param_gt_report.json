@@ -1,0 +1,120 @@
+{
+  "phase": "2.3.4-final",
+  "functionExportCount": 11,
+  "evaluatedCases": 10,
+  "exactParameterAccuracy": 90.0,
+  "acceptedOrAmbiguousRate": 100.0,
+  "recoveryAccuracyPercent": 90.0,
+  "unknownParameterRate": 0.0,
+  "partialSignatureRate": 0.0,
+  "recoveredParameterCoverage": 100.0,
+  "exactCount": 9,
+  "acceptedCount": 10,
+  "wrongCount": 1,
+  "unknownCount": 0,
+  "partialCount": 0,
+  "missingCount": 0,
+  "note": "exactParameterAccuracy counts only exact matches. acceptedOrAmbiguousRate may include documented allowUnknown cases. Do not equate accepted rate with exact accuracy.",
+  "details": [
+    {
+      "id": "gt_zero",
+      "name": "fn_zero_params",
+      "ghidraName": "FUN_08000000",
+      "address": "08000000",
+      "expected": 0,
+      "got": 0,
+      "quality": "CONFIRMED_ZERO_PARAMETERS",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_one",
+      "name": "fn_one_param",
+      "ghidraName": "FUN_0800000e",
+      "address": "0800000e",
+      "expected": 1,
+      "got": 1,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_two",
+      "name": "fn_two_params",
+      "ghidraName": "FUN_08000014",
+      "address": "08000014",
+      "expected": 2,
+      "got": 2,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_three",
+      "name": "fn_three_params",
+      "ghidraName": "FUN_08000018",
+      "address": "08000018",
+      "expected": 3,
+      "got": 3,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_four",
+      "name": "fn_four_params",
+      "ghidraName": "FUN_0800001e",
+      "address": "0800001e",
+      "expected": 4,
+      "got": 4,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_mem",
+      "name": "fn_mem_access",
+      "ghidraName": "FUN_08000026",
+      "address": "08000026",
+      "expected": 2,
+      "got": 2,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_ret",
+      "name": "fn_with_return",
+      "ghidraName": "FUN_0800003e",
+      "address": "0800003e",
+      "expected": 1,
+      "got": 1,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_indirect",
+      "name": "fn_indirect_call",
+      "ghidraName": "FUN_0800004e",
+      "address": "0800004e",
+      "expected": 2,
+      "got": 2,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_incomplete",
+      "name": "fn_incomplete_sig",
+      "ghidraName": "FUN_0800005a",
+      "address": "0800005a",
+      "expected": 1,
+      "got": 1,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "EXACT"
+    },
+    {
+      "id": "gt_opaque",
+      "name": "fn_opaque_cc",
+      "ghidraName": "FUN_08000064",
+      "address": "08000064",
+      "expected": 2,
+      "got": 3,
+      "quality": "RECOVERED_PARAMETER_COUNT",
+      "status": "WRONG_ACCEPTED_AMBIGUOUS"
+    }
+  ]
+}

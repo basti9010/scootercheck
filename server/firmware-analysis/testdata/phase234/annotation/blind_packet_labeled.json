@@ -1,0 +1,720 @@
+{
+  "schemaVersion": 1,
+  "phase": "2.3.4",
+  "blinding": "AUTO_LABELS_WITHHELD",
+  "independence": "SINGLE_ANNOTATOR_BLIND_PACKET",
+  "secondAnnotator": "SECOND_ANNOTATOR_NOT_AVAILABLE",
+  "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+  "sampleSize": 32,
+  "instructions": [
+    "Label each item using only technicalProperties.",
+    "Do not use function names or automatic classifications (withheld).",
+    "Prefer NOT_SUFFICIENTLY_DETERMINABLE when uncertain."
+  ],
+  "items": [
+    {
+      "anonymousId": "ANN_00_09115205",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 81,
+        "cfgEdges": 121,
+        "size": 908,
+        "callCount": 1,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 256
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_01_d85ea227",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 56,
+        "cfgEdges": 75,
+        "size": 680,
+        "callCount": 0,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 256
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_02_16be449b",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 10,
+        "cfgEdges": 12,
+        "size": 48,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 22
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_03_2fb9033b",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "size": 6,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 3
+      },
+      "manualLabel": "OTHER_PROGRAM_LOGIC",
+      "uncertainty": "medium",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_04_02154f7c",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 2,
+        "size": 76,
+        "callCount": 2,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 32
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_05_40ae8acd",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 6,
+        "cfgEdges": 10,
+        "size": 42,
+        "callCount": 2,
+        "calledByCount": 3,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 18
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_06_8ebf4088",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 44,
+        "cfgEdges": 90,
+        "size": 670,
+        "callCount": 8,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 248
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_07_93e9ec15",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 20,
+        "cfgEdges": 27,
+        "size": 142,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 47
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_08_fab50870",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 8,
+        "cfgEdges": 9,
+        "size": 50,
+        "callCount": 0,
+        "calledByCount": 2,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 20
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_09_329b8217",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 10,
+        "cfgEdges": 12,
+        "size": 92,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 46
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_10_dc2009be",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "size": 14,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": false,
+        "mnemonicCount": 7
+      },
+      "manualLabel": "OTHER_PROGRAM_LOGIC",
+      "uncertainty": "medium",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_11_f0f9fdc9",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 2,
+        "size": 20,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 9
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_12_33a20ffc",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "size": 10,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 4
+      },
+      "manualLabel": "OTHER_PROGRAM_LOGIC",
+      "uncertainty": "medium",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_13_672f76a0",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 7,
+        "cfgEdges": 10,
+        "size": 86,
+        "callCount": 1,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 36
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_14_fd78cb20",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 4,
+        "cfgEdges": 6,
+        "size": 110,
+        "callCount": 2,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 41
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_15_79ce856a",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 2,
+        "size": 28,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 13
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_16_3d3598aa",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 7,
+        "cfgEdges": 9,
+        "size": 48,
+        "callCount": 0,
+        "calledByCount": 3,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 23
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_17_af47df15",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 9,
+        "cfgEdges": 15,
+        "size": 66,
+        "callCount": 3,
+        "calledByCount": 3,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 28
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_18_a8e33124",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 34,
+        "cfgEdges": 62,
+        "size": 578,
+        "callCount": 10,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 115
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_19_441316d3",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "size": 4,
+        "callCount": 0,
+        "calledByCount": 4,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 2
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_20_09a9ea05",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 55,
+        "cfgEdges": 90,
+        "size": 688,
+        "callCount": 1,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 256
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_21_6c11e6e2",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 4,
+        "cfgEdges": 5,
+        "size": 34,
+        "callCount": 0,
+        "calledByCount": 2,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 16
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_22_c7ec88f5",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 7,
+        "cfgEdges": 9,
+        "size": 48,
+        "callCount": 0,
+        "calledByCount": 3,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 23
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_23_5dfb12e6",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 11,
+        "cfgEdges": 15,
+        "size": 374,
+        "callCount": 1,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 122
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_24_9a1ba253",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 4,
+        "size": 56,
+        "callCount": 2,
+        "calledByCount": 6,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 23
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_25_b9005e48",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 1,
+        "size": 18,
+        "callCount": 1,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 8
+      },
+      "manualLabel": "OTHER_PROGRAM_LOGIC",
+      "uncertainty": "medium",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_26_4868e944",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 2,
+        "size": 38,
+        "callCount": 0,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 14
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_27_6571502b",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 4,
+        "cfgEdges": 4,
+        "size": 18,
+        "callCount": 0,
+        "calledByCount": 2,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 9
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_28_5c9bfac9",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "size": 42,
+        "callCount": 0,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 17
+      },
+      "manualLabel": "OTHER_PROGRAM_LOGIC",
+      "uncertainty": "medium",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_29_70b0b5af",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 3,
+        "cfgEdges": 4,
+        "size": 24,
+        "callCount": 1,
+        "calledByCount": 1,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 10
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_30_9cf110c3",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 1,
+        "cfgEdges": 0,
+        "size": 4,
+        "callCount": 0,
+        "calledByCount": 4,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 2
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    },
+    {
+      "anonymousId": "ANN_31_15002ba0",
+      "firmwareSHA256": "895e06427e167ac5bc4f5e1539e68c78cc433448856a199c201d1159a35badc4",
+      "technicalProperties": {
+        "basicBlocks": 21,
+        "cfgEdges": 38,
+        "size": 264,
+        "callCount": 8,
+        "calledByCount": 0,
+        "hasStrings": false,
+        "hasConstants": true,
+        "mnemonicCount": 106
+      },
+      "manualLabel": "NOT_SUFFICIENTLY_DETERMINABLE",
+      "uncertainty": "high",
+      "notes": "Blind label from technicalProperties only.",
+      "allowedLabels": [
+        "GENERAL_INPUT_PROCESSING",
+        "OTHER_PROGRAM_LOGIC",
+        "NOT_SUFFICIENTLY_DETERMINABLE"
+      ]
+    }
+  ]
+}
