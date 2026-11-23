@@ -1,5 +1,7 @@
-# Files that must be present in a CD release (Cycle 12)
-# Generated for validate + rsync completeness checks
+# Files that must be present in a CD release (Cycle 12 / C11-compatible).
+# Paths relative to server/firmware-analysis/.
+# Used by validate-release-config.sh, test_deploy_manifest.py, and release packing.
+# Never sync-delete /var/lib/scootercheck or /etc/scootercheck from CD.
 activation_forensics.py
 alias_rexzy_stock.py
 analysis_completeness.py
@@ -88,8 +90,12 @@ unicorn_emulate.py
 yara_scan.py
 zip_safe.py
 requirements.txt
+.env.example
+README.md
 decrypt-firm.example.sh
+test_deploy_manifest.py
 deploy/bootstrap-deploy-user.sh
+deploy/ci-gate-matrix.md
 deploy/deploy-manifest.txt
 deploy/install-on-hetzner.sh
 deploy/nginx-fw.conf.example
@@ -98,6 +104,7 @@ deploy/phase1-rollout.sh
 deploy/post-deploy-smoke.sh
 deploy/release-deploy.sh
 deploy/release-rollback.sh
+deploy/RELEASE_COMPAT.md
 deploy/scootercheck-fw.service
 deploy/set-anthropic-api-key.sh
 deploy/validate-release-config.sh
@@ -110,6 +117,8 @@ ghidra_scripts/ExportLimitFunctions.java
 ghidra_scripts/ExportSpeedXrefs.java
 ghidra_scripts/SeedCortexMEntryPoints.java
 yara_rules/scooter_cfw.yar
+testdata/diagnostics/README.md
+testdata/diagnostics/synthetic_cortex_m_thumb.bin
 docs/phase22h2-release.md
 docs/phase22h-integration-matrix.md
 docs/phase22h-rollback-plan.md
@@ -119,3 +128,4 @@ docs/phase233-quality.md
 docs/phase234-release-hardening.md
 docs/phase23-activation-forensics.md
 docs/process-isolation.md
+deploy_smoke_logic.py
