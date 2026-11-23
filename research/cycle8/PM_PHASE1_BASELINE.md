@@ -43,3 +43,12 @@ local unit tests `204` ran with **3 failures + 8 errors** (optional angr/capston
 | D QA | bc-c8d1ac3c-9319-543b-8da4-72dd048bc579 |
 
 PR #106: https://github.com/basti9010/scootercheck/pull/106 (stacked on #105)
+
+## CI update (Europe/Berlin)
+
+| Run | SHA | Result |
+|-----|-----|--------|
+| 45254685766 | `4e73931` | FAILURE — missing FirmwareCryptoAssessor |
+| **45255389488** | `b60df88` | **SUCCESS** — 354 XCTest / 0 failures |
+
+FIX-1 verified. Remaining fix budget: 2 (unused).
