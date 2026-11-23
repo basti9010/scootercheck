@@ -11,6 +11,8 @@ protocol FirmwareServerAnalysisClienting: Sendable {
 enum FirmwareServerAnalysisError: Error, LocalizedError {
     case notConfigured
     case loginRequired
+    case adminRequired
+    case routeNotAvailable(String)
     case badURL
     case httpStatus(Int, String)
     case decode(Error)
@@ -20,6 +22,10 @@ enum FirmwareServerAnalysisError: Error, LocalizedError {
         case .notConfigured: return "Kein Analyse-Server konfiguriert."
         case .loginRequired:
             return "Anmeldung erforderlich: Firmware-Jobs benötigen einen gültigen Bearer-JWT (Keychain). Client-Id allein reicht nicht mehr."
+        case .adminRequired:
+            return "Admin-Rechte erforderlich: Selftest und Diagnose-Report brauchen ADMIN_API_Token (nicht den gemeinsamen API-Token)."
+        case .routeNotAvailable(let path):
+            return "Diagnose-API noch nicht verfügbar (\(path)). Server-Route folgt (PM). /health-Fallback bleibt nutzbar."
         case .badURL: return "Ungültige Server-URL."
         case .httpStatus(let c, let b):
             let hint = Self.humanizeHTTPBody(b)
@@ -60,6 +66,8 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
 
     var baseURL: URL?
     var apiToken: String?
+    /// Dedicated `ADMIN_API_TOKEN` for diagnostics / admin endpoints (not the shared API token).
+    var adminAPIToken: String?
     /// ScooterCheck-Login JWT — Server akzeptiert `Authorization: Bearer` für active Users.
     var bearerToken: String?
     /// Stable client principal for shared API-token jobs (`X-ScooterCheck-Client-Id`).
@@ -68,11 +76,13 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
     init(
         baseURL: URL? = nil,
         apiToken: String? = nil,
+        adminAPIToken: String? = nil,
         bearerToken: String? = nil,
         clientId: String? = nil
     ) {
         self.baseURL = baseURL
         self.apiToken = apiToken
+        self.adminAPIToken = adminAPIToken
         self.bearerToken = bearerToken
         self.clientId = clientId
     }
@@ -101,6 +111,10 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
                 let t = s.firmwareAnalysisAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
                 return t.isEmpty ? nil : t
             }(),
+            adminAPIToken: {
+                let t = s.firmwareAnalysisAdminAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                return t.isEmpty ? nil : t
+            }(),
             // AuthSessionStore (login JWT) is not on this branch yet — API token + clientId remain.
             bearerToken: nil,
             clientId: Self.stableClientId()
@@ -123,8 +137,18 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         !(apiToken?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
     }
 
+    /// Dedicated admin token present (Cycle 11: shared API token ≠ admin).
+    var hasAdminAPIToken: Bool {
+        !(adminAPIToken?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    /// Diagnostics selftest / report require admin credentials on this lineage.
+    var isDiagnosticsAdmin: Bool {
+        hasAdminAPIToken
+    }
+
     var hasAuthCredential: Bool {
-        hasBearerJWT || hasAPIToken
+        hasBearerJWT || hasAPIToken || hasAdminAPIToken
     }
 
     func submit(_ request: FirmwareAnalysisJobRequest, archiveData: Data) async throws -> FirmwareAnalysisJobStatus {
@@ -344,14 +368,105 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         return data
     }
 
+    // MARK: - Diagnostics (Cycle 11) — `/v1/diagnostics/*` may 404 until PM wires routes
+
+    /// Prefer diagnostics status endpoint; on 404 fall back to `/health` grade mapping.
+    func diagnosticsStatus() async throws -> FirmwareDiagnosticsStatus {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL.appendingPathComponent("v1/diagnostics/status")
+        do {
+            let data = try await diagnosticsGET(endpoint, requireAdmin: false)
+            return try decode(FirmwareDiagnosticsStatus.self, from: data)
+        } catch FirmwareServerAnalysisError.routeNotAvailable {
+            let health = try await workerHealth()
+            var mapped = FirmwareDiagnosticsStatusMapper.fromWorkerHealth(health)
+            mapped.message = (mapped.message ?? "") + " · /v1/diagnostics/status noch nicht verdrahtet (404)."
+            return mapped
+        } catch FirmwareServerAnalysisError.httpStatus(let code, _) where code == 404 {
+            let health = try await workerHealth()
+            var mapped = FirmwareDiagnosticsStatusMapper.fromWorkerHealth(health)
+            mapped.message = (mapped.message ?? "") + " · /v1/diagnostics/status noch nicht verdrahtet (404)."
+            return mapped
+        }
+    }
+
+    /// Start synthetic TEA/Ghidra selftest — admin only.
+    func diagnosticsStartSelftest() async throws -> FirmwareDiagnosticsSelftest {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        guard isDiagnosticsAdmin else { throw FirmwareServerAnalysisError.adminRequired }
+        let endpoint = baseURL.appendingPathComponent("v1/diagnostics/selftest")
+        do {
+            let data = try await diagnosticsPOST(endpoint, requireAdmin: true)
+            let wrap = try decode(FirmwareDiagnosticsSelftestStartResponse.self, from: data)
+            if let selftest = wrap.selftest { return selftest }
+            return try decode(FirmwareDiagnosticsSelftest.self, from: data)
+        } catch FirmwareServerAnalysisError.httpStatus(let code, let body) where code == 404 {
+            throw FirmwareServerAnalysisError.routeNotAvailable("POST /v1/diagnostics/selftest — \(body)")
+        }
+    }
+
+    /// Last completed / in-flight selftest summary — admin preferred; 404 → nil-friendly error.
+    func diagnosticsLastSelftest() async throws -> FirmwareDiagnosticsSelftest? {
+        guard isConfigured, let baseURL else { throw FirmwareServerAnalysisError.notConfigured }
+        let endpoint = baseURL
+            .appendingPathComponent("v1/diagnostics/selftest")
+            .appendingPathComponent("latest")
+        do {
+            let data = try await diagnosticsGET(endpoint, requireAdmin: isDiagnosticsAdmin)
+            if data.isEmpty { return nil }
+            return try decode(FirmwareDiagnosticsSelftest.self, from: data)
+        } catch FirmwareServerAnalysisError.httpStatus(let code, _) where code == 404 {
+            throw FirmwareServerAnalysisError.routeNotAvailable("GET /v1/diagnostics/selftest/latest")
+        } catch FirmwareServerAnalysisError.routeNotAvailable {
+            throw FirmwareServerAnalysisError.routeNotAvailable("GET /v1/diagnostics/selftest/latest")
+        }
+    }
+
+    /// Fetch server report JSON when available; otherwise build a local stub for share.
+    func diagnosticsReportStub(
+        status: FirmwareDiagnosticsStatus?,
+        lastSelftest: FirmwareDiagnosticsSelftest?
+    ) async -> FirmwareDiagnosticsReportStub {
+        guard isConfigured, let baseURL, isDiagnosticsAdmin else {
+            return .make(status: status, lastSelftest: lastSelftest)
+        }
+        let endpoint = baseURL.appendingPathComponent("v1/diagnostics/report")
+        do {
+            let data = try await diagnosticsGET(endpoint, requireAdmin: true)
+            if let remote = try? decode(FirmwareDiagnosticsReportStub.self, from: data) {
+                return remote
+            }
+            return .make(
+                status: status,
+                lastSelftest: lastSelftest,
+                note: "Server lieferte Report-Bytes; lokaler Stub als Fallback."
+            )
+        } catch {
+            return .make(
+                status: status,
+                lastSelftest: lastSelftest,
+                note: "Diagnosebericht (Stub) — /v1/diagnostics/report noch nicht verfügbar."
+            )
+        }
+    }
+
     // MARK: - Helpers
 
-    private func applyAuth(_ req: inout URLRequest) {
+    private func applyAuth(_ req: inout URLRequest, preferAdmin: Bool = false) {
         if let bearerToken, !bearerToken.isEmpty {
             req.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
         }
-        if let apiToken, !apiToken.isEmpty {
-            req.setValue(apiToken, forHTTPHeaderField: "X-ScooterCheck-Token")
+        // Prefer dedicated ADMIN_API_TOKEN for admin/diagnostics; else shared API token.
+        let admin = adminAPIToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shared = apiToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tokenForHeader: String? = {
+            if preferAdmin, let admin, !admin.isEmpty { return admin }
+            if let shared, !shared.isEmpty { return shared }
+            if let admin, !admin.isEmpty { return admin }
+            return nil
+        }()
+        if let tokenForHeader {
+            req.setValue(tokenForHeader, forHTTPHeaderField: "X-ScooterCheck-Token")
         }
         if let clientId, !clientId.isEmpty {
             req.setValue(clientId, forHTTPHeaderField: "X-ScooterCheck-Client-Id")
@@ -359,10 +474,45 @@ struct FirmwareServerAnalysisClient: FirmwareServerAnalysisClienting {
         req.setValue("application/json", forHTTPHeaderField: "Accept")
     }
 
-    private func throwIfNeeded(_ response: URLResponse, data: Data) throws {
+    private func diagnosticsGET(_ endpoint: URL, requireAdmin: Bool) async throws -> Data {
+        if requireAdmin && !isDiagnosticsAdmin {
+            throw FirmwareServerAnalysisError.adminRequired
+        }
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "GET"
+        req.timeoutInterval = 45
+        applyAuth(&req, preferAdmin: requireAdmin || isDiagnosticsAdmin)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data, treat404AsRouteMissing: true)
+        return data
+    }
+
+    private func diagnosticsPOST(_ endpoint: URL, requireAdmin: Bool) async throws -> Data {
+        if requireAdmin && !isDiagnosticsAdmin {
+            throw FirmwareServerAnalysisError.adminRequired
+        }
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 90
+        applyAuth(&req, preferAdmin: true)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = Data("{}".utf8)
+        let (data, response) = try await URLSession.shared.data(for: req)
+        try throwIfNeeded(response, data: data, treat404AsRouteMissing: true)
+        return data
+    }
+
+    private func throwIfNeeded(
+        _ response: URLResponse,
+        data: Data,
+        treat404AsRouteMissing: Bool = false
+    ) throws {
         guard let http = response as? HTTPURLResponse else { return }
         guard (200..<300).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
+            if treat404AsRouteMissing && http.statusCode == 404 {
+                throw FirmwareServerAnalysisError.routeNotAvailable(body.isEmpty ? "404" : body)
+            }
             throw FirmwareServerAnalysisError.httpStatus(http.statusCode, body)
         }
     }

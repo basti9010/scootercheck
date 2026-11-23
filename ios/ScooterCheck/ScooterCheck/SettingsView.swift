@@ -17,6 +17,7 @@ struct SettingsView: View {
                         displaySection
                         auslesenSection
                         findenSection
+                        firmwareAnalyseSection
                         aboutSection
 
                         AppCopyrightFooter()
@@ -132,6 +133,82 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Firmwareanalyse
+
+    private var firmwareAnalyseSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.sm) {
+            sectionLabel("Firmwareanalyse")
+
+            Text("Server-URL und Tokens für optionale Fernanalyse. Selftest/Serverdiagnose brauchen den dedizierten Admin-Token.")
+                .font(Theme.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            settingsToggle(
+                title: "Externe KI-Anreicherung",
+                subtitle: "Nur bewusst aktivieren — Analyse bleibt ohne KI voll nutzbar",
+                isOn: $settings.firmwareAnalysisAllowLLM
+            )
+
+            settingsTextField(
+                title: "Basis-URL",
+                placeholder: FirmwareServerAnalysisClient.defaultBaseURLString,
+                text: $settings.firmwareAnalysisServerURLString,
+                isSecure: false,
+                isURL: true
+            )
+
+            settingsTextField(
+                title: "API-Token",
+                placeholder: "X-ScooterCheck-Token (Jobs)",
+                text: $settings.firmwareAnalysisAPIToken,
+                isSecure: true,
+                isURL: false
+            )
+
+            settingsTextField(
+                title: "Admin-API-Token",
+                placeholder: "ADMIN_API_TOKEN (Diagnose / Selftest)",
+                text: $settings.firmwareAnalysisAdminAPIToken,
+                isSecure: true,
+                isURL: false
+            )
+
+            NavigationLink {
+                FirmwareServerDiagnosticsView()
+            } label: {
+                HStack(spacing: Theme.Space.md) {
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.system(size: Theme.Icon.standard, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Serverdiagnose")
+                            .font(Theme.cardTitle)
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Server · TEA · Ghidra · Worker")
+                            .font(Theme.meta)
+                            .foregroundStyle(Theme.textMuted)
+                    }
+                    Spacer(minLength: Theme.Space.sm)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.textMuted)
+                }
+                .padding(.horizontal, Theme.Space.cardPadding)
+                .padding(.vertical, 11)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                        .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Serverdiagnose")
+        }
+    }
+
     // MARK: - Über
 
     private var aboutSection: some View {
@@ -219,6 +296,41 @@ struct SettingsView: View {
         .tint(Theme.accent)
         .padding(.horizontal, Theme.Space.cardPadding)
         .padding(.vertical, 11)
+        .background(Theme.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+                .stroke(Theme.border, lineWidth: Theme.Control.hairline)
+        )
+    }
+
+    private func settingsTextField(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        isSecure: Bool,
+        isURL: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(title)
+                .font(Theme.secondary)
+                .foregroundStyle(Theme.textPrimary)
+            Group {
+                if isSecure {
+                    SecureField(placeholder, text: text)
+                } else {
+                    TextField(placeholder, text: text)
+                        .keyboardType(isURL ? .URL : .default)
+                }
+            }
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .font(Theme.caption)
+            .foregroundStyle(Theme.textBody)
+        }
+        .padding(.horizontal, Theme.Space.cardPadding)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         .overlay(
