@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraValidationProofPoints",
+  "cycle": 8,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:11:50.730086+00:00",
+  "ghidraAvailable": false,
+  "syntheticBin": "/agent/repos/scootercheck/research/cycle8/fixtures/synthetic_cortex_m_thumb.bin",
+  "processor": "ARM:LE:32:Cortex",
+  "loaderBase": "0x08000000",
+  "outDir": "/agent/repos/scootercheck/research/cycle8/fixtures/out_synthetic",
+  "overallStatus": "SKIPPED_NO_GHIDRA",
+  "proofPoints": [
+    {
+      "id": 1,
+      "name": "Firmware imported",
+      "status": "SKIP",
+      "detail": "analyzeHeadless unavailable — no import attempted"
+    },
+    {
+      "id": 2,
+      "name": "Architecture assigned correctly (ARM Cortex-M LE)",
+      "status": "SKIP",
+      "detail": "Target processor ARM:LE:32:Cortex documented; Ghidra assignment not executed"
+    },
+    {
+      "id": 3,
+      "name": "Static analysis started",
+      "status": "SKIP",
+      "detail": "No headless auto-analysis without Ghidra"
+    },
+    {
+      "id": 4,
+      "name": "Function info exported",
+      "status": "SKIP",
+      "detail": "No ExportFunctionAnalysis.java run; no fabricated .functions.json"
+    },
+    {
+      "id": 5,
+      "name": "Control-flow info exported",
+      "status": "SKIP",
+      "detail": "No ExportCallGraph.java run; no fabricated .callgraph.json"
+    },
+    {
+      "id": 6,
+      "name": "Results stored structured",
+      "status": "PASS",
+      "detail": "Validation proof envelope written to /agent/repos/scootercheck/research/cycle8/fixtures/out_synthetic/proof_points.json (not a Ghidra export)"
+    },
+    {
+      "id": 7,
+      "name": "Errors documented when tools missing",
+      "status": "PASS",
+      "detail": "MISSING_PREREQUISITE: GHIDRA_HOME unset, GHIDRA_HEADLESS unset, analyzeHeadless not on PATH or /opt/ghidra. Java present does not imply Ghidra."
+    }
+  ],
+  "hardBans": [
+    "no real encrypted ZT3 plaintext reconstruction",
+    "no Cycle-6 FIRM.bin.enc decrypt",
+    "no fake Ghidra export artifacts"
+  ]
+}
