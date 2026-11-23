@@ -66,5 +66,8 @@ def test_rollback_trigger():
 
 
 def test_sha_pattern_for_deploy_input():
-    assert re.fullmatch(r"[0-9a-fA-F]{7,40}", "c08bb97")
-    assert re.fullmatch(r"[0-9a-fA-F]{7,40}", "branch-name") is None
+    # Deploy workflow refuses short tips / branch names — full 40-char SHA only.
+    assert re.fullmatch(r"[0-9a-fA-F]{40}", "c08bb97aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    assert re.fullmatch(r"[0-9a-fA-F]{40}", "c08bb97") is None
+    assert re.fullmatch(r"[0-9a-fA-F]{40}", "branch-name") is None
+    assert re.fullmatch(r"[0-9a-fA-F]{40}", "main") is None

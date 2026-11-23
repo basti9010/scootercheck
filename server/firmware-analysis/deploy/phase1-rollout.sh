@@ -16,8 +16,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_SRC="$(cd "$SCRIPT_DIR/.." && pwd)"                 # …/server/firmware-analysis
 REPO_ROOT="$(cd "$APP_SRC/../.." && pwd)"               # repo root
-REMOTE_HOST="${REMOTE_HOST:-root@api.tuningscanner.de}"
+# Prefer scootercheck-deploy (see bootstrap-deploy-user.sh). root@ is legacy only.
+REMOTE_HOST="${REMOTE_HOST:-scootercheck-deploy@api.tuningscanner.de}"
 SSH_IDENTITY="${SSH_IDENTITY:-$HOME/.ssh/hetzner_scootercheck}"
+SSH_KNOWN_HOSTS_FILE="${SSH_KNOWN_HOSTS_FILE:-}"
 REMOTE_APP="${REMOTE_APP:-/opt/scootercheck/firmware-analysis}"
 SERVICE_NAME="${SERVICE_NAME:-scootercheck-fw}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8088/health}"
@@ -26,6 +28,7 @@ DRY_RUN=1
 if [[ "$CONFIRM_PROD_DEPLOY" == "YES" ]]; then
   DRY_RUN=0
 fi
+# Prefer Actions workflow deploy-hetzner.yml for production CD.
 
 # Phase 1 + 2 + 2.1 Python modules / docs / tests
 DEPLOY_PY_FILES=(
@@ -113,10 +116,10 @@ fi
 RSYNC=(rsync -az --checksum)
 if [[ -f "$SSH_IDENTITY" ]]; then
   if [[ -n "${SSH_KNOWN_HOSTS_FILE:-}" ]]; then
-  RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE")
-else
-  RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new")
-fi
+    RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE")
+  else
+    RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new")
+  fi
 fi
 
 log() { printf '[fw-rollout] %s\n' "$*" >&2; }
