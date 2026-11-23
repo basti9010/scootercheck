@@ -1,0 +1,201 @@
+# ScooterCheck firmware-analysis → Hetzner CD
+# Manual only. No push-triggered deploys. No autonomous production changes.
+name: Deploy Hetzner (firmware-analysis)
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_sha:
+        description: "Immutable commit SHA to deploy (full or unique short)"
+        required: true
+        type: string
+      confirm_deploy:
+        description: "Must be true to perform remote writes (false = dry-run validate only)"
+        required: true
+        type: boolean
+        default: false
+      skip_ci_gate:
+        description: "Emergency only — skip server CI success check (still needs environment approval)"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-hetzner-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  validate:
+    name: Validate SHA + CI gate
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout repository tip (for scripts only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve and verify immutable SHA
+        id: resolve
+        env:
+          INPUT_SHA: ${{ inputs.git_sha }}
+        run: |
+          set -euo pipefail
+          RAW=$(echo "$INPUT_SHA" | tr -d '[:space:]')
+          if [[ ! "$RAW" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            echo "::error::git_sha must be a commit SHA, not a branch name"
+            exit 1
+          fi
+          FULL=$(git rev-parse --verify "${RAW}^{commit}")
+          echo "sha=$FULL" >> "$GITHUB_OUTPUT"
+          echo "Deploy target SHA=$FULL"
+
+      - name: Require successful Server Firmware Tests for SHA
+        if: ${{ inputs.skip_ci_gate != true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # iOS XCTest is intentionally non-blocking for server deploy.
+          # Prefer workflow "Server Firmware Tests"; fall back to any successful check named similarly.
+          echo "Checking CI for $SHA"
+          # List check runs; require at least one successful server-tests context when present.
+          # If the workflow has never run for this SHA (new), fail closed unless skip_ci_gate.
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/workflows/server-firmware-tests.yml/runs?head_sha=${SHA}&status=completed&per_page=5" --jq '.workflow_runs')
+          COUNT=$(echo "$RUNS" | jq 'length')
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "::error::No completed Server Firmware Tests run for $SHA. Push the SHA, wait for CI, or use skip_ci_gate (emergency)."
+            exit 1
+          fi
+          OK=$(echo "$RUNS" | jq '[.[] | select(.conclusion=="success")] | length')
+          if [[ "$OK" -eq 0 ]]; then
+            echo "::error::Server Firmware Tests did not succeed for $SHA"
+            echo "$RUNS" | jq '.[].conclusion'
+            exit 1
+          fi
+          echo "Server CI gate OK"
+
+      - name: Refuse deploy without confirm
+        if: ${{ inputs.confirm_deploy != true }}
+        run: |
+          echo "confirm_deploy=false → dry-run / validate-only path (no remote writes in deploy job)."
+          echo "Set confirm_deploy=true after environment approval to deploy."
+
+  deploy:
+    name: SSH release deploy
+    needs: validate
+    if: ${{ inputs.confirm_deploy == true }}
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_SHA: ${{ needs.validate.outputs.deploy_sha }}
+    steps:
+      - name: Checkout deploy SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.deploy_sha }}
+          fetch-depth: 1
+
+      - name: Prepare SSH (known_hosts required)
+        env:
+          SSH_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.HETZNER_SSH_HOST }}
+          SSH_USER: ${{ secrets.HETZNER_SSH_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          if [[ -z "${SSH_KEY:-}" || -z "${SSH_KNOWN_HOSTS:-}" || -z "${SSH_HOST:-}" || -z "${SSH_USER:-}" ]]; then
+            echo "::error::Missing required environment secrets (HETZNER_SSH_*). See docs/HETZNER_DEPLOYMENT_SETUP.md"
+            exit 1
+          fi
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          # Never print key material
+          echo "SSH prepared for ${SSH_USER}@${SSH_HOST} (host key verification ON)"
+
+      - name: Remote release deploy
+        id: release
+        env:
+          SSH_HOST: ${{ secrets.HETZNER_SSH_HOST }}
+          SSH_USER: ${{ secrets.HETZNER_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.HETZNER_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          REMOTE_APP="${DEPLOY_PATH:-/opt/scootercheck/firmware-analysis}"
+          SSH=(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=20)
+          RSYNC=(rsync -az --checksum -e "ssh -i $HOME/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o ConnectTimeout=20")
+          # Stage tree from checked-out SHA (server/firmware-analysis only)
+          SRC="server/firmware-analysis/"
+          # Upload to releases/<sha> then flip symlink via remote script
+          "${SSH[@]}" "${SSH_USER}@${SSH_HOST}" "mkdir -p /opt/scootercheck/releases/${DEPLOY_SHA}"
+          "${RSYNC[@]}" \
+            --exclude '.venv/' \
+            --exclude '__pycache__/' \
+            --exclude '*.pyc' \
+            --exclude '.env' \
+            "$SRC" "${SSH_USER}@${SSH_HOST}:/opt/scootercheck/releases/${DEPLOY_SHA}/"
+          "${SSH[@]}" "${SSH_USER}@${SSH_HOST}" \
+            "CONFIRM_PROD_DEPLOY=YES DEPLOY_SHA=${DEPLOY_SHA} REMOTE_APP=${REMOTE_APP} \
+             bash /opt/scootercheck/releases/${DEPLOY_SHA}/deploy/release-deploy.sh"
+
+      - name: Post-deploy smoke
+        id: smoke
+        env:
+          SSH_HOST: ${{ secrets.HETZNER_SSH_HOST }}
+          SSH_USER: ${{ secrets.HETZNER_SSH_USER }}
+          HEALTH_URL: ${{ secrets.HEALTH_URL }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=20)
+          HU="${HEALTH_URL:-http://127.0.0.1:8088/health}"
+          "${SSH[@]}" "${SSH_USER}@${SSH_HOST}" \
+            "HEALTH_URL=${HU} bash /opt/scootercheck/firmware-analysis/deploy/post-deploy-smoke.sh"
+
+      - name: Rollback on smoke failure
+        if: failure() && steps.release.outcome == 'success'
+        env:
+          SSH_HOST: ${{ secrets.HETZNER_SSH_HOST }}
+          SSH_USER: ${{ secrets.HETZNER_SSH_USER }}
+        run: |
+          set -euo pipefail
+          SSH=(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=20)
+          echo "::warning::Smoke failed — attempting automatic rollback"
+          "${SSH[@]}" "${SSH_USER}@${SSH_HOST}" \
+            "CONFIRM_PROD_DEPLOY=YES bash /opt/scootercheck/firmware-analysis/deploy/release-rollback.sh"
+          exit 1
+
+      - name: Document result
+        if: always()
+        run: |
+          echo "### Deploy result" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SHA: \`${{ needs.validate.outputs.deploy_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- confirm_deploy: true" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Grades: DEPLOYED only after smoke; CONFIGURED flags ≠ VERIFIED" >> "$GITHUB_STEP_SUMMARY"
+
+  dry_run_summary:
+    name: Dry-run summary
+    needs: validate
+    if: ${{ inputs.confirm_deploy != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "### Dry-run only" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA \`${{ needs.validate.outputs.deploy_sha }}\` validated. No remote writes." >> "$GITHUB_STEP_SUMMARY"
+          echo "Re-run with confirm_deploy=true after Environment production approval." >> "$GITHUB_STEP_SUMMARY"
