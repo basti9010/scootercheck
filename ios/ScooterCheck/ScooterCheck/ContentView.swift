@@ -2289,34 +2289,19 @@ struct ContentView: View {
     }
 
     private func attachFirmwareReportFromHub(_ report: FirmwareForensicReport, originalData: Data?) {
-        let targetId: String
-        if let existing = activeFirmwareInvestigationId,
-           investigationStore.record(id: existing) != nil {
-            targetId = existing
-        } else {
-            let rec = investigationStore.create(
-                title: report.originalFileName.isEmpty ? "Firmwareanalyse" : report.originalFileName,
-                progress: .analyzeFirmware
-            )
-            activeFirmwareInvestigationId = rec.id
-            targetId = rec.id
+        let outcome = FirmwareInvestigationAttach.attach(
+            report: report,
+            originalData: originalData,
+            store: investigationStore,
+            activeInvestigationId: &activeFirmwareInvestigationId
+        )
+        guard outcome.didAttach else {
+            // Keep hub open; soft note already appended by attach helper.
+            return
         }
-        do {
-            _ = try investigationStore.attachFirmwareReport(
-                report,
-                originalData: originalData,
-                to: targetId
-            )
-            showFirmwareForensicsHub = false
-            investigationDetailId = targetId
-            showInvestigationDetail = true
-        } catch {
-            // Keep hub open; user can retry save. Soft surface via investigation note.
-            if var rec = investigationStore.record(id: targetId) {
-                rec.notes.append("Firmware-Speichern fehlgeschlagen: \(error.localizedDescription)")
-                investigationStore.upsert(rec)
-            }
-        }
+        showFirmwareForensicsHub = false
+        investigationDetailId = outcome.investigationId
+        showInvestigationDetail = true
     }
 
     private func startCombinedFromHub() {
