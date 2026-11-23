@@ -31,8 +31,8 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 | Agent | project-manager / ios-developer |
 | Status | IN_PROGRESS |
 | Akzeptanz | Workflow `ios-unit-tests.yml`; Scheme mit Testables; Docs; Trigger auf PR/Push |
-| Testergebnis | **pending erste CI-Ausführung** — nicht erfunden |
-| Branch/Commit | pending push |
+| Testergebnis | Run `45133543772` **failure** — Xcode 16.2 ohne iOS 18.2 Simulator-Runtime |
+| Branch/Commit | `0fed874` → Fix attempt 1 |
 | Review | — |
 
 ---
@@ -45,10 +45,24 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 | Priorität | P0 |
 | Agent | qa-security + Parent |
 | Abhängigkeiten | CYCLE3-CI-1 |
-| Status | READY |
+| Status | IN_PROGRESS |
 | Akzeptanz | CI führt BLECentralCoordinator / Enc2 / PackIntegrity / BleWriteGate / WriteDisableRegression Tests aus; Ergebnis dokumentiert |
-| Testergebnis | UNVERIFIED |
-| Fix-Attempts | 0 / 3 |
+| Testergebnis | UNVERIFIED — Build failed before XCTest |
+| Fix-Attempts | 1 / 3 (destination/Xcode-runtime mismatch) |
+
+---
+
+## CI-FIX-1 – Simulator destination / Xcode match
+
+| Feld | Wert |
+|------|------|
+| ID | CI-FIX-1 |
+| Priorität | P0 |
+| Agent | project-manager |
+| Status | IN_PROGRESS |
+| Root cause | Xcode 16.2 + `name=iPhone 16` → OS:latest, aber Runtime 18.2 fehlt; Runner hat 18.5+/26.x |
+| Fix | Prefer Xcode 26.x with visible destinations; else download platform; pin destination by UDID |
+| Attempt | 1 / 3 |
 
 ---
 
