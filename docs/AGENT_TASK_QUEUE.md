@@ -41,7 +41,7 @@
 |----|--------|-------|
 | P1-1 Investigation Flow 1.1 gap analysis | IN_PROGRESS | explore `bc-8471e07b…` |
 | P1-2 ContentView modularization plan | IN_PROGRESS | explore `bc-585c5d7b…` |
-| P1-3 BLE/Firmware correlation architecture | IN_PROGRESS | explore `bc-1b6136d2…` |
+| P1-3 BLE/Firmware correlation architecture | DONE (design) | `docs/P1-3_BLE_FIRMWARE_CORRELATION.md` |
 | P1-4 Regression tests | BACKLOG | after P1-1…3 designs |
 
 ---

@@ -41,6 +41,12 @@ Auf `cursor/unified-investigation-flow-b100` existiert ein Hub mit:
 
 Dieser Checkout enthält diese Module **noch nicht**. Merge/Integration ist Roadmap-Thema.
 
+## BLE ↔ Firmware Korrelation (P1-3 Design)
+
+Design-only: `docs/P1-3_BLE_FIRMWARE_CORRELATION.md`.
+
+Geplant als dünner `CrossSourceCorrelator` über bestehende Engines (`BLEIdentity`, `IntegrityReading`/`StockFirmwareCatalog`/`CustomFirmwareDiff`, `FirmwareZipAnalyzer`, `EvidenceEngine`/`AttributionEngine`). Nach Merge der Forensik-Linie: Adapter auf `FirmwareReadoutMatchCorrelator` / `DualSourcePanicCorrelator`. Epistemik: confirmed vs hypothesis; ZIP ≠ installierte FW; kein zweites Verdict.
+
 ## Tests
 
 `ios/ScooterCheck/ScooterCheckTests/` – u. a. BLE Identify/Search/Radar, FirmwareZipAnalyzer, Evidence, PDF, Pedelec, Universal Diagnosis, Peak/DIS report bugs.
