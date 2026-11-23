@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "ghidraPrereqValidation",
+  "cycle": 8,
+  "agent": "B",
+  "generatedAt": "2026-11-23T20:11:50.706397+00:00",
+  "processorTarget": "ARM:LE:32:Cortex",
+  "loaderBaseTarget": "0x08000000",
+  "syntheticFirmware": {
+    "present": true,
+    "path": "/agent/repos/scootercheck/research/cycle8/fixtures/synthetic_cortex_m_thumb.bin",
+    "size": 512,
+    "sha256": "3fa9802700f2ff9d8d2695b7655ee4f8093a93e747b6cb969df841e1940077ea",
+    "sha256MatchesCycle7": true
+  },
+  "ivt": {
+    "ok": true,
+    "likely": true,
+    "flashBase": "0x08000000",
+    "initialSP": "0x20020000",
+    "resetHandler": "0x08000100",
+    "resetThumb": true,
+    "resetFileOffset": 256,
+    "notes": []
+  },
+  "ghidraScriptsDir": "/agent/repos/scootercheck/server/firmware-analysis/ghidra_scripts",
+  "ghidraScripts": {
+    "SeedCortexMEntryPoints.java": true,
+    "ExportAllDecompiled.java": true,
+    "ExportFunctionAnalysis.java": true,
+    "ExportCallGraph.java": true
+  },
+  "ghidraHomeEnv": null,
+  "ghidraHeadlessEnv": null,
+  "analyzeHeadless": null,
+  "ghidraAvailable": false,
+  "errors": [],
+  "notes": [
+    "marker=SYNTH_C7_NOT_SCOOTER_FW",
+    "MISSING_PREREQUISITE: analyzeHeadless not found (set GHIDRA_HOME or GHIDRA_HEADLESS, or install on PATH / /opt/ghidra).",
+    "Do NOT fabricate .functions.json / .callgraph.json / .dec.c."
+  ],
+  "hardBans": [
+    "no real encrypted ZT3 plaintext reconstruction",
+    "no Cycle-6 FIRM.bin.enc decrypt",
+    "no fake Ghidra export artifacts when tools missing"
+  ]
+}
