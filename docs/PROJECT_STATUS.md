@@ -39,8 +39,8 @@ Gemeinsames Gedächtnis: diese Datei + `ARCHITECTURE.md`, `DEVELOPMENT_ROADMAP.m
 
 **Cycle 1:** fünf Spezialisten-Reviews parallel (`explore`) + PM-Merge → Roadmap.  
 **Cycle 2:** Task Queue + P0-1…P0-4 implementiert (Worktrees für P0-3/P0-4; Parent für BLE).  
-**Cycle 3:** macOS CI angelegt; Compile-Fixes 3/3 → BLOCKED.  
-**Cycle 4:** Build+XCTest laufen; P0-Suites auf CI **PASSED**; Gesamtsuite nach 3/3 noch rot (Xiaomi-Scooter-6 Matching). P0 = **PARTIALLY VERIFIED**. Details: `AGENT_TASK_QUEUE.md`.
+**Cycle 3–4:** macOS CI + Compile/Assertion-Recovery.  
+**Cycle 5:** CI grün (`45239479743`, 324/0) · **P0 = VERIFIED** · P1 freigegeben (Investigation Flow / ContentView / BLE–Firmware-Korrelation). Details: `AGENT_TASK_QUEUE.md`.
 
 ## Autonomie / 4h-Zyklus (Zwischenbericht)
 

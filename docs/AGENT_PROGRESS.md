@@ -1,19 +1,14 @@
 # ScooterCheck – Agent Progress
 
-**Cycle 4 geschlossen:** 2026-11-23 Europe/Berlin — CI Recovery  
+**Cycle 5:** 2026-11-23 Europe/Berlin — P0 VERIFIED · P1 research  
 **Branch:** `cursor/multi-agent-system-b100` · PR https://github.com/basti9010/scootercheck/pull/103  
-**Lock:** `CYCLE4_CI_RECOVERY_EXHAUSTED` · Fix-Budget **3/3**
 
-### Cycle 4 – Ergebnis
+### Cycle 5 FIX-1
 
-| Attempt | Ergebnis |
-|---------|----------|
-| 1 | Build+XCTest; P0 grün; ~10 Assertions fail |
-| 2 | Assertions grün; Host-Crash `/workspace` JSON path |
-| 3 | Bundle-Fix OK; **1** Restfailure: Xiaomi Scooter 6 → matched Ninebot UART |
-
-P0 Kernsuites: **PASSED** auf CI. Gesamtsuite: **nicht grün**. Status: **PARTIALLY VERIFIED / BLOCKED**.  
-QA: PASS_WITH_NOTES. Cycle 5: MiHome-ID vs Nordic-UART Matching.
+Xiaomi MiHome vor Ninebot-UART (`1a0012e`).  
+CI **grün**: run `45239479743` — **324** tests / **0** failures.  
+P0 suites executed + passed → **P0 = VERIFIED**.  
+QA: PASS_WITH_NOTES. P1 Gap-Analysen gestartet.
 
 ## Ehrliche Laufzeit
 

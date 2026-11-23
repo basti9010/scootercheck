@@ -2,68 +2,47 @@
 
 **Cycle:** 5 (P0 Final Verification & P1 Development)  
 **Branch:** `cursor/multi-agent-system-b100`  
-**Lock:** `CYCLE5_P0_FINAL_ACTIVE`  
+**Lock:** `CYCLE5_P1_ACTIVE`  
 **Zuletzt gelesen:** 2026-11-23 (Europe/Berlin)
 
-Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
-
-Cycle 4 Fix-Budget erschöpft. Cycle 5: **neues** Budget max **3** Auto-Fix-Durchläufe.
-
 ---
 
-## CYCLE5-CI-STATUS (Phase 1)
+## CYCLE5-CI / P0 VERIFIED
 
 | Feld | Wert |
 |------|------|
-| Run | `45236147929` |
-| HEAD geprüft | `b4d9772` (Docs-Commit nach Fix `272c438`; enthält Bundle-Fix) |
-| Neuerer Docs-HEAD | `bc5cf54` (queued run `45239205767` — docs only) |
+| Green run | `45239479743` |
+| SHA | `1a0012e` (Xiaomi-before-Ninebot fix) |
 | Build | SUCCESS |
-| XCTest | EXECUTED |
-| Host crash | nein (Bundle-Fix OK) |
-| Compilerfehler | keine |
-| Totals | **324** executed · **3** failures (1 Testfall) · **0** skipped (laut Suite-Summaries) |
-| Failure | `UniversalDiagnosisTests.testCompatibilityXiaomiScooter6MiHomeId` |
-| Detail | Ist `ninebotEnc2`/Segway-Ninebot; Soll `xiaomiPlain`/Xiaomi |
+| XCTest | **TEST SUCCEEDED** |
+| Totals | **324** executed · **0** failures · **0** unexpected |
+| P0 suites | ALL PASSED (executed) |
+| FIX-1 | DONE — [Fix Xiaomi Scooter 6 match](bc-bb3ffabc-74eb-5592-adcb-d65e6ae7d17a) |
+| QA | [QA Cycle 4/5](bc-6a013177-8f84-52a1-aec1-02aee962bcae) PASS_WITH_NOTES |
+| Fix attempts used | 1 / 3 |
 
-**Entscheidung:** CI **ROT** → P1 gesperrt → Fix-Budget aktiv.
+### P0 suites (CI-executed)
 
----
-
-## CYCLE5-FIX-1 – Xiaomi MiHome vs Ninebot UART
-
-| Feld | Wert |
-|------|------|
-| ID | CYCLE5-FIX-1 |
-| Status | IN_PROGRESS |
-| Attempt | 1 / 3 |
-| Agent | generalPurpose fix Xiaomi match |
-| QA | [QA Cycle 4/5 test quality](bc-6a013177-8f84-52a1-aec1-02aee962bcae) → **PASS_WITH_NOTES**; Xiaomi-Test behalten (Produktfix) |
-
----
-
-## P0 Status
-
-| Suite | CI (45236147929) |
-|-------|------------------|
+| Suite | Result |
+|-------|--------|
 | BLECentralCoordinatorTests | PASSED |
 | Enc2SessionLifecycleTests | PASSED |
 | PackIntegrityTests | PASSED |
 | BleWriteGateTests | PASSED |
 | WriteDisableRegressionTests | PASSED |
-| Full suite | **FAIL** (1 case) |
-| Overall P0 | PARTIAL — awaiting full green → VERIFIED |
+
+**P0 status: VERIFIED**
 
 ---
 
-## P1 – gesperrt bis P0 VERIFIED
+## P1 – freigegeben
 
-| ID | Status |
-|----|--------|
-| P1-1 Investigation Flow 1.1 | BACKLOG |
-| P1-2 ContentView modularisieren | BACKLOG |
-| P1-3 BLE/Firmware Korrelation | BACKLOG |
-| P1-4 Regressionstests | BACKLOG |
+| ID | Status | Agent |
+|----|--------|-------|
+| P1-1 Investigation Flow 1.1 gap analysis | IN_PROGRESS | explore `bc-8471e07b…` |
+| P1-2 ContentView modularization plan | IN_PROGRESS | explore `bc-585c5d7b…` |
+| P1-3 BLE/Firmware correlation architecture | IN_PROGRESS | explore `bc-1b6136d2…` |
+| P1-4 Regression tests | BACKLOG | after P1-1…3 designs |
 
 ---
 
@@ -71,7 +50,8 @@ Cycle 4 Fix-Budget erschöpft. Cycle 5: **neues** Budget max **3** Auto-Fix-Durc
 
 ```
 cycle_id: 5
-ci_fix_attempts: 0/3 (FIX-1 starting)
-status: ACTIVE — CI red, P1 gated
+ci_fix_attempts: 1/3 (success)
+status: P0_VERIFIED — P1 research active
 branch: cursor/multi-agent-system-b100
+green_ci: 45239479743 @ 1a0012e
 ```
