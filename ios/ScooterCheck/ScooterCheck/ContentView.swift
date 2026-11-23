@@ -400,9 +400,9 @@ struct ContentView: View {
         if let id = investigationDetailId {
             InvestigationDetailView(
                 recordId: id,
-                onAppendFirmware: { id in
+                onAppendFirmware: { rec in
                     showInvestigationDetail = false
-                    activeFirmwareInvestigationId = id
+                    activeFirmwareInvestigationId = rec.id
                     firmwareHubVehicleContext = nil
                     firmwareHubInitialMode = .fileOnly
                     showFirmwareForensicsHub = true
