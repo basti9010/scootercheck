@@ -1,58 +1,47 @@
 # ScooterCheck – Agent Task Queue
 
-**Cycle:** 4 (CI Recovery & P0 Verification)  
+**Cycle:** 4 (CI Recovery & P0 Verification) — **CLOSED / BLOCKED**  
 **Branch:** `cursor/multi-agent-system-b100`  
-**Lock:** `CYCLE4_CI_RECOVERY_ACTIVE`  
+**Lock:** `CYCLE4_CI_RECOVERY_EXHAUSTED`  
 **Zuletzt gelesen:** 2026-11-23 (Europe/Berlin)
-
-Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 
 ---
 
-## CYCLE4-CI-1 Ergebnis (Attempt 1 / 3)
+## Ergebnis Attempt 3 / 3 — Run `45236147929` (sha `b4d9772`)
 
 | Feld | Wert |
 |------|------|
-| Commit | `0a51888` / `52d0bca` |
-| Run | `45231395278` |
-| Build | **SUCCESS** |
-| XCTest | **EXECUTED** (`TEST EXECUTE FAILED` — assertion failures) |
-| P0 BLECentralCoordinator | **PASSED** 4/4 |
-| P0 Enc2SessionLifecycle | **PASSED** 5/5 |
-| P0 PackIntegrity | **PASSED** (all cases) |
-| P0 BleWriteGate | **PASSED** 3/3 |
-
-Compile blockers from Cycle 3 are resolved. Remaining = assertion mismatches.
+| Build | SUCCESS |
+| XCTest | EXECUTED |
+| Host crash `/workspace` | **behoben** (Bundle.main) |
+| P0 suites | **PASSED** (Central, Enc2, PackIntegrity, WriteGate, WriteDisableRegression) |
+| Gesamtlauf | **FAILURE** |
+| Restfehler | `UniversalDiagnosisTests.testCompatibilityXiaomiScooter6MiHomeId` |
+| Detail | erwartet `xiaomiPlain` / Xiaomi; Ist `ninebotEnc2` / Segway-Ninebot (Nordic UART UUID kollidiert mit Ninebot-Profil) |
+| Fix-Budget | **3 / 3 EXHAUSTED** — kein weiterer Auto-Fix ohne neuen Cycle |
 
 ---
 
-## CYCLE4-CI-2 – Assertion failures (Attempt 2 / 3)
-
-| Status | DONE |
-| Result | Run `45233735309`: all listed suites **PASSED**; host still exit 65 |
-
----
-
-## CYCLE4-CI-3 – Bundle path crash (Attempt 3 / 3)
-
-| Status | IN_PROGRESS |
-| Cause | `UniversalDiagnosisTests.loadProfiles` hardcoded `/workspace/...` → FatalError on Actions |
-| Fix | `272c438` Bundle.main load (no try!) |
-| QA | [QA review Cycle 4](bc-4f64d9f7-45f9-5df5-baf8-337710b632b9) → **PASS_WITH_NOTES** (P0 intact; await Attempt-3 green) |
-
----
-
-## CYCLE4-P0 – evidence (run 45233735309)
+## P0 Status
 
 | Suite | CI |
 |-------|-----|
-| BLECentralCoordinatorTests | PASSED |
+| BLECentralCoordinatorTests | PASSED (Attempts 1–3) |
 | Enc2SessionLifecycleTests | PASSED |
 | PackIntegrityTests | PASSED |
 | BleWriteGateTests | PASSED |
 | WriteDisableRegressionTests | PASSED |
 
-Full Cycle-4 success still needs attempt-3 green (no host crash).
+**P0 = PARTIALLY VERIFIED** (Kernsuites grün; Gesamtsuite nicht grün)  
+**Cycle 4 success criteria = NOT MET** (volle Suite nicht grün)
+
+---
+
+## Cycle 5 Empfehlung
+
+1. Explizites neues Fix-Budget freigeben.
+2. `ProtocolCompatibilityEngine` / Profile-Matching: MiHome-ID `xiaomi.scooter.6` vor generischem Nordic-UART/Ninebot priorisieren **oder** Test-Erwartung an dokumentierte Produktregel anpassen.
+3. Danach P0 → VERIFIED und P1 freigeben.
 
 ---
 
@@ -60,7 +49,8 @@ Full Cycle-4 success still needs attempt-3 green (no host crash).
 
 ```
 cycle_id: 4
-ci_fix_attempts: 3/3 (final push 272c438 awaiting CI)
-status: ACTIVE
+ci_fix_attempts: 3/3 EXHAUSTED
+status: BLOCKED
 branch: cursor/multi-agent-system-b100
+remaining: UniversalDiagnosisTests.testCompatibilityXiaomiScooter6MiHomeId
 ```
