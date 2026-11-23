@@ -11,7 +11,7 @@ C7 tip VERIFIED: `b60df88` · CI [45255389488](https://github.com/basti9010/scoo
 |-------------|-----|--------|
 | #105 `cursor/server-fw-analysis-c7-b100` | `b60df88` | **SUCCESS** 354/0 (FIX-1 CryptoAssessor) |
 | #105 prior | `4e73931` | FAILURE (missing CryptoAssessor) |
-| #106 C8 tip | `3553096`+ | awaiting Hub-merge CI |
+| #106 C8 tip | `d411896` | Run 45258903038 **cancelled** (not verified green); Hub CI pending re-verify via #108 |
 
 Grades: C7 ports **IMPLEMENTED + TESTED** (CI). C8 Hub **IMPLEMENTED**, CI **pending**.
 
