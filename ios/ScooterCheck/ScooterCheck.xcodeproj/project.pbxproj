@@ -57,6 +57,7 @@
 		A10000000000000000000FC2 /* CrossSourceCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC2 /* CrossSourceCorrelator.swift */; };
 		A10000000000000000000FC3 /* ZipFindingSoftening.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC3 /* ZipFindingSoftening.swift */; };
 		A10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */; };
+		A100000000000000000000E3 /* ProtocolHistoryOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E3 /* ProtocolHistoryOverviewView.swift */; };
 		A100000000000000000000D4 /* BleWriteGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D4 /* BleWriteGateTests.swift */; };
 		A100000000000000000000D5 /* WriteDisableRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D5 /* WriteDisableRegressionTests.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
@@ -208,6 +209,7 @@
 		B10000000000000000000FC2 /* CrossSourceCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSourceCorrelator.swift; sourceTree = "<group>"; };
 		B10000000000000000000FC3 /* ZipFindingSoftening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipFindingSoftening.swift; sourceTree = "<group>"; };
 		B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSourceCorrelatorTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000E3 /* ProtocolHistoryOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryOverviewView.swift; sourceTree = "<group>"; };
 		B100000000000000000000D4 /* BleWriteGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGateTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000D5 /* WriteDisableRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteDisableRegressionTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000000C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -431,6 +433,7 @@
 				E1000000000000000000000F /* FirmwareForensics */,
 				E10000000000000000000FA0 /* Investigation */,
 				E1000000000000000000000A /* Auslesen */,
+				E1000000000000000000000B /* History */,
 				E10000000000000000000006 /* Ninebot */,
 				E10000000000000000000007 /* Xiaomi */,
 			);
@@ -503,6 +506,14 @@
 				B100000000000000000000E1 /* AuslesenDeviceViews.swift */,
 			);
 			path = Auslesen;
+			sourceTree = "<group>";
+		};
+		E1000000000000000000000B /* History */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000000E3 /* ProtocolHistoryOverviewView.swift */,
+			);
+			path = History;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000008 /* ScooterCheckTests */ = {
@@ -767,6 +778,7 @@
 				A100000000000000000000E2 /* IntegrityResultChrome.swift in Sources */,
 				A10000000000000000000034 /* CheckPhotosUI.swift in Sources */,
 				A100000000000000000000E1 /* AuslesenDeviceViews.swift in Sources */,
+				A100000000000000000000E3 /* ProtocolHistoryOverviewView.swift in Sources */,
 				A10000000000000000000008 /* Crypto.swift in Sources */,
 				A10000000000000000000009 /* Protocol.swift in Sources */,
 				A1000000000000000000000A /* DiagnosticMap.swift in Sources */,
