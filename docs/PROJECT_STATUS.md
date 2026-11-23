@@ -1,8 +1,9 @@
 # ScooterCheck – Project Status
 
-**Stand:** 2026-11-23 (Europe/Berlin)  
-**Aktiver Multi-Agent-Branch:** `cursor/multi-agent-system-b100`  
+**Stand:** 2026-11-23 ~12:10 Europe/Berlin (4h-Zwischenbericht)  
+**Aktiver Multi-Agent-Branch:** `cursor/multi-agent-system-b100` (PR #103)  
 **Basis dieses Checkouts:** `cursor/pedelec-auswerten-b100`  
+**Autonomie-Zyklus:** beendet (4h-Timer); kein Dauerlauf — event-/follow-up-basiert  
 **Hauptregel:** Nur lesende Diagnose – keine Limit-Änderung, kein Flash, keine Unlock-Kombos.
 
 ## Produkt
@@ -41,12 +42,10 @@ Gemeinsames Gedächtnis: diese Datei + `ARCHITECTURE.md`, `DEVELOPMENT_ROADMAP.m
 **Cycle 3:** macOS CI (`.github/workflows/ios-unit-tests.yml`) angelegt; 3 Auto-Fix-Versuche erschöpft → **BLOCKED**.  
 P0-Code = implementiert, **CI-UNVERIFIED** (XCTest noch nicht gelaufen). Details: `AGENT_TASK_QUEUE.md`, `CI_AUTONOMY_LOOP.md`.
 
-## Autonomie / 4h-Zyklus
+## Autonomie / 4h-Zyklus (Zwischenbericht)
 
-Ein Prompt allein garantiert **keine** vierstündige Ausführung. Verfügbare Hebel:
+Ein Prompt allein garantiert **keine** vierstündige Ausführung — bestätigt: Arbeit lief über User-Follow-ups, CI-Events und Timer-Weckrufe, **nicht** als ununterbrochene 4h-Session.
 
-- Cloud-Agent-Follow-ups und `subscribe_timer` (event-getrieben)
-- Parallele `Task`-Subagents (`explore` / `generalPurpose` / `security-review`)
-- Custom Agents in `.cursor/agents/` für Cursor-IDE-Auswahl
-
-Details: `AGENT_PROGRESS.md`.
+**Erreicht:** Agents + Docs + P0-Code + macOS-CI-Workflow + Fix-Loop bis BLOCKED.  
+**Nicht erreicht:** grüne XCTest-Ausführung / P0 CI-verified / P1-Start.  
+**Details:** `AGENT_PROGRESS.md`, `AGENT_TASK_QUEUE.md`.

@@ -75,4 +75,6 @@ cycle_id: 3
 ci_fix_attempts: 3/3 EXHAUSTED
 status: BLOCKED awaiting human or new cycle budget
 branch: cursor/multi-agent-system-b100
+autonomy_4h_timer: FIRED 2026-11-23T11:10:43Z — cycle closed
+autonomous_next_timer: already unsubscribed
 ```

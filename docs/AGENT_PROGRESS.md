@@ -1,56 +1,71 @@
 # ScooterCheck – Agent Progress
 
-## Cycle 2 (2026-11-23 Europe/Berlin)
+**4h-Zwischenbericht:** 2026-11-23 ~12:10 Europe/Berlin  
+**Branch:** `cursor/multi-agent-system-b100` · PR https://github.com/basti9010/scootercheck/pull/103  
+**Autonomie-Ende:** Timer `scootercheck-4h-zwischenbericht` gefeuert; `scootercheck-autonomous-next` war bereits unsubscribed.
 
-### Orchestrierung
+## Ehrliche Laufzeit
 
-| Rolle | Tatsächlicher Task-Typ | Agent-ID / Hinweis |
-|-------|------------------------|--------------------|
-| Project Manager | Parent | dieses Run |
-| P0-3 forensic | `generalPurpose` + Brief | `bc-0711ce79-6984-5842-b03e-dcd6ec138d8d` (Worktree `/tmp/sc-p03`) |
-| P0-4 ios/ble | `generalPurpose` + Brief | `bc-763e88b0-6362-5845-84fd-534a5c97d7fb` (Worktree `/tmp/sc-p04`) |
-| P0-1/P0-2 ble | Parent + bluetooth Brief | Shared `BleClient` — kein paralleler Writer |
-| QA Pack | `explore` | `bc-80fd1c81-d599-5c9d-84c2-bdc824ce2bbb` |
-| QA BLE | `explore` | `bc-57d85281-2ef2-5640-88f1-c6635d9b69cb` |
-| security-review Tool | — | **nicht** nutzbar ohne Diff-Format / leerer Diff |
+| Modus | Was passierte |
+|-------|----------------|
+| Kontinuierliche 4h-Ausführung | **Nein** — nicht möglich / nicht erfolgt |
+| Event-/Timer-Weckrufe | **Ja** — User-Follow-ups, CI-Subscriptions, einmaliger 4h-Timer |
+| Parallele echte Subagents | **Ja** in Cycle 1 (5× explore) und Cycle 2 (P0-3∥P0-4 Worktrees + QA) |
 
-Custom Agents unter `.cursor/agents/` sind **keine** `subagent_type`-Werte.
+---
 
-### Implementiert (Code)
+## Cycle 1 – Multi-Agent Setup + Reviews
 
-| ID | Status | Wesentliche Artefakte |
-|----|--------|----------------------|
-| CYCLE2-ORCH-1 | DONE | `docs/AGENT_TASK_QUEUE.md`, Timer-Lock |
-| P0-1 | REVIEW→fixes | `BLECentralCoordinator`, Lease in GATT/Capability |
-| P0-2 | REVIEW | `Enc2SessionLifecycle`, BleClient invalidation |
-| P0-3 | REVIEW→fixes | `PackIntegrity`, seal on save/ensurePack, thumbs excluded |
-| P0-4 | REVIEW→fixes | `BleWriteGate`, authorize Identify/Capability/Enc2 Auth |
+| Rolle | Task-Typ | Ergebnis |
+|-------|----------|----------|
+| 7 Custom Agents | Markdown `.cursor/agents/` | eingerichtet (keine `Task` subagent_types) |
+| Docs memory | Parent | PROJECT_STATUS, ARCHITECTURE, ROADMAP, AGENT_PROGRESS, OPEN_ISSUES |
+| iOS / Firmware / BLE / Forensik / QA | parallel `explore` | Roadmap P0–P2 |
+| PM merge | Parent | priorisierte Backlog |
 
-### Tests
+## Cycle 2 – P0 Hardening (Code)
 
-Geschrieben, **nicht** auf Linux ausgeführt (kein `xcodebuild`):
+| ID | Artefakt | Parallel? |
+|----|----------|-----------|
+| P0-1 | `BLECentralCoordinator` + Lease | Parent (shared BleClient) |
+| P0-2 | `Enc2SessionLifecycle` | Parent |
+| P0-3 | `PackIntegrity` | `generalPurpose` Worktree |
+| P0-4 | `BleWriteGate` | `generalPurpose` Worktree |
+| QA | explore Pack + BLE | nach Merge |
+| Queue | `AGENT_TASK_QUEUE.md` | |
 
-- `BLECentralCoordinatorTests`
-- `Enc2SessionLifecycleTests`
-- `PackIntegrityTests` (+ Thumb-Ausschluss)
-- `BleWriteGateTests`
+Tests geschrieben (Linux: nicht ausführbar): Coordinator, Enc2, PackIntegrity, BleWriteGate (+ später WriteDisableRegression).
 
-### Autonomie
-
-- Überlappenden Timer `scootercheck-autonomous-next` unsubscribed (Cycle-Lock).
-- `scootercheck-4h-zwischenbericht` bleibt aktiv.
-
-## Cycle 3 (Quality & Autonomy)
+## Cycle 3 – macOS CI + Verifikation
 
 | Schritt | Status |
 |---------|--------|
-| `ios-unit-tests.yml` (macos-15, Xcode 16.2 preferred) | angelegt |
-| Scheme Testables `ScooterCheckTests` | gefixt |
-| `WriteDisableRegressionTests` | angelegt |
-| `CI_AUTONOMY_LOOP.md` (max 3 Fix-Attempts) | angelegt |
-| Erste CI-Ausführung | failure (Sim-Runtime) |
-| CI-FIX 1–3 | destination OK → Swift 6 test compile cascade → **BLOCKED 3/3** |
-| XCTest execution | **never reached** |
-| P0 CI verification | UNVERIFIED |
-| Cycle2 P1-Timer | unsubscribed (kein Overlap) |
-| Agents Cycle 3 | Parent (PM); generalPurpose ios-dev for CI-FIX-3 (`bc-e006219e…`) |
+| `ios-unit-tests.yml` | DONE |
+| Scheme Testables | DONE |
+| CI runs | failure cascade |
+| Auto-Fix 1–3 | exhausted → **BLOCKED** |
+| XCTest execution | **nie erreicht** |
+| P0 CI verification | **UNVERIFIED** |
+
+Verbleibende Compile-Fehler (Xcode 26): `LiveTelemetryTests`, `BLESearchMotionCoreTests`, `BLEWatchRadarTests` (`minHitsForAlarm`).
+
+---
+
+## Commits (Auszug auf PR-Branch)
+
+`cdd4d97` agents/docs → P0 merges → `7c8ecfa` QA fixes → CI `0fed874`…`31a0aed` → `e53d726` BLOCKED docs.
+
+## Nächste priorisierte Schritte
+
+1. **P0/CI:** Restliche Xcode-26-Test-Compile-Fehler beheben (neuer Zyklus / Freigabe über 3-Attempt-Limit).
+2. CI bis `test-without-building` grün.
+3. Erst dann P0 als verifiziert markieren und P1 (Investigation Flow, ContentView-Split, …).
+
+## Autonomie-Timer-Status
+
+| Timer | Status |
+|-------|--------|
+| `scootercheck-autonomous-next` | unsubscribed (Cycle-Lock) |
+| `scootercheck-cycle2-next-p1` | unsubscribed |
+| `scootercheck-4h-zwischenbericht` | **gefeuert / erledigt** |
+| PR #103 + CI branch subscriptions | aktiv (Beobachtung) |
