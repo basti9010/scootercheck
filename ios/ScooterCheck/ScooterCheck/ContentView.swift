@@ -129,184 +129,45 @@ struct ContentView: View {
     }
 
     var body: some View {
+        // Split for Swift type-checker (Xcode 26): one giant body times out after Settings/Serverdiagnose grew.
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                Theme.bg.ignoresSafeArea()
+            rootChromeWithModals
+        }
+        .overlay {
+            FloatingAppBrandWordmark(menuProgress: menuProgress)
+        }
+        .animation(menuDragStartProgress == nil ? Theme.Motion.drawer : nil, value: menuProgress)
+        .preferredColorScheme(.dark)
+        .tint(Theme.accent)
+        .onAppear {
+            applyAuslesenDefaultsFromSettings()
+            BLEWatchService.shared.attach(ble: ble)
+            BLERadarService.shared.attach(ble: ble)
+        }
+        .onChange(of: showSettings) { open in
+            if !open {
+                applyAuslesenDefaultsFromSettings()
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            BLEWatchService.shared.setForeground(phase == .active)
+            BLERadarService.shared.setForeground(phase == .active)
+            if phase == .active {
+                Task { await BLENotificationService.shared.refreshAuthorization() }
+                if BLERadarSessionStore.shared.sessionRequested {
+                    BLERadarService.shared.startSession(enableRadar: true)
+                    ble.ensureRadarScanRunning(preferBackgroundFilter: false)
+                }
+            }
+        }
+        .onOpenURL { url in
+            handleDeepLink(url)
+        }
+    }
 
-                // Wurzelbereiche (Menü): dezenter Crossfade — keine konkurrierende Slide zum Header/Logo.
-                Group {
-                    if screen == .investigate {
-                        InvestigationHubView(
-                            onScooterOnly: { startScooterOnlyFromHub() },
-                            onFirmwareOnly: { startFirmwareOnlyFromHub() },
-                            onCombined: { startCombinedFromHub() },
-                            onOpenInvestigation: { rec in
-                                investigationDetailId = rec.id
-                                showInvestigationDetail = true
-                            }
-                        )
-                        .transition(.opacity)
-                    } else if screen == .find {
-                        ScooterFindHubView(ble: ble, destination: $findDestination)
-                            .transition(.opacity)
-                    } else if screen == .pedelec, AppFeatureFlags.pedelecAuslesenVisible {
-                        PedelecEvaluationView(
-                            ble: ble,
-                            onOpenReadout: { device, match in
-                                pedelecReadout = PedelecReadoutTarget(device: device, match: match)
-                            },
-                            onOpenSignalFinder: {
-                                findDestination = .signalFinder
-                                screen = .find
-                            }
-                        )
-                        .transition(.opacity)
-                    } else if screen == .overview {
-                        ProtocolHistoryOverviewView(
-                            history: history,
-                            shelf: $historyShelf,
-                            selecting: $historySelecting,
-                            selectedIds: $selectedHistoryIds,
-                            onNewCheck: { primaryAction() },
-                            onOpen: { openHistoryEntry($0) }
-                        )
-                        .transition(.opacity)
-                    } else {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 20) {
-                                if let err = ble.lastError, ble.phase == .failed {
-                                    errorBanner(err)
-                                }
-                                switch screen {
-                                case .overview, .find, .pedelec, .investigate:
-                                    EmptyView()
-                                case .result:
-                                    if let result {
-                                        resultCard(result)
-                                    }
-                                case .home:
-                                    if isBusyPhase {
-                                        connectingCard
-                                    } else if showsStartLanding {
-                                        startLanding
-                                    } else {
-                                        devicesSearchHeader
-                                        devicesSonarStage
-                                        if ble.visibleDevices.isEmpty {
-                                            searchEmptyCopy
-                                        } else {
-                                            deviceSection
-                                        }
-                                    }
-                                }
-                            }
-                            .scootPagePadding()
-                            .padding(.top, 8)
-                            .padding(.bottom, scrollBottomPadding)
-                        }
-                        .transition(.opacity)
-                    }
-                }
-                .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade, value: screen)
-
-                if showsStartLanding {
-                    AnimatedSignalWaves()
-                        .frame(height: 110)
-                        .mask(
-                            LinearGradient(
-                                colors: [.clear, .white, .white],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .allowsHitTesting(false)
-                        .padding(.bottom, 8)
-                }
-            }
-            .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .top, spacing: 0) { appChromeHeader }
-            .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
-            .overlay { sideMenuOverlay }
-            .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
-            .sheet(isPresented: $showProfileConfirm, onDismiss: {
-                if !busy { pendingDevice = nil }
-            }) {
-                profileConfirmSheet
-            }
-            .sheet(isPresented: $showFAQ) {
-                FAQView()
-            }
-            .sheet(isPresented: $showPrivacy) {
-                PrivacyView()
-            }
-            .sheet(isPresented: $showSettings) {
-                SettingsView()
-            }
-            .sheet(isPresented: $showFirmwareForensicsHub) {
-                FirmwareForensicsHubView(
-                    vehicleContext: firmwareHubVehicleContext,
-                    initialMode: firmwareHubInitialMode,
-                    onClose: {
-                        showFirmwareForensicsHub = false
-                        firmwareHubInitialMode = .fileOnly
-                        firmwareHubVehicleContext = nil
-                    },
-                    onReportProduced: { report, originalData in
-                        attachFirmwareReportFromHub(report, originalData: originalData)
-                    }
-                )
-            }
-            .sheet(isPresented: $showReuseReadoutPrompt) {
-                ReuseReadoutPromptView(
-                    candidates: reuseReadoutCandidates,
-                    onUse: { _ in
-                        showReuseReadoutPrompt = false
-                        // Full attach/reuse wiring deferred — open auslesen for now.
-                        navigateFromMenu(to: .home)
-                    },
-                    onPickNew: {
-                        showReuseReadoutPrompt = false
-                        navigateFromMenu(to: .home)
-                    },
-                    onCancel: {
-                        showReuseReadoutPrompt = false
-                        screen = .investigate
-                    }
-                )
-            }
-            .fullScreenCover(isPresented: $showInvestigationDetail) {
-                if let id = investigationDetailId {
-                    InvestigationDetailView(
-                        recordId: id,
-                        onAppendFirmware: { id in
-                            showInvestigationDetail = false
-                            activeFirmwareInvestigationId = id
-                            firmwareHubVehicleContext = nil
-                            firmwareHubInitialMode = .fileOnly
-                            showFirmwareForensicsHub = true
-                        },
-                        onAppendScooter: { _ in
-                            showInvestigationDetail = false
-                            navigateFromMenu(to: .home)
-                        },
-                        onResume: { _ in
-                            showInvestigationDetail = false
-                            screen = .investigate
-                        },
-                        onSwitchScooter: { _ in
-                            showInvestigationDetail = false
-                            navigateFromMenu(to: .home)
-                        },
-                        onClose: {
-                            showInvestigationDetail = false
-                            investigationDetailId = nil
-                        }
-                    )
-                } else {
-                    Color.clear.onAppear { showInvestigationDetail = false }
-                }
-            }
-            // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
+    /// Chrome + modal presentations (split across two computed props for the type-checker).
+    private var rootChromeWithModals: some View {
+        rootWithPrimarySheets
             .sheet(item: $bleDetailDevice) { device in
                 BleDeviceDetailSheet(
                     device: device,
@@ -374,38 +235,197 @@ struct ContentView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-        }
-        // Über Drawer + Header, Y über resolved Safe Area (nicht Statusleiste/Dynamic Island).
-        .overlay {
-            FloatingAppBrandWordmark(menuProgress: menuProgress)
-        }
-        .animation(menuDragStartProgress == nil ? Theme.Motion.drawer : nil, value: menuProgress)
-        .preferredColorScheme(.dark)
-        .tint(Theme.accent)
-        .onAppear {
-            applyAuslesenDefaultsFromSettings()
-            BLEWatchService.shared.attach(ble: ble)
-            BLERadarService.shared.attach(ble: ble)
-        }
-        .onChange(of: showSettings) { open in
-            if !open {
-                applyAuslesenDefaultsFromSettings()
+    }
+
+    private var rootWithPrimarySheets: some View {
+        rootChrome
+            .sheet(isPresented: $showSubjectPrompt) { subjectPromptSheet }
+            .sheet(isPresented: $showProfileConfirm, onDismiss: {
+                if !busy { pendingDevice = nil }
+            }) {
+                profileConfirmSheet
+            }
+            .sheet(isPresented: $showFAQ) { FAQView() }
+            .sheet(isPresented: $showPrivacy) { PrivacyView() }
+            .sheet(isPresented: $showSettings) { settingsSheetContent }
+            .sheet(isPresented: $showFirmwareForensicsHub) { firmwareForensicsHubSheet }
+            .sheet(isPresented: $showReuseReadoutPrompt) { reuseReadoutPromptSheet }
+            .fullScreenCover(isPresented: $showInvestigationDetail) { investigationDetailCover }
+    }
+
+    private var rootChrome: some View {
+        ZStack(alignment: .bottom) {
+            Theme.bg.ignoresSafeArea()
+            rootScreenLayer
+                .animation(reduceMotion ? Theme.Motion.reduced : Theme.Motion.rootCrossfade, value: screen)
+            if showsStartLanding {
+                AnimatedSignalWaves()
+                    .frame(height: 110)
+                    .mask(
+                        LinearGradient(
+                            colors: [.clear, .white, .white],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .allowsHitTesting(false)
+                    .padding(.bottom, 8)
             }
         }
-        .onChange(of: scenePhase) { phase in
-            BLEWatchService.shared.setForeground(phase == .active)
-            BLERadarService.shared.setForeground(phase == .active)
-            if phase == .active {
-                Task { await BLENotificationService.shared.refreshAuthorization() }
-                // Persistierte Radar-Session nach Entsperren fortsetzen
-                if BLERadarSessionStore.shared.sessionRequested {
-                    BLERadarService.shared.startSession(enableRadar: true)
-                    ble.ensureRadarScanRunning(preferBackgroundFilter: false)
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top, spacing: 0) { appChromeHeader }
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
+        .overlay { sideMenuOverlay }
+    }
+
+    @ViewBuilder
+    private var rootScreenLayer: some View {
+        if screen == .investigate {
+            InvestigationHubView(
+                onScooterOnly: { startScooterOnlyFromHub() },
+                onFirmwareOnly: { startFirmwareOnlyFromHub() },
+                onCombined: { startCombinedFromHub() },
+                onOpenInvestigation: { rec in
+                    investigationDetailId = rec.id
+                    showInvestigationDetail = true
+                }
+            )
+            .transition(.opacity)
+        } else if screen == .find {
+            ScooterFindHubView(ble: ble, destination: $findDestination)
+                .transition(.opacity)
+        } else if screen == .pedelec, AppFeatureFlags.pedelecAuslesenVisible {
+            PedelecEvaluationView(
+                ble: ble,
+                onOpenReadout: { device, match in
+                    pedelecReadout = PedelecReadoutTarget(device: device, match: match)
+                },
+                onOpenSignalFinder: {
+                    findDestination = .signalFinder
+                    screen = .find
+                }
+            )
+            .transition(.opacity)
+        } else if screen == .overview {
+            ProtocolHistoryOverviewView(
+                history: history,
+                shelf: $historyShelf,
+                selecting: $historySelecting,
+                selectedIds: $selectedHistoryIds,
+                onNewCheck: { primaryAction() },
+                onOpen: { openHistoryEntry($0) }
+            )
+            .transition(.opacity)
+        } else {
+            homeOrResultScroll
+                .transition(.opacity)
+        }
+    }
+
+    private var homeOrResultScroll: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                if let err = ble.lastError, ble.phase == .failed {
+                    errorBanner(err)
+                }
+                switch screen {
+                case .overview, .find, .pedelec, .investigate:
+                    EmptyView()
+                case .result:
+                    if let result {
+                        resultCard(result)
+                    }
+                case .home:
+                    if isBusyPhase {
+                        connectingCard
+                    } else if showsStartLanding {
+                        startLanding
+                    } else {
+                        devicesSearchHeader
+                        devicesSonarStage
+                        if ble.visibleDevices.isEmpty {
+                            searchEmptyCopy
+                        } else {
+                            deviceSection
+                        }
+                    }
                 }
             }
+            .scootPagePadding()
+            .padding(.top, 8)
+            .padding(.bottom, scrollBottomPadding)
         }
-        .onOpenURL { url in
-            handleDeepLink(url)
+    }
+
+    @ViewBuilder
+    private var settingsSheetContent: some View {
+        SettingsView()
+    }
+
+    private var firmwareForensicsHubSheet: some View {
+        FirmwareForensicsHubView(
+            vehicleContext: firmwareHubVehicleContext,
+            initialMode: firmwareHubInitialMode,
+            onClose: {
+                showFirmwareForensicsHub = false
+                firmwareHubInitialMode = .fileOnly
+                firmwareHubVehicleContext = nil
+            },
+            onReportProduced: { report, originalData in
+                attachFirmwareReportFromHub(report, originalData: originalData)
+            }
+        )
+    }
+
+    private var reuseReadoutPromptSheet: some View {
+        ReuseReadoutPromptView(
+            candidates: reuseReadoutCandidates,
+            onUse: { _ in
+                showReuseReadoutPrompt = false
+                navigateFromMenu(to: .home)
+            },
+            onPickNew: {
+                showReuseReadoutPrompt = false
+                navigateFromMenu(to: .home)
+            },
+            onCancel: {
+                showReuseReadoutPrompt = false
+                screen = .investigate
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var investigationDetailCover: some View {
+        if let id = investigationDetailId {
+            InvestigationDetailView(
+                recordId: id,
+                onAppendFirmware: { id in
+                    showInvestigationDetail = false
+                    activeFirmwareInvestigationId = id
+                    firmwareHubVehicleContext = nil
+                    firmwareHubInitialMode = .fileOnly
+                    showFirmwareForensicsHub = true
+                },
+                onAppendScooter: { _ in
+                    showInvestigationDetail = false
+                    navigateFromMenu(to: .home)
+                },
+                onResume: { _ in
+                    showInvestigationDetail = false
+                    screen = .investigate
+                },
+                onSwitchScooter: { _ in
+                    showInvestigationDetail = false
+                    navigateFromMenu(to: .home)
+                },
+                onClose: {
+                    showInvestigationDetail = false
+                    investigationDetailId = nil
+                }
+            )
+        } else {
+            Color.clear.onAppear { showInvestigationDetail = false }
         }
     }
 
