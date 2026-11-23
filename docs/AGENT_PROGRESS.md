@@ -1,8 +1,8 @@
 # ScooterCheck – Agent Progress
 
-**Cycle 5:** 2026-11-23 Europe/Berlin — P0 VERIFIED · P1 implementation underway  
+**Cycle 5–6:** 2026-11-23 Europe/Berlin — P0 VERIFIED · **P1 CI VERIFIED (350/0)** · FW Lab #104  
 **Branch:** `cursor/multi-agent-system-b100` · PR https://github.com/basti9010/scootercheck/pull/103  
-**HEAD (docs sync):** multi-agent tip + P1-1 Hub/UI branch `cursor/p1-1-investigation-hub-ui-b100`
+**HEAD:** `a2c9329` (code) / docs tip may be newer · Green `45245015142`
 
 ### Cycle 5 FIX-1 + P0
 
@@ -99,12 +99,16 @@ Ported from `origin/cursor/unified-investigation-flow-b100` tip `f306bf3` onto m
 
 Compile/assertion cascade → Attempt-Budget erschöpft → Cycle 5 FIX-1 → **grün**.
 
+### Post-P1 CI
+
+`45243815073` @ `fc9b4fe` RED → CI-FIX-1 + Hub → **`45245015142` @ `a2c9329` GREEN (350/0)**.
+
 ## Nächste Schritte
 
-1. Merge P1-1 Hub/UI into `cursor/multi-agent-system-b100` after CI+Review
-2. Wire attach/resume + FirmwareForensicsHubView callbacks
-3. P1-4 Regression tests erweitern
-4. ContentView Steps 3–6 (menu/home/result/comparison)
+1. ContentView Steps 3–6
+2. Cycle 6 Lab L0/L1 (Hashes/Meta) per research roadmap
+3. Wire attach/resume + modern FirmwareForensicsHubView
+4. PackageLoader controlled port (when approved)
 
 ## Autonomie-Timer-Status
 

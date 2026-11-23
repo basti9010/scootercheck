@@ -1,8 +1,8 @@
 # ScooterCheck – Agent Task Queue
 
-**Cycle:** 5 (P0 Final Verification & P1 Development)  
-**Branch:** `cursor/multi-agent-system-b100`  
-**Lock:** `CYCLE5_P1_ACTIVE`  
+**Cycle:** 6 (Firmware Lab) + Cycle 5 closed for CI  
+**Branch:** `cursor/multi-agent-system-b100` (app) · `cursor/firmware-research-lab-c6-b100` (research PR #104)  
+**Lock:** `P1_CI_VERIFIED` · Cycle 6 research active  
 **Zuletzt gelesen:** 2026-11-23 (Europe/Berlin)
 
 ---
@@ -46,9 +46,10 @@
 ## Cycle Lock
 
 ```
-cycle_id: 5
-ci_fix_attempts: 1/3 (success)
-status: P0_VERIFIED — P1 Hub/UI merged; await CI on 8943627+
+cycle_id: 6
+ci_fix_attempts_post_p1: 1/3 (success)
+status: P1_CI_VERIFIED @ a2c9329 (350/0) — CYCLE6_FW_LAB on PR #104
 branch: cursor/multi-agent-system-b100
-green_ci: 45239479743 @ 1a0012e (pre-P1-code)
+green_ci_p0: 45239479743 @ 1a0012e
+green_ci_p1: 45245015142 @ a2c9329
 ```
