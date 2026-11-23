@@ -1,8 +1,17 @@
 # ScooterCheck – Agent Progress
 
-**4h-Zwischenbericht:** 2026-11-23 ~12:10 Europe/Berlin  
+**Cycle 4 aktiv:** 2026-11-23 Europe/Berlin — CI Recovery & P0 Verification  
 **Branch:** `cursor/multi-agent-system-b100` · PR https://github.com/basti9010/scootercheck/pull/103  
-**Autonomie-Ende:** Timer `scootercheck-4h-zwischenbericht` gefeuert; `scootercheck-autonomous-next` war bereits unsubscribed.
+**Lock:** `CYCLE4_CI_RECOVERY_ACTIVE` · Fix-Budget 0→…/3 (Cycle 3 war 3/3 exhausted)
+
+### Cycle 4 – erster Fix-Push
+
+| Item | Detail |
+|------|--------|
+| Diagnose | CI `45135136966`: Double?→accuracy; missing `minHitsForAlarm` |
+| Agents | A/B/C explore parallel (`bc-3326a84a`, `bc-f82614c4`, `bc-9c9544a6`) |
+| Commit | `52d0bca` test-only unwrap + RadarConfig rename assert |
+| CI | awaiting head of multi-agent-system-b100 |
 
 ## Ehrliche Laufzeit
 
