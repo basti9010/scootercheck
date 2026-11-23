@@ -1,10 +1,10 @@
 # ScooterCheck – Project Status
 
-**Stand:** 2026-11-23 ~20:00 Europe/Berlin  
-**Aktiver Multi-Agent-Branch:** `cursor/multi-agent-system-b100` (PR #103)  
-**Basis:** `cursor/pedelec-auswerten-b100`  
-**P0:** **VERIFIED** (CI `45239479743`, 324/0 on `1a0012e`)  
-**P1:** Foundation + History extract + Correlator MVP **merged**; Hub/UI + ContentView `.investigate` pending  
+**Stand:** 2026-11-23 ~20:20 Europe/Berlin  
+**Aktiver Multi-Agent-Branch:** `cursor/multi-agent-system-b100` (PR #103) @ `a2c9329`  
+**Research:** PR #104 Cycle 6 Firmware Lab (2 Dateien)  
+**P0:** **VERIFIED** (`45239479743`, 324/0 @ `1a0012e`)  
+**P1:** **CI VERIFIED** (`45245015142`, **350/0** @ `a2c9329`) — Hub/UI + History + Correlator inkl. Tests  
 **Hauptregel:** Nur lesende Diagnose – keine Limit-Änderung, kein Flash, keine Unlock-Kombos.
 
 ## Produkt
@@ -27,8 +27,9 @@ Kernablauf: Scooter suchen → verbinden → Manipulation prüfen → Bericht (P
 | BLECentralCoordinator / Enc2Lifecycle / BleWriteGate | vorhanden (P0 VERIFIED) |
 | Pedelec + Universal Diagnosis | vorhanden |
 | ContentView modularization | Steps 1–2 DONE (~2196 LOC); Steps 3–6 pending |
-| Investigation Store + Forensics Codable | **MERGED** (Hub/UI/ContentView splice deferred) |
-| BLE↔Firmware CrossSourceCorrelator | MVP **MERGED** (`Correlation/`) |
+| Investigation Store + Hub/UI + CombinedPDF | **MERGED** + CI green (`.investigate` menu) |
+| BLE↔Firmware CrossSourceCorrelator | MVP **MERGED** + tests green |
+| Cycle 6 ZT3 enc firmware lab | Reports on PR #104 (static; ISA incomplete) |
 
 ## Multi-Agent
 

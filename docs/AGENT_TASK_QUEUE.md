@@ -12,9 +12,11 @@
 | Feld | Wert |
 |------|------|
 | Green run (P0) | `45239479743` @ `1a0012e` — 324/0 |
-| Post-P1 CI | **RED** `45243815073` @ `fc9b4fe` → CI-FIX-1 `7b60c94` (test group) + Hub merge `8943627` |
-| Failure | Investigation*Tests missing ScooterCheckTests group membership |
-| Fix attempts (post-P1) | 1 / 3 (await CI on Hub+FIX HEAD) |
+| Post-P1 CI | **GREEN** `45245015142` @ `a2c9329` — **350** executed · **0** failures · **0** skipped |
+| Build / XCTest | SUCCESS / TEST SUCCEEDED (Xcode 26.3, macos-15) |
+| CI-FIX-1 | DONE — Investigation*Tests in ScooterCheckTests group |
+| Fix attempts (post-P1) | 1 / 3 (success) |
+| New P1 suites | InvestigationStore/FlowLogic/CombinedPDF + CrossSourceCorrelator — all PASSED |
 
 ### P0 suites (CI-executed)
 
