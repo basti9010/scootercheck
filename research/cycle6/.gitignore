@@ -1,0 +1,6 @@
+# Never commit original/extracted firmware blobs
+**/original.zip
+**/extracted/
+**/*.bin
+**/*.enc
+**/*.bin.enc
