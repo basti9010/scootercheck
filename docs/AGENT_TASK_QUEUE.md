@@ -28,21 +28,21 @@ Compile blockers from Cycle 3 are resolved. Remaining = assertion mismatches.
 
 ## CYCLE4-CI-2 – Assertion failures (Attempt 2 / 3)
 
-| Status | IN_PROGRESS |
-| Agents | [Fix AttributionEngine](bc-2ddbd77a-3769-5c22-84c8-4646f94fa512), [Fix BLEAnalysis](bc-d825e444-ccfe-5feb-b5fd-eaa99475a1ae), [Fix remaining](bc-38083053-a220-51d0-9600-a20f11f94209) |
-
-Failing tests (~10 cases):
-- AttributionEngineTests (2) + ElevatedLimitVerdictTests stock→auffaellig (likely `fwMcu: "1.0.0"` → fw.unknown)
-- BLEAnalysisCoreTests fingerprint self-match medium≠high
-- BLEIdentificationTests Ninebot UART
-- BLESearchMotionCoreTests compass + UTurn
-- EvidenceExplanationEngineTests (2)
-- FAQCatalogTests Schriftgroesse ascii
-- RadarMapTests repeat filter
+| Status | DONE |
+| Result | Run `45233735309`: all listed suites **PASSED**; host still exit 65 |
 
 ---
 
-## CYCLE4-P0 – partial evidence
+## CYCLE4-CI-3 – Bundle path crash (Attempt 3 / 3)
+
+| Status | IN_PROGRESS |
+| Cause | `UniversalDiagnosisTests.loadProfiles` hardcoded `/workspace/...` → FatalError on Actions |
+| Fix | `272c438` Bundle.main load (no try!) |
+| QA | [QA review Cycle 4](bc-4f64d9f7-45f9-5df5-baf8-337710b632b9) |
+
+---
+
+## CYCLE4-P0 – evidence (run 45233735309)
 
 | Suite | CI |
 |-------|-----|
@@ -50,8 +50,9 @@ Failing tests (~10 cases):
 | Enc2SessionLifecycleTests | PASSED |
 | PackIntegrityTests | PASSED |
 | BleWriteGateTests | PASSED |
+| WriteDisableRegressionTests | PASSED |
 
-Full Cycle-4 success still requires **entire** XCTest suite green.
+Full Cycle-4 success still needs attempt-3 green (no host crash).
 
 ---
 
@@ -59,7 +60,7 @@ Full Cycle-4 success still requires **entire** XCTest suite green.
 
 ```
 cycle_id: 4
-ci_fix_attempts: 1/3 completed (build green); attempt 2 in progress
+ci_fix_attempts: 3/3 (final push 272c438 awaiting CI)
 status: ACTIVE
 branch: cursor/multi-agent-system-b100
 ```
