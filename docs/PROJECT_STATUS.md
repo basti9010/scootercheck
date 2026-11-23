@@ -46,3 +46,7 @@ Kernablauf: Scooter suchen → verbinden → Manipulation prüfen → Bericht (P
 
 ## Cycle 11
 Server diagnostics API + iOS Serverdiagnose (PR #110). Live Ghidra/TEA E2E still blocked without Freigabe.
+
+
+## Cycle 12
+Hetzner CD: deploy-hetzner.yml (workflow_dispatch + production env). No autonomous prod deploy.

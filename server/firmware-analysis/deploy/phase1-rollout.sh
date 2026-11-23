@@ -103,10 +103,20 @@ DEPLOY_GHIDRA_SCRIPTS=(
   ghidra_scripts/SeedCortexMEntryPoints.java
 )
 
-SSH=(ssh -i "$SSH_IDENTITY" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new)
+# Prefer Deploy Hetzner workflow (StrictHostKeyChecking=yes + known_hosts secret).
+# Manual phase1: set SSH_KNOWN_HOSTS_FILE for yes; default accept-new only if unset (legacy).
+if [[ -n "${SSH_KNOWN_HOSTS_FILE:-}" ]]; then
+  SSH=(ssh -i "$SSH_IDENTITY" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE")
+else
+  SSH=(ssh -i "$SSH_IDENTITY" -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new)
+fi
 RSYNC=(rsync -az --checksum)
 if [[ -f "$SSH_IDENTITY" ]]; then
+  if [[ -n "${SSH_KNOWN_HOSTS_FILE:-}" ]]; then
+  RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE")
+else
   RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new")
+fi
 fi
 
 log() { printf '[fw-rollout] %s\n' "$*" >&2; }
