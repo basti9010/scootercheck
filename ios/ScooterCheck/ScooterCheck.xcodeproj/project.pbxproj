@@ -170,6 +170,7 @@
 		A10000000000000000000FAA /* InvestigationFlowLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */; };
 		A10000000000000000000FAB /* FirmwareExportSharePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FAB /* FirmwareExportSharePresenter.swift */; };
 		A10000000000000000000FB1 /* DualSourcePanicCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FB1 /* DualSourcePanicCorrelator.swift */; };
+		A10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -339,6 +340,7 @@
 		B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationFlowLogicTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000FAB /* FirmwareExportSharePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareExportSharePresenter.swift; sourceTree = "<group>"; };
 		B10000000000000000000FB1 /* DualSourcePanicCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelator.swift; sourceTree = "<group>"; };
+		B10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -468,6 +470,7 @@
 				B100000000000000000000EB /* FirmwareComboPolicy.swift */,
 				B100000000000000000000EC /* FirmwareEvidenceTier.swift */,
 				B10000000000000000000FB1 /* DualSourcePanicCorrelator.swift */,
+				B10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift */,
 				B10000000000000000000FAB /* FirmwareExportSharePresenter.swift */,
 			);
 			path = FirmwareForensics;
@@ -788,6 +791,7 @@
 				A10000000000000000000FA8 /* InvestigationCombinedPDF.swift in Sources */,
 				A10000000000000000000FAB /* FirmwareExportSharePresenter.swift in Sources */,
 				A10000000000000000000FB1 /* DualSourcePanicCorrelator.swift in Sources */,
+				A10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,
 				A10000000000000000000082 /* OnlineProtocolDiscoveryService.swift in Sources */,

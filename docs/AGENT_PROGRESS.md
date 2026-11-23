@@ -56,6 +56,7 @@ Ported from `origin/cursor/unified-investigation-flow-b100` tip `f306bf3` onto m
 
 **Compile deps (minimal):**
 - `DualSourcePanicCorrelator` (FB1 — avoids D1–D5 collision with P0 tests)
+- `FirmwareReadoutMatchCorrelator` (FB2 — CombinedPDF §6)
 - `FirmwareExportSharePresenter` (FAB — extracted from unified inspector, no ZIP wholesale)
 
 **ContentView splice (surgical):**
