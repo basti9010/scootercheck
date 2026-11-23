@@ -51,6 +51,12 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
             phase = .failed("Gerät wirbt nicht als verbindbar.")
             return
         }
+        do {
+            try BLECentralCoordinator.acquire(.gattDeepAnalysis)
+        } catch {
+            phase = .failed(error.localizedDescription)
+            return
+        }
         targetId = device.id
         phase = .connecting
         collected = []
@@ -76,6 +82,7 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
         central?.delegate = nil
         central = nil
         targetId = nil
+        BLECentralCoordinator.release(.gattDeepAnalysis)
         if case .failed = phase { return }
         if phase != .done, phase != .idle {
             phase = .idle
@@ -84,6 +91,11 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
 
     private func connect() {
         guard let central, let peripheral else { return }
+        guard BLECentralCoordinator.secondaryConnectAllowed(for: .gattDeepAnalysis) else {
+            finish(error: BLECentralCoordinator.LeaseError.busy(.bleClient).errorDescription
+                ?? "Bluetooth wird von der Auslese genutzt.")
+            return
+        }
         phase = .connecting
         central.connect(peripheral, options: nil)
     }
@@ -120,9 +132,16 @@ final class BLEGattDeepAnalysis: NSObject, ObservableObject {
             )
             phase = .done
         }
+        // Central vollständig freigeben — sonst Lease-Release bei noch lebendigem Manager.
         if let p = peripheral {
             central?.cancelPeripheralConnection(p)
         }
+        peripheral?.delegate = nil
+        peripheral = nil
+        central?.delegate = nil
+        central = nil
+        targetId = nil
+        BLECentralCoordinator.release(.gattDeepAnalysis)
     }
 
     private func collectedValue(uuid: String) -> String? {
@@ -136,7 +155,7 @@ extension BLEGattDeepAnalysis: CBCentralManagerDelegate {
         Task { @MainActor in
             guard central.state == .poweredOn else {
                 if central.state == .poweredOff {
-                    self.phase = .failed("Bluetooth ist aus.")
+                    self.finish(error: "Bluetooth ist aus.")
                 }
                 return
             }

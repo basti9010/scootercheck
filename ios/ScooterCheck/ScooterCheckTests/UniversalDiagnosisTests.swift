@@ -219,10 +219,18 @@ final class UniversalDiagnosisTests: XCTestCase {
     // MARK: - Helpers
 
     private func loadProfiles() -> [ScooterDiagnosticProfile] {
-        let path = "/workspace/ios/ScooterCheck/ScooterCheck/scooter_diagnostic_profiles.json"
-        let data = try! Data(contentsOf: URL(fileURLWithPath: path))
-        let file = try! JSONDecoder().decode(ScooterDiagnosticProfileFile.self, from: data)
-        return file.profiles
+        // App-hosted XCTest: resource lives in the ScooterCheck app bundle (not a hardcoded /workspace path).
+        guard let url = Bundle.main.url(forResource: "scooter_diagnostic_profiles", withExtension: "json") else {
+            XCTFail("scooter_diagnostic_profiles.json missing from app bundle")
+            return []
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            return try JSONDecoder().decode(ScooterDiagnosticProfileFile.self, from: data).profiles
+        } catch {
+            XCTFail("Failed to load diagnostic profiles: \(error)")
+            return []
+        }
     }
 
     private func encodeRemoteProfile(id: String) -> Data {

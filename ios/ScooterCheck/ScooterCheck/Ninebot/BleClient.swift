@@ -317,6 +317,8 @@ final class BleClient: NSObject, ObservableObject {
     private var hasXiaomiPipe: Bool { xiaomiWrite != nil && xiaomiNotify != nil }
 
     private var crypto: NbCrypto?
+    /// Enc2-Session: nach Disconnect ungültig — kein Dump-Reuse ohne Handshake.
+    private var enc2Lifecycle = Enc2SessionLifecycle.inactive
     private var protocolGen: ProtocolGen = .gen3
     private var authParam = Data()
     private var serialNumber = Data()
@@ -347,8 +349,38 @@ final class BleClient: NSObject, ObservableObject {
     }
 
     /// Enc2-Session steht — Auslese kann ohne erneutes Pairing folgen (nach Identifizieren).
+    /// Erfordert erfolgreichen Handshake seit dem letzten Reset/Disconnect (`enc2Lifecycle.alive`).
     var isAuthenticatedForDump: Bool {
-        crypto != nil && peripheral?.state == .connected
+        refreshEnc2LifecycleConnection()
+        return enc2Lifecycle.isAuthenticatedForDump
+    }
+
+    /// Test-/Diagnose: Session nach Handshake gültig?
+    var hasValidEnc2Session: Bool {
+        refreshEnc2LifecycleConnection()
+        return enc2Lifecycle.alive && enc2Lifecycle.hasCrypto
+    }
+
+    private func refreshEnc2LifecycleConnection() {
+        let connected = peripheral?.state == .connected
+        enc2Lifecycle = Enc2SessionLifecycle(
+            alive: enc2Lifecycle.alive,
+            hasCrypto: crypto != nil,
+            peripheralConnected: connected
+        )
+        // Verbindung weg → Session sofort ungültig (auch ohne didDisconnect-Pfad).
+        if !connected, enc2Lifecycle.alive || enc2Lifecycle.hasCrypto {
+            enc2Lifecycle = enc2Lifecycle.invalidated()
+            crypto = nil
+        }
+    }
+
+    private func markEnc2HandshakeSucceeded() {
+        enc2Lifecycle = Enc2SessionLifecycle(
+            alive: true,
+            hasCrypto: crypto != nil,
+            peripheralConnected: peripheral?.state == .connected
+        )
     }
     private var maxG3Enc2RetryUsed = false
     /// Erwarteter Disconnect (z. B. vor „Erneut prüfen“) — kein Fehlerstatus.
@@ -663,6 +695,10 @@ final class BleClient: NSObject, ObservableObject {
 
     func connect(to device: ScannedDevice) async throws {
         stopScan()
+        // Vor Connect: alte Enc2-Session verwerfen — kein Reuse über Gerätewechsel.
+        enc2Lifecycle = enc2Lifecycle.invalidated()
+        crypto = nil
+        BLECentralCoordinator.beginBleClientExclusive()
         phase = .connecting
         statusMessage = "Verbinde mit \(device.name)…"
         lastError = nil
@@ -689,9 +725,14 @@ final class BleClient: NSObject, ObservableObject {
         notifyChar = nil
         pendingCharDiscoveries = 0
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            connectContinuation = continuation
-            central.connect(device.peripheral, options: nil)
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                connectContinuation = continuation
+                central.connect(device.peripheral, options: nil)
+            }
+        } catch {
+            BLECentralCoordinator.endBleClientExclusive()
+            throw error
         }
 
         // iOS: CCCD/Notify neu setzen, sonst bleiben Antworten oft aus.
@@ -1021,11 +1062,13 @@ final class BleClient: NSObject, ObservableObject {
                 protocolGen = gen
                 detectedStack = .ninebotEnc2
                 activeStack = .ninebotEnc2
+                markEnc2HandshakeSucceeded()
                 succeeded = true
                 break
             } catch {
                 lastError = error
                 crypto = nil
+                enc2Lifecycle = enc2Lifecycle.invalidated()
                 if case BleError.notConnected = error { throw error }
                 if gen == gens.last { break }
                 statusMessage = "\(gen.rawValue) fehlgeschlagen, versuche Alternative…"
@@ -1087,6 +1130,10 @@ final class BleClient: NSObject, ObservableObject {
 
     /// Find/Piep — nur Identifikation, keine Limit-/Unlock-Änderung.
     private func sendIdentifySignals() async {
+        guard BleWriteGate.authorize(.identifyFind) else {
+            fail("Identifizieren: BLE-Schreibzugriff für Find/Identify ist deaktiviert")
+            return
+        }
         guard let crypto else {
             fail("Identifizieren: nicht authentifiziert")
             return
@@ -1165,6 +1212,9 @@ final class BleClient: NSObject, ObservableObject {
     // MARK: - Handshake
 
     private func runHandshake(gen: ProtocolGen, nonSNPairing: Bool = false) async throws {
+        guard BleWriteGate.authorize(.enc2Auth) else {
+            throw BleError.handshakeFailed("Schreibschutz: Enc2-Auth nicht erlaubt")
+        }
         crypto = NbCrypto(gen: gen)
         guard let crypto else { throw BleError.encryptionFailed }
 
@@ -1273,6 +1323,10 @@ final class BleClient: NSObject, ObservableObject {
             // SN-Modus: erstes SET_PWD klassisch, dann pollend warten.
             var setAccepted = false
             if !nonSNPairing {
+                // Enc2 handshake SET_PWD — BleWritePurpose.enc2Auth (allowlisted).
+                guard BleWriteGate.authorize(.enc2Auth) else {
+                    throw BleError.handshakeFailed("BLE-Schreibzugriff für Enc2-Auth ist deaktiviert")
+                }
                 let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
                 do {
                     let setResp = try await sendReceive(
@@ -1410,6 +1464,10 @@ final class BleClient: NSObject, ObservableObject {
                 let target = targets[targetIndex % targets.count]
                 targetIndex += 1
                 statusMessage = "Power-Taste drücken… (Board 0x\(String(format: "%02X", target.rawValue)))"
+                // Enc2 handshake SET_PWD poll — BleWritePurpose.enc2Auth (allowlisted).
+                guard BleWriteGate.authorize(.enc2Auth) else {
+                    throw BleError.handshakeFailed("BLE-Schreibzugriff für Enc2-Auth ist deaktiviert")
+                }
                 crypto.resetSN()
                 let setPlain = Nb.setPwd(password, target: target, gen: gen)
                 do {
@@ -2140,6 +2198,7 @@ final class BleClient: NSObject, ObservableObject {
         xiaomiNotify = nil
         pendingCharDiscoveries = 0
         crypto = nil
+        enc2Lifecycle = Enc2SessionLifecycle.inactive
         activeStack = .unknown
         detectedStack = .unknown
         enc2PipeIsNordic = false
@@ -2154,6 +2213,7 @@ final class BleClient: NSObject, ObservableObject {
         pendingNotifyEnables = 0
         activeBleRequestSerial = 0
         incomingEncryptedFrames.removeAll(keepingCapacity: false)
+        BLECentralCoordinator.endBleClientExclusive()
     }
 
     /// Strikte Heuristik für „Nur Scooter“ — lieber zu wenig als Nuki/OLED/TV als Scooter.

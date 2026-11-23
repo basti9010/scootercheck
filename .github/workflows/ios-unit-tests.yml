@@ -1,0 +1,201 @@
+name: iOS Unit Tests
+
+# macOS XCTest pipeline for ScooterCheck (no TestFlight / no signing secrets).
+# Project: IPHONEOS_DEPLOYMENT_TARGET 16.0, SWIFT_VERSION 5.0.
+# Runner note (macos-15): Xcode 16.2 ships SDK 18.2, but GH often only has
+# newer simulator runtimes (18.5+/26.x). Prefer an Xcode whose destinations
+# resolve; download the iOS platform only as a last resort.
+# Does NOT invent success: job fails if build or tests fail; artifacts capture logs.
+
+on:
+  pull_request:
+    paths:
+      - "ios/ScooterCheck/**"
+      - ".github/workflows/ios-unit-tests.yml"
+  push:
+    branches:
+      - main
+      - master
+      - cursor/multi-agent-system-b100
+      - cursor/pedelec-auswerten-b100
+    paths:
+      - "ios/ScooterCheck/**"
+      - ".github/workflows/ios-unit-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-unit-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & XCTest (iOS Simulator)
+    runs-on: macos-15
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ios/ScooterCheck
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode with usable simulators
+        id: xcode
+        run: |
+          set -euo pipefail
+          list_xcodes() {
+            ls -d /Applications/Xcode_*.app /Applications/Xcode.app 2>/dev/null | sort -V || true
+          }
+          echo "Installed Xcodes:"
+          list_xcodes
+
+          pick=""
+          # Prefer newest Xcode 26.x (matches TestFlight + iOS 26 simulators on macos-15),
+          # then newest 16.x. Probe newest-first without GNU `tac` (macOS).
+          CANDIDATES=""
+          for pattern in "/Applications/Xcode_26*.app" "/Applications/Xcode_16*.app"; do
+            # shellcheck disable=SC2086
+            MATCH=$(ls -d $pattern 2>/dev/null | sort -V | tail -1 || true)
+            if [ -n "$MATCH" ]; then
+              CANDIDATES="$CANDIDATES $MATCH"
+            fi
+          done
+          for app in $CANDIDATES; do
+            echo "Probing $app"
+            sudo xcode-select -s "$app/Contents/Developer"
+            # First-launch / license can block destination discovery.
+            sudo xcodebuild -runFirstLaunch >/dev/null 2>&1 || true
+            if xcodebuild -showdestinations -project ScooterCheck.xcodeproj -scheme ScooterCheck 2>/dev/null \
+              | grep -q 'platform:iOS Simulator'; then
+              pick="$app"
+              break
+            fi
+          done
+
+          if [ -z "$pick" ]; then
+            # Fallback: newest Xcode + download iOS platform/runtime.
+            pick=$(list_xcodes | tail -1)
+            if [ -z "$pick" ]; then
+              echo "::error::No Xcode.app found"
+              exit 1
+            fi
+            echo "No destinations yet; selecting $pick and downloading iOS platform"
+            sudo xcode-select -s "$pick/Contents/Developer"
+            sudo xcodebuild -runFirstLaunch >/dev/null 2>&1 || true
+            xcodebuild -downloadPlatform iOS 2>&1 | tee "$RUNNER_TEMP/download-platform.log" || true
+          fi
+
+          echo "Using $pick"
+          sudo xcode-select -s "$pick/Contents/Developer"
+          echo "XCODE_PATH=$pick" >> "$GITHUB_ENV"
+          xcodebuild -version | tee "$RUNNER_TEMP/xcode-version.txt"
+          xcodebuild -showsdks | tee "$RUNNER_TEMP/xcode-sdks.txt" | head -60
+          xcrun --sdk iphonesimulator --show-sdk-version | tee "$RUNNER_TEMP/iphonesimulator-sdk.txt"
+
+      - name: Resolve iOS Simulator destination
+        id: sim
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available | tee "$RUNNER_TEMP/simctl-devices.txt" | head -100
+          xcodebuild -showdestinations -project ScooterCheck.xcodeproj -scheme ScooterCheck \
+            2>&1 | tee "$RUNNER_TEMP/xcode-destinations.txt" | head -120
+
+          # Prefer an id from xcodebuild-visible simulator destinations (most reliable).
+          DEST_LINE=$(grep 'platform:iOS Simulator' "$RUNNER_TEMP/xcode-destinations.txt" \
+            | grep -v 'placeholder' \
+            | grep -E 'iPhone 1[67]|iPhone 16|iPhone 15|iPhone' \
+            | head -1 || true)
+
+          DEST=""
+          if [ -n "$DEST_LINE" ]; then
+            # Extract id=UUID from { platform:iOS Simulator, id:UUID, ... }
+            UDID=$(echo "$DEST_LINE" | sed -n 's/.*id:\([A-Fa-f0-9-]*\).*/\1/p')
+            OS=$(echo "$DEST_LINE" | sed -n 's/.*OS:\([^,}]*\).*/\1/p' | tr -d ' ')
+            NAME=$(echo "$DEST_LINE" | sed -n 's/.*name:\([^,}]*\).*/\1/p' | sed 's/^ *//;s/ *$//')
+            if [ -n "$UDID" ]; then
+              DEST="platform=iOS Simulator,id=${UDID}"
+            elif [ -n "$NAME" ] && [ -n "$OS" ]; then
+              DEST="platform=iOS Simulator,OS=${OS},name=${NAME}"
+            fi
+          fi
+
+          if [ -z "$DEST" ]; then
+            echo "::error::No usable iOS Simulator destination for selected Xcode"
+            exit 1
+          fi
+          echo "destination=${DEST}" >> "$GITHUB_OUTPUT"
+          echo "Using destination: ${DEST}"
+
+      - name: Show project / schemes
+        run: |
+          set -euo pipefail
+          xcodebuild -list -project ScooterCheck.xcodeproj | tee "$RUNNER_TEMP/xcode-list.txt"
+
+      - name: Build for testing
+        id: build
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/test-results"
+          set -o pipefail
+          xcodebuild \
+            -project ScooterCheck.xcodeproj \
+            -scheme ScooterCheck \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/test-results/build.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build-for-testing \
+            2>&1 | tee "$RUNNER_TEMP/test-results/build-for-testing.log"
+
+      - name: Run XCTest
+        id: test
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/test-results"
+          set -o pipefail
+          xcodebuild \
+            -project ScooterCheck.xcodeproj \
+            -scheme ScooterCheck \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/test-results/test.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            test-without-building \
+            2>&1 | tee "$RUNNER_TEMP/test-results/test.log"
+
+      - name: Summarize result bundles
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## ScooterCheck iOS Unit Tests"
+            echo ""
+            echo "- Runner: macos-15"
+            echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+            echo "- Destination: ${{ steps.sim.outputs.destination }}"
+            echo "- Build step: ${{ steps.build.outcome }}"
+            echo "- Test step: ${{ steps.test.outcome }}"
+            echo ""
+            echo "Artifacts: build/test logs + xcresult under test-results/"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          ls -la "$RUNNER_TEMP/test-results" || true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scootercheck-ios-unit-tests-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/test-results/**
+            ${{ runner.temp }}/xcode-version.txt
+            ${{ runner.temp }}/xcode-sdks.txt
+            ${{ runner.temp }}/iphonesimulator-sdk.txt
+            ${{ runner.temp }}/simctl-devices.txt
+            ${{ runner.temp }}/xcode-list.txt
+            ${{ runner.temp }}/xcode-destinations.txt
+            ${{ runner.temp }}/download-platform.log
+          if-no-files-found: warn
+          retention-days: 14

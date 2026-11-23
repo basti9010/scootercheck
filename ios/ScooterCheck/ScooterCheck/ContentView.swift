@@ -17,20 +17,21 @@ struct ContentView: View {
     @State private var showPrivacy = false
     @State private var showSettings = false
     @State private var showFirmwareZipInspector = false
+    /// Investigation Hub detail sheet (P1-1 Hub/UI slice).
+    @State private var showInvestigationDetail = false
+    @State private var investigationDetailId: String? = nil
+    @State private var showReuseReadoutPrompt = false
+    @State private var reuseReadoutCandidates: [InvestigationReadoutSummary] = []
+    @ObservedObject private var investigationStore = InvestigationStore.shared
     @ObservedObject private var appSettings = AppSettings.shared
     @State private var auslesenListSort: BleDeviceListSort = AppSettings.shared.auslesenListSort
     @State private var auslesenHideNameless = AppSettings.shared.auslesenHideNameless
     @State private var showShare = false
-    @State private var historyShareItems: [Any] = []
-    @State private var showHistoryShare = false
     @State private var busy = false
-    /// Prüfungsübersicht: Aktiv | Archiv
-    @State private var historyShelf: HistoryShelf = .active
+    /// Prüfungsübersicht: Aktiv | Archiv (bound into ProtocolHistoryOverviewView)
+    @State private var historyShelf: ProtocolHistoryShelf = .active
     @State private var historySelecting = false
     @State private var selectedHistoryIds: Set<UUID> = []
-    @State private var pendingDeleteIds: Set<UUID> = []
-    @State private var showHistoryDeleteConfirm = false
-    @State private var historyToast: String?
     @State private var powerCyclePhase: PowerCyclePhase = .idle
     @State private var powerCycleScanA: IntegrityReading? = nil
     @State private var powerCycleDevice: ScannedDevice? = nil
@@ -72,15 +73,11 @@ struct ContentView: View {
         case overview
         case find
         case pedelec
+        case investigate
     }
 
     /// Unterziel in „E-Scooter finden“ (Hub / Radar / Wächter / Signal-Finder).
     @State private var findDestination: ScooterFindDestination = .hub
-
-    private enum HistoryShelf: Equatable {
-        case active
-        case archive
-    }
 
     private enum PowerCyclePhase: Equatable {
         case idle
@@ -134,7 +131,18 @@ struct ContentView: View {
 
                 // Wurzelbereiche (Menü): dezenter Crossfade — keine konkurrierende Slide zum Header/Logo.
                 Group {
-                    if screen == .find {
+                    if screen == .investigate {
+                        InvestigationHubView(
+                            onScooterOnly: { startScooterOnlyFromHub() },
+                            onFirmwareOnly: { startFirmwareOnlyFromHub() },
+                            onCombined: { startCombinedFromHub() },
+                            onOpenInvestigation: { rec in
+                                investigationDetailId = rec.id
+                                showInvestigationDetail = true
+                            }
+                        )
+                        .transition(.opacity)
+                    } else if screen == .find {
                         ScooterFindHubView(ble: ble, destination: $findDestination)
                             .transition(.opacity)
                     } else if screen == .pedelec, AppFeatureFlags.pedelecAuslesenVisible {
@@ -150,8 +158,15 @@ struct ContentView: View {
                         )
                         .transition(.opacity)
                     } else if screen == .overview {
-                        controlsOverview
-                            .transition(.opacity)
+                        ProtocolHistoryOverviewView(
+                            history: history,
+                            shelf: $historyShelf,
+                            selecting: $historySelecting,
+                            selectedIds: $selectedHistoryIds,
+                            onNewCheck: { primaryAction() },
+                            onOpen: { openHistoryEntry($0) }
+                        )
+                        .transition(.opacity)
                     } else {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 20) {
@@ -159,7 +174,7 @@ struct ContentView: View {
                                     errorBanner(err)
                                 }
                                 switch screen {
-                                case .overview, .find, .pedelec:
+                                case .overview, .find, .pedelec, .investigate:
                                     EmptyView()
                                 case .result:
                                     if let result {
@@ -226,6 +241,53 @@ struct ContentView: View {
             .sheet(isPresented: $showFirmwareZipInspector) {
                 FirmwareZipInspectorView()
             }
+            .sheet(isPresented: $showReuseReadoutPrompt) {
+                ReuseReadoutPromptView(
+                    candidates: reuseReadoutCandidates,
+                    onUse: { _ in
+                        showReuseReadoutPrompt = false
+                        // Full attach/reuse wiring deferred — open auslesen for now.
+                        navigateFromMenu(to: .home)
+                    },
+                    onPickNew: {
+                        showReuseReadoutPrompt = false
+                        navigateFromMenu(to: .home)
+                    },
+                    onCancel: {
+                        showReuseReadoutPrompt = false
+                        screen = .investigate
+                    }
+                )
+            }
+            .fullScreenCover(isPresented: $showInvestigationDetail) {
+                if let id = investigationDetailId {
+                    InvestigationDetailView(
+                        recordId: id,
+                        onAppendFirmware: { _ in
+                            showInvestigationDetail = false
+                            showFirmwareZipInspector = true
+                        },
+                        onAppendScooter: { _ in
+                            showInvestigationDetail = false
+                            navigateFromMenu(to: .home)
+                        },
+                        onResume: { _ in
+                            showInvestigationDetail = false
+                            screen = .investigate
+                        },
+                        onSwitchScooter: { _ in
+                            showInvestigationDetail = false
+                            navigateFromMenu(to: .home)
+                        },
+                        onClose: {
+                            showInvestigationDetail = false
+                            investigationDetailId = nil
+                        }
+                    )
+                } else {
+                    Color.clear.onAppear { showInvestigationDetail = false }
+                }
+            }
             // @ObservedObject appSettings → Body neu, Theme-Fonts ziehen aktuelle Stufe.
             .sheet(item: $bleDetailDevice) { device in
                 BleDeviceDetailSheet(
@@ -286,46 +348,6 @@ struct ContentView: View {
                 result: result ?? IntegrityAnalyzer.demoResult(.stock, profile: profile),
                 isPresented: $showShare
             )
-            .sheet(isPresented: $showHistoryShare, onDismiss: { historyShareItems = [] }) {
-                ActivityShare(
-                    items: historyShareItems,
-                    subject: historyShareItems.count > 3
-                        ? "ScooterCheck Prüfberichte"
-                        : "ScooterCheck Prüfbericht"
-                )
-            }
-            .confirmationDialog(
-                pendingDeleteIds.count <= 1 ? "Prüfung löschen?" : "Prüfungen löschen?",
-                isPresented: $showHistoryDeleteConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Löschen", role: .destructive) {
-                    confirmHistoryDelete()
-                }
-                Button("Abbrechen", role: .cancel) {
-                    pendingDeleteIds = []
-                }
-            } message: {
-                if pendingDeleteIds.count <= 1 {
-                    Text("Diese Prüfung wird dauerhaft gelöscht.")
-                } else {
-                    Text("Die \(pendingDeleteIds.count) ausgewählten Prüfungen werden dauerhaft gelöscht.")
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if let historyToast {
-                    Text(historyToast)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Theme.accent.opacity(0.95))
-                        .clipShape(Capsule())
-                        .padding(.bottom, 100)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .allowsHitTesting(false)
-                }
-            }
             .overlay(alignment: .top) {
                 if let banner = watchService.lastBanner, screen != .find || findDestination == .hub {
                     BLERadarBannerView(text: banner)
@@ -1117,20 +1139,14 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         Group {
-            // find/pedelec: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
-            if showsStartLanding || screen == .find || screen == .pedelec {
+            // find/pedelec/investigate: kein Bottom-Chrome — sonst leerer Material-Streifen (grauer Fleck)
+            if showsStartLanding || screen == .find || screen == .pedelec || screen == .investigate {
                 EmptyView()
             } else if screen == .result, result != nil {
                 resultActionPanel
             } else if screen == .overview {
-                // „Neue Prüfung“ sitzt kompakt im Header — kein grauer Fuß-Container.
-                if historySelecting, !selectedHistoryIds.isEmpty {
-                    historySelectionActionBar
-                        .padding(.horizontal, Theme.Space.page)
-                        .padding(.top, 12)
-                        .padding(.bottom, 16)
-                        .background(.ultraThinMaterial)
-                }
+                // Selection bar lives inside ProtocolHistoryOverviewView (safeAreaInset).
+                EmptyView()
             } else if screen == .home {
                 VStack(spacing: 10) {
                     if ble.phase == .scanning {
@@ -1265,7 +1281,7 @@ struct ContentView: View {
 
     private var primaryEnabled: Bool {
         switch screen {
-        case .overview, .find, .pedelec: return true
+        case .overview, .find, .pedelec, .investigate: return true
         case .result: return result != nil
         case .home:
             if isBusyPhase || busy { return ble.phase == .scanning }
@@ -1286,7 +1302,7 @@ struct ContentView: View {
             startNewCheck()
         case .result:
             persistCurrentSession()
-        case .find, .pedelec:
+        case .find, .pedelec, .investigate:
             break
         case .home:
             if ble.phase == .scanning {
@@ -2033,6 +2049,13 @@ struct ContentView: View {
 
             VStack(spacing: 4) {
                 sideNavRow(
+                    title: "E-Scooter untersuchen",
+                    systemImage: "magnifyingglass.circle",
+                    selected: screen == .investigate
+                ) {
+                    navigateFromMenu(to: .investigate)
+                }
+                sideNavRow(
                     title: "E-Scooter auslesen",
                     systemImage: "antenna.radiowaves.left.and.right",
                     selected: screen == .home
@@ -2181,6 +2204,9 @@ struct ContentView: View {
         setMenuOpen(false)
         let apply = {
             switch target {
+            case .investigate:
+                if screen == .result { persistCurrentSession() }
+                screen = .investigate
             case .home:
                 if screen == .result { persistCurrentSession() }
                 screen = .home
@@ -2224,361 +2250,67 @@ struct ContentView: View {
         }
     }
 
-    private var visibleHistoryEntries: [ProtocolHistoryStore.Entry] {
-        historyShelf == .archive ? history.archivedEntries : history.activeEntries
+    // MARK: - Investigation Hub entry points (P1-1; full attach deferred)
+
+    private func startScooterOnlyFromHub() {
+        _ = investigationStore.create(title: "E-Scooter-Untersuchung", progress: .selectScooter)
+        navigateFromMenu(to: .home)
     }
 
-    private var historyShelfTitle: String {
-        switch historyShelf {
-        case .active:
-            return history.activeCount == 0 ? "Prüfungen" : "Prüfungen (\(history.activeCount))"
-        case .archive:
-            return history.archivedCount == 0 ? "Archiv" : "Archiv (\(history.archivedCount))"
-        }
+    private func startFirmwareOnlyFromHub() {
+        _ = investigationStore.create(title: "Firmwareanalyse", progress: .selectFirmware)
+        setMenuOpen(false)
+        showFirmwareZipInspector = true
     }
 
-    private var controlsOverview: some View {
-        List {
-            historyOverviewHeader
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
-                .listRowSeparator(.hidden)
-
-            if visibleHistoryEntries.isEmpty {
-                historyEmptyState
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
-                    .listRowSeparator(.hidden)
-            } else {
-                ForEach(visibleHistoryEntries) { entry in
-                    Group {
-                        if historySelecting {
-                            controlRow(entry)
-                        } else {
-                            controlRow(entry)
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    historySwipeActions(for: entry)
-                                }
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 20))
-                    .listRowSeparator(.hidden)
-                }
-            }
-
-            AppCopyrightFooter()
-                .frame(maxWidth: .infinity)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 28, trailing: 20))
-                .listRowSeparator(.hidden)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, 1)
-        .background(Theme.bg)
-        .animation(.easeInOut(duration: 0.22), value: historyShelf)
-        .animation(.easeInOut(duration: 0.22), value: historySelecting)
-    }
-
-    private var historyOverviewHeader: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.md) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.md) {
-                PageTitle(text: historyShelfTitle)
-                Spacer(minLength: Theme.Space.sm)
-                if !historySelecting {
-                    Button {
-                        primaryAction()
-                    } label: {
-                        Text("Neue Prüfung")
-                            .font(Theme.buttonSecondary)
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Neue Prüfung")
-                }
-                Button {
-                    toggleHistorySelecting()
-                } label: {
-                    Text(historySelecting ? "Fertig" : "Auswählen")
-                        .font(Theme.buttonSecondary)
-                        .foregroundStyle(Theme.accent)
-                }
-                .buttonStyle(.plain)
-                .disabled(visibleHistoryEntries.isEmpty && !historySelecting)
-                .opacity(visibleHistoryEntries.isEmpty && !historySelecting ? 0.35 : 1)
-            }
-
-            Picker("Bereich", selection: $historyShelf) {
-                Text("Aktiv (\(history.activeCount))").tag(HistoryShelf.active)
-                Text("Archiv (\(history.archivedCount))").tag(HistoryShelf.archive)
-            }
-            .scootSegmented()
-            .onChange(of: historyShelf) { _ in
-                selectedHistoryIds = []
-                historySelecting = false
-            }
-
-            if historySelecting {
-                HStack {
-                    Text(
-                        selectedHistoryIds.isEmpty
-                            ? "Keine ausgewählt"
-                            : "\(selectedHistoryIds.count) ausgewählt"
-                    )
-                    .font(Theme.secondary)
-                    .foregroundStyle(Theme.textSecondary)
-                    Spacer()
-                    if !visibleHistoryEntries.isEmpty {
-                        Button(
-                            selectedHistoryIds.count == visibleHistoryEntries.count
-                                ? "Auswahl aufheben"
-                                : "Alle auswählen"
-                        ) {
-                            if selectedHistoryIds.count == visibleHistoryEntries.count {
-                                selectedHistoryIds = []
-                            } else {
-                                selectedHistoryIds = Set(visibleHistoryEntries.map(\.id))
-                            }
-                        }
-                        .font(Theme.buttonSecondary)
-                        .foregroundStyle(Theme.accent)
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, Theme.Space.xl)
-        .padding(.top, Theme.Space.sm)
-    }
-
-    private var historyEmptyState: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.sm) {
-            Image(systemName: historyShelf == .archive ? "archivebox" : "tray")
-                .font(.system(size: Theme.Icon.function, weight: .medium))
-                .foregroundStyle(Theme.textMuted)
-            Text(historyShelf == .archive ? "Archiv ist leer" : "Noch keine Prüfungen")
-                .font(Theme.cardTitle)
-                .foregroundStyle(Theme.textPrimary)
-            Text(
-                historyShelf == .archive
-                    ? "Archivierte Prüfungen erscheinen hier und können jederzeit wiederhergestellt werden."
-                    : "Gespeicherte Prüfberichte erscheinen hier offline auf diesem Gerät."
-            )
-            .font(Theme.caption)
-            .foregroundStyle(Theme.textMuted)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .scootCard()
-    }
-
-    @ViewBuilder
-    private func historySwipeActions(for entry: ProtocolHistoryStore.Entry) -> some View {
-        // Trailing swipeActions: first declared sits at the trailing edge (rechts).
-        // Gewünschte Sicht links→rechts: Öffnen · Teilen · Archiv/Restore · Löschen
-        Button(role: .destructive) {
-            requestHistoryDelete(ids: Set([entry.id]))
-        } label: {
-            Label("Löschen", systemImage: "trash")
-        }
-
-        if historyShelf == .archive {
-            Button {
-                restoreHistory(ids: Set([entry.id]))
-            } label: {
-                Label("Wiederherstellen", systemImage: "arrow.uturn.backward")
-            }
-            .tint(Theme.accent)
+    private func startCombinedFromHub() {
+        let candidates = availableReadoutCandidates()
+        _ = investigationStore.create(title: "Kombinierte Untersuchung", progress: .selectScooter)
+        if candidates.isEmpty {
+            navigateFromMenu(to: .home)
         } else {
-            Button {
-                archiveHistory(ids: Set([entry.id]))
-            } label: {
-                Label("Archivieren", systemImage: "archivebox")
-            }
-            .tint(Color.white.opacity(0.55))
+            reuseReadoutCandidates = candidates
+            showReuseReadoutPrompt = true
         }
-
-        Button {
-            shareHistory(ids: Set([entry.id]))
-        } label: {
-            Label("Teilen", systemImage: "square.and.arrow.up")
-        }
-        .tint(.gray)
-
-        Button {
-            openHistoryEntry(entry)
-        } label: {
-            Label("Öffnen", systemImage: "doc.text.magnifyingglass")
-        }
-        .tint(Theme.accent)
     }
 
-    @ViewBuilder
-    private func controlRow(_ entry: ProtocolHistoryStore.Entry) -> some View {
-        let selected = selectedHistoryIds.contains(entry.id)
-        Button {
-            if historySelecting {
-                toggleHistorySelection(entry.id)
-            } else {
-                openHistoryEntry(entry)
-            }
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                if historySelecting {
-                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(selected ? Theme.accent : Theme.muted)
-                        .padding(.top, 24)
-                        .accessibilityHidden(true)
-                }
-
-                CheckCoverThumbnail(entry: entry, size: 64)
-
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    HStack(alignment: .top, spacing: Theme.Space.sm) {
-                        Text(entry.protocolNumber)
-                            .font(Theme.cardTitle)
-                            .foregroundStyle(Theme.textTitle)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.85)
-                        Spacer(minLength: 4)
-                        if let verdict = entry.verdict {
-                            VerdictBadge(verdict: verdict)
-                        }
-                    }
-                    Text("\(entry.profile.family.title) · \(Int(entry.profile.ratedMaxKmh)) km/h")
-                        .font(Theme.secondary)
-                        .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(1)
-                    if let serial = entry.serialDisplay, !serial.isEmpty {
-                        Text(serial)
-                            .font(Theme.caption.monospaced())
-                            .foregroundStyle(Theme.textMuted)
-                            .lineLimit(1)
-                    }
-                    if let subject = entry.subjectSummary ?? entry.knownLabel, !subject.isEmpty {
-                        Text(subject)
-                            .font(Theme.caption.weight(.medium))
-                            .foregroundStyle(Theme.accent)
-                            .lineLimit(1)
-                    }
-                    Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
+    /// Readouts already in InvestigationStore packs plus recent history sessions.
+    private func availableReadoutCandidates() -> [InvestigationReadoutSummary] {
+        var out: [InvestigationReadoutSummary] = []
+        for rec in investigationStore.records {
+            if let r = rec.readout { out.append(r) }
+        }
+        for entry in history.activeEntries.prefix(12) {
+            if let session = history.loadSession(id: entry.id),
+               let result = session.result,
+               ScooterVerification.isVerifiedScooterReading(result.reading) {
+                var summary = InvestigationReadoutSummary.from(
+                    result: result,
+                    historyEntryId: entry.id.uuidString,
+                    bleId: entry.blePeripheralId
+                )
+                summary.protocolNumber = entry.protocolNumber
+                summary.savedAt = entry.createdAt
+                if !out.contains(where: { $0.historyEntryId == summary.historyEntryId && $0.serial == summary.serial }) {
+                    out.append(summary)
                 }
             }
-            .padding(Theme.Space.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected && historySelecting ? Theme.accent.opacity(0.10) : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                    .stroke(
-                        selected && historySelecting ? Theme.accent.opacity(0.55) : Theme.border,
-                        lineWidth: 1
-                    )
+        }
+        if let result,
+           ScooterVerification.isVerifiedScooterReading(result.reading) {
+            let current = InvestigationReadoutSummary.from(
+                result: result,
+                historyEntryId: session?.id.uuidString,
+                bleId: nil
             )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(entry.protocolNumber)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    private var historySelectionActionBar: some View {
-        // Links→rechts: Öffnen (nur Einzelwahl) · Teilen · Archiv/Restore · Löschen
-        HStack(spacing: 0) {
-            if selectedHistoryIds.count == 1,
-               let id = selectedHistoryIds.first,
-               let entry = visibleHistoryEntries.first(where: { $0.id == id }) {
-                historyActionButton(
-                    title: "Öffnen",
-                    systemImage: "doc.text.magnifyingglass",
-                    tint: Theme.accent,
-                    enabled: true
-                ) {
-                    openHistoryEntry(entry)
-                }
-            }
-            historyActionButton(
-                title: "Teilen",
-                systemImage: "square.and.arrow.up",
-                tint: Theme.accent,
-                enabled: !selectedHistoryIds.isEmpty
-            ) {
-                shareHistory(ids: selectedHistoryIds)
-            }
-            if historyShelf == .archive {
-                historyActionButton(
-                    title: "Wiederherstellen",
-                    systemImage: "arrow.uturn.backward",
-                    tint: Theme.accent,
-                    enabled: !selectedHistoryIds.isEmpty
-                ) {
-                    restoreHistory(ids: selectedHistoryIds)
-                }
-            } else {
-                historyActionButton(
-                    title: "Archivieren",
-                    systemImage: "archivebox",
-                    tint: Theme.accent,
-                    enabled: !selectedHistoryIds.isEmpty
-                ) {
-                    archiveHistory(ids: selectedHistoryIds)
-                }
-            }
-            historyActionButton(
-                title: "Löschen",
-                systemImage: "trash",
-                tint: Theme.danger,
-                enabled: !selectedHistoryIds.isEmpty
-            ) {
-                requestHistoryDelete(ids: selectedHistoryIds)
+            if !out.contains(where: { $0.serial == current.serial && $0.serial != nil }) {
+                out.insert(current, at: 0)
             }
         }
+        return Array(out.prefix(8))
     }
 
-    private func historyActionButton(
-        title: String,
-        systemImage: String,
-        tint: Color,
-        enabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: systemImage)
-                    .font(.body.weight(.semibold))
-                Text(title)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .foregroundStyle(enabled ? tint : Theme.muted.opacity(0.45))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-    }
-
-    private func toggleHistorySelecting() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            historySelecting.toggle()
-            if !historySelecting {
-                selectedHistoryIds = []
-            }
-        }
-    }
-
-    private func toggleHistorySelection(_ id: UUID) {
-        if selectedHistoryIds.contains(id) {
-            selectedHistoryIds.remove(id)
-        } else {
-            selectedHistoryIds.insert(id)
-        }
-    }
-
+    /// Restore a stored Prüfbericht into the result shell.
     private func openHistoryEntry(_ entry: ProtocolHistoryStore.Entry) {
         guard let stored = history.loadSession(id: entry.id),
               let storedResult = stored.result else { return }
@@ -2592,518 +2324,6 @@ struct ContentView: View {
         screen = .result
     }
 
-    private func shareHistory(ids: Set<UUID>) {
-        let items = history.shareItems(for: ids)
-        guard !items.isEmpty else { return }
-        historyShareItems = items
-        showHistoryShare = true
-    }
-
-    private func archiveHistory(ids: Set<UUID>) {
-        let count = history.archive(ids: ids)
-        guard count > 0 else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            selectedHistoryIds.subtract(ids)
-            if selectedHistoryIds.isEmpty { historySelecting = false }
-        }
-        presentHistoryToast(
-            count == 1 ? "Prüfung archiviert" : "\(count) Prüfungen archiviert"
-        )
-    }
-
-    private func restoreHistory(ids: Set<UUID>) {
-        let count = history.restore(ids: ids)
-        guard count > 0 else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            selectedHistoryIds.subtract(ids)
-            if selectedHistoryIds.isEmpty { historySelecting = false }
-        }
-        presentHistoryToast(
-            count == 1 ? "Prüfung wiederhergestellt" : "\(count) Prüfungen wiederhergestellt"
-        )
-    }
-
-    private func requestHistoryDelete(ids: Set<UUID>) {
-        guard !ids.isEmpty else { return }
-        pendingDeleteIds = ids
-        showHistoryDeleteConfirm = true
-    }
-
-    private func confirmHistoryDelete() {
-        let ids = pendingDeleteIds
-        pendingDeleteIds = []
-        guard !ids.isEmpty else { return }
-        withAnimation(.easeInOut(duration: 0.22)) {
-            history.delete(ids: ids)
-            selectedHistoryIds.subtract(ids)
-            if selectedHistoryIds.isEmpty { historySelecting = false }
-        }
-    }
-
-    private func presentHistoryToast(_ message: String) {
-        withAnimation(.easeOut(duration: 0.2)) {
-            historyToast = message
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
-            withAnimation(.easeIn(duration: 0.2)) {
-                if historyToast == message {
-                    historyToast = nil
-                }
-            }
-        }
-    }
-
-}
-
-/// SHU-ähnliche Gerätezeile: Bild · ID · Modell · Signalbalken.
-struct ScooterDeviceCard: View {
-    let device: ScannedDevice
-    /// Gespeicherter Zuordnungsname / Kennzeichen aus früherem Protokoll.
-    var knownAlias: String? = nil
-    var isNearest: Bool = false
-    /// Zusätzliche BLE-Metadaten (Alle-BLE-Modus).
-    var showsExtendedBleInfo: Bool = false
-
-    private var displayId: String {
-        if let compact = BleModelHint.compactScooterId(from: device.cryptoName.isEmpty ? device.name : device.cryptoName) {
-            return compact
-        }
-        if showsExtendedBleInfo {
-            return device.bleListDisplayName
-        }
-        return device.name
-    }
-
-    private var modelTitle: String {
-        if let label = device.modelLabel { return label }
-        if device.looksLikeScooter { return "Möglicher Scooter" }
-        return showsExtendedBleInfo ? "BLE-Gerät" : "BLE-Gerät"
-    }
-
-    private var thumbName: String {
-        let id = displayId.uppercased()
-        // G3-Serienpräfix 1C… auch ohne erkannten Badge dem Max-G3-Asset zuordnen.
-        // F3 Pro (1EF…) nicht fälschlich als Max G3 darstellen.
-        if id.hasPrefix("1C") {
-            return ScooterThumbnailAsset.maxG3
-        }
-        return ScooterThumbnailAsset.name(
-            profile: device.suggestedProfile,
-            family: device.suggestedProfile?.family,
-            modelLabel: device.modelLabel,
-            modelBadge: device.modelBadge
-        )
-    }
-
-    var body: some View {
-            HStack(spacing: 12) {
-            Group {
-                if device.looksLikeScooter || device.modelLabel != nil {
-                    ScooterModelThumbnail(
-                        assetName: thumbName,
-                        width: 78,
-                        height: 66,
-                        cornerRadius: 12
-                    )
-                } else {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .font(.title2)
-                        .foregroundStyle(Theme.muted)
-                        .frame(width: 78, height: 66)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Theme.line.opacity(0.7), lineWidth: 1)
-                        )
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(displayId)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                    if let knownAlias, !knownAlias.isEmpty {
-                        Text("· \(knownAlias)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                }
-
-                Text(modelTitle)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
-                    .lineLimit(1)
-
-                if showsExtendedBleInfo {
-                    Text("\(device.rssi) dBm · \(device.finderSignalLabel) · ID \(device.bleIdentifierShort)")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                        .lineLimit(1)
-                    if device.isStale {
-                        Text("Zuletzt gesehen · Signal veraltet")
-                            .font(Theme.caption)
-                            .foregroundStyle(Theme.textMuted)
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    if knownAlias != nil {
-                        Text("bekannt")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(Theme.ink)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Theme.warn.opacity(0.9))
-                            .clipShape(Capsule())
-                    }
-                    if knownAlias == nil, device.looksLikeScooter || device.modelLabel != nil {
-                        Text(showsExtendedBleInfo ? "Möglicherweise Scooter" : "Erkannt")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(Theme.ink)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Theme.accent.opacity(0.9))
-                            .clipShape(Capsule())
-                    }
-                    if isNearest {
-                        Text("nächstes")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.white.opacity(0.16))
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-
-            Spacer(minLength: 4)
-
-            VStack(alignment: .trailing, spacing: 8) {
-                SignalStrengthView(rssi: device.rssi, style: .shu)
-                HStack(spacing: 6) {
-                    if !showsExtendedBleInfo {
-                        Image(systemName: "bolt.fill")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Theme.accent)
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.muted)
-                }
-            }
-        }
-        .padding(12)
-        .background(Theme.card)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(knownAlias == nil ? Theme.line : Theme.accent.opacity(0.45), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            knownAlias.map { "\(modelTitle), \(displayId), \($0), \(device.signalLabel)" }
-                ?? "\(modelTitle), \(displayId), \(device.signalLabel)"
-        )
-    }
-}
-
-/// Technische Detailansicht für allgemeine BLE-Geräte — speichert nichts als Scooter.
-struct BleDeviceDetailSheet: View {
-    let device: ScannedDevice
-    var isKnownScooter: Bool = false
-    var onProbeAsScooter: () -> Void
-    var onDismiss: () -> Void
-
-    private var lastSeenText: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "de_DE")
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: device.lastSeen, relativeTo: Date())
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.lg) {
-                    VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                        Text(device.bleListDisplayName)
-                            .font(Theme.sectionTitle)
-                            .foregroundStyle(Theme.textPrimary)
-                        Text(device.classification == .possibleScooter
-                             ? "Hinweis: einzelne Merkmale sprechen für einen möglichen Scooter — keine sichere Erkennung."
-                             : "Allgemeines BLE-Gerät. Nicht automatisch ein Scooter.")
-                            .font(Theme.body)
-                            .foregroundStyle(Theme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    detailCard
-
-                    BLEWatcherSettingsCard(device: device, isKnownScooter: isKnownScooter)
-
-                    Text("Ein Fremdgerät wird erst nach erfolgreicher Scooter-Validierung dauerhaft gespeichert.")
-                        .font(Theme.caption)
-                        .foregroundStyle(Theme.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    ScootPrimaryButton(
-                        title: "Als möglichen Scooter prüfen",
-                        systemImage: "checkmark.shield"
-                    ) {
-                        onProbeAsScooter()
-                    }
-
-                    ScootSecondaryButton(title: "Schließen", systemImage: "xmark") {
-                        onDismiss()
-                    }
-                }
-                .padding(.horizontal, Theme.Space.xl)
-                .padding(.top, Theme.Space.sm)
-                .padding(.bottom, 28)
-            }
-            .background(Theme.bg.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                AppChromeSheetHeader(closeTitle: "Fertig", onClose: onDismiss)
-            }
-        }
-        .preferredColorScheme(.dark)
-    }
-
-    private var detailCard: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.md) {
-            detailRow("Name", device.bleListDisplayName)
-            detailRow("RSSI", "\(device.rssi) dBm · \(device.finderSignalLabel)")
-            detailRow("BLE-ID", device.id.uuidString)
-            detailRow("Zuletzt gesehen", lastSeenText)
-            if let mfg = device.manufacturerDataHex, !mfg.isEmpty {
-                detailRow("Manufacturer Data", mfg)
-            } else {
-                detailRow("Manufacturer Data", "—")
-            }
-            if device.serviceUUIDs.isEmpty {
-                detailRow("Service UUIDs", "—")
-            } else {
-                detailRow("Service UUIDs", device.serviceUUIDs.joined(separator: "\n"))
-            }
-            if device.looksLikeScooter {
-                detailRow("Merkmale", "Advertisement-Heuristik: möglicher Scooter")
-            }
-        }
-        .padding(Theme.Space.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
-                .stroke(Theme.border, lineWidth: 1)
-        )
-    }
-
-    private func detailRow(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(Theme.caption)
-                .foregroundStyle(Theme.textMuted)
-            Text(value)
-                .font(Theme.body)
-                .foregroundStyle(Theme.textPrimary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-struct SignalStrengthView: View {
-    enum Style {
-        case compact
-        case shu
-    }
-
-    let rssi: Int
-    var style: Style = .compact
-
-    private var bars: Int {
-        switch rssi {
-        case -50...0: return 4
-        case -65 ..< -50: return 3
-        case -80 ..< -65: return 2
-        default: return 1
-        }
-    }
-
-    private var activeColor: Color {
-        switch style {
-        case .compact:
-            return Theme.accent
-        case .shu:
-            switch bars {
-            case 4: return Theme.accent
-            case 3: return Color(red: 0.98, green: 0.62, blue: 0.22) // SHU-Orange
-            case 2: return Theme.warn
-            default: return Theme.danger
-            }
-        }
-    }
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: style == .shu ? 2.5 : 2) {
-            ForEach(1...4, id: \.self) { level in
-                let step: CGFloat = style == .shu ? 3.5 : 3
-                let base: CGFloat = style == .shu ? 7 : 6
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(level <= bars ? activeColor : Color.white.opacity(style == .shu ? 0.22 : 0.15))
-                    .frame(
-                        width: style == .shu ? 4.5 : 4,
-                        height: base + CGFloat(level) * step
-                    )
-            }
-        }
-        .accessibilityLabel("Signalstärke \(bars) von 4")
-    }
-}
-
-struct FactRow: View {
-    let fact: MeasuredFact
-    @State private var showTechnical = false
-
-    private var showsExplanation: Bool {
-        let e = fact.erlaeuterung.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !e.isEmpty else { return false }
-        if e == fact.bewertung || e == fact.auslesewert || e == fact.title { return false }
-        // Lange Analyse-Texte nur aufklappen, Messzeilen kurz halten.
-        if fact.group == .speed || fact.group == .serial || fact.group == .odometer {
-            return false
-        }
-        return e.count < 160
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(Theme.fact(fact.status))
-                .frame(width: 18)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(fact.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                if showsExplanation {
-                    Text(fact.erlaeuterung)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if fact.status != .regelkonform && fact.status != .nichtFeststellbar {
-                    Text(statusPhrase)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.fact(fact.status))
-                } else if let evidenceClass = fact.evidenceClass, evidenceClass != .info {
-                    Text(evidenceClass.label)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
-                }
-                Text("Gefunden: \(fact.auslesewert)")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
-                Text("Ab Werk erwartet: \(fact.sollwert)")
-                    .font(.caption)
-                    .foregroundStyle(Theme.muted)
-
-                if fact.raw != nil || fact.sourceBoard != nil || fact.volatility != nil {
-                    Button {
-                        showTechnical.toggle()
-                    } label: {
-                        Text(showTechnical ? "Technische Details ausblenden" : "Technische Details")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if showTechnical {
-                    VStack(alignment: .leading, spacing: 3) {
-                        if let board = fact.sourceBoard {
-                            Text("Quelle: \(board)" + (fact.sourceRegister.map { " / \($0)" } ?? ""))
-                        }
-                        if let hex = fact.rawHex {
-                            Text("Rohwert: \(hex)")
-                        }
-                        if !fact.erlaeuterung.isEmpty, !showsExplanation {
-                            Text(fact.erlaeuterung)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if let volatility = fact.volatility {
-                            Text("Persistenz: \(volatility.label) · \(volatility.resetsOnPowerOffHint)")
-                        }
-                        if let evidenceClass = fact.evidenceClass {
-                            Text("Technische Klasse: \(evidenceClass.label)")
-                        }
-                        Text("Status: \(fact.status.rawValue)")
-                        if let raw = fact.raw, !raw.isEmpty {
-                            Text(raw)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .font(.caption.monospaced())
-                    .foregroundStyle(Theme.muted)
-                }
-            }
-        }
-        .padding(.vertical, 12)
-    }
-
-    private var statusPhrase: String {
-        switch fact.status {
-        case .abweichend: return "Auffällig"
-        case .erheblichAbweichend: return "Deutlich abweichend"
-        case .regelkonform: return "Unauffällig"
-        case .nichtFeststellbar: return "Nicht feststellbar"
-        }
-    }
-
-    private var icon: String {
-        switch fact.status {
-        case .regelkonform: return "checkmark.circle.fill"
-        case .abweichend: return "exclamationmark.circle.fill"
-        case .erheblichAbweichend: return "xmark.circle.fill"
-        case .nichtFeststellbar: return "questionmark.circle"
-        }
-    }
-}
-
-struct ScoreRing: View {
-    let score: Int
-    let color: Color
-    var body: some View {
-        ZStack {
-            Circle().stroke(Color.white.opacity(0.08), lineWidth: 7)
-            Circle()
-                .trim(from: 0, to: CGFloat(min(max(score, 0), 100)) / 100)
-                .stroke(color, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            VStack(spacing: 0) {
-                Text("\(score)")
-                    .font(.system(.title2, design: .rounded).weight(.bold).monospacedDigit())
-                    .foregroundStyle(.white)
-                Text("Seriennähe")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(Theme.muted)
-            }
-        }
-        .frame(width: 84, height: 84)
-        .accessibilityLabel("Seriennähe \(score) von 100")
-    }
 }
 
 #Preview {

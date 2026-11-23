@@ -164,19 +164,20 @@ enum ProtocolCompatibilityEngine {
         ].joined(separator: " ").uppercased()
 
         let services = Set(input.serviceUUIDs.map { BLEKnownServiceUUID.normalize($0) })
+        let nordicUART = services.contains(where: {
+            $0.contains("696E65626F74") || $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E")
+        })
 
-        // Native Ninebot / Xiaomi zuerst
-        if let native = profiles.first(where: { $0.verified && $0.nativeStack == "ninebotEnc2" }) {
-            let uart = services.contains(where: {
-                $0.contains("696E65626F74") || $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E")
-            })
-            let nameHit = native.modelPatterns.contains { hay.contains($0.uppercased()) }
-            if uart || nameHit || input.suggestedProfileRaw != nil {
-                if uart { matchedOn.append("Ninebot/Nordic UART") }
-                if nameHit { matchedOn.append("Namensmuster Ninebot") }
-                if input.suggestedProfileRaw != nil { matchedOn.append("BleModelHint-Profil") }
+        // Xiaomi Mi-Home / Name VOR Ninebot: beide teilen Nordic UART — sonst gewinnt Ninebot fälschlich.
+        if let xiaomi = profiles.first(where: { $0.verified && $0.nativeStack == "xiaomiPlain" }) {
+            let patternHit = xiaomi.modelPatterns.contains { hay.contains($0.uppercased()) }
+            // Mi-Home-IDs wie „xiaomi.scooter.6“ (Punkt statt Leerzeichen).
+            let miHomeId = hay.contains("XIAOMI") && hay.contains("SCOOTER")
+            let nameHit = patternHit || miHomeId || hay.contains("MISCOOTER")
+            if (nordicUART && nameHit) || (nameHit && input.looksLikeScooter) {
+                matchedOn.append(contentsOf: [nameHit ? "Xiaomi-Name" : nil, nordicUART ? "Nordic UART" : nil].compactMap { $0 })
                 return ProtocolCompatibilityResult(
-                    profile: native,
+                    profile: xiaomi,
                     supportLevel: .fullNative,
                     matchedOn: matchedOn,
                     blockers: []
@@ -184,16 +185,15 @@ enum ProtocolCompatibilityEngine {
             }
         }
 
-        if let xiaomi = profiles.first(where: { $0.verified && $0.nativeStack == "xiaomiPlain" }) {
-            let nordic = services.contains(where: { $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E") })
-            let patternHit = xiaomi.modelPatterns.contains { hay.contains($0.uppercased()) }
-            // Mi-Home-IDs wie „xiaomi.scooter.6“ (Punkt statt Leerzeichen).
-            let miHomeId = hay.contains("XIAOMI") && hay.contains("SCOOTER")
-            let nameHit = patternHit || miHomeId || hay.contains("MISCOOTER")
-            if (nordic && nameHit) || (nameHit && input.looksLikeScooter) {
-                matchedOn.append(contentsOf: [nameHit ? "Xiaomi-Name" : nil, nordic ? "Nordic UART" : nil].compactMap { $0 })
+        if let native = profiles.first(where: { $0.verified && $0.nativeStack == "ninebotEnc2" }) {
+            let nameHit = native.modelPatterns.contains { hay.contains($0.uppercased()) }
+            // UART allein reicht — aber nicht wenn der Name klar Xiaomi ist (oben bereits behandelt).
+            if nordicUART || nameHit || input.suggestedProfileRaw != nil {
+                if nordicUART { matchedOn.append("Ninebot/Nordic UART") }
+                if nameHit { matchedOn.append("Namensmuster Ninebot") }
+                if input.suggestedProfileRaw != nil { matchedOn.append("BleModelHint-Profil") }
                 return ProtocolCompatibilityResult(
-                    profile: xiaomi,
+                    profile: native,
                     supportLevel: .fullNative,
                     matchedOn: matchedOn,
                     blockers: []

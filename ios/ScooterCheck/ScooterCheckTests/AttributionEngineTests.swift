@@ -10,8 +10,9 @@ final class AttributionEngineTests: XCTestCase {
         title: String = "Marker",
         persistence: PersistenceClass = .persistent,
         knowledge: KnowledgeSource = .heuristic,
-        modMatch: String? = nil,
-        interpreted: String = "x"
+        // Swift 6: labeled args must follow declaration order at call sites.
+        interpreted: String = "x",
+        modMatch: String? = nil
     ) -> EvidenceFact {
         EvidenceFact(
             markerID: id,
@@ -88,8 +89,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "fw.custom",
                     title: "Custom-FW",
                     knowledge: .verifiedModSample,
-                    modMatch: "fw.custom.confirmed",
-                    interpreted: "mod fingerprint"
+                    interpreted: "mod fingerprint",
+                    modMatch: "fw.custom.confirmed"
                 ),
                 class: .starkerHinweis
             ),
@@ -138,8 +139,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "speed.session",
                     title: "Session",
                     persistence: .fleeting,
-                    modMatch: "speed.session.unlock",
-                    interpreted: "≥ 30 km/h"
+                    interpreted: "≥ 30 km/h",
+                    modMatch: "speed.session.unlock"
                 ),
                 class: .abweichung
             )
@@ -163,8 +164,8 @@ final class AttributionEngineTests: XCTestCase {
             fact(
                 id: "serial.cross.mcu",
                 title: "Cross-Board",
-                modMatch: "cross.serial.mismatch",
-                interpreted: "MCU ≠ Fahrzeug"
+                interpreted: "MCU ≠ Fahrzeug",
+                modMatch: "cross.serial.mismatch"
             ),
             class: .indiz
         )
@@ -230,8 +231,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "speed.session",
                     title: "Session",
                     persistence: .fleeting,
-                    modMatch: "speed.session.unlock",
-                    interpreted: "session"
+                    interpreted: "session",
+                    modMatch: "speed.session.unlock"
                 ),
                 class: .abweichung
             )
@@ -262,11 +263,14 @@ final class AttributionEngineTests: XCTestCase {
 
     func testAttributionNeverAffectsVerdictPath() {
         // Smoke: EvidenceEngine verdict stays rule-based; attribution is attached after.
+        // Use catalogued Max G3 FW so fw.unknown does not flip the stock verdict.
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
             speedLimitKmh: 20,
             peakSpeedKmh: 18,
-            fwMcu: "1.0.0"
+            fwMcu: "1.4.9",
+            fwBle: "0.4.0",
+            fwVcu: "1.5.8"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .maxG3D)
         XCTAssertEqual(assessment.verdict, .stock)

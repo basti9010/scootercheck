@@ -50,13 +50,25 @@
 		A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */; };
 		A1000000000000000000009B /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009B /* libz.tbd */; };
 		A1000000000000000000000B /* BleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* BleClient.swift */; };
+		A100000000000000000000C4 /* BleWriteGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C4 /* BleWriteGate.swift */; };
+		A100000000000000000000E1 /* AuslesenDeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* AuslesenDeviceViews.swift */; };
+		A100000000000000000000E2 /* IntegrityResultChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* IntegrityResultChrome.swift */; };
+		A10000000000000000000FC1 /* CrossSourceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC1 /* CrossSourceModels.swift */; };
+		A10000000000000000000FC2 /* CrossSourceCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC2 /* CrossSourceCorrelator.swift */; };
+		A10000000000000000000FC3 /* ZipFindingSoftening.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC3 /* ZipFindingSoftening.swift */; };
+		A10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */; };
+		A100000000000000000000E3 /* ProtocolHistoryOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E3 /* ProtocolHistoryOverviewView.swift */; };
+		A100000000000000000000D4 /* BleWriteGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D4 /* BleWriteGateTests.swift */; };
+		A100000000000000000000D5 /* WriteDisableRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D5 /* WriteDisableRegressionTests.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
 		A1000000000000000000000D /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* CoreBluetooth.framework */; };
 		A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* ProtocolHistoryStore.swift */; };
 		A10000000000000000000031 /* ScooterVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000031 /* ScooterVerification.swift */; };
+		A100000000000000000000C3 /* PackIntegrity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C3 /* PackIntegrity.swift */; };
 		A10000000000000000000034 /* CheckPhotosUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000034 /* CheckPhotosUI.swift */; };
 		A10000000000000000000035 /* CheckPhotosTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000035 /* CheckPhotosTests.swift */; };
 		A10000000000000000000032 /* ScooterVerificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000032 /* ScooterVerificationTests.swift */; };
+		A100000000000000000000D3 /* PackIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* PackIntegrityTests.swift */; };
 		A10000000000000000000033 /* ProtocolHistoryArchiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000033 /* ProtocolHistoryArchiveTests.swift */; };
 		A1000000000000000000000F /* XiaomiProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* XiaomiProtocol.swift */; };
 		A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* XiaomiDiagnosticMap.swift */; };
@@ -99,6 +111,10 @@
 		A10000000000000000000066 /* BLEDeviceAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000066 /* BLEDeviceAnalysisView.swift */; };
 		A100000000000000000000AA /* BLECapabilityModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000AA /* BLECapabilityModels.swift */; };
 		A100000000000000000000AB /* BLECapabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000AB /* BLECapabilityService.swift */; };
+		A100000000000000000000C1 /* BLECentralCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C1 /* BLECentralCoordinator.swift */; };
+		A100000000000000000000C2 /* Enc2SessionLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C2 /* Enc2SessionLifecycle.swift */; };
+		A100000000000000000000D1 /* BLECentralCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D1 /* BLECentralCoordinatorTests.swift */; };
+		A100000000000000000000D2 /* Enc2SessionLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D2 /* Enc2SessionLifecycleTests.swift */; };
 		A100000000000000000000AC /* BLECapabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000AC /* BLECapabilityTests.swift */; };
 		A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000068 /* BLEIdentificationTests.swift */; };
 		A10000000000000000000067 /* bluetooth_company_identifiers.json in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000067 /* bluetooth_company_identifiers.json */; };
@@ -134,6 +150,27 @@
 		A10000000000000000000052 /* SceneKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B10000000000000000000052 /* SceneKit.framework */; };
 		A10000000000000000000053 /* ScootNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000053 /* ScootNavigation.swift */; };
 		A10000000000000000000054 /* ScootEdgeBackGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000054 /* ScootEdgeBackGesture.swift */; };
+		A100000000000000000000A1 /* FirmwareForensicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A1 /* FirmwareForensicModels.swift */; };
+		A100000000000000000000A2 /* FirmwareDigest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A2 /* FirmwareDigest.swift */; };
+		A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000A7 /* FirmwareForensicScorer.swift */; };
+		A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F2 /* FirmwareForensicPDF.swift */; };
+		A100000000000000000000ED /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */; };
+		A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */; };
+		A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EB /* FirmwareComboPolicy.swift */; };
+		A100000000000000000000EC /* FirmwareEvidenceTier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000EC /* FirmwareEvidenceTier.swift */; };
+		A10000000000000000000FA1 /* InvestigationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA1 /* InvestigationModels.swift */; };
+		A10000000000000000000FA2 /* InvestigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA2 /* InvestigationStore.swift */; };
+		A10000000000000000000FA3 /* InvestigationHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA3 /* InvestigationHubView.swift */; };
+		A10000000000000000000FA4 /* InvestigationDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA4 /* InvestigationDetailView.swift */; };
+		A10000000000000000000FA5 /* ReuseReadoutPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA5 /* ReuseReadoutPromptView.swift */; };
+		A10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift */; };
+		A10000000000000000000FA7 /* InvestigationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA7 /* InvestigationStoreTests.swift */; };
+		A10000000000000000000FA8 /* InvestigationCombinedPDF.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA8 /* InvestigationCombinedPDF.swift */; };
+		A10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */; };
+		A10000000000000000000FAA /* InvestigationFlowLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */; };
+		A10000000000000000000FAB /* FirmwareExportSharePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FAB /* FirmwareExportSharePresenter.swift */; };
+		A10000000000000000000FB1 /* DualSourcePanicCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FB1 /* DualSourcePanicCorrelator.swift */; };
+		A10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -174,14 +211,26 @@
 		B10000000000000000000009 /* Protocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol.swift; sourceTree = "<group>"; };
 		B1000000000000000000000A /* DiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticMap.swift; sourceTree = "<group>"; };
 		B1000000000000000000000B /* BleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleClient.swift; sourceTree = "<group>"; };
+		B100000000000000000000C4 /* BleWriteGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGate.swift; sourceTree = "<group>"; };
+		B100000000000000000000E1 /* AuslesenDeviceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuslesenDeviceViews.swift; sourceTree = "<group>"; };
+		B100000000000000000000E2 /* IntegrityResultChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrityResultChrome.swift; sourceTree = "<group>"; };
+		B10000000000000000000FC1 /* CrossSourceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSourceModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000FC2 /* CrossSourceCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSourceCorrelator.swift; sourceTree = "<group>"; };
+		B10000000000000000000FC3 /* ZipFindingSoftening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipFindingSoftening.swift; sourceTree = "<group>"; };
+		B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSourceCorrelatorTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000E3 /* ProtocolHistoryOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryOverviewView.swift; sourceTree = "<group>"; };
+		B100000000000000000000D4 /* BleWriteGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGateTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000D5 /* WriteDisableRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteDisableRegressionTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000000C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000000000000000000000D /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
 		B1000000000000000000000F /* ProtocolHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000031 /* ScooterVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterVerification.swift; sourceTree = "<group>"; };
+		B100000000000000000000C3 /* PackIntegrity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackIntegrity.swift; sourceTree = "<group>"; };
 		B10000000000000000000034 /* CheckPhotosUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckPhotosUI.swift; sourceTree = "<group>"; };
 		B10000000000000000000035 /* CheckPhotosTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckPhotosTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000032 /* ScooterVerificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterVerificationTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000D3 /* PackIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackIntegrityTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000033 /* ProtocolHistoryArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolHistoryArchiveTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000010 /* XiaomiProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiProtocol.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* XiaomiDiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XiaomiDiagnosticMap.swift; sourceTree = "<group>"; };
@@ -220,6 +269,10 @@
 		B10000000000000000000066 /* BLEDeviceAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLEDeviceAnalysisView.swift; sourceTree = "<group>"; };
 		B100000000000000000000AA /* BLECapabilityModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLECapabilityModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000AB /* BLECapabilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLECapabilityService.swift; sourceTree = "<group>"; };
+		B100000000000000000000C1 /* BLECentralCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentity/BLECentralCoordinator.swift; sourceTree = "<group>"; };
+		B100000000000000000000C2 /* Enc2SessionLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enc2SessionLifecycle.swift; sourceTree = "<group>"; };
+		B100000000000000000000D1 /* BLECentralCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLECentralCoordinatorTests.swift; sourceTree = "<group>"; };
+		B100000000000000000000D2 /* Enc2SessionLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enc2SessionLifecycleTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000AC /* BLECapabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLECapabilityTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000068 /* BLEIdentificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEIdentificationTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000067 /* bluetooth_company_identifiers.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = bluetooth_company_identifiers.json; sourceTree = "<group>"; };
@@ -267,6 +320,27 @@
 		B10000000000000000000049 /* BLEWatchRadarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarTests.swift; sourceTree = "<group>"; };
 		B10000000000000000000048 /* BLEWatchRadarUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarUI.swift; sourceTree = "<group>"; };
 		B10000000000000000000047 /* BLEWatchRadarCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEWatchRadarCore.swift; sourceTree = "<group>"; };
+		B100000000000000000000A1 /* FirmwareForensicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000A2 /* FirmwareDigest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDigest.swift; sourceTree = "<group>"; };
+		B100000000000000000000A7 /* FirmwareForensicScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicScorer.swift; sourceTree = "<group>"; };
+		B100000000000000000000F2 /* FirmwareForensicPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareForensicPDF.swift; sourceTree = "<group>"; };
+		B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
+		B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisBriefing.swift; sourceTree = "<group>"; };
+		B100000000000000000000EB /* FirmwareComboPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareComboPolicy.swift; sourceTree = "<group>"; };
+		B100000000000000000000EC /* FirmwareEvidenceTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareEvidenceTier.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA1 /* InvestigationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA2 /* InvestigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA3 /* InvestigationHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationHubView.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA4 /* InvestigationDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationDetailView.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA5 /* ReuseReadoutPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReuseReadoutPromptView.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombinedReadoutSummaryCard.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA7 /* InvestigationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationStoreTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA8 /* InvestigationCombinedPDF.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationCombinedPDF.swift; sourceTree = "<group>"; };
+		B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationCombinedPDFTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestigationFlowLogicTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000FAB /* FirmwareExportSharePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareExportSharePresenter.swift; sourceTree = "<group>"; };
+		B10000000000000000000FB1 /* DualSourcePanicCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelator.swift; sourceTree = "<group>"; };
+		B10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareReadoutMatchCorrelator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -347,6 +421,7 @@
 				B10000000000000000000066 /* BLEDeviceAnalysisView.swift */,
 				B100000000000000000000AA /* BLECapabilityModels.swift */,
 				B100000000000000000000AB /* BLECapabilityService.swift */,
+				B100000000000000000000C1 /* BLECentralCoordinator.swift */,
 				B10000000000000000000067 /* bluetooth_company_identifiers.json */,
 				B10000000000000000000069 /* ble_vendor_patterns.json */,
 				B10000000000000000000070 /* BLERadarSession.swift */,
@@ -371,11 +446,58 @@
 				B10000000000000000000047 /* BLEWatchRadarCore.swift */,
 				B1000000000000000000000E /* Info.plist */,
 				B1000000000000000000000C /* Assets.xcassets */,
+				E10000000000000000000FC0 /* Correlation */,
 				E10000000000000000000005 /* Integrity */,
+				E1000000000000000000000F /* FirmwareForensics */,
+				E10000000000000000000FA0 /* Investigation */,
+				E1000000000000000000000A /* Auslesen */,
+				E1000000000000000000000B /* History */,
 				E10000000000000000000006 /* Ninebot */,
 				E10000000000000000000007 /* Xiaomi */,
 			);
 			path = ScooterCheck;
+			sourceTree = "<group>";
+		};
+		E1000000000000000000000F /* FirmwareForensics */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000000A1 /* FirmwareForensicModels.swift */,
+				B100000000000000000000A2 /* FirmwareDigest.swift */,
+				B100000000000000000000A7 /* FirmwareForensicScorer.swift */,
+				B100000000000000000000F2 /* FirmwareForensicPDF.swift */,
+				B100000000000000000000ED /* FirmwareDeepAnalysisModels.swift */,
+				B100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift */,
+				B100000000000000000000EB /* FirmwareComboPolicy.swift */,
+				B100000000000000000000EC /* FirmwareEvidenceTier.swift */,
+				B10000000000000000000FB1 /* DualSourcePanicCorrelator.swift */,
+				B10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift */,
+				B10000000000000000000FAB /* FirmwareExportSharePresenter.swift */,
+			);
+			path = FirmwareForensics;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000FA0 /* Investigation */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000FA1 /* InvestigationModels.swift */,
+				B10000000000000000000FA2 /* InvestigationStore.swift */,
+				B10000000000000000000FA3 /* InvestigationHubView.swift */,
+				B10000000000000000000FA4 /* InvestigationDetailView.swift */,
+				B10000000000000000000FA5 /* ReuseReadoutPromptView.swift */,
+				B10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift */,
+				B10000000000000000000FA8 /* InvestigationCombinedPDF.swift */,
+			);
+			path = Investigation;
+			sourceTree = "<group>";
+		};
+		E10000000000000000000FC0 /* Correlation */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000FC1 /* CrossSourceModels.swift */,
+				B10000000000000000000FC2 /* CrossSourceCorrelator.swift */,
+				B10000000000000000000FC3 /* ZipFindingSoftening.swift */,
+			);
+			path = Correlation;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000005 /* Integrity */ = {
@@ -387,7 +509,9 @@
 				B10000000000000000000007 /* ProtocolPDF.swift */,
 				B1000000000000000000000F /* ProtocolHistoryStore.swift */,
 				B10000000000000000000031 /* ScooterVerification.swift */,
+				B100000000000000000000C3 /* PackIntegrity.swift */,
 				B10000000000000000000034 /* CheckPhotosUI.swift */,
+				B100000000000000000000E2 /* IntegrityResultChrome.swift */,
 				B10000000000000000000012 /* SoftUnlockSettings.swift */,
 				B1000000000000000000001F /* SoftUnlockComboStore.swift */,
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
@@ -400,6 +524,22 @@
 				B1000000000000000000008E /* FirmwareZipAnalyzer.swift */,
 			);
 			path = Integrity;
+			sourceTree = "<group>";
+		};
+		E1000000000000000000000A /* Auslesen */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000000E1 /* AuslesenDeviceViews.swift */,
+			);
+			path = Auslesen;
+			sourceTree = "<group>";
+		};
+		E1000000000000000000000B /* History */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000000E3 /* ProtocolHistoryOverviewView.swift */,
+			);
+			path = History;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000008 /* ScooterCheckTests */ = {
@@ -417,6 +557,7 @@
 				B10000000000000000000023 /* CompactReportFactsTests.swift */,
 				B10000000000000000000024 /* KnownScooterAliasTests.swift */,
 				B10000000000000000000032 /* ScooterVerificationTests.swift */,
+				B100000000000000000000D3 /* PackIntegrityTests.swift */,
 				B10000000000000000000033 /* ProtocolHistoryArchiveTests.swift */,
 				B10000000000000000000035 /* CheckPhotosTests.swift */,
 				B10000000000000000000025 /* IdentifyCommandTests.swift */,
@@ -425,10 +566,14 @@
 				B100000000000000000000B2 /* PedelecEvaluationTests.swift */,
 				B100000000000000000000B5 /* AppFeatureFlagsTests.swift */,
 				B100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift */,
+				B100000000000000000000D4 /* BleWriteGateTests.swift */,
+				B100000000000000000000D5 /* WriteDisableRegressionTests.swift */,
 				B10000000000000000000039 /* PrivacyContentTests.swift */,
 				B1000000000000000000002E /* ScooterFinderMathTests.swift */,
 				B10000000000000000000043 /* BLESearchCoreTests.swift */,
 				B100000000000000000000AC /* BLECapabilityTests.swift */,
+				B100000000000000000000D1 /* BLECentralCoordinatorTests.swift */,
+				B100000000000000000000D2 /* Enc2SessionLifecycleTests.swift */,
 				B10000000000000000000046 /* BLEAnalysisCoreTests.swift */,
 				B10000000000000000000068 /* BLEIdentificationTests.swift */,
 				B10000000000000000000073 /* VehicleApprovalTests.swift */,
@@ -436,6 +581,10 @@
 				B1000000000000000000008A /* NaveeProtocolTests.swift */,
 				B1000000000000000000008C /* LiveTelemetryTests.swift */,
 				B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */,
+				B10000000000000000000FA7 /* InvestigationStoreTests.swift */,
+				B10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift */,
+				B10000000000000000000FAA /* InvestigationFlowLogicTests.swift */,
+				B10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
 				B10000000000000000000051 /* BLESearchARCoreTests.swift */,
@@ -451,7 +600,9 @@
 				B10000000000000000000009 /* Protocol.swift */,
 				B1000000000000000000000A /* DiagnosticMap.swift */,
 				B1000000000000000000008B /* LiveTelemetry.swift */,
+				B100000000000000000000C2 /* Enc2SessionLifecycle.swift */,
 				B1000000000000000000000B /* BleClient.swift */,
+				B100000000000000000000C4 /* BleWriteGate.swift */,
 			);
 			path = Ninebot;
 			sourceTree = "<group>";
@@ -612,13 +763,35 @@
 				A10000000000000000000066 /* BLEDeviceAnalysisView.swift in Sources */,
 				A100000000000000000000AA /* BLECapabilityModels.swift in Sources */,
 				A100000000000000000000AB /* BLECapabilityService.swift in Sources */,
+				A100000000000000000000C1 /* BLECentralCoordinator.swift in Sources */,
 				A10000000000000000000048 /* BLEWatchRadarUI.swift in Sources */,
 				A10000000000000000000047 /* BLEWatchRadarCore.swift in Sources */,
 				A10000000000000000000070 /* BLERadarSession.swift in Sources */,
 				A10000000000000000000071 /* VehicleApprovalCatalog.swift in Sources */,
 				A1000000000000000000008D /* MinimalZipReader.swift in Sources */,
 				A1000000000000000000008E /* FirmwareZipAnalyzer.swift in Sources */,
+				A10000000000000000000FC1 /* CrossSourceModels.swift in Sources */,
+				A10000000000000000000FC2 /* CrossSourceCorrelator.swift in Sources */,
+				A10000000000000000000FC3 /* ZipFindingSoftening.swift in Sources */,
 				A1000000000000000000008F /* FirmwareZipInspectorView.swift in Sources */,
+				A100000000000000000000A1 /* FirmwareForensicModels.swift in Sources */,
+				A100000000000000000000A2 /* FirmwareDigest.swift in Sources */,
+				A100000000000000000000A7 /* FirmwareForensicScorer.swift in Sources */,
+				A100000000000000000000F2 /* FirmwareForensicPDF.swift in Sources */,
+				A100000000000000000000ED /* FirmwareDeepAnalysisModels.swift in Sources */,
+				A100000000000000000000F4 /* FirmwareDeepAnalysisBriefing.swift in Sources */,
+				A100000000000000000000EB /* FirmwareComboPolicy.swift in Sources */,
+				A100000000000000000000EC /* FirmwareEvidenceTier.swift in Sources */,
+				A10000000000000000000FA1 /* InvestigationModels.swift in Sources */,
+				A10000000000000000000FA2 /* InvestigationStore.swift in Sources */,
+				A10000000000000000000FA3 /* InvestigationHubView.swift in Sources */,
+				A10000000000000000000FA4 /* InvestigationDetailView.swift in Sources */,
+				A10000000000000000000FA5 /* ReuseReadoutPromptView.swift in Sources */,
+				A10000000000000000000FA6 /* CombinedReadoutSummaryCard.swift in Sources */,
+				A10000000000000000000FA8 /* InvestigationCombinedPDF.swift in Sources */,
+				A10000000000000000000FAB /* FirmwareExportSharePresenter.swift in Sources */,
+				A10000000000000000000FB1 /* DualSourcePanicCorrelator.swift in Sources */,
+				A10000000000000000000FB2 /* FirmwareReadoutMatchCorrelator.swift in Sources */,
 				A10000000000000000000080 /* ScooterDiagnosticProfile.swift in Sources */,
 				A10000000000000000000081 /* ScooterProtocolRegistry.swift in Sources */,
 				A10000000000000000000082 /* OnlineProtocolDiscoveryService.swift in Sources */,
@@ -638,12 +811,18 @@
 				A10000000000000000000007 /* ProtocolPDF.swift in Sources */,
 				A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */,
 				A10000000000000000000031 /* ScooterVerification.swift in Sources */,
+				A100000000000000000000C3 /* PackIntegrity.swift in Sources */,
+				A100000000000000000000E2 /* IntegrityResultChrome.swift in Sources */,
 				A10000000000000000000034 /* CheckPhotosUI.swift in Sources */,
+				A100000000000000000000E1 /* AuslesenDeviceViews.swift in Sources */,
+				A100000000000000000000E3 /* ProtocolHistoryOverviewView.swift in Sources */,
 				A10000000000000000000008 /* Crypto.swift in Sources */,
 				A10000000000000000000009 /* Protocol.swift in Sources */,
 				A1000000000000000000000A /* DiagnosticMap.swift in Sources */,
 				A1000000000000000000008B /* LiveTelemetry.swift in Sources */,
+				A100000000000000000000C2 /* Enc2SessionLifecycle.swift in Sources */,
 				A1000000000000000000000B /* BleClient.swift in Sources */,
+				A100000000000000000000C4 /* BleWriteGate.swift in Sources */,
 				A1000000000000000000000F /* XiaomiProtocol.swift in Sources */,
 				A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */,
 				A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */,
@@ -673,6 +852,7 @@
 				A10000000000000000000023 /* CompactReportFactsTests.swift in Sources */,
 				A10000000000000000000024 /* KnownScooterAliasTests.swift in Sources */,
 				A10000000000000000000032 /* ScooterVerificationTests.swift in Sources */,
+				A100000000000000000000D3 /* PackIntegrityTests.swift in Sources */,
 				A10000000000000000000033 /* ProtocolHistoryArchiveTests.swift in Sources */,
 				A10000000000000000000035 /* CheckPhotosTests.swift in Sources */,
 				A10000000000000000000025 /* IdentifyCommandTests.swift in Sources */,
@@ -681,10 +861,14 @@
 				A100000000000000000000B2 /* PedelecEvaluationTests.swift in Sources */,
 				A100000000000000000000B5 /* AppFeatureFlagsTests.swift in Sources */,
 				A100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift in Sources */,
+				A100000000000000000000D4 /* BleWriteGateTests.swift in Sources */,
+				A100000000000000000000D5 /* WriteDisableRegressionTests.swift in Sources */,
 				A10000000000000000000039 /* PrivacyContentTests.swift in Sources */,
 				A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */,
 				A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */,
 				A100000000000000000000AC /* BLECapabilityTests.swift in Sources */,
+				A100000000000000000000D1 /* BLECentralCoordinatorTests.swift in Sources */,
+				A100000000000000000000D2 /* Enc2SessionLifecycleTests.swift in Sources */,
 				A10000000000000000000046 /* BLEAnalysisCoreTests.swift in Sources */,
 				A10000000000000000000068 /* BLEIdentificationTests.swift in Sources */,
 				A10000000000000000000073 /* VehicleApprovalTests.swift in Sources */,
@@ -692,6 +876,10 @@
 				A1000000000000000000008A /* NaveeProtocolTests.swift in Sources */,
 				A1000000000000000000008C /* LiveTelemetryTests.swift in Sources */,
 				A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */,
+				A10000000000000000000FA7 /* InvestigationStoreTests.swift in Sources */,
+				A10000000000000000000FA9 /* InvestigationCombinedPDFTests.swift in Sources */,
+				A10000000000000000000FAA /* InvestigationFlowLogicTests.swift in Sources */,
+				A10000000000000000000FC4 /* CrossSourceCorrelatorTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
 				A10000000000000000000051 /* BLESearchARCoreTests.swift in Sources */,

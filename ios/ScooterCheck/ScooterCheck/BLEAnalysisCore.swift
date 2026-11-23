@@ -181,11 +181,10 @@ enum BLEFingerprintService {
         let mfgIdMatch = a.manufacturerId != nil && a.manufacturerId == b.manufacturerId
         add("mfg", "Manufacturer Data stimmt überein", weight: 28, matched: mfgExact,
             note: mfgExact ? nil : (mfgIdMatch ? "nur Manufacturer-ID ähnlich" : "fehlt oder anders"))
-        if !mfgExact && mfgIdMatch {
-            score += 10
+        // Partial credit only when exact mfg bytes miss — never inflate maxScore on exact match.
+        if !mfgExact {
             maxScore += 10
-        } else {
-            maxScore += 10
+            if mfgIdMatch { score += 10 }
         }
 
         let setA = Set(a.serviceUUIDs)

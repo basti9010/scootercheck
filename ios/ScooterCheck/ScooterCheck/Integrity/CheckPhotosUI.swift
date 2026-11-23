@@ -127,7 +127,7 @@ struct CheckPhotosSection: View {
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { images in
-                _ = history.addPhotos(to: entryId, images: images)
+                _ = try? history.addPhotos(to: entryId, images: images)
             }
             .ignoresSafeArea()
         }
@@ -168,7 +168,7 @@ struct CheckPhotosSection: View {
         ) {
             Button("Löschen", role: .destructive) {
                 if let id = pendingDeleteId {
-                    history.deletePhoto(entryId: entryId, photoId: id)
+                    try? history.deletePhoto(entryId: entryId, photoId: id)
                     if viewerItem?.id == id { viewerItem = nil }
                 }
                 pendingDeleteId = nil
@@ -269,7 +269,7 @@ struct CheckPhotosSection: View {
             }
         }
         await MainActor.run {
-            _ = history.addPhotos(to: entryId, images: images)
+            _ = try? history.addPhotos(to: entryId, images: images)
             libraryItems = []
         }
     }

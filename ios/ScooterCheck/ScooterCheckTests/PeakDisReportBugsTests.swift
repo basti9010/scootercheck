@@ -7,22 +7,22 @@ final class PeakDisReportBugsTests: XCTestCase {
     // MARK: - Peak / DIS decode
 
     func testTripPeakClassicTenths() {
-        XCTAssertEqual(RegisterScale.tripPeakKmh(250), 25.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(450), 45.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(327), 32.7, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(250) ?? -1, 25.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(450) ?? -1, 45.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(327) ?? -1, 32.7, accuracy: 0.01)
     }
 
     func testTripPeakG3PackedHighByte() {
-        XCTAssertEqual(RegisterScale.tripPeakKmh(0x2D00), 45.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(0x1616), 22.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(0x140F), 20.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(0x2D00) ?? -1, 45.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(0x1616) ?? -1, 22.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(0x140F) ?? -1, 20.0, accuracy: 0.01)
     }
 
     func testTripPeakWholeKmhNotMisreadAsTenths() {
         // Rohwert 25/45 = ganze km/h — nicht 2.5 / 4.5.
-        XCTAssertEqual(RegisterScale.tripPeakKmh(25), 25.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(45), 45.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(20), 20.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(25) ?? -1, 25.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(45) ?? -1, 45.0, accuracy: 0.01)
+        XCTAssertEqual(RegisterScale.tripPeakKmh(20) ?? -1, 20.0, accuracy: 0.01)
     }
 
     func testDisLimitDoesNotFillPeak() {
