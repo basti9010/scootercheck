@@ -10,8 +10,9 @@ final class AttributionEngineTests: XCTestCase {
         title: String = "Marker",
         persistence: PersistenceClass = .persistent,
         knowledge: KnowledgeSource = .heuristic,
-        modMatch: String? = nil,
-        interpreted: String = "x"
+        // Swift 6: labeled args must follow declaration order at call sites.
+        interpreted: String = "x",
+        modMatch: String? = nil
     ) -> EvidenceFact {
         EvidenceFact(
             markerID: id,
@@ -88,8 +89,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "fw.custom",
                     title: "Custom-FW",
                     knowledge: .verifiedModSample,
-                    modMatch: "fw.custom.confirmed",
-                    interpreted: "mod fingerprint"
+                    interpreted: "mod fingerprint",
+                    modMatch: "fw.custom.confirmed"
                 ),
                 class: .starkerHinweis
             ),
@@ -138,8 +139,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "speed.session",
                     title: "Session",
                     persistence: .fleeting,
-                    modMatch: "speed.session.unlock",
-                    interpreted: "≥ 30 km/h"
+                    interpreted: "≥ 30 km/h",
+                    modMatch: "speed.session.unlock"
                 ),
                 class: .abweichung
             )
@@ -163,8 +164,8 @@ final class AttributionEngineTests: XCTestCase {
             fact(
                 id: "serial.cross.mcu",
                 title: "Cross-Board",
-                modMatch: "cross.serial.mismatch",
-                interpreted: "MCU ≠ Fahrzeug"
+                interpreted: "MCU ≠ Fahrzeug",
+                modMatch: "cross.serial.mismatch"
             ),
             class: .indiz
         )
@@ -230,8 +231,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "speed.session",
                     title: "Session",
                     persistence: .fleeting,
-                    modMatch: "speed.session.unlock",
-                    interpreted: "session"
+                    interpreted: "session",
+                    modMatch: "speed.session.unlock"
                 ),
                 class: .abweichung
             )

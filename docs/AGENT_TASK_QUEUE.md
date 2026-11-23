@@ -48,7 +48,7 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 | Status | IN_PROGRESS |
 | Akzeptanz | CI führt BLECentralCoordinator / Enc2 / PackIntegrity / BleWriteGate / WriteDisableRegression Tests aus; Ergebnis dokumentiert |
 | Testergebnis | UNVERIFIED — Build failed before XCTest |
-| Fix-Attempts | 1 / 3 (destination/Xcode-runtime mismatch) |
+| Fix-Attempts | 2 / 3 (1: Xcode dest; 2: Swift 6 arg order in AttributionEngineTests) |
 
 ---
 
@@ -62,7 +62,7 @@ Statuswerte: `BACKLOG` | `READY` | `IN_PROGRESS` | `REVIEW` | `BLOCKED` | `DONE`
 | Status | IN_PROGRESS |
 | Root cause | Xcode 16.2 + `name=iPhone 16` → OS:latest, aber Runtime 18.2 fehlt; Runner hat 18.5+/26.x |
 | Fix | Prefer Xcode 26.x with visible destinations; else download platform; pin destination by UDID |
-| Attempt | 1 / 3 |
+| Attempt | 2 / 3 |
 
 ---
 
@@ -121,3 +121,14 @@ overlapping_cycle2_p1_timer: unsubscribed
 ci_fix_max_attempts: 3
 zwischenbericht_timer: scootercheck-4h-zwischenbericht (may still be active)
 ```
+
+
+## CI-FIX-2 – Swift 6 argument order in AttributionEngineTests
+
+| Feld | Wert |
+|------|------|
+| ID | CI-FIX-2 |
+| Status | IN_PROGRESS |
+| Root cause | Xcode 26 / Swift 6: labeled args must match declaration order (`modMatch` vs `interpreted`) |
+| Fix | Reorder `fact(...)` helper + call sites |
+| Attempt | 2 / 3 |
