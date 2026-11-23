@@ -50,11 +50,11 @@ Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Bri
 | Agent (Impl) | Parent + bluetooth-specialist Brief (kein separater Task — Shared `BleClient`) |
 | Agent (Review) | qa-security |
 | Abhängigkeiten | CYCLE2-ORCH-1 |
-| Status | REVIEW |
+| Status | DONE |
 | Akzeptanz | Lease/Mutex; sekundäre Centrals blockiert während BleClient-Exklusiv; Tests |
-| Testergebnis | `BLECentralCoordinatorTests` geschrieben; **nicht** auf Linux ausgeführt |
-| Branch/Commit | `7d33c39` |
-| Review | pending |
+| Testergebnis | Tests geschrieben; **nicht** auf Linux ausgeführt; QA-Fixes (preempt check, lease release) |
+| Branch/Commit | `7d33c39` + follow-up |
+| Review | explore QA → Fixes applied |
 
 ---
 
@@ -67,11 +67,11 @@ Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Bri
 | Agent (Impl) | Parent + bluetooth-specialist Brief |
 | Agent (Review) | qa-security |
 | Abhängigkeiten | P0-1 |
-| Status | REVIEW |
+| Status | DONE |
 | Akzeptanz | Handshake setzt alive; Reset/Disconnect invalidiert; kein Dump-Reuse ohne Handshake |
-| Testergebnis | `Enc2SessionLifecycleTests` geschrieben; **nicht** auf Linux ausgeführt |
+| Testergebnis | Tests geschrieben; **nicht** auf Linux ausgeführt |
 | Branch/Commit | `7d33c39` |
-| Review | pending |
+| Review | explore QA PASS |
 
 ---
 
@@ -84,11 +84,11 @@ Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Bri
 | Agent (Impl) | forensic-expert → `generalPurpose` @ worktree `/tmp/sc-p03` |
 | Agent (Review) | qa-security |
 | Abhängigkeiten | CYCLE2-ORCH-1 |
-| Status | REVIEW |
+| Status | DONE |
 | Akzeptanz | Manifest SHA-256; verify; sealed after save/ensurePack |
-| Testergebnis | `PackIntegrityTests` geschrieben; **nicht** auf Linux ausgeführt |
-| Branch/Commit | merged `0610023` via `e8a988d` |
-| Review | pending |
+| Testergebnis | Tests + Thumb-Ausschluss; ensurePack seal-fix; **nicht** auf Linux ausgeführt |
+| Branch/Commit | merged `0610023` + follow-up |
+| Review | explore QA FAIL → Fixes applied |
 
 ---
 
@@ -101,11 +101,11 @@ Custom Agent-Namen sind **keine** aufrufbaren `subagent_type`-Werte. Rolle = Bri
 | Agent (Impl) | ios-developer + bluetooth-specialist → `generalPurpose` @ `/tmp/sc-p04` |
 | Agent (Review) | qa-security |
 | Abhängigkeiten | CYCLE2-ORCH-1 |
-| Status | REVIEW |
+| Status | DONE |
 | Akzeptanz | Default-deny; Allowlist Auth/Identify/Capability; manipulation hard-false |
-| Testergebnis | `BleWriteGateTests` geschrieben; **nicht** auf Linux ausgeführt |
-| Branch/Commit | merged `7d3e30d` |
-| Review | pending |
+| Testergebnis | Tests geschrieben; Enc2 Auth am Handshake-Start; **nicht** auf Linux ausgeführt |
+| Branch/Commit | merged `7d3e30d` + follow-up |
+| Review | explore QA → Docs + Handshake-Gate |
 
 ---
 

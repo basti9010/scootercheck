@@ -14,11 +14,12 @@
 
 ## P0 – Sofort / Integrität
 
-1. **Kein Write/Manipulation** – Soft-Unlock, Navee ForbiddenWrite, Identify/Capability bleiben begrenzt; PRs mit Limit/Lock/DFU/Unlock-Writes ablehnen.
-2. **BLE Central Ownership** – Sekundäre `CBCentralManager` (GATT Deep / Capability) vs `BleClient` serialisieren oder über BleClient routen.
-3. **Enc2 Session Lifecycle** – Crypto/Auth bei Disconnect invalidieren; kein Dump-Reuse ohne Handshake.
-4. **Forensik Pack Integrity** – Manifest + SHA-256 über Session/JSON/PDF/Photos; keine stillen Destructive Overwrites bei prosecutor exports.
+1. **Write-Disable Gate** – `BleWriteGate` (default deny) implementiert; CI-Lauf der Tests noch offen.
+2. **BLE Central Ownership** – `BLECentralCoordinator` implementiert; Residual: Integrationstests Capability/GATT-Lease.
+3. **Enc2 Session Lifecycle** – `Enc2SessionLifecycle` implementiert.
+4. **Forensik Pack Integrity** – `PackIntegrity` implementiert; Residual: Store-Integrationstests.
 5. **Hauptbranch schützen** – nur `cursor/*-b100`; kein Merge nach `main` ohne Freigabe.
+6. **macOS XCTest** – Suites geschrieben, auf Linux nicht ausgeführt.
 
 ## P1 – Produktwert
 

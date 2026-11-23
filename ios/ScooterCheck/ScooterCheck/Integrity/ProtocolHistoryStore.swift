@@ -357,12 +357,23 @@ final class ProtocolHistoryStore: ObservableObject {
     }
 
     /// Ensures pack files exist (regenerates from session if needed).
+    /// Always ensures a sealed `integrity-manifest.json` exists for durable packs.
     func ensurePack(for entry: Entry) throws -> ProtocolPack.PackURLs {
-        if let existing = packURLs(for: entry) { return existing }
+        let dir = packDirectory(for: entry.protocolNumber)
+        if let existing = packURLs(for: entry) {
+            let manifestURL = dir.appendingPathComponent(PackIntegrityManifest.fileName)
+            if !fileManager.fileExists(atPath: manifestURL.path) {
+                try writeIntegrityManifest(
+                    directory: dir,
+                    protocolNumber: entry.protocolNumber,
+                    sealed: true
+                )
+            }
+            return existing
+        }
         guard let session = loadSession(id: entry.id), let result = session.result else {
             throw HistoryError.missingResult
         }
-        let dir = packDirectory(for: entry.protocolNumber)
         let pack = try ProtocolPack.makePack(
             session: session,
             result: result,
@@ -534,7 +545,7 @@ final class ProtocolHistoryStore: ObservableObject {
     }
 
     @discardableResult
-    func addPhotos(to entryId: UUID, images: [UIImage]) -> [UUID] {
+    func addPhotos(to entryId: UUID, images: [UIImage]) throws -> [UUID] {
         guard let entry = entries.first(where: { $0.id == entryId }), !images.isEmpty else { return [] }
         let dir = photosDirectory(for: entry)
         try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -567,9 +578,9 @@ final class ProtocolHistoryStore: ObservableObject {
                 entry.coverPhotoId = added.first
             }
         }
-        // Photos are hashed artifacts — refresh seal after mutation.
+        // Photos are hashed artifacts — refresh seal after mutation (errors surface).
         if let refreshed = entries.first(where: { $0.id == entryId }) {
-            try? sealPack(for: refreshed)
+            try sealPack(for: refreshed)
         }
         return added
     }
@@ -581,7 +592,7 @@ final class ProtocolHistoryStore: ObservableObject {
         }
     }
 
-    func deletePhoto(entryId: UUID, photoId: UUID) {
+    func deletePhoto(entryId: UUID, photoId: UUID) throws {
         guard let entry = entries.first(where: { $0.id == entryId }) else { return }
         try? fileManager.removeItem(at: originalPhotoURL(entry: entry, photoId: photoId))
         try? fileManager.removeItem(at: thumbnailPhotoURL(entry: entry, photoId: photoId))
@@ -594,7 +605,7 @@ final class ProtocolHistoryStore: ObservableObject {
             }
         }
         if let refreshed = entries.first(where: { $0.id == entryId }) {
-            try? sealPack(for: refreshed)
+            try sealPack(for: refreshed)
         }
     }
 

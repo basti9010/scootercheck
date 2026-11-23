@@ -183,7 +183,10 @@ enum PackIntegrity {
                 guard fileManager.fileExists(atPath: url.path, isDirectory: &isDir), !isDir.boolValue else {
                     continue
                 }
-                paths.insert("photos/\(url.lastPathComponent)")
+                let name = url.lastPathComponent
+                // UI-Cache-Thumbs nicht in die Custody-Hashmenge — Originals only.
+                if name.hasSuffix("_thumb.jpg") { continue }
+                paths.insert("photos/\(name)")
             }
         }
 

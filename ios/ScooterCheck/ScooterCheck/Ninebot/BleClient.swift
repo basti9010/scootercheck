@@ -1212,6 +1212,9 @@ final class BleClient: NSObject, ObservableObject {
     // MARK: - Handshake
 
     private func runHandshake(gen: ProtocolGen, nonSNPairing: Bool = false) async throws {
+        guard BleWriteGate.authorize(.enc2Auth) else {
+            throw BleError.handshakeFailed("Schreibschutz: Enc2-Auth nicht erlaubt")
+        }
         crypto = NbCrypto(gen: gen)
         guard let crypto else { throw BleError.encryptionFailed }
 

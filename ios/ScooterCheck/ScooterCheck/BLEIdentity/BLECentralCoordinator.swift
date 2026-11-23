@@ -33,10 +33,17 @@ enum BLECentralCoordinator {
 
     static var currentOwner: Owner? { holder }
 
-    /// BleClient: Scan bleibt freigegeben für Watch-Erweiterung; Connect/Dump blockiert Neben-Centrals.
+    /// BleClient: Connect/Dump blockiert Neben-Centrals.
+    /// Preemptiert eine bestehende Secondary-Lease (Secondary muss `isBleClientExclusive` prüfen und abbrechen).
     static func beginBleClientExclusive() {
         bleClientExclusive = true
         holder = .bleClient
+    }
+
+    /// Secondary-Connects müssen das vor `central.connect` erneut prüfen.
+    static func secondaryConnectAllowed(for owner: Owner) -> Bool {
+        guard !bleClientExclusive else { return false }
+        return holder == nil || holder == owner
     }
 
     static func endBleClientExclusive() {

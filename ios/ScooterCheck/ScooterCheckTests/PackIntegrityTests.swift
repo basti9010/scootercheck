@@ -128,6 +128,23 @@ final class PackIntegrityTests: XCTestCase {
         XCTAssertTrue(result.mismatches.isEmpty)
     }
 
+    func testThumbnailFilesExcludedFromHashSet() throws {
+        let protocolNumber = "SC-THUMB"
+        try writeArtifact("session.json", contents: Data("s".utf8))
+        let photos = tempDir.appendingPathComponent("photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: photos, withIntermediateDirectories: true)
+        try Data("orig".utf8).write(to: photos.appendingPathComponent("A-uuid.jpg"))
+        try Data("thumb".utf8).write(to: photos.appendingPathComponent("A-uuid_thumb.jpg"))
+
+        let paths = try PackIntegrity.collectArtifactRelativePaths(
+            directory: tempDir,
+            protocolNumber: protocolNumber,
+            fileManager: .default
+        )
+        XCTAssertTrue(paths.contains("photos/A-uuid.jpg"))
+        XCTAssertFalse(paths.contains("photos/A-uuid_thumb.jpg"))
+    }
+
     func testManifestWriteIsAtomicSortedKeys() throws {
         try writeArtifact("session.json", contents: Data("x".utf8))
         let manifest = try PackIntegrity.buildManifest(

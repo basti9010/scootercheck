@@ -4,11 +4,12 @@ Aktualisiert nach Multi-Agent-Erstanalyse (2026-11-23 Europe/Berlin).
 
 ## P0
 
-- [ ] BLE: sekundäre CBCentralManager vs BleClient serialisieren
-- [ ] Enc2: Session bei Disconnect invalidieren
-- [ ] Forensik: Pack-Manifest + SHA über Export-Artefakte; sealed packs
-- [ ] Write/Manipulation dauerhaft gated (QA-Policy)
+- [x] BLE: sekundäre CBCentralManager vs BleClient serialisieren (`BLECentralCoordinator`) — QA-Nachbesserungen Lease-Leak/Preempt erledigt
+- [x] Enc2: Session bei Disconnect invalidieren (`Enc2SessionLifecycle`)
+- [x] Forensik: Pack-Manifest + SHA (`PackIntegrity`) — ensurePack seal + Thumbs ausgeschlossen
+- [x] Write/Manipulation Gate (`BleWriteGate`, default deny) — Transport-Reads bleiben UART-TX
 - [ ] Kein Merge nach `main` ohne Freigabe
+- [ ] XCTest auf macOS/CI ausführen (Linux Cloud Agent kann nicht)
 
 ## P1
 

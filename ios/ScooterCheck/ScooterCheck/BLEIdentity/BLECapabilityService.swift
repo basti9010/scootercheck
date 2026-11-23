@@ -148,6 +148,11 @@ final class BLECapabilityService: NSObject, ObservableObject {
 
     private func connect() {
         guard let central, let peripheral else { return }
+        guard BLECentralCoordinator.secondaryConnectAllowed(for: .capabilityService) else {
+            finishProbe(error: BLECentralCoordinator.LeaseError.busy(.bleClient).errorDescription
+                ?? "Bluetooth wird von der Auslese genutzt.")
+            return
+        }
         central.connect(peripheral, options: nil)
     }
 
@@ -157,9 +162,8 @@ final class BLECapabilityService: NSObject, ObservableObject {
         connectTimeoutTask?.cancel()
         if let error {
             phase = .failed(error)
-            if !keepAlive {
-                disconnect(clearCaps: false)
-            }
+            // Fehlerpfad: Lease immer freigeben (auch wenn keepAlive für Erfolg gedacht war).
+            disconnect(clearCaps: false)
             return
         }
         capabilities = BLECapabilityDeriver.derive(

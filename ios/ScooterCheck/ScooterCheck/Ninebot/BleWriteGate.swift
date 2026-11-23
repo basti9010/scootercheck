@@ -23,6 +23,11 @@ enum BleWritePurpose: String, Sendable {
 ///
 /// Allowlist is fixed at compile time. `allowVehicleManipulation` is hardcoded
 /// `false` and must never be read from `UserDefaults` or any runtime setting.
+///
+/// Encrypted UART **read** frames also use `CBPeripheral.writeValue` as transport;
+/// those are not vehicle-manipulation purposes. Callers that build `Nb.writeU16` /
+/// `Nb.writeBytes` for identify/auth/capability **must** call `authorize` first.
+/// There are no limit/unlock/DFU builders on the allowlist.
 enum BleWriteGate {
     /// Hard kill-switch for vehicle manipulation. Always `false`.
     static var allowVehicleManipulation: Bool { false }

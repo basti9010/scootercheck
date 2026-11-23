@@ -40,4 +40,12 @@ final class BLECentralCoordinatorTests: XCTestCase {
         BLECentralCoordinator.release(.capabilityService)
         XCTAssertNil(BLECentralCoordinator.currentOwner)
     }
+
+    func testSecondaryConnectBlockedWhenExclusive() throws {
+        try BLECentralCoordinator.acquire(.gattDeepAnalysis)
+        XCTAssertTrue(BLECentralCoordinator.secondaryConnectAllowed(for: .gattDeepAnalysis))
+        BLECentralCoordinator.beginBleClientExclusive()
+        XCTAssertFalse(BLECentralCoordinator.secondaryConnectAllowed(for: .gattDeepAnalysis))
+        XCTAssertFalse(BLECentralCoordinator.secondaryConnectAllowed(for: .capabilityService))
+    }
 }

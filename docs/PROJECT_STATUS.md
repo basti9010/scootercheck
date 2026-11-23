@@ -36,7 +36,8 @@ Lange Feature-Kette von BLE-Analyse über Firmware-Forensik Phase 2–2.3.4 bis 
 Konfigurationen unter `.cursor/agents/` (alle 7 angelegt).  
 Gemeinsames Gedächtnis: diese Datei + `ARCHITECTURE.md`, `DEVELOPMENT_ROADMAP.md`, `AGENT_PROGRESS.md`, `OPEN_ISSUES.md`.
 
-**Erst-Durchlauf:** fünf Spezialisten-Reviews parallel via Cloud `Task` (`explore`, inherit) + PM-Merge → priorisierte Roadmap (siehe `DEVELOPMENT_ROADMAP.md`, `AGENT_PROGRESS.md`).
+**Cycle 1:** fünf Spezialisten-Reviews parallel (`explore`) + PM-Merge → Roadmap.  
+**Cycle 2:** Task Queue + P0-1…P0-4 implementiert (Worktrees für P0-3/P0-4; Parent für BLE). Siehe `AGENT_TASK_QUEUE.md`, `AGENT_PROGRESS.md`.
 
 ## Autonomie / 4h-Zyklus
 
