@@ -162,6 +162,10 @@ def _check_member_path(name: str) -> None:
     # Absolute / drive paths
     if name.startswith("/") or name.startswith("\\") or (len(name) >= 2 and name[1] == ":"):
         raise ZipSafetyError(f"Absoluter ZIP-Pfad verboten: {name!r}")
+    # Backslash separators are never needed for firmware packs; reject so
+    # Windows-style "..\\.." names cannot bypass Path.parts on POSIX.
+    if "\\" in name:
+        raise ZipSafetyError(f"Backslash in ZIP-Pfad verboten: {name!r}")
     parts = Path(name).parts
     if any(p == ".." for p in parts):
         raise ZipSafetyError(f"Path-Traversal in ZIP-Pfad verboten: {name!r}")

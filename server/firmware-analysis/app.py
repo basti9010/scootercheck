@@ -165,9 +165,18 @@ def _status_path(job_dir: Path) -> Path:
     return job_dir / "status.json"
 
 
+def _secure_mkdir(path: Path) -> None:
+    """Create directory and tighten mode (best-effort; umask may still apply)."""
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        path.chmod(0o750)
+    except OSError:
+        pass
+
+
 def persist_job(job: dict[str, Any]) -> None:
     job_dir = Path(job["dir"])
-    job_dir.mkdir(parents=True, exist_ok=True)
+    _secure_mkdir(job_dir)
     payload = {k: v for k, v in job.items() if k != "meta"}
     payload["updatedAt"] = _utc_now().isoformat()
     _status_path(job_dir).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -217,14 +226,15 @@ def require_auth(
             import jwt
 
             payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        except Exception as e:
-            raise HTTPException(status_code=401, detail=f"invalid token: {e}") from e
+        except Exception:
+            # Do not embed decoder/algorithm hints in the response body.
+            raise HTTPException(status_code=401, detail="invalid token") from None
         status = str(payload.get("status") or "")
         if status != "active":
             raise HTTPException(status_code=403, detail="account not active")
         sub = payload.get("sub")
         if not sub:
-            raise HTTPException(status_code=401, detail="invalid token: missing subject")
+            raise HTTPException(status_code=401, detail="invalid token")
         auth = {
             "auth": "jwt",
             "userId": sub,
@@ -371,6 +381,77 @@ def _sanitize_result_for_app(result: Any) -> Any:
     return out
 
 
+def _is_path_under_root(path: Path, root: Path) -> bool:
+    """True if *path* resolves to a file/dir inside *root* (symlink-safe)."""
+    try:
+        resolved = path.resolve()
+        root_res = root.resolve()
+    except OSError:
+        return False
+    return resolved == root_res or root_res in resolved.parents
+
+
+def _client_safe_artifact_name(stored: Any) -> str | None:
+    """Return basename only — never absolute server paths in API payloads."""
+    if not isinstance(stored, str) or not stored.strip():
+        return None
+    name = Path(stored).name
+    return name or None
+
+
+def _confined_stored_file(
+    job: dict[str, Any],
+    *,
+    stored_key: str,
+    fallback_name: str,
+    allowed_roots: list[Path],
+) -> Path | None:
+    """Resolve a download/promote path that must stay under allowed store roots.
+
+    Trusts neither poisoned status.json absolute paths nor symlinks that escape
+    PLAINTEXT_STORE / DECOMPILE_STORE / job dir / WORK_DIR.
+    """
+    job_dir_raw = job.get("dir")
+    job_dir = Path(str(job_dir_raw)) if job_dir_raw else None
+
+    roots: list[Path] = []
+    for root in allowed_roots:
+        if root is None:
+            continue
+        try:
+            if root.exists():
+                roots.append(root)
+        except OSError:
+            continue
+    if job_dir is not None:
+        try:
+            if job_dir.exists():
+                roots.append(job_dir)
+        except OSError:
+            pass
+
+    if not roots:
+        return None
+
+    candidates: list[Path] = []
+    stored = job.get(stored_key)
+    if isinstance(stored, str) and stored.strip():
+        candidates.append(Path(stored))
+    if job_dir is not None:
+        candidates.append(job_dir / fallback_name)
+
+    for cand in candidates:
+        try:
+            p = cand.resolve()
+        except OSError:
+            continue
+        if not p.is_file():
+            continue
+        if any(_is_path_under_root(p, root) for root in roots):
+            return p
+    return None
+
+
 def _job_artifact_path(job: dict[str, Any], *candidates: Any, fallback_name: str) -> Path | None:
     """Resolve an artifact path that must stay inside the job directory."""
     job_dir = Path(str(job.get("dir") or ""))
@@ -460,6 +541,10 @@ def _load_stock_function_analysis(stock: dict[str, Any] | None) -> dict[str, Any
 
 def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> dict[str, Any]:
     req = _request_meta(job)
+    # Never expose absolute server filesystem paths to clients (S1/E2).
+    # Basename keeps iOS "path non-empty ⇒ available" heuristics working.
+    plain_name = _client_safe_artifact_name(job.get("plaintextPath"))
+    decomp_name = _client_safe_artifact_name(job.get("decompilePath"))
     payload = {
         "jobId": job["jobId"],
         "state": job["state"],
@@ -476,9 +561,9 @@ def job_status_payload(job: dict[str, Any], *, include_result: bool = True) -> d
         "archiveSHA256": job.get("archiveSHA256"),
         "plaintextSHA256": job.get("plaintextSHA256"),
         "encSHA256": job.get("encSHA256"),
-        "plaintextPath": job.get("plaintextPath"),
+        "plaintextPath": plain_name,
         "plaintextSaved": job.get("plaintextSaved", False),
-        "decompilePath": job.get("decompilePath"),
+        "decompilePath": decomp_name,
         "decompileSaved": job.get("decompileSaved", False),
     }
     if include_result:
@@ -527,19 +612,33 @@ def _parse_iso(value: str | None) -> datetime | None:
 
 
 def delete_job_artifacts(job: dict[str, Any]) -> None:
+    """Delete job files only when paths stay under known store roots."""
+    allowed = [WORK_DIR, PLAINTEXT_STORE, DECOMPILE_STORE]
+    job_dir_raw = job.get("dir")
+    if isinstance(job_dir_raw, str) and job_dir_raw:
+        allowed.append(Path(job_dir_raw))
     for key in ("plaintextPath", "decompilePath", "archivePath"):
         p = job.get(key)
-        if isinstance(p, str) and p:
-            path = Path(p)
-            if path.exists():
-                try:
-                    path.unlink()
-                except OSError:
-                    pass
+        if not isinstance(p, str) or not p:
+            continue
+        try:
+            path = Path(p).resolve()
+        except OSError:
+            continue
+        if not path.is_file():
+            continue
+        if not any(_is_path_under_root(path, root) for root in allowed if root):
+            continue
+        try:
+            path.unlink()
+        except OSError:
+            pass
     job_dir = job.get("dir")
     if isinstance(job_dir, str) and job_dir:
         try:
-            shutil.rmtree(job_dir, ignore_errors=True)
+            jd = Path(job_dir).resolve()
+            if any(_is_path_under_root(jd, root) for root in (WORK_DIR,) if root) and jd.is_dir():
+                shutil.rmtree(jd, ignore_errors=True)
         except OSError:
             pass
     jid = job.get("jobId")
@@ -1378,6 +1477,11 @@ def process_job(job_id: str) -> None:
 def _auth_security_warnings() -> list[str]:
     """Surface insecure legacy auth flags (fail-open for ops visibility, fail-closed for ownership)."""
     warnings: list[str] = []
+    if not API_TOKEN and not ADMIN_API_TOKEN and not JWT_SECRET:
+        warnings.append(
+            "CRITICAL: API_TOKEN, ADMIN_API_TOKEN, and JWT_SECRET are all unset — "
+            "auth=open (unauthenticated access). Configure secrets before any public bind."
+        )
     if api_token_grants_admin():
         warnings.append(
             "INSECURE: API_TOKEN_GRANTS_ADMIN=1 — shared API_TOKEN grants admin. "
@@ -1454,11 +1558,11 @@ async def submit_job(
 
     job_id = str(uuid.uuid4())
     job_dir = _job_day_dir() / job_id
-    job_dir.mkdir(parents=True, exist_ok=True)
+    _secure_mkdir(job_dir)
 
     safe_upload_name = (meta.originalFileName or archive.filename or "upload.bin").replace("/", "_")
     archive_path = job_dir / "upload" / safe_upload_name
-    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    _secure_mkdir(archive_path.parent)
     raw = await archive.read()
     try:
         validate_upload_size(raw, max_bytes=MAX_UPLOAD_BYTES)
@@ -1656,8 +1760,13 @@ def admin_promote_job_stock(
     job = load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    path = Path(job.get("plaintextPath") or (Path(job["dir"]) / "FIRM.dec.bin"))
-    if not path.is_file():
+    path = _confined_stored_file(
+        job,
+        stored_key="plaintextPath",
+        fallback_name="FIRM.dec.bin",
+        allowed_roots=[PLAINTEXT_STORE, WORK_DIR],
+    )
+    if path is None:
         raise HTTPException(status_code=404, detail="plaintext not available")
 
     result = job.get("result") or {}
@@ -1702,8 +1811,13 @@ def admin_promote_job_stock(
 @APP.get("/v1/firmware/jobs/{job_id}/plaintext")
 def download_plaintext(job_id: str, auth: dict[str, Any] = Depends(require_auth)):
     job = _load_job_authorized(job_id, auth)
-    path = Path(job.get("plaintextPath") or (Path(job["dir"]) / "FIRM.dec.bin"))
-    if not path.exists():
+    path = _confined_stored_file(
+        job,
+        stored_key="plaintextPath",
+        fallback_name="FIRM.dec.bin",
+        allowed_roots=[PLAINTEXT_STORE, WORK_DIR],
+    )
+    if path is None:
         raise HTTPException(status_code=404, detail="plaintext not available")
     return FileResponse(path, filename=path.name, media_type="application/octet-stream")
 
@@ -1715,8 +1829,13 @@ def download_decompile(
     auth: dict[str, Any] = Depends(require_auth),
 ):
     job = _load_job_authorized(job_id, auth)
-    path = Path(job.get("decompilePath") or (Path(job["dir"]) / "FIRM.dec.c"))
-    if not path.exists():
+    path = _confined_stored_file(
+        job,
+        stored_key="decompilePath",
+        fallback_name="FIRM.dec.c",
+        allowed_roots=[DECOMPILE_STORE, WORK_DIR],
+    )
+    if path is None:
         raise HTTPException(status_code=404, detail="decompile not available")
     if preview_chars and preview_chars > 0:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -1724,7 +1843,7 @@ def download_decompile(
         return JSONResponse(
             {
                 "jobId": job_id,
-                "path": str(path),
+                "path": path.name,  # basename only — no FS layout leak
                 "totalChars": len(text),
                 "preview": text[:limit],
                 "truncated": len(text) > limit,
