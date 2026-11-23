@@ -16,7 +16,7 @@ Aktualisiert nach Multi-Agent-Erstanalyse (2026-11-23 Europe/Berlin).
 
 - [ ] Unified Investigation Flow 1.1 integrieren (`cursor/unified-investigation-flow-b100`)
 - [ ] ContentView Navigation-Shell extrahieren
-- [ ] ZIP↔BLE Korrelations-Hints; String-Heuristiken entschärfen
+- [ ] ZIP↔BLE Korrelations-Hints; String-Heuristiken entschärfen — **Design:** `docs/P1-3_BLE_FIRMWARE_CORRELATION.md` (Implementierung offen)
 - [ ] XCTest Write-Disable Gate (Ninebot/Xiaomi)
 - [ ] macOS CI: `xcodebuild test` Job
 - [ ] Identify: ein Find/Piep-Pfad statt Multi-Board-Blast

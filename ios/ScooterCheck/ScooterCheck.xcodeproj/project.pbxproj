@@ -51,6 +51,8 @@
 		A1000000000000000000009B /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009B /* libz.tbd */; };
 		A1000000000000000000000B /* BleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* BleClient.swift */; };
 		A100000000000000000000C4 /* BleWriteGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C4 /* BleWriteGate.swift */; };
+		A100000000000000000000E1 /* AuslesenDeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* AuslesenDeviceViews.swift */; };
+		A100000000000000000000E2 /* IntegrityResultChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* IntegrityResultChrome.swift */; };
 		A100000000000000000000D4 /* BleWriteGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D4 /* BleWriteGateTests.swift */; };
 		A100000000000000000000D5 /* WriteDisableRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D5 /* WriteDisableRegressionTests.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
@@ -184,6 +186,8 @@
 		B1000000000000000000000A /* DiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticMap.swift; sourceTree = "<group>"; };
 		B1000000000000000000000B /* BleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleClient.swift; sourceTree = "<group>"; };
 		B100000000000000000000C4 /* BleWriteGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGate.swift; sourceTree = "<group>"; };
+		B100000000000000000000E1 /* AuslesenDeviceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuslesenDeviceViews.swift; sourceTree = "<group>"; };
+		B100000000000000000000E2 /* IntegrityResultChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrityResultChrome.swift; sourceTree = "<group>"; };
 		B100000000000000000000D4 /* BleWriteGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGateTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000D5 /* WriteDisableRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteDisableRegressionTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000000C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -391,6 +395,7 @@
 				B1000000000000000000000E /* Info.plist */,
 				B1000000000000000000000C /* Assets.xcassets */,
 				E10000000000000000000005 /* Integrity */,
+				E1000000000000000000000A /* Auslesen */,
 				E10000000000000000000006 /* Ninebot */,
 				E10000000000000000000007 /* Xiaomi */,
 			);
@@ -408,6 +413,7 @@
 				B10000000000000000000031 /* ScooterVerification.swift */,
 				B100000000000000000000C3 /* PackIntegrity.swift */,
 				B10000000000000000000034 /* CheckPhotosUI.swift */,
+				B100000000000000000000E2 /* IntegrityResultChrome.swift */,
 				B10000000000000000000012 /* SoftUnlockSettings.swift */,
 				B1000000000000000000001F /* SoftUnlockComboStore.swift */,
 				B10000000000000000000013 /* StockFirmwareCatalog.swift */,
@@ -420,6 +426,14 @@
 				B1000000000000000000008E /* FirmwareZipAnalyzer.swift */,
 			);
 			path = Integrity;
+			sourceTree = "<group>";
+		};
+		E1000000000000000000000A /* Auslesen */ = {
+			isa = PBXGroup;
+			children = (
+				B100000000000000000000E1 /* AuslesenDeviceViews.swift */,
+			);
+			path = Auslesen;
 			sourceTree = "<group>";
 		};
 		E10000000000000000000008 /* ScooterCheckTests */ = {
@@ -667,7 +681,9 @@
 				A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */,
 				A10000000000000000000031 /* ScooterVerification.swift in Sources */,
 				A100000000000000000000C3 /* PackIntegrity.swift in Sources */,
+				A100000000000000000000E2 /* IntegrityResultChrome.swift in Sources */,
 				A10000000000000000000034 /* CheckPhotosUI.swift in Sources */,
+				A100000000000000000000E1 /* AuslesenDeviceViews.swift in Sources */,
 				A10000000000000000000008 /* Crypto.swift in Sources */,
 				A10000000000000000000009 /* Protocol.swift in Sources */,
 				A1000000000000000000000A /* DiagnosticMap.swift in Sources */,
