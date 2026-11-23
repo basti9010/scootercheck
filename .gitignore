@@ -13,3 +13,15 @@ ios/ScooterCheck/*.mobileprovision
 *.p12
 *.p8
 AuthKey_*.p8
+
+# Local / host secrets — never commit
+.env
+.env.*
+!.env.example
+**/decrypt.env
+server/firmware-analysis/.env
+
+# Python
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
