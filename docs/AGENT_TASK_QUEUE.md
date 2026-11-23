@@ -39,10 +39,10 @@
 
 | ID | Status | Agent |
 |----|--------|-------|
-| P1-1 Investigation Flow 1.1 | Foundation **MERGED** · Hub/UI/ContentView deferred | [Port Investigation foundation](bc-5cc7c0db-ad8d-53ee-b72a-737489341149) · Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` |
+| P1-1 Investigation Flow 1.1 | Foundation **MERGED** · Hub/UI/ContentView on `cursor/p1-1-investigation-hub-ui-b100` (await merge) | [Port Investigation foundation](bc-5cc7c0db-ad8d-53ee-b72a-737489341149) · Hub/UI slice this branch · Plan `docs/P1_INVESTIGATION_FLOW_PORT.md` |
 | P1-2 ContentView modularization | Step 1+2 **MERGED** (leaves + History) · Steps 3–6 BACKLOG | [Extract ContentView history](bc-b8cd6320-00b9-5b8f-b94e-2eea4de7bf36) · ContentView ~2196 LOC |
 | P1-3 BLE/Firmware correlation | MVP **MERGED** | [CrossSourceCorrelator MVP](bc-ef9785e8-27d0-5544-a470-08f7f88bacd0) · `docs/P1-3_CORRELATOR_MVP.md` |
-| P1-4 Regression tests | PARTIAL | InvestigationStore/FlowLogic + CrossSourceCorrelatorTests landed; Hub/UI coverage pending |
+| P1-4 Regression tests | PARTIAL | InvestigationStore/FlowLogic + CombinedPDFTests + CrossSourceCorrelatorTests landed; full attach/hub e2e still pending |
 
 ---
 
