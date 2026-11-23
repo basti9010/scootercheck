@@ -40,7 +40,7 @@
 | ID | Status | Agent |
 |----|--------|-------|
 | P1-1 Investigation Flow 1.1 gap analysis | IN_PROGRESS | explore `bc-8471e07b…` |
-| P1-2 ContentView modularization plan | IN_PROGRESS | explore `bc-585c5d7b…` |
+| P1-2 ContentView modularization | Step 1 **DONE** (leaves) | [Analyze ContentView](bc-585c5d7b-f442-5641-8b6a-6b03b3a145db) → `docs/P1_CONTENTVIEW_MODULARIZATION.md` |
 | P1-3 BLE/Firmware correlation architecture | DONE (design) | `docs/P1-3_BLE_FIRMWARE_CORRELATION.md` |
 | P1-4 Regression tests | BACKLOG | after P1-1…3 designs |
 
