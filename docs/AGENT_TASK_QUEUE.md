@@ -1,8 +1,9 @@
 # ScooterCheck – Agent Task Queue
 
-**Cycle:** 5 (P0 Final Verification & P1 Development)  
-**Branch:** `cursor/multi-agent-system-b100`  
-**Lock:** `CYCLE5_P1_ACTIVE`  
+**Cycle:** 6 (Firmware Research Lab – 2 files) + Cycle 5 CI follow-through  
+**Branch (research):** `cursor/firmware-research-lab-c6-b100`  
+**Branch (app/CI):** `cursor/multi-agent-system-b100`  
+**Lock:** `CYCLE6_FW_LAB` (app tree freeze for research docs; no BLE writes)  
 **Zuletzt gelesen:** 2026-11-23 (Europe/Berlin)
 
 ---
@@ -41,12 +42,23 @@
 
 ---
 
+## CYCLE 6 – Firmware Research Lab (2 Dateien)
+
+| ID | Datei | ZIP SHA-256 | Agent |
+|----|-------|------------|-------|
+| A | `ZT3_VCU_48KMH_5d51.zip` | `64d46af6…7bcec` | [Firmware Analyst A](bc-de16d5c7-d452-5efb-93e5-77868049fd32) |
+| B | `ZT3_________panicsystem_9646.zip` | `6bff28e8…adbc40` | [Firmware Analyst B](bc-e29ed52d-aa88-5383-b2d2-b4b0e7098496) |
+
+Artefakte: `research/cycle6/reports/{REPORT_A,REPORT_B,COMPARATIVE_ANALYSIS,FIRMWARE_RESEARCH_ROADMAP,FORENSIC_QA}.md`  
+Blöcke: Encrypted payload → ISA/FSM/Events **INCOMPLETE**; Filename claims **HYPOTHESIS**.
+
 ## Cycle Lock
 
 ```
-cycle_id: 5
-ci_fix_attempts: 1/3 (success)
-status: P0_VERIFIED — P1 Hub/UI merged; await CI on 8943627+
-branch: cursor/multi-agent-system-b100
-green_ci: 45239479743 @ 1a0012e (pre-P1-code)
+cycle_id: 6
+ci_fix_attempts_post_p1: 1/3 (await XCTest on a2c9329)
+status: CYCLE6_FW_LAB active — 2-file static research
+research_branch: cursor/firmware-research-lab-c6-b100
+app_branch: cursor/multi-agent-system-b100
+green_ci_p0: 45239479743 @ 1a0012e
 ```
