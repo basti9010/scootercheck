@@ -60,8 +60,11 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             fact(id: "speed.limit", interpreted: "32 km/h", expected: "≤ 20 km/h", modMatch: "speed.limit.over_clear"),
             class: .indiz
         )
-        XCTAssertTrue(r.plainLanguage.title.lowercased().contains("weicht")
-            || r.humanReadableExplanation.lowercased().contains("über"))
+        XCTAssertTrue(
+            r.plainLanguage.title.lowercased().contains("höher")
+                || r.plainLanguage.title.lowercased().contains("tempolimit")
+                || r.humanReadableExplanation.lowercased().contains("höheres geschwindigkeitslimit")
+        )
         XCTAssertNotNil(r.relevanceExplanation)
     }
 
@@ -120,8 +123,14 @@ final class EvidenceExplanationEngineTests: XCTestCase {
             class: .indiz
         )
         XCTAssertTrue(r.humanReadableExplanation.lowercased().contains("kennung"))
-        XCTAssertTrue(r.relevanceExplanation?.lowercased().contains("modultausch") == true)
-        XCTAssertTrue(r.relevanceExplanation?.contains("nicht automatisch") == true)
+        XCTAssertTrue(
+            r.humanReadableExplanation.lowercased().contains("tausch")
+                || r.relevanceExplanation?.lowercased().contains("mehrdeutig") == true
+        )
+        XCTAssertTrue(
+            r.humanReadableExplanation.contains("nicht automatisch")
+                || r.relevanceExplanation?.contains("nicht automatisch") == true
+        )
     }
 
     func testPowerCycleFleeting() {

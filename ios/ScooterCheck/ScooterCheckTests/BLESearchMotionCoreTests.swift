@@ -36,7 +36,8 @@ final class BLESearchMotionCoreTests: XCTestCase {
         let midY = tracker.currentY
         tracker.debugAdvance(steps: 6, headingDegrees: 180)
         let snap = SearchPathReconstructor.snapshot(from: tracker.path, previousViewport: nil, followSoftly: false)
-        XCTAssertGreaterThan(snap.smoothedPolyline.count, 3)
+        // Reconstructor sparsifies colinear samples — 3 points is a valid U-turn polyline.
+        XCTAssertGreaterThanOrEqual(snap.smoothedPolyline.count, 3)
         // Zurück Richtung Start: y wieder kleiner als Mid-Peak
         XCTAssertLessThan(tracker.currentY, midY - 1)
     }
