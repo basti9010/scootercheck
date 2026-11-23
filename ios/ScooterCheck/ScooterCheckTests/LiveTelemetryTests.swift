@@ -27,7 +27,8 @@ final class LiveTelemetryTests: XCTestCase {
 
     func testBmsTempDecodeOffset20() {
         let data = Data([45, 48, 0, 0]) // 25 °C / 28 °C
-        XCTAssertEqual(DiagnosticMap.decodeBmsTempC(data), 25, accuracy: 0.1)
+        // decodeBmsTempC → Double?; accuracy overload requires non-optional Double (Xcode 26)
+        XCTAssertEqual(DiagnosticMap.decodeBmsTempC(data) ?? -1, 25, accuracy: 0.1)
     }
 
     func testLiveSnapshotAppliesCurrentAndPower() {

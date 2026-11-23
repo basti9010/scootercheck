@@ -1,7 +1,7 @@
 # ScooterCheck – CI Autonomy Loop
 
-**Cycle:** 3 (Quality & Autonomy Upgrade)  
-**Max auto-fix attempts per distinct failure:** 3  
+**Cycle:** 4 (CI Recovery & P0 Verification)  
+**Max auto-fix attempts per distinct failure:** 3 (fresh budget; Cycle 3 exhausted)  
 **Branch:** `cursor/multi-agent-system-b100` (never force `main`)
 
 ## Pipeline
