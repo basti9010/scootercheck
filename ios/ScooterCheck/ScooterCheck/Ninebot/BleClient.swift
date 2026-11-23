@@ -1087,6 +1087,10 @@ final class BleClient: NSObject, ObservableObject {
 
     /// Find/Piep — nur Identifikation, keine Limit-/Unlock-Änderung.
     private func sendIdentifySignals() async {
+        guard BleWriteGate.authorize(.identifyFind) else {
+            fail("Identifizieren: BLE-Schreibzugriff für Find/Identify ist deaktiviert")
+            return
+        }
         guard let crypto else {
             fail("Identifizieren: nicht authentifiziert")
             return
@@ -1273,6 +1277,10 @@ final class BleClient: NSObject, ObservableObject {
             // SN-Modus: erstes SET_PWD klassisch, dann pollend warten.
             var setAccepted = false
             if !nonSNPairing {
+                // Enc2 handshake SET_PWD — BleWritePurpose.enc2Auth (allowlisted).
+                guard BleWriteGate.authorize(.enc2Auth) else {
+                    throw BleError.handshakeFailed("BLE-Schreibzugriff für Enc2-Auth ist deaktiviert")
+                }
                 let setPlain = Nb.setPwd(password!, target: pairingBoard, gen: gen)
                 do {
                     let setResp = try await sendReceive(
@@ -1410,6 +1418,10 @@ final class BleClient: NSObject, ObservableObject {
                 let target = targets[targetIndex % targets.count]
                 targetIndex += 1
                 statusMessage = "Power-Taste drücken… (Board 0x\(String(format: "%02X", target.rawValue)))"
+                // Enc2 handshake SET_PWD poll — BleWritePurpose.enc2Auth (allowlisted).
+                guard BleWriteGate.authorize(.enc2Auth) else {
+                    throw BleError.handshakeFailed("BLE-Schreibzugriff für Enc2-Auth ist deaktiviert")
+                }
                 crypto.resetSN()
                 let setPlain = Nb.setPwd(password, target: target, gen: gen)
                 do {

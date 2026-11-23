@@ -50,6 +50,8 @@
 		A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */; };
 		A1000000000000000000009B /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000009B /* libz.tbd */; };
 		A1000000000000000000000B /* BleClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* BleClient.swift */; };
+		A100000000000000000000C4 /* BleWriteGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000C4 /* BleWriteGate.swift */; };
+		A100000000000000000000D4 /* BleWriteGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D4 /* BleWriteGateTests.swift */; };
 		A1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* Assets.xcassets */; };
 		A1000000000000000000000D /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* CoreBluetooth.framework */; };
 		A1000000000000000000000E /* ProtocolHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* ProtocolHistoryStore.swift */; };
@@ -174,6 +176,8 @@
 		B10000000000000000000009 /* Protocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol.swift; sourceTree = "<group>"; };
 		B1000000000000000000000A /* DiagnosticMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticMap.swift; sourceTree = "<group>"; };
 		B1000000000000000000000B /* BleClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleClient.swift; sourceTree = "<group>"; };
+		B100000000000000000000C4 /* BleWriteGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGate.swift; sourceTree = "<group>"; };
+		B100000000000000000000D4 /* BleWriteGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleWriteGateTests.swift; sourceTree = "<group>"; };
 		B1000000000000000000000C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000000000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000000000000000000000D /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
@@ -425,6 +429,7 @@
 				B100000000000000000000B2 /* PedelecEvaluationTests.swift */,
 				B100000000000000000000B5 /* AppFeatureFlagsTests.swift */,
 				B100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift */,
+				B100000000000000000000D4 /* BleWriteGateTests.swift */,
 				B10000000000000000000039 /* PrivacyContentTests.swift */,
 				B1000000000000000000002E /* ScooterFinderMathTests.swift */,
 				B10000000000000000000043 /* BLESearchCoreTests.swift */,
@@ -452,6 +457,7 @@
 				B1000000000000000000000A /* DiagnosticMap.swift */,
 				B1000000000000000000008B /* LiveTelemetry.swift */,
 				B1000000000000000000000B /* BleClient.swift */,
+				B100000000000000000000C4 /* BleWriteGate.swift */,
 			);
 			path = Ninebot;
 			sourceTree = "<group>";
@@ -644,6 +650,7 @@
 				A1000000000000000000000A /* DiagnosticMap.swift in Sources */,
 				A1000000000000000000008B /* LiveTelemetry.swift in Sources */,
 				A1000000000000000000000B /* BleClient.swift in Sources */,
+				A100000000000000000000C4 /* BleWriteGate.swift in Sources */,
 				A1000000000000000000000F /* XiaomiProtocol.swift in Sources */,
 				A10000000000000000000010 /* XiaomiDiagnosticMap.swift in Sources */,
 				A10000000000000000000011 /* SoftUnlockSettings.swift in Sources */,
@@ -681,6 +688,7 @@
 				A100000000000000000000B2 /* PedelecEvaluationTests.swift in Sources */,
 				A100000000000000000000B5 /* AppFeatureFlagsTests.swift in Sources */,
 				A100000000000000000000B6 /* ProtocolRawDumpPDFTests.swift in Sources */,
+				A100000000000000000000D4 /* BleWriteGateTests.swift in Sources */,
 				A10000000000000000000039 /* PrivacyContentTests.swift in Sources */,
 				A1000000000000000000002E /* ScooterFinderMathTests.swift in Sources */,
 				A10000000000000000000043 /* BLESearchCoreTests.swift in Sources */,
