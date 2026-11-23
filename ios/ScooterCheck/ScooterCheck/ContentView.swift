@@ -16,10 +16,14 @@ struct ContentView: View {
     @State private var showFAQ = false
     @State private var showPrivacy = false
     @State private var showSettings = false
-    @State private var showFirmwareZipInspector = false
+    @State private var showFirmwareForensicsHub = false
     /// Investigation Hub detail sheet (P1-1 Hub/UI slice).
     @State private var showInvestigationDetail = false
     @State private var investigationDetailId: String? = nil
+    /// Active investigation that should receive the next firmware report.
+    @State private var activeFirmwareInvestigationId: String? = nil
+    @State private var firmwareHubInitialMode: FirmwareForensicsMode? = .fileOnly
+    @State private var firmwareHubVehicleContext: FirmwareVehicleContext? = nil
     @State private var showReuseReadoutPrompt = false
     @State private var reuseReadoutCandidates: [InvestigationReadoutSummary] = []
     @ObservedObject private var investigationStore = InvestigationStore.shared
@@ -238,8 +242,19 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            .sheet(isPresented: $showFirmwareZipInspector) {
-                FirmwareZipInspectorView()
+            .sheet(isPresented: $showFirmwareForensicsHub) {
+                FirmwareForensicsHubView(
+                    vehicleContext: firmwareHubVehicleContext,
+                    initialMode: firmwareHubInitialMode,
+                    onClose: {
+                        showFirmwareForensicsHub = false
+                        firmwareHubInitialMode = .fileOnly
+                        firmwareHubVehicleContext = nil
+                    },
+                    onReportProduced: { report, originalData in
+                        attachFirmwareReportFromHub(report, originalData: originalData)
+                    }
+                )
             }
             .sheet(isPresented: $showReuseReadoutPrompt) {
                 ReuseReadoutPromptView(
@@ -263,9 +278,12 @@ struct ContentView: View {
                 if let id = investigationDetailId {
                     InvestigationDetailView(
                         recordId: id,
-                        onAppendFirmware: { _ in
+                        onAppendFirmware: { id in
                             showInvestigationDetail = false
-                            showFirmwareZipInspector = true
+                            activeFirmwareInvestigationId = id
+                            firmwareHubVehicleContext = nil
+                            firmwareHubInitialMode = .fileOnly
+                            showFirmwareForensicsHub = true
                         },
                         onAppendScooter: { _ in
                             showInvestigationDetail = false
@@ -503,15 +521,15 @@ struct ContentView: View {
             )
 
             Button {
-                showFirmwareZipInspector = true
+                openFirmwareForensicsHub(mode: .fileOnly)
             } label: {
-                Label("Firmware-ZIP auswerten", systemImage: "doc.zipper")
+                Label("Firmware-Forensik", systemImage: "doc.text.magnifyingglass")
                     .font(Theme.buttonSecondary)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .tint(Theme.accent)
-            .accessibilityHint("Liest eine Flash-ZIP vom iPhone aus — ohne zu flashen")
+            .accessibilityHint("Firmwaredatei lokal und optional am Server auswerten — ohne zu flashen")
         }
     }
 
@@ -2063,12 +2081,12 @@ struct ContentView: View {
                     navigateFromMenu(to: .home)
                 }
                 sideNavRow(
-                    title: "Firmware-ZIP auswerten",
-                    systemImage: "doc.zipper",
+                    title: "Firmware-Forensik",
+                    systemImage: "doc.text.magnifyingglass",
                     selected: false
                 ) {
                     setMenuOpen(false)
-                    showFirmwareZipInspector = true
+                    openFirmwareForensicsHub(mode: nil)
                 }
                 if AppFeatureFlags.pedelecAuslesenVisible {
                     sideNavRow(
@@ -2258,9 +2276,47 @@ struct ContentView: View {
     }
 
     private func startFirmwareOnlyFromHub() {
-        _ = investigationStore.create(title: "Firmwareanalyse", progress: .selectFirmware)
+        let rec = investigationStore.create(title: "Firmwareanalyse", progress: .selectFirmware)
+        activeFirmwareInvestigationId = rec.id
         setMenuOpen(false)
-        showFirmwareZipInspector = true
+        openFirmwareForensicsHub(mode: .fileOnly)
+    }
+
+    private func openFirmwareForensicsHub(mode: FirmwareForensicsMode?) {
+        firmwareHubInitialMode = mode
+        firmwareHubVehicleContext = nil
+        showFirmwareForensicsHub = true
+    }
+
+    private func attachFirmwareReportFromHub(_ report: FirmwareForensicReport, originalData: Data?) {
+        let targetId: String
+        if let existing = activeFirmwareInvestigationId,
+           investigationStore.record(id: existing) != nil {
+            targetId = existing
+        } else {
+            let rec = investigationStore.create(
+                title: report.originalFileName.isEmpty ? "Firmwareanalyse" : report.originalFileName,
+                progress: .analyzeFirmware
+            )
+            activeFirmwareInvestigationId = rec.id
+            targetId = rec.id
+        }
+        do {
+            _ = try investigationStore.attachFirmwareReport(
+                report,
+                originalData: originalData,
+                to: targetId
+            )
+            showFirmwareForensicsHub = false
+            investigationDetailId = targetId
+            showInvestigationDetail = true
+        } catch {
+            // Keep hub open; user can retry save. Soft surface via investigation note.
+            if var rec = investigationStore.record(id: targetId) {
+                rec.notes.append("Firmware-Speichern fehlgeschlagen: \(error.localizedDescription)")
+                investigationStore.upsert(rec)
+            }
+        }
     }
 
     private func startCombinedFromHub() {
