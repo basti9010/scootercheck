@@ -16,8 +16,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_SRC="$(cd "$SCRIPT_DIR/.." && pwd)"                 # …/server/firmware-analysis
 REPO_ROOT="$(cd "$APP_SRC/../.." && pwd)"               # repo root
-REMOTE_HOST="${REMOTE_HOST:-root@api.tuningscanner.de}"
+# Prefer scootercheck-deploy (see bootstrap-deploy-user.sh). root@ is legacy only.
+REMOTE_HOST="${REMOTE_HOST:-scootercheck-deploy@api.tuningscanner.de}"
 SSH_IDENTITY="${SSH_IDENTITY:-$HOME/.ssh/hetzner_scootercheck}"
+SSH_KNOWN_HOSTS_FILE="${SSH_KNOWN_HOSTS_FILE:-}"
 REMOTE_APP="${REMOTE_APP:-/opt/scootercheck/firmware-analysis}"
 SERVICE_NAME="${SERVICE_NAME:-scootercheck-fw}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8088/health}"
@@ -26,8 +28,9 @@ DRY_RUN=1
 if [[ "$CONFIRM_PROD_DEPLOY" == "YES" ]]; then
   DRY_RUN=0
 fi
+# Prefer Actions workflow deploy-hetzner.yml for production CD.
 
-# Phase 1 + 2 + 2.1 + C11 diagnostics. Keep aligned with deploy/deploy-manifest.txt.
+# Phase 1 + 2 + 2.1 Python modules / docs / tests
 DEPLOY_PY_FILES=(
   zip_safe.py
   app.py
@@ -40,28 +43,9 @@ DEPLOY_PY_FILES=(
   activation_forensics.py
   semantic_dataflow.py
   llm_verify.py
-  llm_enrich.py
   job_auth.py
   reference_catalog.py
   ghidra_decompile.py
-  speed_extract.py
-  angr_lite.py
-  angr_cfg_worker.py
-  capstone_extract.py
-  unicorn_emulate.py
-  yara_scan.py
-  r2_extract.py
-  cortex_m_ivt.py
-  limit_slice.py
-  input_probe.py
-  combo_extract.py
-  combo_policy.py
-  board_pinouts.py
-  diagnostics_models.py
-  diagnostics_status.py
-  diagnostics_tea.py
-  diagnostics_ghidra.py
-  diagnostics_routes.py
   test_zip_safe.py
   test_plaintext_detect.py
   test_stock_diff.py
@@ -83,10 +67,6 @@ DEPLOY_PY_FILES=(
   test_phase233_jwt_artifacts.py
   test_phase233_ghidra_export_gt.py
   test_phase234_parameter_quality.py
-  test_diagnostics_tea.py
-  test_diagnostics_ghidra.py
-  test_diagnostics_routes.py
-  test_deploy_manifest.py
   staging_harness.py
   reference_inventory.py
   analysis_completeness.py
@@ -104,7 +84,6 @@ DEPLOY_PY_FILES=(
   test_ghidra_integration.py
   test_ghidra_export_fixtures.py
   firmware_identify.py
-  requirements.txt
   README.md
   docs/phase22h2-release.md
   docs/phase23-activation-forensics.md
@@ -112,14 +91,7 @@ DEPLOY_PY_FILES=(
   docs/phase232-ghidra-validation.md
   docs/phase233-quality.md
   docs/phase234-release-hardening.md
-  docs/process-isolation.md
-  deploy/deploy-manifest.txt
-  deploy/validate-release-config.sh
-  deploy/RELEASE_COMPAT.md
   .env.example
-  yara_rules/scooter_cfw.yar
-  testdata/diagnostics/README.md
-  testdata/diagnostics/synthetic_cortex_m_thumb.bin
 )
 
 # Ghidra scripts (Phase 1 + 2 + 2.2B)
@@ -144,10 +116,10 @@ fi
 RSYNC=(rsync -az --checksum)
 if [[ -f "$SSH_IDENTITY" ]]; then
   if [[ -n "${SSH_KNOWN_HOSTS_FILE:-}" ]]; then
-  RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE")
-else
-  RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new")
-fi
+    RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE")
+  else
+    RSYNC+=(-e "ssh -i $SSH_IDENTITY -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new")
+  fi
 fi
 
 log() { printf '[fw-rollout] %s\n' "$*" >&2; }
@@ -217,7 +189,7 @@ sync_files() {
     log "DRY-RUN: would NOT touch /var/lib/scootercheck (jobs/stock-fw/catalogs)"
     return 0
   fi
-  remote "mkdir -p -- '$REMOTE_APP/ghidra_scripts' '$REMOTE_APP/deploy' '$REMOTE_APP/docs' '$REMOTE_APP/yara_rules' '$REMOTE_APP/testdata/diagnostics'"
+  remote "mkdir -p -- '$REMOTE_APP/ghidra_scripts'"
   for f in "${DEPLOY_PY_FILES[@]}" "${DEPLOY_GHIDRA_SCRIPTS[@]}"; do
     log "rsync $f → $REMOTE_APP/$f"
     "${RSYNC[@]}" "$APP_SRC/$f" "$REMOTE_HOST:$REMOTE_APP/$f" \
@@ -234,16 +206,16 @@ remote_import_and_tests() {
   cmd=$(cat <<EOF
 set -euo pipefail
 cd '$REMOTE_APP'
-./.venv/bin/python -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, analysis_profile, ble_container, diagnostics_routes, app; print("imports_ok")'
-./.venv/bin/python -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff test_api_auth_security test_deploy_manifest -q
+./.venv/bin/python -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, analysis_profile, ble_container, app; print("imports_ok")'
+./.venv/bin/python -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff test_api_auth_security -q
 EOF
 )
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "DRY-RUN: would run remote imports + unit tests"
     (
       cd "$APP_SRC"
-      python3 -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, analysis_profile, ble_container, diagnostics_routes; print("local_imports_ok")'
-      python3 -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff test_api_auth_security test_deploy_manifest -q
+      python3 -c 'import zip_safe, stock_diff, job_auth, reference_catalog, function_diff, llm_verify, analysis_profile, ble_container; print("local_imports_ok")'
+      python3 -m unittest test_zip_safe test_stock_diff test_job_auth test_reference_catalog test_function_diff test_api_auth_security -q
     ) || return 1
     return 0
   fi

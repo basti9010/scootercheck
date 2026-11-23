@@ -62,10 +62,12 @@ Secrets **nicht** ins Git.
 
 Actions → **Deploy Hetzner (firmware-analysis)**  
 
-- `git_sha` = voller Commit-SHA mit grünem **Server Firmware Tests**  
+- `git_sha` = **voller 40-Zeichen-Commit-SHA** (keine Branch-Tips) mit grünem **Server Firmware Tests**  
 - `confirm_deploy` = **false**  
+- optional `remote_dry_run` = **true** für SSH-Plan ohne Writes  
 
-Erst wenn Dry-Run und Reviewer-OK: `confirm_deploy=true`.
+Erst wenn Dry-Run und Reviewer-OK: `confirm_deploy=true`.  
+iOS XCTest ist **nicht** blockierend für Server-Deploy.
 
 ---
 
