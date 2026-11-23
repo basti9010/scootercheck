@@ -769,6 +769,8 @@ def process_job(job_id: str) -> None:
         notes.append("r2=skipped (radare2 not installed or ENABLE_R2=0)")
 
     ghidra_xrefs: dict[str, Any] = {"ok": False, "speeds": [], "notes": []}
+    # Limitations collected before `result = deep_result(...)` (avoid UnboundLocalError).
+    pending_limitations: list[str] = []
     # Phase 2.2H: never force Cortex-M Ghidra when container analysis forbids import.
     cont_meta = container_meta or {}
     ghidra_blocked = cont_meta.get("ghidraImportAllowed") is False
@@ -777,7 +779,7 @@ def process_job(job_id: str) -> None:
             "ghidra=skipped (architectureConfidence/ghidraImportAllowed=false — "
             "no Cortex-M import without technical evidence)"
         )
-        result.setdefault("analysisLimitations", []).append(
+        pending_limitations.append(
             "Ghidra übersprungen: Architektur nicht ausreichend belegt."
         )
         _update(
@@ -884,6 +886,8 @@ def process_job(job_id: str) -> None:
         result["firmwareArchitectureConfidence"] = architecture_confidence
         for lim in container_meta.get("analysisLimitations") or []:
             result.setdefault("analysisLimitations", []).append(lim)
+    for lim in pending_limitations:
+        result.setdefault("analysisLimitations", []).append(lim)
     if "serverDecompile" not in result["sources"]:
         result["sources"] = list(result["sources"]) + ["serverDecompile"]
     result = merge_r2_into_result(result, r2_info)
