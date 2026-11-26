@@ -167,6 +167,7 @@
 		A10000000000000000000A32 /* AdminViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B32 /* AdminViews.swift */; };
 		A10000000000000000000A33 /* AuthCredentialsNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B33 /* AuthCredentialsNormalizer.swift */; };
 		A10000000000000000000A34 /* AuthCredentialsNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B34 /* AuthCredentialsNormalizerTests.swift */; };
+		A10000000000000000000A35 /* DemoAuthBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B35 /* DemoAuthBootstrap.swift */; };
 		A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */; };
 		A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */; };
 		A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */; };
@@ -348,6 +349,7 @@
 		B10000000000000000000B32 /* AdminViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminViews.swift; sourceTree = "<group>"; };
 		B10000000000000000000B33 /* AuthCredentialsNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCredentialsNormalizer.swift; sourceTree = "<group>"; };
 		B10000000000000000000B34 /* AuthCredentialsNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCredentialsNormalizerTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B35 /* DemoAuthBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoAuthBootstrap.swift; sourceTree = "<group>"; };
 		B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareSpeedSignatureExtractor.swift; sourceTree = "<group>"; };
@@ -410,6 +412,7 @@
 				B10000000000000000000B31 /* AuthGateView.swift */,
 				B10000000000000000000B32 /* AdminViews.swift */,
 				B10000000000000000000B33 /* AuthCredentialsNormalizer.swift */,
+				B10000000000000000000B35 /* DemoAuthBootstrap.swift */,
 				B100000000000000000000F5 /* ChangePasswordView.swift */,
 				B100000000000000000000F6 /* AdminUserEditView.swift */,
 			);
@@ -826,6 +829,7 @@
 				A10000000000000000000A31 /* AuthGateView.swift in Sources */,
 				A10000000000000000000A32 /* AdminViews.swift in Sources */,
 				A10000000000000000000A33 /* AuthCredentialsNormalizer.swift in Sources */,
+				A10000000000000000000A35 /* DemoAuthBootstrap.swift in Sources */,
 				A100000000000000000000F5 /* ChangePasswordView.swift in Sources */,
 				A100000000000000000000F6 /* AdminUserEditView.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,

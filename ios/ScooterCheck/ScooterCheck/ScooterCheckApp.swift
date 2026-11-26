@@ -19,6 +19,8 @@ struct ScooterCheckApp: App {
             .environmentObject(AppSettings.shared)
             .environmentObject(auth)
             .task {
+                // Demo ohne Login-Gate: JWT still besorgen, sonst 401 bei Server-Decrypt.
+                await DemoAuthBootstrap.ensureSessionIfNeeded(auth: auth)
                 // Offline-Kern bleibt; Online nur ergänzen wenn erreichbar.
                 StockFirmwareCatalogRemote.refreshInBackground()
             }
