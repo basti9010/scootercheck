@@ -8,18 +8,27 @@ struct ScooterCheckApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AuthGateView(auth: auth)
-                .environmentObject(AppSettings.shared)
-                .environmentObject(auth)
-                .task {
-                    // Offline-Kern bleibt; Online nur ergänzen wenn erreichbar.
-                    StockFirmwareCatalogRemote.refreshInBackground()
+            Group {
+                if AppFeatureFlags.authGateEnabled {
+                    AuthGateView(auth: auth)
+                } else {
+                    // Demo / Notfall: ohne Login-Gate (Auth-Store bleibt für Settings/Admin-UI injiziert).
+                    ContentView()
                 }
-                .onAppear {
-                    // Schriftstufe vor dem ersten Frame an Theme binden.
-                    _ = AppSettings.shared
-                    UNUserNotificationCenter.current().delegate = appDelegate
-                }
+            }
+            .environmentObject(AppSettings.shared)
+            .environmentObject(auth)
+            .task {
+                // Demo ohne Login-Gate: JWT still besorgen, sonst 401 bei Server-Decrypt.
+                await DemoAuthBootstrap.ensureSessionIfNeeded(auth: auth)
+                // Offline-Kern bleibt; Online nur ergänzen wenn erreichbar.
+                StockFirmwareCatalogRemote.refreshInBackground()
+            }
+            .onAppear {
+                // Schriftstufe vor dem ersten Frame an Theme binden.
+                _ = AppSettings.shared
+                UNUserNotificationCenter.current().delegate = appDelegate
+            }
         }
     }
 }

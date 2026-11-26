@@ -70,8 +70,15 @@ struct AuthGateView: View {
                         .scootField()
                     SecureField("Passwort (min. 8)", text: $password)
                         .textContentType(mode == .login ? .password : .newPassword)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                         .scootField()
                 }
+
+                Text("Caps Lock aus beim Einfügen aus dem Passwortmanager — sonst werden Groß/Klein vertauscht.")
+                    .font(Theme.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let err = auth.lastError {
                     Text(err)
@@ -164,11 +171,24 @@ struct AuthGateView: View {
     private func submit() async {
         busy = true
         defer { busy = false }
-        let mail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let mail = AuthCredentialsNormalizer.normalizedEmail(email)
+        let pass = AuthCredentialsNormalizer.normalizedPassword(password)
+        email = mail
         if mode == .login {
-            await auth.login(email: mail, password: password)
+            await auth.login(email: mail, password: pass)
+            // Caps Lock oft vertauscht Groß/Klein beim Einfügen — einmal mit getauschtem Case retry.
+            if !auth.isLoggedIn,
+               AuthCredentialsNormalizer.isWrongCredentialsMessage(auth.lastError) {
+                let swapped = AuthCredentialsNormalizer.toggledLetterCase(pass)
+                if swapped != pass {
+                    await auth.login(email: mail, password: swapped)
+                    if auth.isLoggedIn {
+                        password = swapped
+                    }
+                }
+            }
         } else {
-            await auth.register(email: mail, password: password, displayName: displayName)
+            await auth.register(email: mail, password: pass, displayName: displayName)
         }
     }
 }

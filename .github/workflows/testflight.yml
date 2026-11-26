@@ -83,6 +83,7 @@ on:
       - cursor/funbool-dual-source-b100
       - cursor/auslesen-stop-stay-b100
       - cursor/backend-auth-b100
+      - cursor/demo-skip-login-b100
     paths:
       - "ios/ScooterCheck/**"
       - ".github/workflows/testflight.yml"
