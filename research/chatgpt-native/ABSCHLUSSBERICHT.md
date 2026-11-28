@@ -50,6 +50,7 @@ Aliases für v1-Namen bleiben aufrufbar.
 | Suite | Ergebnis |
 |-------|----------|
 | AI Bridge + MCP pytest | **77 passed** (lokal) |
+| PR #123 CI (Pytest + Security) | **grün** auf `b109c25` (nach `python-multipart`-Fix) |
 | OAuth PKCE + `/mcp` JSON-RPC | passed |
 | MCP Authz Gates | passed |
 | ChatGPT echte Verbindung | **nicht ausgeführt** |

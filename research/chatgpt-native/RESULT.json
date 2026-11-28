@@ -14,6 +14,9 @@
   },
   "prior_live_agent_id": "bc-2d348346-f60b-4bb9-92e5-1ee6d5119259",
   "tests_local": {"passed": 77, "failed": 0},
+  "pr": 123,
+  "ci_head": "b109c25e86f7c9c538dc741ff9ce021954f68db4",
+  "ci_conclusion": "success",
   "mcp_path": "/mcp",
   "transport": "streamable-http",
   "owner_next": [
