@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "inventory_date": "2026-11-28",
+  "branch": "cursor/development-automation-b100",
+  "components": [
+    {"id": "ios-app", "path": "ios/ScooterCheck/ScooterCheck", "kind": "ios", "status": "PRESENT"},
+    {"id": "ios-tests", "path": "ios/ScooterCheck/ScooterCheckTests", "kind": "ios_test", "status": "PRESENT", "approx_suites": 48, "approx_test_methods": 395},
+    {"id": "ios-ble-identity", "path": "ios/ScooterCheck/ScooterCheck/BLEIdentity", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-ninebot", "path": "ios/ScooterCheck/ScooterCheck/Ninebot", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-integrity", "path": "ios/ScooterCheck/ScooterCheck/Integrity", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-firmware-forensics", "path": "ios/ScooterCheck/ScooterCheck/FirmwareForensics", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-investigation", "path": "ios/ScooterCheck/ScooterCheck/Investigation", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-correlation", "path": "ios/ScooterCheck/ScooterCheck/Correlation", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-radar-map", "path": "ios/ScooterCheck/ScooterCheck/RadarMap", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-universal-diagnosis", "path": "ios/ScooterCheck/ScooterCheck/UniversalDiagnosis", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-pedelec", "path": "ios/ScooterCheck/ScooterCheck/Pedelec", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "ios-xiaomi", "path": "ios/ScooterCheck/ScooterCheck/Xiaomi", "kind": "ios_module", "status": "PRESENT"},
+    {"id": "server-firmware-analysis", "path": "server/firmware-analysis", "kind": "server", "status": "PRESENT"},
+    {"id": "server-diagnostics", "path": "server/firmware-analysis/diagnostics_routes.py", "kind": "server_module", "status": "PRESENT"},
+    {"id": "server-deploy", "path": "server/firmware-analysis/deploy", "kind": "deploy", "status": "PRESENT"},
+    {"id": "server-tests", "path": "server/firmware-analysis/test_*.py", "kind": "server_test", "status": "PRESENT", "approx_modules": 44},
+    {"id": "backend-auth", "path": "backend", "kind": "backend", "status": "SOURCES_ABSENT_ON_CHECKOUT", "note": "Only __pycache__; see PR #117 / backend-auth line"},
+    {"id": "stock-catalog", "path": "catalogs/stock-firmware.json", "kind": "data", "status": "PRESENT"},
+    {"id": "ci-ios", "path": ".github/workflows/ios-unit-tests.yml", "kind": "ci", "status": "PRESENT"},
+    {"id": "ci-server", "path": ".github/workflows/server-firmware-tests.yml", "kind": "ci", "status": "PRESENT"},
+    {"id": "ci-testflight", "path": ".github/workflows/testflight.yml", "kind": "ci", "status": "PRESENT"},
+    {"id": "cd-hetzner", "path": ".github/workflows/deploy-hetzner.yml", "kind": "cd", "status": "PRESENT", "auto_deploy": false},
+    {"id": "cursor-agents", "path": ".cursor/agents", "kind": "agent_prompt", "status": "PRESENT"},
+    {"id": "cursor-skills", "path": ".cursor/skills", "kind": "skill", "status": "PRESENT"},
+    {"id": "dev-memory", "path": "development-memory", "kind": "memory", "status": "PRESENT"}
+  ]
+}

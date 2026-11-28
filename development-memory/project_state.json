@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "inventory_date": "2026-11-28",
+  "branch": "cursor/development-automation-b100",
+  "base_lineage": [
+    "cursor/hetzner-deploy-cd-c12-b100",
+    "cursor/server-diagnostics-c11-b100",
+    "cursor/hetzner-ghidra-live-c10-b100",
+    "cursor/prod-pipeline-forensic-c9-b100",
+    "cursor/server-deploy-ghidra-ios-c8-b100",
+    "cursor/server-fw-analysis-c7-b100",
+    "cursor/multi-agent-system-b100"
+  ],
+  "product_rules": [
+    "read_only_diagnosis",
+    "no_limit_writes",
+    "no_firmware_flash",
+    "no_unlock_execution"
+  ],
+  "bundle_id": "com.scootercheck.app",
+  "paths": {
+    "ios_xcodeproj": "ios/ScooterCheck/ScooterCheck.xcodeproj",
+    "server": "server/firmware-analysis",
+    "deploy_path_prod": "/opt/scootercheck/firmware-analysis",
+    "catalog": "catalogs/stock-firmware.json",
+    "agents": ".cursor/agents",
+    "skills": ".cursor/skills",
+    "memory": "development-memory"
+  },
+  "prs": {
+    "117": {
+      "title": "P0 Authentication recovery",
+      "head": "cursor/p0-auth-recovery-b100",
+      "note": "Owner device-tested login; merge/CI verify independently",
+      "merge_policy": "allowed_after_ci"
+    },
+    "114": {
+      "title": "Demo login bypass",
+      "head": "cursor/demo-skip-login-b100",
+      "merge_policy": "do_not_merge"
+    }
+  },
+  "auth_on_this_checkout": "INCOMPLETE",
+  "backend_sources_on_this_checkout": false,
+  "labels": {
+    "hetzner_cd_workflow": "IMPLEMENTED",
+    "hetzner_prod_deploy": "NOT VERIFIED",
+    "ghidra_tea_live_e2e": "NOT VERIFIED",
+    "chatgpt_connection": "NOT VERIFIED",
+    "cursor_api_live": "NOT VERIFIED"
+  },
+  "source_of_truth": ["git", "ci", "deploy"],
+  "memory_role": "derived"
+}
