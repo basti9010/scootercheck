@@ -110,9 +110,10 @@ if id "$APP_OWNER" &>/dev/null; then
   chown -h "$APP_OWNER:$APP_OWNER" "$REMOTE_APP" 2>/dev/null || true
 fi
 
-# Restart unit (deploy user needs limited sudo — see bootstrap-deploy-user.sh)
+# Restart unit (deploy user needs limited sudo — see bootstrap-deploy-user.sh).
+# sleep ≥3s: uvicorn bind lags; Cycle 13 live deploy saw curl fail at t=0 after restart.
 sysctl_cmd restart "$SERVICE_NAME"
-sleep 2
+sleep 3
 sysctl_cmd is-active --quiet "$SERVICE_NAME" || die "service not active after restart"
 
 BODY="$(curl -fsS --max-time 15 "$HEALTH_URL")" \
