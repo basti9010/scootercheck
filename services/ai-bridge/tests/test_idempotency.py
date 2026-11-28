@@ -8,37 +8,37 @@ from ai_bridge.models import TaskCreate, TaskPriority, TaskSource
 from ai_bridge.store import TaskStore
 
 
-def _payload(key: str = "idem-abc") -> TaskCreate:
+def _payload(key: str) -> TaskCreate:
     return TaskCreate(
         title="Idempotent sample",
         description="Ensure create_task is idempotent",
-        source=TaskSource.CLI,
+        source=TaskSource.API,
         repository="owner/scootercheck",
         base_branch="cursor/development-automation-b100",
         priority=TaskPriority.P2,
-        idempotency_key=key,
         requirements=["no secrets in logs"],
         acceptance_criteria=["same key → same task_id"],
+        idempotency_key=key,
     )
 
 
-def test_create_task_idempotent(tmp_path: Path):
+def test_create_task_idempotent(tmp_path: Path) -> None:
     store = TaskStore(tmp_path)
-    t1, created1 = store.create_task(_payload())
-    t2, created2 = store.create_task(_payload())
+    t1, created1 = store.create_task(_payload("idem-1"))
     assert created1 is True
+    t2, created2 = store.create_task(_payload("idem-1"))
     assert created2 is False
     assert t1.task_id == t2.task_id
 
 
-def test_different_keys_create_distinct_tasks(tmp_path: Path):
+def test_different_keys_create_distinct_tasks(tmp_path: Path) -> None:
     store = TaskStore(tmp_path)
     a, _ = store.create_task(_payload("key-a"))
     b, _ = store.create_task(_payload("key-b"))
     assert a.task_id != b.task_id
 
 
-def test_get_by_idempotency_key(tmp_path: Path):
+def test_get_by_idempotency_key(tmp_path: Path) -> None:
     store = TaskStore(tmp_path)
     created, _ = store.create_task(_payload("lookup-1"))
     found = store.get_by_idempotency_key("lookup-1")

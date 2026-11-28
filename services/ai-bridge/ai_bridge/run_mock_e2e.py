@@ -15,28 +15,27 @@ from ai_bridge.store import TaskStore
 def main() -> int:
     root = Path(__file__).resolve().parent.parent / "data"
     store = TaskStore(root)
-    orch = TaskOrchestrator(
-        store, cursor=MockCursorClient(finish_after_polls=3), poll_interval_s=0
+    orch = TaskOrchestrator(store, client=MockCursorClient())
+    payload = TaskCreate(
+        title="Mock E2E CLI",
+        description="Development Automation Etappe 1–3 mock vertical slice",
+        source=TaskSource.CLI,
+        repository="https://github.com/basti9010/scootercheck",
+        base_branch="cursor/development-automation-b100",
+        priority=TaskPriority.P2,
+        requirements=["mock only"],
+        acceptance_criteria=["COMPLETED", "CURSOR_API_LIVE_VERIFIED false"],
+        idempotency_key="cli-mock-e2e",
     )
-    report = orch.run_vertical(
-        TaskCreate(
-            title="Mock E2E CLI",
-            description="Development Automation Etappe 1–3 mock vertical slice",
-            source=TaskSource.CLI,
-            repository="https://github.com/basti9010/scootercheck",
-            base_branch="cursor/development-automation-b100",
-            priority=TaskPriority.P2,
-            idempotency_key="cli-mock-e2e",
-            requirements=["mock only"],
-            acceptance_criteria=["COMPLETED", "CURSOR_API_LIVE_VERIFIED false"],
-        )
-    )
-    print(json.dumps(report, indent=2, sort_keys=True))
+    report = orch.run_vertical(payload)
+    print(json.dumps(report, indent=2))
     print(
-        f"\nCURSOR_API_LIVE_VERIFIED={CURSOR_API_LIVE_VERIFIED} (must stay false for mock)",
-        file=sys.stderr,
+        f"\nCURSOR_API_LIVE_VERIFIED={CURSOR_API_LIVE_VERIFIED} "
+        "(must stay false for mock)"
     )
-    return 0 if report.get("status") == "COMPLETED" else 1
+    assert report["status"] == "COMPLETED"
+    assert CURSOR_API_LIVE_VERIFIED is False
+    return 0
 
 
 if __name__ == "__main__":

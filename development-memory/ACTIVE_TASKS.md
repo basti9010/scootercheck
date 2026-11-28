@@ -34,3 +34,9 @@
 1. After #117 merges: refresh `PROJECT_STATE`, `COMPONENT_REGISTRY` (backend + auth paths), `TEST_STATUS` with CI run ids.  
 2. After first Hetzner dry-run/deploy: refresh `DEPLOYMENT_STATUS` with evidence.  
 3. When `services/ai-bridge/` lands: register in component JSON; keep live-gate labels honest.
+
+## Development Automation 1.0 (2026-11-28)
+
+- Etappe 1–3 mock vertical: TESTED (36 pytest)
+- Live Cursor / ChatGPT gates: NOT VERIFIED
+- PR #118 open; no prod deploy

@@ -23,7 +23,7 @@ Sources (official, verified for writeup wording):
 | Cloud Agent Task / subagents | YES (product) | UNKNOWN | Partial (`.cursor/agents/`, research cycles) | NO | Agent personas in-repo; external drive API not wired in MCP yet |
 | Cursor IDE agent prompts | YES | ACCOUNT_DEPENDENT | YES | NO | Local IDE; not MCP |
 | Background / Cloud Agent MCP host tools | YES (runtime) | ACCOUNT_DEPENDENT | N/A (host) | NO | This run uses host MCP; not ScooterCheck product API |
-| Public Cursor “start agent via REST” for ScooterCheck automation | UNKNOWN | UNKNOWN | NO (Agent A may stub client) | NO | Treat as UNKNOWN until official API + account entitlement confirmed |
+| Cloud Agents API v1 `POST /v1/agents` (public beta) | YES ([docs](https://cursor.com/docs/cloud-agent/api/endpoints)) | ACCOUNT_DEPENDENT (API key + entitlement) | YES (`services/ai-bridge/ai_bridge/cursor_client.py` mock + live skeleton) | NO | Live path requires `CURSOR_API_KEY`; **CURSOR_API_LIVE_VERIFIED=false** until owner live test |
 | PR / CI observation from Cursor GitHub integration | YES | ACCOUNT_DEPENDENT | YES (workflows exist) | NO | Observation ≠ deploy |
 
 ---
