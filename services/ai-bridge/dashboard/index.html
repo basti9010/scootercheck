@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#12161C" />
+  <title>ScooterCheck Development Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="top" id="top-bar">
+      <button type="button" class="nav-back hidden" id="btn-back" aria-label="Zurück">‹</button>
+      <div class="brand-wrap">
+        <div class="brand">ScooterCheck</div>
+        <p class="tag" id="page-tag">Development Center</p>
+      </div>
+      <button type="button" class="icon-btn" id="btn-token" aria-label="Token">Tok</button>
+    </header>
+
+    <main id="main" class="main"></main>
+
+    <nav class="tabbar" id="tabbar" aria-label="Hauptnavigation">
+      <button type="button" class="tab active" data-route="home">Status</button>
+      <button type="button" class="tab" data-route="new">Neu</button>
+      <button type="button" class="tab" data-route="tasks">Tasks</button>
+    </nav>
+  </div>
+
+  <dialog id="token-dialog" class="sheet">
+    <form method="dialog" id="token-form" class="sheet-body">
+      <h2>Bridge-Token</h2>
+      <p class="hint">Nur <code>aibridge_token</code> — keine Cursor API Keys.</p>
+      <label class="field">
+        <span>Bearer Token</span>
+        <input type="password" id="token-input" autocomplete="off" spellcheck="false" placeholder="Bearer…" />
+      </label>
+      <div class="sheet-actions">
+        <button type="submit" class="btn primary" value="save">Speichern</button>
+        <button type="button" class="btn ghost" id="btn-clear-token">Löschen</button>
+        <button type="submit" class="btn ghost" value="cancel">Abbrechen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

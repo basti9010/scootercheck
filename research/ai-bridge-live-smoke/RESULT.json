@@ -1,0 +1,23 @@
+{
+  "cycle": "AI Bridge 2.1",
+  "branch": "cursor/ai-bridge-live-smoke-b100",
+  "base_branch": "cursor/ai-bridge-v2-b100",
+  "prior_pr": 119,
+  "gates": {
+    "WORKFLOW_IMPLEMENTED": true,
+    "WORKFLOW_CI_VERIFIED": true,
+    "CURSOR_API_LIVE_VERIFIED": false,
+    "CURSOR_AGENT_COMPLETED": false,
+    "GITHUB_PR_CREATED": false,
+    "IPHONE_WORKFLOW_VERIFIED": false,
+    "PRODUCTION_DEPLOYED": false
+  },
+  "tests_local": {
+    "passed": 72,
+    "failed": 0
+  },
+  "owner_must_run": "GitHub Actions \u2192 AI Bridge Live Smoke (Cursor API) \u2192 confirm_live=LIVE",
+  "artifact": "scootercheck-cursor-live-smoke",
+  "pull_request": 120,
+  "commit": "cec0dcc"
+}
