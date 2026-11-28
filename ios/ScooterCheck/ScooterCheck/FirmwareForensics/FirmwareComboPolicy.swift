@@ -34,8 +34,10 @@ enum FirmwareComboPolicy {
         if t.isEmpty { return unbelegtTrigger }
         if isValidatedCombo(t) || t.lowercased().hasPrefix("belegt:") { return t }
         let low = t.lowercased()
+        // Speculative / unproven human triggers must not look like validated combos.
         if low.contains("gas") || low.contains("bremse") || low.contains("vermut")
-            || low.contains("modellabhängig") || low.contains("häufig") {
+            || low.contains("modellabhängig") || low.contains("häufig")
+            || low.contains("tastenkombi") || low.contains("tastenfolge") {
             return unbelegtTrigger
         }
         return t

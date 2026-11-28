@@ -122,7 +122,10 @@ final class LiveCheckRecordingTests: XCTestCase {
           "peakSpeedKmh": 12.5
         }
         """.data(using: .utf8)!
-        let decoded = try JSONDecoder().decode(LiveCheckRecording.self, from: json)
+        // Match ProtocolHistoryStore persistence (ISO-8601), not the default Date decoder.
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(LiveCheckRecording.self, from: json)
         XCTAssertEqual(decoded.events.count, 0)
         XCTAssertEqual(decoded.peakSpeedKmh ?? 0, 12.5, accuracy: 0.01)
     }

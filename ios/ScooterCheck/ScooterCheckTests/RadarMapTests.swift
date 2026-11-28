@@ -94,11 +94,13 @@ final class RadarMapTests: XCTestCase {
         let session = store.upsertSession(RadarMapSession(id: UUID(), startedAt: Date(), endedAt: nil))
         let identityId = UUID()
         let peripheral = UUID()
-        let t0 = Date()
+        // Both sightings must lie inside the filter window (rangeEnd ≈ now; future timestamps are dropped).
+        let t0 = Date().addingTimeInterval(-2 * 3600)
         store.upsertSighting(makeSighting(session: session.id, identity: identityId, peripheral: peripheral, at: t0))
         var filter = RadarMapFilter()
         filter.onlyRepeated = true
         filter.minSightings = 2
+        filter.timePreset = .all
         XCTAssertTrue(store.filteredSightings(filter: filter).isEmpty)
 
         store.upsertSighting(makeSighting(

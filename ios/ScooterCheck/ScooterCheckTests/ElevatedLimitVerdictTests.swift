@@ -94,11 +94,14 @@ final class ElevatedLimitVerdictTests: XCTestCase {
     }
 
     func testStockLimitRemainsStock() {
+        // Catalogued Max G3 FW — unknown 1.0.0 would yield fw.unknown → auffaellig.
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
-            speedLimitKmh: 22,
+            speedLimitKmh: 20,
             peakSpeedKmh: 18,
-            fwMcu: "1.0.0"
+            fwMcu: "1.4.9",
+            fwBle: "0.4.0",
+            fwVcu: "1.5.8"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .maxG3D)
         XCTAssertEqual(assessment.verdict, VerdictLevel.stock)
