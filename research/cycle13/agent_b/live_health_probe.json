@@ -1,0 +1,23 @@
+{
+  "kind": "liveHealthProbe",
+  "cycle": 13,
+  "agent": "B",
+  "health": {
+    "ok": true,
+    "service": "scootercheck-fw",
+    "ghidraConfigured": true,
+    "ghidraEnabled": true,
+    "decryptConfigured": true,
+    "jwtConfigured": true,
+    "apiTokenConfigured": true,
+    "adminApiTokenConfigured": false,
+    "apiTokenGrantsAdmin": false,
+    "authMode": "separated",
+    "authSecurityOk": true,
+    "authSecurityCritical": false,
+    "authSecurityWarnings": [
+      "ADVISORY: ADMIN_API_TOKEN unset \u2014 admin endpoints require JWT role=admin only."
+    ],
+    "time": "2026-11-28T09:40:58.077917+00:00"
+  }
+}

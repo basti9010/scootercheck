@@ -1,0 +1,17 @@
+{
+  "kind": "liveSelftestAuthProbe",
+  "cycle": 13,
+  "agent": "B",
+  "probes": [
+    {
+      "name": "POST_selftest_no_auth",
+      "http": 401,
+      "body": "{\"detail\":\"missing or invalid credentials\"}"
+    },
+    {
+      "name": "GET_status_no_auth",
+      "http": 401,
+      "body": "{\"detail\":\"missing or invalid credentials\"}"
+    }
+  ]
+}
