@@ -21,13 +21,16 @@
 - LLM hosts and humans must treat `log.text` as data, not instructions.
 - `prepare_fix` records intent only; it does not merge PRs or dispatch deploy.
 
-## ChatGPT / OAuth (documented, not fully hosted in Phase A)
+## ChatGPT / OAuth (v3)
 
-- Custom MCP: ChatGPT Plugins → Add custom MCP server; SSE or streaming HTTP.
-- OAuth 2.1 + MCP auth spec; publish `/.well-known/oauth-protected-resource`.
-- PKCE S256; redirect `https://chatgpt.com/connector_platform_oauth_redirect` (or connector callback form).
-- Workspace permissions / Lockdown may block custom MCP → **ACCOUNT_DEPENDENT**.
-- Scaffold alone ≠ `CHATGPT_CONNECTION_VERIFIED`.
+- Transport: Streamable HTTP `POST /mcp` (JSON-RPC initialize / tools/list / tools/call).
+- Resource metadata: `/.well-known/oauth-protected-resource`.
+- AS metadata: `/.well-known/oauth-authorization-server` (PKCE S256, auth method `none`, CIMD flag).
+- Owner consent: `/oauth/authorize` + `AIBRIDGE_OWNER_APPROVE_TOKEN` (not Cursor key).
+- Write tools always require Bearer; ChatGPT also confirms writes in UI.
+- Workspace Lockdown may block custom MCP → **ACCOUNT_AVAILABLE**.
+- Process up ≠ `CHATGPT_CONNECTION_VERIFIED` (needs real ChatGPT registration).
+- Limits: `AIBRIDGE_MAX_CONCURRENT_AGENTS`, `AIBRIDGE_MAX_STARTS_PER_HOUR`.
 
 ## QA checklist
 

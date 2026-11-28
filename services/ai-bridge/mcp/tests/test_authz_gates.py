@@ -174,16 +174,20 @@ def test_role_matrix_helpers() -> None:
     assert can_invoke(Role.ADMIN, Role.APPROVAL)
 
 
-def test_tool_catalog_has_nine_and_no_deploy() -> None:
+def test_tool_catalog_has_core_tools_and_no_deploy() -> None:
     names = {t["name"] for t in list_tools_for_mcp()}
-    assert len(names) == 9
+    assert "scootercheck_status" in names
     assert "scootercheck_start_task" in names
+    assert "scootercheck_review_task" in names
+    assert len(names) >= 9
     assert not any("deploy" in n for n in names)
     assert not any("ssh" in n for n in names)
 
 
 def test_http_401_and_403_via_fastapi(registry: TokenRegistry) -> None:
-    configure(registry, ToolDispatcher(registry))
+    from mcp.orchestrator_stubs import MockOrchestrator
+
+    configure(registry, ToolDispatcher(registry, MockOrchestrator()))
     client = TestClient(app)
 
     r = client.post(

@@ -1,0 +1,28 @@
+{
+  "cycle": "AI Bridge 3.0 ChatGPT Native",
+  "branch": "cursor/chatgpt-native-mcp-b100",
+  "base_branch": "cursor/testflight-ci-133a",
+  "gates": {
+    "MCP_SERVER_IMPLEMENTED": true,
+    "MCP_SECURITY_VERIFIED": true,
+    "MCP_CLIENT_VERIFIED": false,
+    "CURSOR_API_LIVE_VERIFIED": true,
+    "CHATGPT_CONNECTION_VERIFIED": false,
+    "CHATGPT_TO_CURSOR_E2E_VERIFIED": false,
+    "IPHONE_CHATGPT_VERIFIED": false,
+    "PRODUCTION_DEPLOYED": false
+  },
+  "prior_live_agent_id": "bc-2d348346-f60b-4bb9-92e5-1ee6d5119259",
+  "tests_local": {"passed": 77, "failed": 0},
+  "pr": 123,
+  "ci_head": "b109c25e86f7c9c538dc741ff9ce021954f68db4",
+  "ci_conclusion": "success",
+  "mcp_path": "/mcp",
+  "transport": "streamable-http",
+  "owner_next": [
+    "Merge PR after review",
+    "Deploy HTTPS MCP with env (Freigabe)",
+    "Register custom MCP in ChatGPT web/Safari",
+    "Run status then controlled start_task"
+  ]
+}

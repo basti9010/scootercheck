@@ -1,7 +1,11 @@
-"""HTTP tool surface integrable with ChatGPT MCP (streaming HTTP / SSE later).
+"""ScooterCheck AI Bridge MCP HTTP server (ChatGPT custom MCP ready).
 
-Phase A: FastAPI JSON dispatch + OAuth protected-resource metadata stub.
-Full OAuth IdP / CIMD / DCR is out of scope; bearer role tokens exercise authz.
+Exposes:
+  - Streamable HTTP JSON-RPC at POST /mcp
+  - OAuth 2.1 AS (PKCE S256) + protected-resource metadata
+  - Legacy JSON helpers at /mcp/tools for tests
+
+CHATGPT_CONNECTION_VERIFIED stays false until a real ChatGPT client completes OAuth.
 """
 
 from __future__ import annotations
@@ -14,22 +18,29 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .auth import AuthError, TokenRegistry
+from .mcp_rpc import bind_rpc, router as mcp_router
+from .oauth_as import bind_oauth, router as oauth_router
 from .tools import ToolDispatcher, list_tools_for_mcp
 
 RESOURCE_URL = os.environ.get("AIBRIDGE_MCP_RESOURCE", "https://ai-bridge.example.invalid/mcp")
 AUTH_SERVER = os.environ.get("AIBRIDGE_AUTH_SERVER", "https://auth.example.invalid")
 
 app = FastAPI(
-    title="ScooterCheck ai-bridge MCP",
-    version="0.1.0",
+    title="ScooterCheck AI Bridge MCP",
+    version="3.0.0",
     description=(
-        "Development Automation MCP scaffold. "
-        "CHATGPT_CONNECTION_VERIFIED must not be assumed from this process alone."
+        "ChatGPT-compatible MCP resource + OAuth AS for ScooterCheck development automation. "
+        "CHATGPT_CONNECTION_VERIFIED must not be assumed from process start alone."
     ),
 )
 
 _registry = TokenRegistry.from_env()
 _dispatcher = ToolDispatcher(_registry)
+bind_oauth(_registry)
+bind_rpc(_registry, _dispatcher)
+
+app.include_router(oauth_router)
+app.include_router(mcp_router)
 
 
 class ToolCallBody(BaseModel):
@@ -42,19 +53,16 @@ def health() -> dict[str, Any]:
     return {
         "ok": True,
         "service": "ai-bridge-mcp",
+        "version": "3.0.0",
         "chatgpt_connection_verified": False,
         "anonymous_write": False,
+        "transport": "streamable-http",
+        "mcp_path": "/mcp",
     }
 
 
 @app.get("/.well-known/oauth-protected-resource")
 def oauth_protected_resource() -> dict[str, Any]:
-    """MCP auth spec protected-resource metadata (RFC 9728 style).
-
-    ChatGPT discovers authorization servers from this document. PKCE S256 and
-    redirect https://chatgpt.com/connector_platform_oauth_redirect are documented
-    for the IdP — not implemented here in Phase A.
-    """
     return {
         "resource": RESOURCE_URL,
         "authorization_servers": [AUTH_SERVER],
@@ -65,18 +73,15 @@ def oauth_protected_resource() -> dict[str, Any]:
             "scootercheck:admin",
         ],
         "bearer_methods_supported": ["header"],
-        "resource_documentation": "https://github.com/basti9010/scootercheck/tree/cursor/ai-bridge-v2-b100/services/ai-bridge/mcp",
-        "notes": (
-            "OAuth 2.1 + PKCE S256 required before ChatGPT Custom Connector. "
-            "Redirect URI: https://chatgpt.com/connector_platform_oauth_redirect. "
-            "CHATGPT_CONNECTION_VERIFIED stays false until a real ChatGPT client completes OAuth."
+        "resource_documentation": (
+            "https://github.com/basti9010/scootercheck/blob/cursor/chatgpt-native-mcp-b100/"
+            "research/chatgpt-native/CHATGPT_SETUP.md"
         ),
     }
 
 
 @app.get("/mcp/tools")
 def mcp_list_tools(authorization: str | None = Header(default=None)) -> JSONResponse:
-    """List tools. Requires any valid token (no anonymous listing in this policy)."""
     try:
         _registry.resolve(authorization)
     except AuthError as exc:
@@ -102,7 +107,6 @@ def rest_call_tool(
     request_body: dict[str, Any] | None = None,
     authorization: str | None = Header(default=None),
 ) -> JSONResponse:
-    """Dev Center friendly alias — same authz as MCP call."""
     try:
         result = _dispatcher.invoke(tool_name, request_body or {}, authorization)
     except AuthError as exc:
@@ -111,12 +115,16 @@ def rest_call_tool(
 
 
 @app.middleware("http")
-async def add_www_authenticate(request: Request, call_next):  # type: ignore[no-untyped-def]
+async def security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
     response = await call_next(request)
-    if response.status_code == 401:
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    if response.status_code == 401 and "WWW-Authenticate" not in response.headers:
+        meta_base = RESOURCE_URL
+        if meta_base.endswith("/mcp"):
+            meta_base = meta_base[: -len("/mcp")]
         response.headers["WWW-Authenticate"] = (
-            'Bearer resource_metadata='
-            '"https://ai-bridge.example.invalid/.well-known/oauth-protected-resource", '
+            f'Bearer resource_metadata="{meta_base}/.well-known/oauth-protected-resource", '
             'scope="scootercheck:read"'
         )
     return response
@@ -127,8 +135,9 @@ def _auth_error(exc: AuthError) -> JSONResponse:
 
 
 def configure(registry: TokenRegistry, dispatcher: ToolDispatcher | None = None) -> FastAPI:
-    """Rebind module globals for tests."""
     global _registry, _dispatcher
     _registry = registry
     _dispatcher = dispatcher or ToolDispatcher(registry)
+    bind_oauth(_registry)
+    bind_rpc(_registry, _dispatcher)
     return app
