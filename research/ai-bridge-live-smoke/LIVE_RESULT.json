@@ -1,0 +1,7 @@
+{
+  "CURSOR_API_LIVE_VERIFIED": false,
+  "CURSOR_AGENT_COMPLETED": false,
+  "note": "Placeholder — real values are written only by the GitHub Actions live-smoke workflow after owner approval. Do not treat this file as a live proof.",
+  "block": "NOT_RUN_IN_THIS_PR",
+  "endpoint": "POST https://api.cursor.com/v1/agents"
+}

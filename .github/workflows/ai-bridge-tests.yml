@@ -9,6 +9,7 @@ on:
     paths:
       - "services/ai-bridge/**"
       - ".github/workflows/ai-bridge-tests.yml"
+      - ".github/workflows/ai-bridge-live-smoke.yml"
   push:
     branches:
       - main
@@ -18,6 +19,7 @@ on:
     paths:
       - "services/ai-bridge/**"
       - ".github/workflows/ai-bridge-tests.yml"
+      - ".github/workflows/ai-bridge-live-smoke.yml"
   workflow_dispatch:
 
 concurrency:
