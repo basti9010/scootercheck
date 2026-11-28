@@ -57,6 +57,10 @@ if [[ -L "$REMOTE_APP" ]]; then
   PREV=$(readlink -f "$REMOTE_APP" || true)
 elif [[ -d "$REMOTE_APP" && ! -L "$REMOTE_APP" ]]; then
   # First migration: keep existing tree as releases/pre-cd-<timestamp>
+  # Deploy user cannot mv a scootercheck-owned directory (Cycle 12 live deploy #2).
+  if [[ "${EUID}" -ne 0 ]]; then
+    die "First migration required: $REMOTE_APP is a directory (not a symlink). As root: mv it to $RELEASES_ROOT/pre-cd-<ts> and ln -sfn back to $REMOTE_APP, then re-run deploy. See docs/HETZNER_DEPLOYMENT_SETUP.md"
+  fi
   MIG="pre-cd-$(date -u +%Y%m%dT%H%M%SZ)"
   log "Migrating non-symlink $REMOTE_APP → $RELEASES_ROOT/$MIG"
   mkdir -p "$RELEASES_ROOT"
