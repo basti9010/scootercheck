@@ -57,6 +57,10 @@ if [[ -L "$REMOTE_APP" ]]; then
   PREV=$(readlink -f "$REMOTE_APP" || true)
 elif [[ -d "$REMOTE_APP" && ! -L "$REMOTE_APP" ]]; then
   # First migration: keep existing tree as releases/pre-cd-<timestamp>
+  # Deploy user cannot mv a scootercheck-owned directory (Cycle 12 live deploy #2).
+  if [[ "${EUID}" -ne 0 ]]; then
+    die "First migration required: $REMOTE_APP is a directory (not a symlink). As root: mv it to $RELEASES_ROOT/pre-cd-<ts> and ln -sfn back to $REMOTE_APP, then re-run deploy. See docs/HETZNER_DEPLOYMENT_SETUP.md"
+  fi
   MIG="pre-cd-$(date -u +%Y%m%dT%H%M%SZ)"
   log "Migrating non-symlink $REMOTE_APP → $RELEASES_ROOT/$MIG"
   mkdir -p "$RELEASES_ROOT"
@@ -110,9 +114,10 @@ if id "$APP_OWNER" &>/dev/null; then
   chown -h "$APP_OWNER:$APP_OWNER" "$REMOTE_APP" 2>/dev/null || true
 fi
 
-# Restart unit (deploy user needs limited sudo — see bootstrap-deploy-user.sh)
+# Restart unit (deploy user needs limited sudo — see bootstrap-deploy-user.sh).
+# sleep ≥3s: uvicorn bind lags; Cycle 13 live deploy saw curl fail at t=0 after restart.
 sysctl_cmd restart "$SERVICE_NAME"
-sleep 2
+sleep 3
 sysctl_cmd is-active --quiet "$SERVICE_NAME" || die "service not active after restart"
 
 BODY="$(curl -fsS --max-time 15 "$HEALTH_URL")" \

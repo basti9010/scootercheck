@@ -50,7 +50,7 @@ Would (idempotent):
   2) install authorized_keys from DEPLOY_PUBKEY_FILE or DEPLOY_PUBKEY
   3) mkdir -p $RELEASES_ROOT; chown $DEPLOY_USER for releases tree
   4) group-write on $DEPLOY_ROOT so symlink $APP_LINK can be replaced
-  5) sudoers ($SUDOERS_FILE): NOPASSWD systemctl restart|status|is-active $SERVICE_NAME
+  5) sudoers ($SUDOERS_FILE): NOPASSWD systemctl restart|start|stop|status|is-active[--quiet] $SERVICE_NAME (/bin + /usr/bin)
   6) ensure lock file $LOCK_FILE writable by $DEPLOY_USER
   7) NOT grant root shell; NOT read /etc/scootercheck secrets
   8) NOT touch /var/lib/scootercheck data
@@ -114,15 +114,24 @@ if [[ -e "$APP_LINK" || -L "$APP_LINK" ]]; then
   fi
 fi
 
+# Cycle 13: whitelist both /bin and /usr/bin (Ubuntu usrmerge) and is-active --quiet
+# (release-deploy.sh uses `systemctl is-active --quiet`; bare is-active alone fails sudo).
 cat >"$SUDOERS_FILE" <<EOF
 # Managed by ScooterCheck bootstrap-deploy-user.sh — least privilege
 # Do not grant ALL=(ALL) ALL
 Cmnd_Alias SCOOTERCHECK_FW_CTL = \\
   /bin/systemctl restart ${SERVICE_NAME}, /bin/systemctl restart ${SERVICE_NAME}.service, \\
+  /usr/bin/systemctl restart ${SERVICE_NAME}, /usr/bin/systemctl restart ${SERVICE_NAME}.service, \\
   /bin/systemctl start ${SERVICE_NAME}, /bin/systemctl start ${SERVICE_NAME}.service, \\
+  /usr/bin/systemctl start ${SERVICE_NAME}, /usr/bin/systemctl start ${SERVICE_NAME}.service, \\
   /bin/systemctl stop ${SERVICE_NAME}, /bin/systemctl stop ${SERVICE_NAME}.service, \\
+  /usr/bin/systemctl stop ${SERVICE_NAME}, /usr/bin/systemctl stop ${SERVICE_NAME}.service, \\
   /bin/systemctl status ${SERVICE_NAME}, /bin/systemctl status ${SERVICE_NAME}.service, \\
-  /bin/systemctl is-active ${SERVICE_NAME}, /bin/systemctl is-active ${SERVICE_NAME}.service
+  /usr/bin/systemctl status ${SERVICE_NAME}, /usr/bin/systemctl status ${SERVICE_NAME}.service, \\
+  /bin/systemctl is-active ${SERVICE_NAME}, /bin/systemctl is-active ${SERVICE_NAME}.service, \\
+  /usr/bin/systemctl is-active ${SERVICE_NAME}, /usr/bin/systemctl is-active ${SERVICE_NAME}.service, \\
+  /bin/systemctl is-active --quiet ${SERVICE_NAME}, /bin/systemctl is-active --quiet ${SERVICE_NAME}.service, \\
+  /usr/bin/systemctl is-active --quiet ${SERVICE_NAME}, /usr/bin/systemctl is-active --quiet ${SERVICE_NAME}.service
 ${DEPLOY_USER} ALL=(root) NOPASSWD: SCOOTERCHECK_FW_CTL
 EOF
 chmod 440 "$SUDOERS_FILE"

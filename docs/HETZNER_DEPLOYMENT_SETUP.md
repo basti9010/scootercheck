@@ -56,7 +56,17 @@ Empfohlen:
 - `ADMIN_API_TOKEN=` (langer Zufallswert)  
 - `JWT_SECRET=` wie Auth-Service  
 
-Secrets **nicht** ins Git.
+**Pflicht: Unterstriche, keine Bindestriche.** systemd ignoriert ungültige Keys:
+
+- Falsch: `API-TOKEN-GRANTS-ADMIN`, `ADMIN-API-TOKEN`  
+- Richtig: `API_TOKEN_GRANTS_ADMIN`, `ADMIN_API_TOKEN`
+
+Secrets **nicht** ins Git. Keine Prod-Auth-Änderung ohne ausdrückliche Freigabe.
+
+### 4b) Bekannte Live-Deploy-Fallen (Cycle 12/13)
+
+- Erster Deploy: bestehendes `firmware-analysis`-Verzeichnis muss einmalig als root nach `releases/pre-cd-…` migriert und als Symlink angelegt werden (Deploy-User darf fremde Owner-Dirs nicht `mv`en).
+- Sudoers muss `systemctl is-active --quiet` und `/usr/bin/systemctl` erlauben (siehe `bootstrap-deploy-user.sh`).
 
 ### 5) Erster Dry-Run
 

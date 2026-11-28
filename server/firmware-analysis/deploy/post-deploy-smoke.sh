@@ -96,6 +96,8 @@ if [[ "$PUBLIC_SMOKE" == "1" && "$HEALTH_URL" != "$HEALTH_PUBLIC_URL" ]]; then
 fi
 
 # 4) optional diagnostics (admin token; never echo token or full body)
+SMOKE_GHIDRA_SELFTEST="${SMOKE_GHIDRA_SELFTEST:-0}"
+GHIDRA_SELFTEST_VERIFIED=0
 if [[ -n "$SMOKE_ADMIN_TOKEN" ]]; then
   BASE=$(printf '%s' "$HEALTH_URL" | sed 's#/health##')
   CODE=$(curl -sS -o /tmp/sc-diag.json -w '%{http_code}' --max-time 20 \
@@ -112,12 +114,95 @@ if [[ -n "$SMOKE_ADMIN_TOKEN" ]]; then
     grade "diagnostics" "UNEXPECTED_HTTP_$CODE"
   fi
   rm -f /tmp/sc-diag.json
+
+  # 4b) optional Ghidra selftest — only when explicitly opted in (never invent VERIFIED)
+  if [[ "$SMOKE_GHIDRA_SELFTEST" == "1" ]]; then
+    ST_CODE=$(curl -sS -o /tmp/sc-selftest-start.json -w '%{http_code}' --max-time 30 \
+      -X POST -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${SMOKE_ADMIN_TOKEN}" \
+      -d '{"includeTea":false,"includeGhidra":true,"includeWorkers":false}' \
+      "${BASE}/v1/diagnostics/selftest" || true)
+    log "diagnostics.selftest.start HTTP=$ST_CODE (body not echoed)"
+    if [[ "$ST_CODE" != "200" && "$ST_CODE" != "202" ]]; then
+      grade "Ghidra_selftest" "START_FAILED HTTP_$ST_CODE"
+    else
+      JOB_ID=$(python3 -c 'import json,sys; print(json.load(open("/tmp/sc-selftest-start.json")).get("jobId") or json.load(open("/tmp/sc-selftest-start.json")).get("id") or "")' 2>/dev/null || true)
+      if [[ -z "$JOB_ID" ]]; then
+        grade "Ghidra_selftest" "START_NO_JOB_ID"
+      else
+        VERIFIED_FLAG=0
+        for _i in $(seq 1 36); do
+          sleep 5
+          POLL=$(curl -sS -o /tmp/sc-selftest-poll.json -w '%{http_code}' --max-time 30 \
+            -H "Authorization: Bearer ${SMOKE_ADMIN_TOKEN}" \
+            "${BASE}/v1/diagnostics/selftest/${JOB_ID}" || true)
+          if [[ "$POLL" != "200" ]]; then
+            continue
+          fi
+          # Require executionVerified / grades.verified from real server JSON — never invent
+          if python3 - <<'PY' 2>/dev/null
+import json
+d=json.load(open("/tmp/sc-selftest-poll.json"))
+st=(d.get("status") or d.get("state") or "").lower()
+if st and st not in ("done","completed","succeeded","success","ok","finished"):
+    raise SystemExit(2)
+r=d.get("result") or d
+# Prefer nested ghidra step / envelope
+g=None
+for step in (r.get("steps") or []):
+    if isinstance(step, dict) and step.get("id") in ("ghidra","ghidraSelftest"):
+        g=step
+        break
+env=r.get("ghidra") or g or r
+verified=False
+if isinstance(env, dict):
+    grades=env.get("grades") or {}
+    verified=bool(env.get("executionVerified") or grades.get("verified") or grades.get("endToEndVerified"))
+    if env.get("executed") is False:
+        verified=False
+raise SystemExit(0 if verified else 1)
+PY
+          then
+            VERIFIED_FLAG=1
+            break
+          fi
+          # stop polling if terminal non-verified
+          if python3 - <<'PY' 2>/dev/null
+import json
+d=json.load(open("/tmp/sc-selftest-poll.json"))
+st=(d.get("status") or d.get("state") or "").lower()
+raise SystemExit(0 if st in ("done","completed","succeeded","success","ok","finished","failed","error") else 1)
+PY
+          then
+            break
+          fi
+        done
+        if [[ "$VERIFIED_FLAG" == "1" ]]; then
+          grade "Ghidra_selftest" "VERIFIED (executionVerified from API)"
+          GHIDRA_SELFTEST_VERIFIED=1
+        else
+          grade "Ghidra_selftest" "NOT_VERIFIED (poll finished without executionVerified)"
+        fi
+      fi
+    fi
+    rm -f /tmp/sc-selftest-start.json /tmp/sc-selftest-poll.json
+  else
+    log "Ghidra selftest SKIPPED (set SMOKE_GHIDRA_SELFTEST=1 + SMOKE_ADMIN_TOKEN to enable)"
+    grade "Ghidra_selftest" "SKIPPED"
+  fi
 else
   log "diagnostics SKIPPED (no SMOKE_ADMIN_TOKEN) — not E2E"
   grade "diagnostics" "SKIPPED"
+  grade "Ghidra_selftest" "SKIPPED"
 fi
 
-grade "END_TO_END_VERIFIED" "NO (no Freigabe / no real tuning fixtures in smoke)"
-grade "E2E" "NO"
-log "SMOKE_PASSED — DEPLOYED+AVAILABLE(health); TEA/Ghidra at most CONFIGURED"
+if [[ "$GHIDRA_SELFTEST_VERIFIED" == "1" ]]; then
+  grade "END_TO_END_VERIFIED" "PARTIAL (synthetic Ghidra selftest VERIFIED; no real tuning fixtures)"
+  grade "E2E" "PARTIAL_SYNTHETIC"
+  log "SMOKE_PASSED — synthetic Ghidra selftest VERIFIED via admin API"
+else
+  grade "END_TO_END_VERIFIED" "NO (no Freigabe / no real tuning fixtures in smoke)"
+  grade "E2E" "NO"
+  log "SMOKE_PASSED — DEPLOYED+AVAILABLE(health); TEA/Ghidra at most CONFIGURED"
+fi
 echo "ok smoke"
