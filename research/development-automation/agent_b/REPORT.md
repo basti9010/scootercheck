@@ -65,4 +65,4 @@ Key cases: `test_missing_token_is_401`, `test_read_cannot_start_task`, `test_htt
 
 ## Commits
 
-See git history on this branch after Agent B+F push (this report committed with scaffold).
+Primary commit: `7af228f18f7186ac052d245db6fce84a8a7f5b86` (this report updated in follow-up if needed).
