@@ -72,6 +72,7 @@ FAKE_EXPORT_NAMES = (
 
 REQUIRED_SCRIPTS = (
     "SeedCortexMEntryPoints.java",
+    "ExportAllDecompiled.java",
     "ExportFunctionAnalysis.java",
     "ExportCallGraph.java",
 )
@@ -492,8 +493,8 @@ def run_ghidra_diagnostics_selftest(
         return {
             "schemaVersion": 1,
             "kind": "ghidraDiagnosticsSelftest",
-            "cycle": 11,
-            "agent": "C",
+            "cycle": 13,
+            "agent": "B",
             "generatedAt": generated_at,
             "executed": False,
             "grades": {
@@ -524,8 +525,8 @@ def run_ghidra_diagnostics_selftest(
             return {
                 "schemaVersion": 1,
                 "kind": "ghidraDiagnosticsSelftest",
-                "cycle": 11,
-                "agent": "C",
+                "cycle": 13,
+                "agent": "B",
                 "generatedAt": generated_at,
                 "executed": False,
                 "grades": {
@@ -980,8 +981,8 @@ def _envelope(
     return {
         "schemaVersion": 1,
         "kind": "ghidraDiagnosticsSelftest",
-        "cycle": 11,
-        "agent": "C",
+        "cycle": 13,
+        "agent": "B",
         "generatedAt": generated_at,
         "executed": executed,
         "grades": {

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "kind": "ghidraDiagnosticsSelftest",
-  "cycle": 11,
-  "agent": "C",
-  "generatedAt": "2026-11-28T09:40:57.769329+00:00",
+  "cycle": 13,
+  "agent": "B",
+  "generatedAt": "2026-11-28T09:44:11.956157+00:00",
   "executed": false,
   "grades": {
     "configured": false,
@@ -35,6 +35,7 @@
   },
   "ghidraScripts": {
     "SeedCortexMEntryPoints.java": true,
+    "ExportAllDecompiled.java": true,
     "ExportFunctionAnalysis.java": true,
     "ExportCallGraph.java": true
   },

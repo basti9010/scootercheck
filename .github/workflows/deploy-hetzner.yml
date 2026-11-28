@@ -14,11 +14,14 @@
 #   HETZNER_SSH_KNOWN_HOSTS   pinned host keys (ssh-keyscan -H …) — required
 #   HETZNER_DEPLOY_PATH       optional; default /opt/scootercheck/firmware-analysis
 #   HEALTH_URL                public or loopback health URL
-#   SMOKE_ADMIN_TOKEN         optional; diagnostics probe only (never echoed)
+#   SMOKE_ADMIN_TOKEN         optional; diagnostics GET (+ optional selftest) never echoed
+#   SMOKE_GHIDRA_SELFTEST     optional host env; set=1 with SMOKE_ADMIN_TOKEN to require
+#                             live diagnostics selftest executionVerified (default off)
 #
 # Gates:
 #   - Immutable full 40-char commit SHA (branch tips refused)
-#   - Successful "Server Firmware Tests" for that SHA (if workflow exists)
+#   - Successful "Server Firmware Tests" for that SHA (workflow must exist ON the SHA;
+#     soft-skip on dispatch-branch absence removed in Cycle 13)
 #   - iOS XCTest is intentionally NON-BLOCKING for server deploy
 #   - confirm_deploy=true + Environment approval for live writes
 #   - StrictHostKeyChecking=yes + known_hosts from secret (never accept-new/false)
