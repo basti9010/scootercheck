@@ -2,7 +2,7 @@
 
 **Generated (UTC):** 2026-11-28T10:39:50Z  
 **Branch:** `cursor/development-automation-b100`  
-**Commit (pre-final-commit tip):** `40ef99f124d459e86383daf76944ea28701bb750`  
+**Commit:** `c9312a0d78b0396a7ce58101d427deed44c2d6a5`  
 **PR:** https://github.com/basti9010/scootercheck/pull/118  
 **Production deploy:** NOT performed (Freigabe required)
 
