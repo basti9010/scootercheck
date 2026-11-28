@@ -101,16 +101,29 @@ jobs:
           SHA: ${{ steps.resolve.outputs.sha }}
         run: |
           set -euo pipefail
-          # iOS workflow (ios-unit-tests.yml) is intentionally ignored here.
-          WF=".github/workflows/server-firmware-tests.yml"
-          if [[ ! -f "$WF" ]]; then
-            echo "::warning::No $WF in tree — server CI gate skipped (document). Prefer adding Server Firmware Tests."
-            echo "status=skipped_missing_workflow" >> "$GITHUB_OUTPUT"
-            echo "- Server CI gate: skipped (workflow file absent)" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+          # Gate against the *deploy SHA*, not the workflow_dispatch branch tip
+          # (default branch may lack server-firmware-tests.yml — Cycle 13 Agent C / deploy #4).
+          WF_PATH=".github/workflows/server-firmware-tests.yml"
+          if ! git cat-file -e "${SHA}:${WF_PATH}" 2>/dev/null; then
+            echo "::error::${WF_PATH} missing on deploy SHA $SHA — refuse soft-skip. Land the workflow on that SHA or use skip_ci_gate (emergency only)."
+            echo "status=missing_workflow_on_sha" >> "$GITHUB_OUTPUT"
+            echo "- Server CI gate: FAILED (workflow absent on deploy SHA)" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
+          # Resolve Actions workflow id from default branch listing; query runs by head_sha.
           echo "Checking Server Firmware Tests for $SHA"
-          RUNS=$(gh api "repos/${{ github.repository }}/actions/workflows/server-firmware-tests.yml/runs?head_sha=${SHA}&status=completed&per_page=10" --jq '.workflow_runs')
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/workflows/server-firmware-tests.yml/runs?head_sha=${SHA}&status=completed&per_page=10" --jq '.workflow_runs' 2>/dev/null || true)
+          if [[ -z "$RUNS" || "$RUNS" == "null" ]]; then
+            # Workflow file may exist on SHA but not yet be registered on default — try path API fallback list.
+            echo "::warning::workflow API by filename returned empty; retrying via workflow list filter"
+            WF_ID=$(gh api "repos/${{ github.repository }}/actions/workflows" --jq '.workflows[] | select(.path=="'"$WF_PATH"'") | .id' | head -1 || true)
+            if [[ -z "$WF_ID" ]]; then
+              echo "::error::Server Firmware Tests workflow not registered in Actions yet (file exists on $SHA). Dispatch once from a branch that has it, or skip_ci_gate emergency."
+              echo "status=workflow_unregistered" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            RUNS=$(gh api "repos/${{ github.repository }}/actions/workflows/${WF_ID}/runs?head_sha=${SHA}&status=completed&per_page=10" --jq '.workflow_runs')
+          fi
           COUNT=$(echo "$RUNS" | jq 'length')
           if [[ "$COUNT" -eq 0 ]]; then
             echo "::error::No completed Server Firmware Tests run for $SHA. Wait for CI, dispatch server-firmware-tests.yml, or use skip_ci_gate (emergency)."
@@ -125,8 +138,8 @@ jobs:
             exit 1
           fi
           echo "status=success" >> "$GITHUB_OUTPUT"
-          echo "Server CI gate OK"
-          echo "- Server CI gate: success" >> "$GITHUB_STEP_SUMMARY"
+          echo "Server CI gate OK (evaluated against deploy SHA)"
+          echo "- Server CI gate: success (deploy SHA)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: CI gate skipped (emergency)
         if: ${{ inputs.skip_ci_gate == true }}
