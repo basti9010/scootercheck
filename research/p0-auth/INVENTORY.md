@@ -40,7 +40,7 @@
 | `AuthAPIClient` → `https://api.tuningscanner.de/scootercheck` | vorhanden | **CONFIRMED** |
 | Backend FastAPI unter `backend/app/` | vorhanden | **CONFIRMED** |
 | Token-Speicher | **UserDefaults**, nicht Keychain | **CONFIRMED** |
-| Refresh-Token | nicht in Client sichtbar | **HYPOTHESIS** fehlend → Agent B |
+| Refresh-Token | Server: kein `/auth/refresh` (live 404); Client: kein Refresh-Call | **CONFIRMED** absence → Re-Login nach JWT-Expiry (Default 14d); siehe `agent_b/REPORT_SERVER_AUTH.md` |
 
 ## 5. Was wiederhergestellt / gehärtet werden muss
 
