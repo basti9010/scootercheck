@@ -62,9 +62,9 @@ final class CfwHardwareForensicsTests: XCTestCase {
     func testEvidenceFlagsCfwMarkerOnF3() {
         let reading = IntegrityReading(
             serialDisplay: "1EFHE2515C0440",
-            mcuRandMarker: "cfw.sh",
+            fwAppCustom: true,
             vcuRandMarker: "cjsSgk",
-            fwAppCustom: true
+            mcuRandMarker: "cfw.sh"
         )
         let evidence = EvidenceEngine.evaluate(reading: reading, profile: .ninebotF3D)
         XCTAssertTrue(evidence.results.contains { $0.fact.markerID == "fw.rand.cfw" })

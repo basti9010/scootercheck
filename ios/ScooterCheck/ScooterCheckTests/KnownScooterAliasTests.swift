@@ -3,6 +3,7 @@ import XCTest
 
 final class KnownScooterAliasTests: XCTestCase {
 
+    @MainActor
     func testMakeKnownLabelPrefersNameAndPlate() {
         let subject = ProtocolSubject(
             lastName: "Neukirch",
@@ -16,6 +17,7 @@ final class KnownScooterAliasTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testMakeKnownLabelPlateOnly() {
         let subject = ProtocolSubject(licensePlate: "b-ab 123").sanitized()
         XCTAssertEqual(ProtocolHistoryStore.makeKnownLabel(from: subject), "B-AB 123")

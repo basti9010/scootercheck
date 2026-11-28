@@ -269,7 +269,7 @@ final class AttributionEngineTests: XCTestCase {
             fwMcu: "1.0.0"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .maxG3D)
-        XCTAssertEqual(assessment.verdict, .stock)
+        XCTAssertEqual(assessment.verdict, VerdictLevel.stock)
         // Attribution optional / not determinate on stock
         XCTAssertTrue(assessment.attribution == nil || assessment.attribution?.isDeterminate == false)
     }
