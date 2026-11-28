@@ -10,8 +10,8 @@ final class AttributionEngineTests: XCTestCase {
         title: String = "Marker",
         persistence: PersistenceClass = .persistent,
         knowledge: KnowledgeSource = .heuristic,
-        modMatch: String? = nil,
-        interpreted: String = "x"
+        interpreted: String = "x",
+        modMatch: String? = nil
     ) -> EvidenceFact {
         EvidenceFact(
             markerID: id,
@@ -88,8 +88,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "fw.custom",
                     title: "Custom-FW",
                     knowledge: .verifiedModSample,
-                    modMatch: "fw.custom.confirmed",
-                    interpreted: "mod fingerprint"
+                    interpreted: "mod fingerprint",
+                    modMatch: "fw.custom.confirmed"
                 ),
                 class: .starkerHinweis
             ),
@@ -99,7 +99,7 @@ final class AttributionEngineTests: XCTestCase {
             )
         ]
         let attr = AttributionEngine.assess(results: results, powerCycle: nil)
-        XCTAssertEqual(attr.suspectedMethod, .customFirmware)
+        XCTAssertEqual(attr.suspectedMethod, Optional(TuningMethod.customFirmware))
         XCTAssertGreaterThanOrEqual(attr.confidence, 0.9)
         XCTAssertEqual(attr.knownPatternId, "ATTR_CUSTOM_FW_GENERIC_V1")
         XCTAssertTrue(attr.supportingMarkerIds.contains("fw.custom"))
@@ -123,12 +123,12 @@ final class AttributionEngineTests: XCTestCase {
         let attr = AttributionEngine.assess(results: results, powerCycle: nil)
         XCTAssertTrue(attr.isDeterminate)
         XCTAssertTrue(
-            attr.suspectedMethod == .configurationModification
-                || attr.suspectedMethod == .licensedSoftwareUnlock
+            attr.suspectedMethod == TuningMethod.configurationModification
+                || attr.suspectedMethod == TuningMethod.licensedSoftwareUnlock
         )
         XCTAssertGreaterThanOrEqual(attr.confidence, 0.4)
         XCTAssertLessThan(attr.confidence, 0.9)
-        XCTAssertNotEqual(attr.suspectedMethod, .customFirmware)
+        XCTAssertNotEqual(attr.suspectedMethod, Optional(TuningMethod.customFirmware))
     }
 
     func testSessionUnlockClearedByPowerCycle() {
@@ -138,8 +138,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "speed.session",
                     title: "Session",
                     persistence: .fleeting,
-                    modMatch: "speed.session.unlock",
-                    interpreted: "≥ 30 km/h"
+                    interpreted: "≥ 30 km/h",
+                    modMatch: "speed.session.unlock"
                 ),
                 class: .abweichung
             )
@@ -150,7 +150,7 @@ final class AttributionEngineTests: XCTestCase {
             ("fw.mcu", "1.2.3", "1.2.3", .unchanged)
         ])
         let attr = AttributionEngine.assess(results: results, powerCycle: pc)
-        XCTAssertEqual(attr.suspectedMethod, .sessionUnlock)
+        XCTAssertEqual(attr.suspectedMethod, Optional(TuningMethod.sessionUnlock))
         XCTAssertGreaterThanOrEqual(attr.confidence, 0.5)
         XCTAssertTrue(
             attr.supportingMarkerIds.contains("speed.session")
@@ -163,13 +163,13 @@ final class AttributionEngineTests: XCTestCase {
             fact(
                 id: "serial.cross.mcu",
                 title: "Cross-Board",
-                modMatch: "cross.serial.mismatch",
-                interpreted: "MCU ≠ Fahrzeug"
+                interpreted: "MCU ≠ Fahrzeug",
+                modMatch: "cross.serial.mismatch"
             ),
             class: .indiz
         )
         let attr = AttributionEngine.assess(results: [r], powerCycle: nil)
-        XCTAssertEqual(attr.suspectedMethod, .hardwareOrModuleSwap)
+        XCTAssertEqual(attr.suspectedMethod, Optional(TuningMethod.hardwareOrModuleSwap))
         XCTAssertEqual(attr.knownPatternId, "ATTR_MODULE_SWAP_CROSS_BOARD_V1")
         XCTAssertGreaterThanOrEqual(attr.confidence, 0.55)
     }
@@ -191,14 +191,14 @@ final class AttributionEngineTests: XCTestCase {
         ]
         // licensed has contradicting fw.unknown → score drop; mixed signals
         let attr = AttributionEngine.assess(results: results, powerCycle: nil)
-        if attr.suspectedMethod == .licensedSoftwareUnlock {
+        if attr.suspectedMethod == TuningMethod.licensedSoftwareUnlock {
             XCTAssertLessThan(attr.confidence, 0.7)
             XCTAssertFalse(attr.contradictingMarkerIds.isEmpty)
         } else {
             XCTAssertTrue(
-                attr.suspectedMethod == .unknownSoftwareManipulation
-                    || attr.suspectedMethod == .sessionUnlock
-                    || attr.suspectedMethod == .configurationModification
+                attr.suspectedMethod == TuningMethod.unknownSoftwareManipulation
+                    || attr.suspectedMethod == TuningMethod.sessionUnlock
+                    || attr.suspectedMethod == TuningMethod.configurationModification
                     || !attr.isDeterminate
             )
         }
@@ -217,7 +217,7 @@ final class AttributionEngineTests: XCTestCase {
             neutralized: neutralized
         )
         let attr = AttributionEngine.assess(results: [region], powerCycle: nil)
-        XCTAssertNotEqual(attr.suspectedMethod, .regionChange)
+        XCTAssertNotEqual(attr.suspectedMethod, Optional(TuningMethod.regionChange))
         XCTAssertFalse(attr.isDeterminate)
         // Neutralized region alone must not invent a method
         XCTAssertNil(attr.suspectedMethod)
@@ -230,8 +230,8 @@ final class AttributionEngineTests: XCTestCase {
                     id: "speed.session",
                     title: "Session",
                     persistence: .fleeting,
-                    modMatch: "speed.session.unlock",
-                    interpreted: "session"
+                    interpreted: "session",
+                    modMatch: "speed.session.unlock"
                 ),
                 class: .abweichung
             )
@@ -241,7 +241,7 @@ final class AttributionEngineTests: XCTestCase {
         ])
         let attr = AttributionEngine.assess(results: results, powerCycle: pc)
         // May still have weak session suspicion from marker, but unavailable must not boost to strong session claim
-        if attr.suspectedMethod == .sessionUnlock {
+        if attr.suspectedMethod == TuningMethod.sessionUnlock {
             XCTAssertLessThan(attr.confidence, 0.5)
             XCTAssertTrue(attr.contradictingMarkerIds.contains("powercycle.session.unavailableAfterRestart"))
         }
@@ -262,14 +262,17 @@ final class AttributionEngineTests: XCTestCase {
 
     func testAttributionNeverAffectsVerdictPath() {
         // Smoke: EvidenceEngine verdict stays rule-based; attribution is attached after.
+        // Use catalogued Max G3 FW so fw.unknown does not flip the stock verdict.
         let reading = IntegrityReading(
             serialDisplay: "1CGBTEST0001",
             speedLimitKmh: 20,
             peakSpeedKmh: 18,
-            fwMcu: "1.0.0"
+            fwMcu: "1.4.9",
+            fwBle: "0.4.0",
+            fwVcu: "1.5.8"
         )
         let assessment = EvidenceEngine.evaluate(reading: reading, profile: .maxG3D)
-        XCTAssertEqual(assessment.verdict, .stock)
+        XCTAssertEqual(assessment.verdict, VerdictLevel.stock)
         // Attribution optional / not determinate on stock
         XCTAssertTrue(assessment.attribution == nil || assessment.attribution?.isDeterminate == false)
     }

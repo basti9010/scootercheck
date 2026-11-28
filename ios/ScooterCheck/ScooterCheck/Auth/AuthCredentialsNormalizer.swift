@@ -33,4 +33,9 @@ enum AuthCredentialsNormalizer {
             || lower.contains("passwort falsch")
             || lower.contains("unauthorized")
     }
+
+    static func isWrongCredentials(_ error: AuthAPIError?) -> Bool {
+        if error?.kind == .invalidCredentials { return true }
+        return isWrongCredentialsMessage(error?.message)
+    }
 }

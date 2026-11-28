@@ -165,31 +165,9 @@ enum CustomFirmwareDiff {
             ))
         }
 
-        // --- Region ---
-        let region = TrackClassifier.serialRegion(for: reading)
-        if region == .us && profile.market == .de20 {
-            suspected = true
-            reasons.append("US-Region-SN auf DE-Sollprofil")
-            diffs.append(DiffItem(
-                id: "diff.region",
-                title: "SN-Region",
-                stockValue: "DE (1CGB…)",
-                observedValue: "US (\(reading.serialDisplay ?? reading.serialVcu ?? "—"))",
-                severity: .erheblichAbweichend,
-                explanation: "Region-SN weicht vom DE-Marktprofil ab — typisch für Region-Unlock. Bei US-Max-G3 (1CGC) bitte Profil „Max G3 US“ wählen."
-            ))
-        } else if profile.market == .us37, region != .us, region != .unknown {
-            suspected = true
-            reasons.append("Nicht-US-Region-SN auf US-Sollprofil")
-            diffs.append(DiffItem(
-                id: "diff.region",
-                title: "SN-Region",
-                stockValue: "US (1CGC…)",
-                observedValue: "\(region.label) (\(reading.serialDisplay ?? reading.serialVcu ?? "—"))",
-                severity: .abweichend,
-                explanation: "US-Max-G3-Profil erwartet SN-Präfix 1CGC."
-            ))
-        }
+        // Region mismatches are scored via EvidenceEngine `region.sn` — do not fold them
+        // into custom-FW suspicion (that incorrectly emits `fw.unknown` for Global/US SN
+        // on a DE profile when firmware itself is catalogued stock).
 
         // --- Soft-Unlock nur über Tempo, nicht über Gänge ---
         let threshold = SoftUnlockSettings.thresholdKmhSnapshot()

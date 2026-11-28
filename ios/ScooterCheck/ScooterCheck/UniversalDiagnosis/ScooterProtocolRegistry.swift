@@ -164,8 +164,33 @@ enum ProtocolCompatibilityEngine {
         ].joined(separator: " ").uppercased()
 
         let services = Set(input.serviceUUIDs.map { BLEKnownServiceUUID.normalize($0) })
+        // Mi-Home-IDs wie „xiaomi.scooter.6“ teilen Nordic UART mit Ninebot — Name vor UART.
+        let looksLikeXiaomiName =
+            (hay.contains("XIAOMI") && hay.contains("SCOOTER"))
+            || hay.contains("MISCOOTER")
+            || hay.contains("XIAOMI.SCOOTER")
 
-        // Native Ninebot / Xiaomi zuerst
+        // Xiaomi vor Ninebot, wenn der Name klar Xiaomi ist (sonst gewinnt generisches Nordic UART).
+        if looksLikeXiaomiName,
+           let xiaomi = profiles.first(where: { $0.verified && $0.nativeStack == "xiaomiPlain" }) {
+            let nordic = services.contains(where: { $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E") })
+            let patternHit = xiaomi.modelPatterns.contains { hay.contains($0.uppercased()) }
+            let nameHit = patternHit || looksLikeXiaomiName
+            if (nordic && nameHit) || (nameHit && input.looksLikeScooter) {
+                matchedOn.append(contentsOf: [
+                    nameHit ? "Xiaomi-Name" : nil,
+                    nordic ? "Nordic UART" : nil
+                ].compactMap { $0 })
+                return ProtocolCompatibilityResult(
+                    profile: xiaomi,
+                    supportLevel: .fullNative,
+                    matchedOn: matchedOn,
+                    blockers: []
+                )
+            }
+        }
+
+        // Native Ninebot zuerst (ohne Xiaomi-Namenskollision)
         if let native = profiles.first(where: { $0.verified && $0.nativeStack == "ninebotEnc2" }) {
             let uart = services.contains(where: {
                 $0.contains("696E65626F74") || $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E")
@@ -187,9 +212,7 @@ enum ProtocolCompatibilityEngine {
         if let xiaomi = profiles.first(where: { $0.verified && $0.nativeStack == "xiaomiPlain" }) {
             let nordic = services.contains(where: { $0.contains("6E400001B5A3F393E0A9E50E24DCCA9E") })
             let patternHit = xiaomi.modelPatterns.contains { hay.contains($0.uppercased()) }
-            // Mi-Home-IDs wie „xiaomi.scooter.6“ (Punkt statt Leerzeichen).
-            let miHomeId = hay.contains("XIAOMI") && hay.contains("SCOOTER")
-            let nameHit = patternHit || miHomeId || hay.contains("MISCOOTER")
+            let nameHit = patternHit || looksLikeXiaomiName
             if (nordic && nameHit) || (nameHit && input.looksLikeScooter) {
                 matchedOn.append(contentsOf: [nameHit ? "Xiaomi-Name" : nil, nordic ? "Nordic UART" : nil].compactMap { $0 })
                 return ProtocolCompatibilityResult(

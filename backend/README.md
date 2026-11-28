@@ -29,6 +29,44 @@ Leichtes User-Management für die iOS-App:
 | POST | `/admin/domains` `{ "domain": "polizei.bayern.de" }` | Admin |
 | DELETE | `/admin/domains/{domain}` | Admin |
 
+**Kein** `POST /auth/refresh` — Access-JWT (Default 14 Tage) muss nach Ablauf per erneutem Login ersetzt werden.
+
 Registrierung nur mit freigegebener E-Mail-Domain (nach dem `@`). Ohne Domain-Einträge ist Registrierung gesperrt (Admin-Seed ausgenommen).
 
 Produktion hinter nginx: `https://api.tuningscanner.de/scootercheck/…`
+
+### Fehlerform
+
+Auth-Fehler liefern `{ "detail": "<menschlich>", "code": "<stabil>" }` (HTTP-Status bleibt maßgeblich):
+
+| code | typ. Status | Bedeutung |
+| --- | --- | --- |
+| `invalid_credentials` | 401 | Login / Passwort falsch |
+| `not_authenticated` | 401 | Kein Bearer |
+| `token_invalid` | 401 | JWT kaputt / falsch signiert |
+| `token_expired` | 401 | JWT abgelaufen → Re-Login |
+| `user_unknown` | 401 | `sub` nicht in DB |
+| `account_not_active` | 403 | pending/rejected/disabled |
+| `forbidden` | 403 | kein Admin |
+| `email_taken` | 409 | Registrierung |
+| `domain_not_allowed` / `registration_locked` | 403 | Domain-Gate |
+
+Validierung (Pydantic) bleibt **422** mit `detail` als Array — unterscheidbar von 401 `invalid_credentials`.
+5xx / nginx HTML-Fehler haben keinen Auth-`code` (Client: Status ≥ 500 → Serverfehler).
+
+### JWT (Kompatibilität scootercheck-fw)
+
+HS256, Claims: `sub`, `email`, `role`, `status`, `iat`, `exp`. Firmware-Worker akzeptiert denselben Bearer wenn `status=active` (oder `X-ScooterCheck-Token`). **Kein** zweites User-Auth-System.
+
+### Secrets (fail-closed)
+
+Startup ruft `settings.assert_secure_configuration()` auf. Ohne starke `JWT_SECRET` / `ADMIN_PASSWORD` (EnvironmentFile) startet der Dienst **nicht**.  
+Nur lokal/Tests: `ALLOW_INSECURE_AUTH_DEFAULTS=1`. Nie in Produktion setzen.
+
+## Tests
+
+```bash
+cd backend
+pip install -r requirements.txt
+PYTHONPATH=. python -m pytest tests/ -v
+```

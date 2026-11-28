@@ -9,9 +9,25 @@ from typing import Annotated, Any, Optional
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import InvalidTokenError
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from .db import get_db, init_db
+from .errors import (
+    ACCOUNT_NOT_ACTIVE,
+    BAD_REQUEST,
+    DOMAIN_NOT_ALLOWED,
+    EMAIL_TAKEN,
+    FORBIDDEN,
+    INVALID_CREDENTIALS,
+    NOT_AUTHENTICATED,
+    NOT_FOUND,
+    REGISTRATION_LOCKED,
+    TOKEN_EXPIRED,
+    TOKEN_INVALID,
+    USER_UNKNOWN,
+    APIError,
+    api_error_handler,
+)
 from .schemas import (
     AdminResetPasswordOut,
     AdminResetPasswordRequest,
@@ -31,6 +47,7 @@ from .security import create_access_token, decode_access_token, hash_password, v
 from .settings import settings
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
+app.add_exception_handler(APIError, api_error_handler)
 bearer = HTTPBearer(auto_error=False)
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
@@ -113,6 +130,8 @@ def seed_admin() -> None:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    # Fail closed before DB/admin seed if production secrets are unset/weak.
+    settings.assert_secure_configuration()
     init_db()
     seed_admin()
 
@@ -126,29 +145,48 @@ def current_user(
     creds: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer)],
 ) -> UserOut:
     if creds is None or not creds.credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Nicht angemeldet")
+        raise APIError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Nicht angemeldet",
+            NOT_AUTHENTICATED,
+        )
     try:
         payload = decode_access_token(creds.credentials)
+    except ExpiredSignatureError as exc:
+        raise APIError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Token abgelaufen",
+            TOKEN_EXPIRED,
+        ) from exc
     except InvalidTokenError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token ungültig") from exc
+        raise APIError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Token ungültig",
+            TOKEN_INVALID,
+        ) from exc
     user = fetch_user_by_id(str(payload.get("sub", "")))
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Benutzer unbekannt")
+        raise APIError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Benutzer unbekannt",
+            USER_UNKNOWN,
+        )
     return user
 
 
 def require_active(user: Annotated[UserOut, Depends(current_user)]) -> UserOut:
     if user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Konto nicht freigeschaltet (Status: {user.status})",
+        raise APIError(
+            status.HTTP_403_FORBIDDEN,
+            f"Konto nicht freigeschaltet (Status: {user.status})",
+            ACCOUNT_NOT_ACTIVE,
         )
     return user
 
 
 def require_admin(user: Annotated[UserOut, Depends(require_active)]) -> UserOut:
     if user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Nur Admin")
+        raise APIError(status.HTTP_403_FORBIDDEN, "Nur Admin", FORBIDDEN)
     return user
 
 
@@ -158,14 +196,14 @@ def normalize_domain(raw: str) -> str:
         d = d[1:]
     d = d.strip(".")
     if not d or "." not in d or " " in d or "@" in d:
-        raise HTTPException(status_code=400, detail="Ungültige Domain (z. B. polizei.bayern.de)")
+        raise APIError(400, "Ungültige Domain (z. B. polizei.bayern.de)", BAD_REQUEST)
     return d
 
 
 def email_domain(email: str) -> str:
     parts = email.strip().lower().split("@", 1)
     if len(parts) != 2 or not parts[1]:
-        raise HTTPException(status_code=400, detail="Ungültige E-Mail")
+        raise APIError(400, "Ungültige E-Mail", BAD_REQUEST)
     return parts[1]
 
 
@@ -186,14 +224,16 @@ def assert_email_allowed_for_registration(email: str) -> None:
     with get_db() as conn:
         count = conn.execute("SELECT COUNT(*) AS c FROM allowed_domains").fetchone()["c"]
     if count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Registrierung gesperrt: noch keine E-Mail-Domains freigegeben",
+        raise APIError(
+            status.HTTP_403_FORBIDDEN,
+            "Registrierung gesperrt: noch keine E-Mail-Domains freigegeben",
+            REGISTRATION_LOCKED,
         )
     if not is_domain_allowed(domain):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Domain @{domain} ist nicht freigegeben",
+        raise APIError(
+            status.HTTP_403_FORBIDDEN,
+            f"Domain @{domain} ist nicht freigegeben",
+            DOMAIN_NOT_ALLOWED,
         )
 
 
@@ -201,7 +241,11 @@ def assert_email_allowed_for_registration(email: str) -> None:
 def register(body: RegisterRequest) -> AuthResponse:
     email = str(body.email).strip().lower()
     if fetch_user_by_email(email):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-Mail bereits registriert")
+        raise APIError(
+            status.HTTP_409_CONFLICT,
+            "E-Mail bereits registriert",
+            EMAIL_TAKEN,
+        )
     assert_email_allowed_for_registration(email)
 
     now = utc_now()
@@ -229,7 +273,11 @@ def register(body: RegisterRequest) -> AuthResponse:
 def login(body: LoginRequest) -> AuthResponse:
     row = fetch_user_by_email(str(body.email))
     if row is None or not verify_password(body.password, row["password_hash"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-Mail oder Passwort falsch")
+        raise APIError(
+            status.HTTP_401_UNAUTHORIZED,
+            "E-Mail oder Passwort falsch",
+            INVALID_CREDENTIALS,
+        )
     user = row_to_user(row)
     token = create_access_token(
         user_id=user.id, email=user.email, role=user.role, status=user.status
@@ -249,9 +297,13 @@ def change_password(
 ) -> MessageOut:
     row = fetch_user_by_email(user.email)
     if row is None or not verify_password(body.current_password, row["password_hash"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Aktuelles Passwort falsch")
+        raise APIError(
+            status.HTTP_401_UNAUTHORIZED,
+            "Aktuelles Passwort falsch",
+            INVALID_CREDENTIALS,
+        )
     if body.current_password == body.new_password:
-        raise HTTPException(status_code=400, detail="Neues Passwort muss sich unterscheiden")
+        raise APIError(400, "Neues Passwort muss sich unterscheiden", BAD_REQUEST)
     now = utc_now()
     with get_db() as conn:
         conn.execute(

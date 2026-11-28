@@ -239,7 +239,8 @@ enum PrivacyContent {
             title: "Was lokal gespeichert wird",
             paragraphs: [
                 "Prüfungsindex und Session-/Protokollpakete unter Application Support (ScooterCheck/History), inkl. PDF/JSON und Fotoordner.",
-                "UserDefaults: u. a. globale Schriftgröße (Menü → Einstellungen), Soft-Unlock-Einstellungen/-Kombos, Radar-/Karten-Optionen, optionaler BLE-Session-Schlüssel, Metadaten zum Firmware-Katalog-Cache.",
+                "UserDefaults: u. a. globale Schriftgröße (Menü → Einstellungen), Soft-Unlock-Einstellungen/-Kombos, Radar-/Karten-Optionen, optionaler BLE-Session-Schlüssel, Metadaten zum Firmware-Katalog-Cache, gecachtes Auth-Profil (ohne JWT).",
+                "Keychain: JWT-Zugriffstoken der ScooterCheck-Anmeldung (nach Logout entfernt).",
                 "Cache der heruntergeladenen Firmware-Katalog-JSON."
             ]
         ),

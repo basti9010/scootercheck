@@ -71,6 +71,21 @@ enum FirmwareForensicOrchestrator {
             ))
         }
 
+        // Outer archive/file name hints (inner payload paths like FIRM.bin.enc often lack them).
+        let outerBase = (fileName as NSString).lastPathComponent
+        if outerBase.lowercased().contains("panic") {
+            evidence.append(.init(
+                id: "fn-panic-package",
+                category: .filenameHint,
+                title: "Dateiname enthält „panic“",
+                detail: "Nicht verifizierter Hinweis aus dem Dateinamen — keine Aussage über Wirkung am Fahrzeug.",
+                evidence: "Dateiname: \(outerBase)",
+                method: "Dateiname-Muster",
+                verifiability: .unverified,
+                confirmed: false
+            ))
+        }
+
         // Package meta evidence
         if !loaded.meta.models.isEmpty || loaded.meta.type != nil {
             evidence.append(.init(

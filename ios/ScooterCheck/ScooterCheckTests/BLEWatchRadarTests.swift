@@ -61,7 +61,8 @@ final class BLEWatchRadarTests: XCTestCase {
     }
 
     func testRadarConfigRequiresMultipleHits() {
-        XCTAssertGreaterThanOrEqual(BLERadarConfig.minHitsForAlarm, 2)
+        XCTAssertGreaterThanOrEqual(BLERadarConfig.minHitsForAlarmForeground, 2)
+        XCTAssertGreaterThanOrEqual(BLERadarConfig.minHitsForAlarmBackground, 1)
         XCTAssertGreaterThan(BLERadarConfig.deviceCooldownSeconds, 10)
     }
 

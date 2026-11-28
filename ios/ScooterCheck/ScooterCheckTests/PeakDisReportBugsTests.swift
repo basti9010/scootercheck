@@ -6,23 +6,23 @@ final class PeakDisReportBugsTests: XCTestCase {
 
     // MARK: - Peak / DIS decode
 
-    func testTripPeakClassicTenths() {
-        XCTAssertEqual(RegisterScale.tripPeakKmh(250), 25.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(450), 45.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(327), 32.7, accuracy: 0.01)
+    func testTripPeakClassicTenths() throws {
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(250)), 25.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(450)), 45.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(327)), 32.7, accuracy: 0.01)
     }
 
-    func testTripPeakG3PackedHighByte() {
-        XCTAssertEqual(RegisterScale.tripPeakKmh(0x2D00), 45.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(0x1616), 22.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(0x140F), 20.0, accuracy: 0.01)
+    func testTripPeakG3PackedHighByte() throws {
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(0x2D00)), 45.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(0x1616)), 22.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(0x140F)), 20.0, accuracy: 0.01)
     }
 
-    func testTripPeakWholeKmhNotMisreadAsTenths() {
+    func testTripPeakWholeKmhNotMisreadAsTenths() throws {
         // Rohwert 25/45 = ganze km/h — nicht 2.5 / 4.5.
-        XCTAssertEqual(RegisterScale.tripPeakKmh(25), 25.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(45), 45.0, accuracy: 0.01)
-        XCTAssertEqual(RegisterScale.tripPeakKmh(20), 20.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(25)), 25.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(45)), 45.0, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(RegisterScale.tripPeakKmh(20)), 20.0, accuracy: 0.01)
     }
 
     func testDisLimitDoesNotFillPeak() {
