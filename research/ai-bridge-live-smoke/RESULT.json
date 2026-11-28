@@ -16,6 +16,8 @@
     "passed": 72,
     "failed": 0
   },
-  "owner_must_run": "GitHub Actions → AI Bridge Live Smoke (Cursor API) → confirm_live=LIVE",
-  "artifact": "scootercheck-cursor-live-smoke"
+  "owner_must_run": "GitHub Actions \u2192 AI Bridge Live Smoke (Cursor API) \u2192 confirm_live=LIVE",
+  "artifact": "scootercheck-cursor-live-smoke",
+  "pull_request": 120,
+  "commit": "03adb5c"
 }
