@@ -20,9 +20,21 @@ struct AuthGateView: View {
             if auth.isBootstrapping {
                 ProgressView("Sitzung…")
                     .tint(Theme.accent)
-            } else if auth.canUseApp {
-                ContentView()
-                    .environmentObject(auth)
+            } else if auth.canUseLocalFeatures {
+                // Offline: cached active session keeps local investigation data reachable.
+                VStack(spacing: 0) {
+                    if auth.isOfflineSession, let err = auth.lastError {
+                        Text(err)
+                            .font(Theme.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Theme.bg.opacity(0.95))
+                    }
+                    ContentView()
+                        .environmentObject(auth)
+                }
             } else if auth.isLoggedIn {
                 pendingView
             } else {
@@ -178,7 +190,8 @@ struct AuthGateView: View {
             await auth.login(email: mail, password: pass)
             // Caps Lock oft vertauscht Groß/Klein beim Einfügen — einmal mit getauschtem Case retry.
             if !auth.isLoggedIn,
-               AuthCredentialsNormalizer.isWrongCredentialsMessage(auth.lastError) {
+               AuthCredentialsNormalizer.isWrongCredentials(auth.lastAuthError)
+                || AuthCredentialsNormalizer.isWrongCredentialsMessage(auth.lastError) {
                 let swapped = AuthCredentialsNormalizer.toggledLetterCase(pass)
                 if swapped != pass {
                     await auth.login(email: mail, password: swapped)

@@ -167,6 +167,14 @@
 		A10000000000000000000A32 /* AdminViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B32 /* AdminViews.swift */; };
 		A10000000000000000000A33 /* AuthCredentialsNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B33 /* AuthCredentialsNormalizer.swift */; };
 		A10000000000000000000A34 /* AuthCredentialsNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B34 /* AuthCredentialsNormalizerTests.swift */; };
+		A10000000000000000000A35 /* AuthTokenKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B35 /* AuthTokenKeychainStore.swift */; };
+		A10000000000000000000A36 /* AuthUserCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B36 /* AuthUserCache.swift */; };
+		A10000000000000000000A37 /* AuthSessionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B37 /* AuthSessionStoreTests.swift */; };
+		A10000000000000000000A38 /* AuthErrorMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B38 /* AuthErrorMapperTests.swift */; };
+		A10000000000000000000A39 /* AuthSessionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B39 /* AuthSessionPolicy.swift */; };
+		A10000000000000000000A3A /* AuthSessionPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B3A /* AuthSessionPolicyTests.swift */; };
+		A10000000000000000000A3B /* AuthModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B3B /* AuthModelsTests.swift */; };
+		A10000000000000000000A3C /* AuthSecurityRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000B3C /* AuthSecurityRegressionTests.swift */; };
 		A100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */; };
 		A100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */; };
 		A100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */; };
@@ -348,6 +356,14 @@
 		B10000000000000000000B32 /* AdminViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminViews.swift; sourceTree = "<group>"; };
 		B10000000000000000000B33 /* AuthCredentialsNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCredentialsNormalizer.swift; sourceTree = "<group>"; };
 		B10000000000000000000B34 /* AuthCredentialsNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthCredentialsNormalizerTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B35 /* AuthTokenKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTokenKeychainStore.swift; sourceTree = "<group>"; };
+		B10000000000000000000B36 /* AuthUserCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthUserCache.swift; sourceTree = "<group>"; };
+		B10000000000000000000B37 /* AuthSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionStoreTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B38 /* AuthErrorMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthErrorMapperTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B39 /* AuthSessionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionPolicy.swift; sourceTree = "<group>"; };
+		B10000000000000000000B3A /* AuthSessionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionPolicyTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B3B /* AuthModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModelsTests.swift; sourceTree = "<group>"; };
+		B10000000000000000000B3C /* AuthSecurityRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSecurityRegressionTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000D3 /* DualSourcePanicCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DualSourcePanicCorrelatorTests.swift; sourceTree = "<group>"; };
 		B100000000000000000000E1 /* FirmwareDeepAnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareDeepAnalysisModels.swift; sourceTree = "<group>"; };
 		B100000000000000000000E2 /* FirmwareSpeedSignatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareSpeedSignatureExtractor.swift; sourceTree = "<group>"; };
@@ -407,6 +423,9 @@
 				B10000000000000000000B2E /* AuthModels.swift */,
 				B10000000000000000000B2F /* AuthAPIClient.swift */,
 				B10000000000000000000B30 /* AuthSessionStore.swift */,
+				B10000000000000000000B35 /* AuthTokenKeychainStore.swift */,
+				B10000000000000000000B36 /* AuthUserCache.swift */,
+				B10000000000000000000B39 /* AuthSessionPolicy.swift */,
 				B10000000000000000000B31 /* AuthGateView.swift */,
 				B10000000000000000000B32 /* AdminViews.swift */,
 				B10000000000000000000B33 /* AuthCredentialsNormalizer.swift */,
@@ -594,6 +613,11 @@
 				B10000000000000000000B2B /* RescanDiffAndConfigTests.swift */,
 				B10000000000000000000B2D /* ConfigFlagDecoderTests.swift */,
 				B10000000000000000000B34 /* AuthCredentialsNormalizerTests.swift */,
+				B10000000000000000000B37 /* AuthSessionStoreTests.swift */,
+				B10000000000000000000B38 /* AuthErrorMapperTests.swift */,
+				B10000000000000000000B3A /* AuthSessionPolicyTests.swift */,
+				B10000000000000000000B3B /* AuthModelsTests.swift */,
+				B10000000000000000000B3C /* AuthSecurityRegressionTests.swift */,
 				B1000000000000000000009A /* FirmwareZipAnalyzerTests.swift */,
 				B10000000000000000000095 /* RadarMapTests.swift */,
 				B1000000000000000000004B /* BLESearchMotionCoreTests.swift */,
@@ -826,6 +850,9 @@
 				A10000000000000000000A31 /* AuthGateView.swift in Sources */,
 				A10000000000000000000A32 /* AdminViews.swift in Sources */,
 				A10000000000000000000A33 /* AuthCredentialsNormalizer.swift in Sources */,
+				A10000000000000000000A35 /* AuthTokenKeychainStore.swift in Sources */,
+				A10000000000000000000A36 /* AuthUserCache.swift in Sources */,
+				A10000000000000000000A39 /* AuthSessionPolicy.swift in Sources */,
 				A100000000000000000000F5 /* ChangePasswordView.swift in Sources */,
 				A100000000000000000000F6 /* AdminUserEditView.swift in Sources */,
 				A10000000000000000000006 /* Tracks.swift in Sources */,
@@ -899,6 +926,11 @@
 				A10000000000000000000A2B /* RescanDiffAndConfigTests.swift in Sources */,
 				A10000000000000000000A2D /* ConfigFlagDecoderTests.swift in Sources */,
 				A10000000000000000000A34 /* AuthCredentialsNormalizerTests.swift in Sources */,
+				A10000000000000000000A37 /* AuthSessionStoreTests.swift in Sources */,
+				A10000000000000000000A38 /* AuthErrorMapperTests.swift in Sources */,
+				A10000000000000000000A3A /* AuthSessionPolicyTests.swift in Sources */,
+				A10000000000000000000A3B /* AuthModelsTests.swift in Sources */,
+				A10000000000000000000A3C /* AuthSecurityRegressionTests.swift in Sources */,
 				A1000000000000000000009A /* FirmwareZipAnalyzerTests.swift in Sources */,
 				A10000000000000000000095 /* RadarMapTests.swift in Sources */,
 				A1000000000000000000004B /* BLESearchMotionCoreTests.swift in Sources */,
