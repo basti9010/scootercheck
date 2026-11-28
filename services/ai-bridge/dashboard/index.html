@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ScooterCheck Development Center</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">ScooterCheck</div>
+    <p class="tag">Development Center</p>
+  </header>
+  <main>
+    <section>
+      <h1>Aufträge</h1>
+      <p class="lede">Live-Kennzahlen nur aus angeschlossenen Quellen. Sonst UNKNOWN.</p>
+      <form id="task-form">
+        <label>Aufgabe
+          <textarea id="task-text" rows="3" placeholder="z. B. Verbessere die Radar-Karte…" required></textarea>
+        </label>
+        <div class="actions">
+          <button type="submit">Prüfen</button>
+          <button type="button" id="btn-refresh">Aktualisieren</button>
+        </div>
+      </form>
+    </section>
+    <section>
+      <h2>Status</h2>
+      <dl id="status-grid" class="grid">
+        <div><dt>Bridge</dt><dd id="st-bridge">UNKNOWN</dd></div>
+        <div><dt>Cursor Live</dt><dd id="st-cursor">NOT VERIFIED</dd></div>
+        <div><dt>ChatGPT</dt><dd id="st-chatgpt">NOT VERIFIED</dd></div>
+        <div><dt>Deployment</dt><dd id="st-deploy">UNKNOWN</dd></div>
+      </dl>
+    </section>
+    <section>
+      <h2>Aktive Tasks</h2>
+      <ul id="task-list" class="list"><li class="muted">Keine Quelle verbunden</li></ul>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

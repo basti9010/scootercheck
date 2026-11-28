@@ -1,0 +1,59 @@
+name: AI Bridge Tests
+
+# Development Automation 1.0 — unit / mock E2E / MCP authz.
+# Does NOT claim CURSOR_API_LIVE_VERIFIED or CHATGPT_CONNECTION_VERIFIED.
+# No prod deploy / no SSH / no Cursor live calls.
+
+on:
+  pull_request:
+    paths:
+      - "services/ai-bridge/**"
+      - ".github/workflows/ai-bridge-tests.yml"
+  push:
+    branches:
+      - main
+      - master
+      - cursor/development-automation-b100
+      - "cursor/*-b100"
+    paths:
+      - "services/ai-bridge/**"
+      - ".github/workflows/ai-bridge-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ai-bridge-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: Pytest (orchestrator / MCP authz / autofix)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/ai-bridge
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/ai-bridge/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run pytest
+        env:
+          # Explicitly unset — live Cursor path must stay blocked in CI.
+          CURSOR_API_KEY: ""
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python -m pytest -q tests mcp/tests
