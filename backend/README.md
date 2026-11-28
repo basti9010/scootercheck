@@ -58,6 +58,11 @@ Validierung (Pydantic) bleibt **422** mit `detail` als Array — unterscheidbar 
 
 HS256, Claims: `sub`, `email`, `role`, `status`, `iat`, `exp`. Firmware-Worker akzeptiert denselben Bearer wenn `status=active` (oder `X-ScooterCheck-Token`). **Kein** zweites User-Auth-System.
 
+### Secrets (fail-closed)
+
+Startup ruft `settings.assert_secure_configuration()` auf. Ohne starke `JWT_SECRET` / `ADMIN_PASSWORD` (EnvironmentFile) startet der Dienst **nicht**.  
+Nur lokal/Tests: `ALLOW_INSECURE_AUTH_DEFAULTS=1`. Nie in Produktion setzen.
+
 ## Tests
 
 ```bash

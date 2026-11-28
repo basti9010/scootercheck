@@ -130,6 +130,8 @@ def seed_admin() -> None:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    # Fail closed before DB/admin seed if production secrets are unset/weak.
+    settings.assert_secure_configuration()
     init_db()
     seed_admin()
 
