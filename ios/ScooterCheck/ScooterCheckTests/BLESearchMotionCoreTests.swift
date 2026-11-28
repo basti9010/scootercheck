@@ -287,7 +287,7 @@ final class BLESearchMotionCoreTests: XCTestCase {
         _ = before
     }
 
-    func testHeatmapKeepsDistantCellUntilRemeasured() {
+    func testHeatmapKeepsDistantCellUntilRemeasured() throws {
         let viewport = BLESearchViewport(centerX: 5, centerY: 5, spanMeters: 24)
         let first = [
             BLEMeasurement(
@@ -304,7 +304,7 @@ final class BLESearchMotionCoreTests: XCTestCase {
             viewport: viewport,
             pathPolyline: [(1, 1)]
         )
-        let frozen = HeatmapPlacementEngine.measuredRssi(in: heat1, x: 1.0, y: 1.0)
+        let frozen = try XCTUnwrap(HeatmapPlacementEngine.measuredRssi(in: heat1, x: 1.0, y: 1.0))
         XCTAssertEqual(frozen, -52, accuracy: 0.01)
 
         // Neue Messung weit entfernt — alter Ort bleibt unverändert
@@ -324,18 +324,18 @@ final class BLESearchMotionCoreTests: XCTestCase {
             pathPolyline: [(1, 1), (10, 10)]
         )
         XCTAssertEqual(
-            HeatmapPlacementEngine.measuredRssi(in: heat2, x: 1.0, y: 1.0),
+            try XCTUnwrap(HeatmapPlacementEngine.measuredRssi(in: heat2, x: 1.0, y: 1.0)),
             -52,
             accuracy: 0.01
         )
         XCTAssertEqual(
-            HeatmapPlacementEngine.measuredRssi(in: heat2, x: 10.0, y: 10.0),
+            try XCTUnwrap(HeatmapPlacementEngine.measuredRssi(in: heat2, x: 10.0, y: 10.0)),
             -78,
             accuracy: 0.01
         )
     }
 
-    func testHeatmapUpdatesOnlyWhenSameCellRemeasured() {
+    func testHeatmapUpdatesOnlyWhenSameCellRemeasured() throws {
         let viewport = BLESearchViewport(centerX: 2, centerY: 2, spanMeters: 20)
         let measurements = [
             BLEMeasurement(
@@ -362,7 +362,7 @@ final class BLESearchMotionCoreTests: XCTestCase {
         )
         // Gleicher Rasterplatz → letzter Wert gewinnt
         XCTAssertEqual(
-            HeatmapPlacementEngine.measuredRssi(in: heat, x: 2.0, y: 2.0),
+            try XCTUnwrap(HeatmapPlacementEngine.measuredRssi(in: heat, x: 2.0, y: 2.0)),
             -70,
             accuracy: 0.01
         )

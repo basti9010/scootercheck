@@ -25,9 +25,9 @@ final class LiveTelemetryTests: XCTestCase {
         XCTAssertTrue(ids.contains("bms_g3_maxpower"))
     }
 
-    func testBmsTempDecodeOffset20() {
+    func testBmsTempDecodeOffset20() throws {
         let data = Data([45, 48, 0, 0]) // 25 °C / 28 °C
-        XCTAssertEqual(DiagnosticMap.decodeBmsTempC(data), 25, accuracy: 0.1)
+        XCTAssertEqual(try XCTUnwrap(DiagnosticMap.decodeBmsTempC(data)), 25, accuracy: 0.1)
     }
 
     func testLiveSnapshotAppliesCurrentAndPower() {
