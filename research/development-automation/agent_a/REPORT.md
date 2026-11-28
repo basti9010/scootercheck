@@ -2,7 +2,8 @@
 
 **Branch:** `cursor/development-automation-b100`  
 **Agent:** A (Task schema / planner stub / Cursor client + mock / orchestrator)  
-**Date:** 2026-11-28
+**Date:** 2026-11-28  
+**Commit:** `cf8fd47578b16d6c08199c7ce9ceba53923684e7`
 
 ## Verdict
 
@@ -30,7 +31,7 @@ Left untouched for Agent C: `.cursor/skills/`, `development-memory/`.
 
 ```text
 cd services/ai-bridge && python3 -m pytest -q
-# 19 passed
+# 19 passed (state machine 8, idempotency 3, mock E2E/client/schema/webhook 8)
 ```
 
 ## Live vs mock
