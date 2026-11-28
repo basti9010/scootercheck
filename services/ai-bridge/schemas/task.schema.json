@@ -66,6 +66,9 @@
     "cursor_agent_id": { "type": ["string", "null"], "default": null },
     "cursor_run_id": { "type": ["string", "null"], "default": null },
     "error_message": { "type": ["string", "null"], "default": null },
-    "report_path": { "type": ["string", "null"], "default": null }
+    "report_path": { "type": ["string", "null"], "default": null },
+    "github_pr_url": { "type": ["string", "null"], "default": null },
+    "branch_name": { "type": ["string", "null"], "default": null },
+    "last_sync_at": { "type": ["string", "null"], "format": "date-time", "default": null }
   }
 }

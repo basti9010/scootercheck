@@ -1,0 +1,41 @@
+{
+  "cycle": "AI Bridge 2.0",
+  "branch": "cursor/ai-bridge-v2-b100",
+  "base_branch": "cursor/development-automation-b100",
+  "prior_pr": 118,
+  "prior_commit": "11547e88103a7830c88428243bce8ca85554fcb2",
+  "gates": {
+    "CURSOR_API_LIVE_VERIFIED": false,
+    "MCP_CLIENT_VERIFIED": false,
+    "CHATGPT_CONNECTION_VERIFIED": false,
+    "CHATGPT_TO_CURSOR_E2E_VERIFIED": false,
+    "MOBILE_DASHBOARD_VERIFIED": false,
+    "MOBILE_DEVICE_VERIFIED": false,
+    "PRODUCTION_DEPLOYED": false
+  },
+  "live_block": "BLOCKED_MISSING_CREDENTIAL",
+  "live_endpoint": "POST https://api.cursor.com/v1/agents",
+  "tests": {
+    "pytest_ai_bridge_and_mcp": {
+      "passed": 52,
+      "failed": 0
+    }
+  },
+  "implemented": [
+    "RealCursorClient retries/backoff/cancel/correlation",
+    "SqliteTaskStore + JSON migrate",
+    "Orchestrator plan/approve/start_existing/cancel/sync",
+    "API /api/v1 with session auth + ownership",
+    "Mobile Development Center SPA updates",
+    "MCP BridgeBackend adapter + OAuth metadata notes",
+    "GitHub read helpers for PR/CI",
+    "Live smoke harness (blocked without key)"
+  ],
+  "owner_actions_required": [
+    "Place CURSOR_API_KEY in server EnvironmentFile only",
+    "Configure AIBRIDGE_TOKENS with owner ADMIN bearer",
+    "Optional GITHUB_TOKEN for PR/CI dashboard panels",
+    "Approve Hetzner unit deploy separately",
+    "Re-run python -m ai_bridge.run_live_smoke after key is set"
+  ]
+}

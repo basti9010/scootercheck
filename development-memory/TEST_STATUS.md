@@ -29,6 +29,15 @@ Plus BLE search/radar/AR, firmware ZIP, evidence, pedelec, universal diagnosis, 
 | Focus subset (workflow) | auth / path / diagnostics / zip / deploy-smoke |
 | Cycle 12 local note (docs) | ~46 deploy/manifest/smoke tests OK on agent machine — treat as **TESTED** for those modules when re-run confirms |
 
+## AI Bridge pytest (v2)
+
+| Item | Value |
+|------|-------|
+| Location | `services/ai-bridge/tests` + `mcp/tests` |
+| Local 2026-11-28 | **52 passed** on `cursor/ai-bridge-v2-b100` |
+| Live Cursor | **NOT VERIFIED** — `BLOCKED_MISSING_CREDENTIAL` |
+| ChatGPT MCP | **NOT VERIFIED** |
+
 ## Backend pytest
 
 | Item | Value |

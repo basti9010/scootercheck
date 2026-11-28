@@ -292,6 +292,31 @@ function renderHome() {
     (status && (status.recent_tasks || status.active_tasks)) ||
     null;
 
+  const pulls = (status && status.pull_requests && status.pull_requests.pulls) || [];
+  const ciRuns = (status && status.ci && status.ci.runs) || [];
+  const pullHtml = pulls.length
+    ? pulls
+        .slice(0, 5)
+        .map(
+          (p) =>
+            `<li><a class="link" href="${escapeHtml(p.html_url || "#")}" target="_blank" rel="noopener">#${escapeHtml(
+              String(p.number || "")
+            )} ${escapeHtml(truncate(p.title || "", 48))}</a></li>`
+        )
+        .join("")
+    : `<li class="empty">Keine offenen PRs / nicht geladen</li>`;
+  const ciHtml = ciRuns.length
+    ? ciRuns
+        .slice(0, 5)
+        .map(
+          (r) =>
+            `<li><span class="badge ${statusClass(r.conclusion || r.status)}">${escapeHtml(
+              String(r.conclusion || r.status || UNKNOWN)
+            )}</span> ${escapeHtml(truncate(r.name || r.display_title || "", 40))}</li>`
+        )
+        .join("")
+    : `<li class="empty">CI unbekannt</li>`;
+
   main.innerHTML = `
     <section class="panel">
       <h1>Status</h1>
@@ -315,6 +340,14 @@ function renderHome() {
       <div class="actions">
         <button type="button" class="btn ghost" id="btn-all-tasks">Alle Tasks</button>
       </div>
+    </section>
+    <section class="panel">
+      <h2>Pull Requests</h2>
+      <ul class="plain-list">${pullHtml}</ul>
+    </section>
+    <section class="panel">
+      <h2>CI</h2>
+      <ul class="plain-list">${ciHtml}</ul>
     </section>
   `;
 
@@ -418,9 +451,17 @@ function renderDetail() {
   const desc = pick(t, ["description"], UNKNOWN);
   const reportPath = pick(t, ["report_path"], "");
   const errMsg = pick(t, ["error_message", "error"], "");
-  const canApprove =
-    String(st).toUpperCase() === "WAITING_FOR_APPROVAL" ||
-    String(approval).toLowerCase() === "pending";
+  const stUp = String(st).toUpperCase();
+  const canAnalyze = stUp === "CREATED";
+  const canApprove = stUp === "WAITING_FOR_APPROVAL";
+  const canStart = stUp === "QUEUED";
+  const canCancel = !["COMPLETED", "CANCELLED"].includes(stUp);
+  const agentId = pick(t, ["cursor_agent_id"], "");
+  const runId = pick(t, ["cursor_run_id"], "");
+  const branch = pick(t, ["branch_name", "base_branch"], UNKNOWN);
+  const prUrl = pick(t, ["github_pr_url"], "");
+  const lastSync = pick(t, ["last_sync_at", "updated_at"], UNKNOWN);
+  const started = pick(t, ["created_at"], UNKNOWN);
 
   main.innerHTML = `
     <section class="panel">
@@ -434,11 +475,35 @@ function renderDetail() {
         <div class="value">${escapeHtml(id || UNKNOWN)}</div>
       </div>
       <div class="detail-block">
+        <div class="label">Cursor-Agent-ID</div>
+        <div class="value">${escapeHtml(agentId || "—")}</div>
+      </div>
+      <div class="detail-block">
+        <div class="label">Cursor-Run-ID</div>
+        <div class="value">${escapeHtml(runId || "—")}</div>
+      </div>
+      <div class="detail-block">
+        <div class="label">Start / Sync</div>
+        <div class="value">${escapeHtml(started)} · ${escapeHtml(lastSync)}</div>
+      </div>
+      <div class="detail-block">
+        <div class="label">Branch</div>
+        <div class="value">${escapeHtml(branch)}</div>
+      </div>
+      <div class="detail-block">
+        <div class="label">Pull Request</div>
+        <div class="value">${
+          prUrl && prUrl !== UNKNOWN
+            ? `<a class="link" href="${escapeHtml(prUrl)}" target="_blank" rel="noopener">${escapeHtml(prUrl)}</a>`
+            : "—"
+        }</div>
+      </div>
+      <div class="detail-block">
         <div class="label">Freigabe</div>
         <div class="value">${escapeHtml(approval)}</div>
       </div>
       <div class="detail-block">
-        <div class="label">Beschreibung</div>
+        <div class="label">Auftrag</div>
         <div class="value">${escapeHtml(desc)}</div>
       </div>
       ${
@@ -447,22 +512,23 @@ function renderDetail() {
           : ""
       }
       <div class="actions">
+        <button type="button" class="btn" id="btn-analyze" ${!canAnalyze || state.busy ? "disabled" : ""}>
+          Analysieren
+        </button>
         <button type="button" class="btn primary" id="btn-approve" ${!canApprove || state.busy ? "disabled" : ""}>
           Freigeben
         </button>
-        <button type="button" class="btn" id="btn-start" ${state.busy ? "disabled" : ""}>
-          Starten
+        <button type="button" class="btn" id="btn-start" ${!canStart || state.busy ? "disabled" : ""}>
+          Agent starten
         </button>
         <button type="button" class="btn" id="btn-report" ${!id ? "disabled" : ""}>
-          Report anzeigen
+          Report
+        </button>
+        <button type="button" class="btn ghost" id="btn-cancel" ${!canCancel || state.busy ? "disabled" : ""}>
+          Abbrechen
         </button>
         <button type="button" class="btn ghost" id="btn-refresh-detail">Aktualisieren</button>
       </div>
-      ${
-        reportPath && reportPath !== UNKNOWN
-          ? `<p class="hint">Report-Pfad: ${escapeHtml(String(reportPath))}</p>`
-          : ""
-      }
     </section>
   `;
 
@@ -470,8 +536,19 @@ function renderDetail() {
   $("#btn-report")?.addEventListener("click", () => {
     if (id) navigate(`#/task/${encodeURIComponent(id)}/report`);
   });
-  $("#btn-approve")?.addEventListener("click", () => mutateTask(id, "approve"));
-  $("#btn-start")?.addEventListener("click", () => mutateTask(id, "start"));
+  $("#btn-analyze")?.addEventListener("click", () => mutateTask(id, "analyze"));
+  $("#btn-approve")?.addEventListener("click", () => {
+    if (!confirm("Aufgabe wirklich freigeben?")) return;
+    mutateTask(id, "approve");
+  });
+  $("#btn-start")?.addEventListener("click", () => {
+    if (!confirm("Cursor-Agent wirklich starten?")) return;
+    mutateTask(id, "start");
+  });
+  $("#btn-cancel")?.addEventListener("click", () => {
+    if (!confirm("Aufgabe abbrechen?")) return;
+    mutateTask(id, "cancel");
+  });
 }
 
 function renderReport() {
@@ -546,7 +623,13 @@ async function mutateTask(id, action) {
     } else {
       state.task = data?.task || data;
     }
-    toast(action === "approve" ? "Freigegeben" : "Gestartet");
+    const labels = {
+      analyze: "Analysiert",
+      approve: "Freigegeben",
+      start: "Gestartet",
+      cancel: "Abgebrochen",
+    };
+    toast(labels[action] || "OK");
   } catch (err) {
     toast(err.message || "Aktion fehlgeschlagen");
   } finally {

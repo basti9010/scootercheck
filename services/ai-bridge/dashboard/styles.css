@@ -51,6 +51,36 @@ body {
   position: relative;
 }
 
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.plain-list li {
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.plain-list .empty {
+  color: var(--muted);
+}
+
+a.link {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+a.link:hover,
+a.link:focus-visible {
+  text-decoration: underline;
+}
+
 .top {
   display: flex;
   align-items: flex-start;

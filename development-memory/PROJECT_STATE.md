@@ -1,9 +1,10 @@
 # Project State
 
 **Inventory date:** 2026-11-28  
-**Checkout branch:** `cursor/development-automation-b100`  
+**Checkout branch:** `cursor/ai-bridge-v2-b100` (AI Bridge 2.0; base `cursor/development-automation-b100` / PR #118)  
 **Base lineage:** Cycle 12 `cursor/hetzner-deploy-cd-c12-b100` → C11 #110 → C10 #109 → … → multi-agent #103  
-**Product rule:** read-only diagnosis — no limit writes, no flash, no unlock execution.
+**Product rule:** read-only diagnosis — no limit writes, no flash, no unlock execution.  
+**AI Bridge 2.0:** RealCursorClient + SQLite + mobile Dev Center ready; `CURSOR_API_LIVE_VERIFIED=false` (`BLOCKED_MISSING_CREDENTIAL`). See `research/ai-bridge-v2/`.
 
 ## Product (CONFIRMED on this checkout)
 
