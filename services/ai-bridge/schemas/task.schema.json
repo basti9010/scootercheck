@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scootercheck.local/schemas/task.schema.json",
+  "title": "ScooterCheckDevelopmentTask",
+  "description": "Canonical task record for Development Automation 1.0 (Etappe 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "title",
+    "description",
+    "source",
+    "repository",
+    "base_branch",
+    "priority",
+    "status",
+    "created_at",
+    "updated_at",
+    "idempotency_key"
+  ],
+  "properties": {
+    "task_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "description": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "string",
+      "enum": ["chatgpt", "mcp", "cli", "api", "manual", "automation"]
+    },
+    "repository": { "type": "string", "minLength": 1 },
+    "base_branch": { "type": "string", "minLength": 1 },
+    "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+    "requirements": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "acceptance_criteria": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "affected_components": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "assigned_agents": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "dependencies": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "security_classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"],
+      "default": "internal"
+    },
+    "estimated_complexity": {
+      "type": "string",
+      "enum": ["XS", "S", "M", "L", "XL"],
+      "default": "M"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "CREATED", "VALIDATING", "PLANNED", "WAITING_FOR_APPROVAL", "QUEUED",
+        "RUNNING", "TESTING", "REVIEW", "BLOCKED", "FAILED", "COMPLETED", "CANCELLED"
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "correlation_id": { "type": ["string", "null"], "default": null },
+    "requested_by": { "type": ["string", "null"], "default": null },
+    "approval_required": { "type": "boolean", "default": false },
+    "approval_status": {
+      "type": ["string", "null"],
+      "enum": ["pending", "approved", "rejected", null],
+      "default": null
+    },
+    "plan": { "type": ["object", "null"], "default": null },
+    "cursor_agent_id": { "type": ["string", "null"], "default": null },
+    "cursor_run_id": { "type": ["string", "null"], "default": null },
+    "error_message": { "type": ["string", "null"], "default": null },
+    "report_path": { "type": ["string", "null"], "default": null }
+  }
+}
