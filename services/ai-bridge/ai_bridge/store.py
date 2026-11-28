@@ -90,9 +90,22 @@ class TaskStore:
             task.updated_at = utc_now_iso()
             return self.save(task)
 
-    def list_tasks(self) -> list[Task]:
+    def list_tasks(
+        self,
+        *,
+        owner_subject: str | None = None,
+        admin: bool = False,
+        status: str | None = None,
+        limit: int = 100,
+    ) -> list[Task]:
         tasks: list[Task] = []
         for path in sorted(self.tasks_dir.glob("*.json")):
             with path.open("r", encoding="utf-8") as fh:
-                tasks.append(Task.model_validate(json.load(fh)))
-        return tasks
+                task = Task.model_validate(json.load(fh))
+            if status and task.status.value != status:
+                continue
+            if not admin and owner_subject is not None:
+                if task.requested_by not in (None, owner_subject):
+                    continue
+            tasks.append(task)
+        return tasks[:limit]

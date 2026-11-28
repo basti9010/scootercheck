@@ -114,6 +114,9 @@ class Task(BaseModel):
     cursor_run_id: Optional[str] = None
     error_message: Optional[str] = None
     report_path: Optional[str] = None
+    github_pr_url: Optional[str] = None
+    branch_name: Optional[str] = None
+    last_sync_at: Optional[str] = None
 
     @classmethod
     def from_create(cls, payload: TaskCreate, *, task_id: Optional[str] = None) -> "Task":

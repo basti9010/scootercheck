@@ -86,6 +86,102 @@ class TaskOrchestrator:
         task = self.store.patch(task)
         return self._advance(task, TaskStatus.QUEUED)
 
+    def plan_task(self, task_id: str) -> Task:
+        """Validate + plan an existing CREATED task; optionally wait for approval."""
+        task = self._require(task_id)
+        if task.status != TaskStatus.CREATED:
+            raise OrchestratorError(
+                f"Task {task_id} is {task.status.value}, expected CREATED"
+            )
+        task = self._advance(task, TaskStatus.VALIDATING)
+        plan = self.planner.plan(task)
+        task.plan = plan
+        task.assigned_agents = list(plan.get("agents") or task.assigned_agents)
+        task = self.store.patch(task)
+        task = self._advance(task, TaskStatus.PLANNED)
+        if task.approval_required:
+            return self._advance(task, TaskStatus.WAITING_FOR_APPROVAL)
+        return self._advance(task, TaskStatus.QUEUED)
+
+    def start_existing(self, task_id: str) -> dict[str, Any]:
+        """Launch Cursor agent for a QUEUED task and poll to terminal."""
+        task = self._require(task_id)
+        if task.status == TaskStatus.WAITING_FOR_APPROVAL:
+            raise OrchestratorError("Task still awaiting approval")
+        if task.status != TaskStatus.QUEUED:
+            raise OrchestratorError(
+                f"Task {task_id} is {task.status.value}, expected QUEUED"
+            )
+        if not task.plan:
+            plan = self.planner.plan(task)
+            task.plan = plan
+            task = self.store.patch(task)
+
+        task = self._advance(task, TaskStatus.RUNNING)
+        agent, run = self.client.create_agent(
+            CreateAgentRequest(
+                prompt_text=str((task.plan or {}).get("cursor_prompt") or task.description),
+                repository_url=task.repository,
+                starting_ref=task.base_branch,
+                name=task.title[:100],
+                auto_create_pr=False,
+            )
+        )
+        task.cursor_agent_id = agent.id
+        task.cursor_run_id = run.id
+        task.last_sync_at = utc_now_iso()
+        task = self.store.patch(task)
+
+        run = self._poll_run(agent.id, run.id)
+        task.last_sync_at = utc_now_iso()
+        if run.git and isinstance(run.git, dict):
+            branches = run.git.get("branches") or []
+            if branches and isinstance(branches[0], dict):
+                task.branch_name = branches[0].get("branch") or task.branch_name
+                task = self.store.patch(task)
+        if run.status == "FINISHED":
+            task = self._advance(task, TaskStatus.TESTING)
+            task = self._advance(task, TaskStatus.REVIEW)
+            task = self._advance(task, TaskStatus.COMPLETED)
+            return self._write_report(task, run)
+        if run.status == "ERROR":
+            task = self._advance(task, TaskStatus.FAILED, error_message="Cursor run ERROR")
+            return self._fail_report(task)
+        if run.status == "CANCELLED":
+            task = self._advance(task, TaskStatus.CANCELLED)
+            return self._fail_report(task)
+        task = self._advance(
+            task,
+            TaskStatus.FAILED,
+            error_message=f"Unexpected terminal status: {run.status}",
+        )
+        return self._fail_report(task)
+
+    def cancel(self, task_id: str) -> Task:
+        task = self._require(task_id)
+        if task.status in {TaskStatus.COMPLETED, TaskStatus.CANCELLED}:
+            return task
+        if task.cursor_agent_id and task.cursor_run_id:
+            try:
+                self.client.cancel_run(task.cursor_agent_id, task.cursor_run_id)
+            except Exception:  # noqa: BLE001 — best-effort remote cancel
+                pass
+        return self._advance(task, TaskStatus.CANCELLED)
+
+    def sync_agent(self, task_id: str) -> Task:
+        """Refresh Cursor run status into the task (no invented progress)."""
+        task = self._require(task_id)
+        if not task.cursor_agent_id or not task.cursor_run_id:
+            raise OrchestratorError("Task has no Cursor agent/run to sync")
+        run = self.client.get_run(task.cursor_agent_id, task.cursor_run_id)
+        task.last_sync_at = utc_now_iso()
+        if run.git and isinstance(run.git, dict):
+            branches = run.git.get("branches") or []
+            if branches and isinstance(branches[0], dict):
+                task.branch_name = branches[0].get("branch") or task.branch_name
+        task = self.store.patch(task)
+        return task
+
     def run_vertical(
         self,
         payload: TaskCreate,

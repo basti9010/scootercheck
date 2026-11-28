@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from .auth import AuthError, Principal, TokenRegistry
+from .bridge_backend import BridgeBackend
 from .orchestrator_stubs import MockOrchestrator
 from .roles import Role
 from .security import (
@@ -179,10 +180,18 @@ class ToolDispatcher:
     def __init__(
         self,
         registry: TokenRegistry,
-        orchestrator: MockOrchestrator | None = None,
+        orchestrator: MockOrchestrator | BridgeBackend | None = None,
     ) -> None:
         self.registry = registry
-        self.orch = orchestrator or MockOrchestrator()
+        # Prefer BridgeBackend when AI_BRIDGE_MCP_USE_BRIDGE=1 (shared SQLite path).
+        import os
+
+        if orchestrator is not None:
+            self.orch = orchestrator
+        elif os.environ.get("AI_BRIDGE_MCP_USE_BRIDGE", "").lower() in ("1", "true", "yes"):
+            self.orch = BridgeBackend()
+        else:
+            self.orch = MockOrchestrator()
 
     def invoke(
         self,

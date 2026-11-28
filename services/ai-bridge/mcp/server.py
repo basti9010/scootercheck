@@ -65,9 +65,11 @@ def oauth_protected_resource() -> dict[str, Any]:
             "scootercheck:admin",
         ],
         "bearer_methods_supported": ["header"],
+        "resource_documentation": "https://github.com/basti9010/scootercheck/tree/cursor/ai-bridge-v2-b100/services/ai-bridge/mcp",
         "notes": (
-            "Phase A stub. Wire real OAuth 2.1 + PKCE S256 before exposing to ChatGPT. "
-            "Stable redirect: https://chatgpt.com/connector_platform_oauth_redirect"
+            "OAuth 2.1 + PKCE S256 required before ChatGPT Custom Connector. "
+            "Redirect URI: https://chatgpt.com/connector_platform_oauth_redirect. "
+            "CHATGPT_CONNECTION_VERIFIED stays false until a real ChatGPT client completes OAuth."
         ),
     }
 

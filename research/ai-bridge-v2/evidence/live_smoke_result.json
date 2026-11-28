@@ -1,0 +1,6 @@
+{
+  "CURSOR_API_LIVE_VERIFIED": false,
+  "block": "BLOCKED_MISSING_CREDENTIAL",
+  "message": "CURSOR_API_KEY is not set in this process. Place it only in the server EnvironmentFile / secret store (never git, iOS, or dashboard JS).",
+  "endpoint": "POST https://api.cursor.com/v1/agents"
+}
