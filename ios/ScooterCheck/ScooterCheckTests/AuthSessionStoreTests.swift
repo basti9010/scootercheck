@@ -202,6 +202,29 @@ final class AuthSessionStoreTests: XCTestCase {
         }
     }
 
+    func testAdminVsUserAccessFlags() async {
+        let remote = MockAuthRemote()
+        remote.loginResult = .success(
+            AuthResponse(
+                accessToken: "tok-admin",
+                tokenType: "bearer",
+                user: Self.sampleUser(status: .active, role: .admin)
+            )
+        )
+        let store = makeStore(remote: remote)
+        await store.login(email: "admin@example.com", password: "password1")
+        XCTAssertTrue(store.isAdmin)
+        XCTAssertTrue(store.requireAdmin())
+        XCTAssertTrue(store.canUseLocalFeatures)
+
+        store.logout()
+        remote.loginResult = .success(Self.sampleResponse(status: .active))
+        await store.login(email: "user@example.com", password: "password1")
+        XCTAssertFalse(store.isAdmin)
+        XCTAssertFalse(store.requireAdmin())
+        XCTAssertTrue(store.canUseApp)
+    }
+
     func testForbiddenClearsSessionOnBootstrap() async {
         let tokens = InMemoryAuthTokenStore(defaults: defaults)
         tokens.saveToken("tok-forbid")

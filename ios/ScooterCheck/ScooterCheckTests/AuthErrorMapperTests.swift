@@ -67,4 +67,29 @@ final class AuthErrorMapperTests: XCTestCase {
             )
         )
     }
+
+    func testStableServerCodesPreferredOverDetailText() {
+        let expired = AuthErrorMapper.mapHTTP(
+            statusCode: 401,
+            detail: "something else",
+            code: AuthErrorCode.tokenExpired
+        )
+        XCTAssertEqual(expired.kind, .expired)
+        XCTAssertTrue(expired.shouldClearSession)
+
+        let inactive = AuthErrorMapper.mapHTTP(
+            statusCode: 403,
+            detail: "Konto nicht freigeschaltet",
+            code: AuthErrorCode.accountNotActive
+        )
+        XCTAssertEqual(inactive.kind, .forbidden)
+        XCTAssertTrue(inactive.shouldClearSession)
+
+        let invalid = AuthErrorMapper.mapHTTP(
+            statusCode: 401,
+            detail: nil,
+            code: AuthErrorCode.invalidCredentials
+        )
+        XCTAssertEqual(invalid.kind, .invalidCredentials)
+    }
 }
