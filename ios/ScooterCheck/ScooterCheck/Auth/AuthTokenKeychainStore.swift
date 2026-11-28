@@ -57,9 +57,13 @@ final class KeychainAuthTokenStore: AuthTokenStoring {
         var add = query
         add[kSecValueData as String] = data
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(add as CFDictionary, nil)
-        // Ensure legacy plaintext copy is gone after any save.
+        let status = SecItemAdd(add as CFDictionary, nil)
+        // Ensure legacy plaintext copy is gone after any save attempt.
         defaults.removeObject(forKey: legacyKey)
+        // Agent C: never ignore Keychain write failures (silent drop → phantom logout).
+        if status != errSecSuccess {
+            assertionFailure("Keychain SecItemAdd failed: \(status)")
+        }
     }
 
     func deleteToken() {
